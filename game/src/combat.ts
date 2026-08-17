@@ -1,14 +1,17 @@
 import type { World } from "./world";
 import type { Unit, Side } from "./types";
-import { WEAPON, COMBAT, FLASH, MORALE } from "./constants";
+import { WEAPON, COMBAT, FLASH, MORALE, FLANK } from "./constants";
 import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { clamp, dist, angleTo, angleDiff } from "./math";
-import { applyMorale } from "./morale";
+import { applyMorale, contagion } from "./morale";
 import { desc } from "./naming";
 
-// Ranged fire and melee. Lethality is low and morale drains high — figures rout
-// before they die. Pure and deterministic given the world's seeded rng.
+// Ranged fire and melee. Lethality is low, morale drains high, and where a blow
+// lands (front / flank / rear) matters more than that it lands — positioning is
+// how you break a line. Pure and deterministic given the world's seeded rng.
+
+type Arc = "front" | "flank" | "rear";
 
 function alive(u: Unit): boolean {
   return u.state !== "down";
@@ -16,6 +19,22 @@ function alive(u: Unit): boolean {
 function foeSide(s: Side): Side {
   return s === "player" ? "enemy" : "player";
 }
+
+// Which arc of the target a blow comes from, by the target's facing.
+function arcOf(target: Unit, fromX: number, fromY: number): Arc {
+  const rel = Math.abs(angleDiff(target.facing, angleTo(target.x, target.y, fromX, fromY)));
+  if (rel <= FLANK.frontHalfAngle) return "front";
+  if (rel >= 180 - FLANK.rearHalfAngle) return "rear";
+  return "flank";
+}
+
+// A morale blow scaled by the arc it lands from — flanks and rears terrify.
+function arcMorale(world: World, target: Unit, base: number, arc: Arc, frontCause: "fire" | "melee") {
+  const mult = arc === "flank" ? FLANK.flankMoraleMult : arc === "rear" ? FLANK.rearMoraleMult : 1;
+  const cause = arc === "flank" ? "flank" : arc === "rear" ? "rear" : frontCause;
+  applyMorale(world, target, base * mult, cause);
+}
+
 function meleeFoe(world: World, u: Unit): Unit | undefined {
   let best: Unit | undefined;
   let bd = COMBAT.meleeRange;
@@ -88,27 +107,28 @@ function fire(world: World, shooter: Unit, target: Unit) {
   shooter.powder -= 1;
   world.flashes.push({ ax: shooter.x, ay: shooter.y, bx: target.x, by: target.y, ttl: FLASH.ttl, kind: "fire" });
 
-  // being shot at rattles a figure even on a miss — this is what breaks lines
+  // being shot at rattles a figure even on a miss
   applyMorale(world, target, MORALE.suppression, "fire");
 
   if (nextFloat(world.rng) < w.accuracy * rangeScalar) {
     target.hp -= 1;
-    applyMorale(world, target, w.moraleShot, "fire");
+    arcMorale(world, target, w.moraleShot, arcOf(target, shooter.x, shooter.y), "fire");
     if (target.hp <= 0) kill(world, target);
   }
 }
 
-// Melee is a shock + will contest decided by ferocity (× the weapon's melee mult),
-// not a straight hp swap: a blow craters morale far more than it wounds. This is how
-// pistol-and-cutlass shock troops win — by terror at close quarters.
+// Melee is a shock + will contest decided by ferocity (× the weapon's melee mult);
+// a blow from the flank or rear both lands more easily and terrifies far more.
 function doMelee(world: World, a: Unit, foe: Unit) {
   a.meleeReload = COMBAT.meleeReload;
+  const arc = arcOf(foe, a.x, a.y);
+  const toHit = arc === "flank" ? FLANK.meleeToHitFlank : arc === "rear" ? FLANK.meleeToHitRear : 1;
   const aFero = a.ferocity * WEAPON[a.weapon].meleeMult;
-  const p = clamp(0.32 + (aFero - foe.ferocity) / 300, 0.08, 0.9);
+  const p = clamp(0.32 + (aFero - foe.ferocity) / 300, 0.08, 0.9) * toHit;
   world.flashes.push({ ax: a.x, ay: a.y, bx: foe.x, by: foe.y, ttl: FLASH.ttl, kind: "melee" });
   if (nextFloat(world.rng) < p) {
     foe.hp -= 1;
-    applyMorale(world, foe, COMBAT.meleeMoraleHit, "melee");
+    arcMorale(world, foe, COMBAT.meleeMoraleHit, arc, "melee");
     if (foe.hp <= 0) kill(world, foe);
   }
 }
@@ -117,6 +137,7 @@ function kill(world: World, u: Unit) {
   u.state = "down";
   u.hp = 0;
   signal(world, `${desc(u)} falls.`);
+  contagion(world, u, MORALE.perDown); // a friend falling shakes the men around him
 }
 
 // Win by breaking WILL: a side is beaten once none of its figures are still

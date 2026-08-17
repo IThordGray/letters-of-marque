@@ -48,6 +48,16 @@ export const COMBAT = {
   meleeMoraleHit: 11, // close work terrifies — a big morale blow
 };
 
+// ---- Flanking — positioning attacks morale ---------------------------------
+export const FLANK = {
+  frontHalfAngle: 55, // within this of a figure's facing counts as a front hit
+  rearHalfAngle: 45, // within this of directly-behind counts as a rear hit
+  flankMoraleMult: 2.0, // a flank hit terrifies twice as much
+  rearMoraleMult: 3.0, // from the rear, thrice
+  meleeToHitFlank: 1.3, // and a blow from a bad angle lands more easily
+  meleeToHitRear: 1.6,
+};
+
 export const FLASH = { ttl: 0.25 };
 
 // ---- Morale — per figure, the real "health" --------------------------------
@@ -60,6 +70,9 @@ export const MORALE = {
   rallyRate: 8, // morale/sec recovered out of contact
   contactCooldown: 3, // seconds after a blow before recovery starts
   enemyNearDist: 120, // an enemy this close counts as "in contact" (no recovery)
+  contagionRadius: 150, // a friend falling or breaking within this shakes you
+  perDown: 14, // morale lost when a nearby friend falls
+  perRout: 9, // ...and when a nearby friend breaks and runs
 };
 
 // ---- Test spawn ------------------------------------------------------------

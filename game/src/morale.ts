@@ -13,6 +13,16 @@ export function applyMorale(world: World, u: Unit, amount: number, cause: Cause)
   u.lastHitAt = world.time;
 }
 
+// A friend falling or breaking nearby shakes the men around them.
+export function contagion(world: World, source: Unit, amount: number) {
+  for (const u of world.units) {
+    if (u.side !== source.side || u.state === "down" || u.id === source.id) continue;
+    if (dist(u.x, u.y, source.x, source.y) <= MORALE.contagionRadius) {
+      applyMorale(world, u, amount, "friend-down");
+    }
+  }
+}
+
 function enemyNear(world: World, u: Unit): boolean {
   for (const o of world.units) {
     if (o.side === u.side || o.state === "down") continue;
@@ -51,6 +61,8 @@ function transition(world: World, u: Unit, next: UnitState) {
   const prev = u.state;
   u.state = next;
   if (next === "wavering" && prev === "steady") signal(world, `${desc(u)} waver — ${causePhrase(u.lastCause)}.`);
-  else if (next === "routing") signal(world, `${desc(u)} break and run — ${causePhrase(u.lastCause)}!`);
-  else if (next === "wavering" && prev === "routing") signal(world, `${desc(u)} rally and turn back.`);
+  else if (next === "routing") {
+    signal(world, `${desc(u)} break and run — ${causePhrase(u.lastCause)}!`);
+    contagion(world, u, MORALE.perRout);
+  } else if (next === "wavering" && prev === "routing") signal(world, `${desc(u)} rally and turn back.`);
 }
