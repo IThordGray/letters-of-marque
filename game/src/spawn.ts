@@ -26,6 +26,8 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
     state: "steady",
     lastCause: null,
     lastHitAt: -999,
+    stance: side === "player" ? "aggressive" : "holdGround",
+    attackMove: false,
   });
   return id;
 }

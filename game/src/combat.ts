@@ -41,7 +41,7 @@ export function stepCombat(world: World, dt: number) {
       if (t && alive(t) && t.side !== u.side && bears(t)) target = t;
       else if (!t || !alive(t)) u.attackTargetId = null;
     }
-    if (!target) {
+    if (!target && u.stance !== "ceaseFire") {
       let bd = Infinity;
       for (const e of world.units) {
         if (e.side !== foeSide(u.side) || !alive(e) || !bears(e)) continue;

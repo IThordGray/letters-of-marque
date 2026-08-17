@@ -1,11 +1,11 @@
 import type { App, PanKey, DragBox } from "./app";
-import type { Unit } from "./types";
+import type { Unit, Stance } from "./types";
 import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "./camera";
 import { CAMERA, UNIT, SELECT, FORMATION, SPEEDS } from "./constants";
 import { formationSlots } from "./formation";
 import { dist } from "./math";
 
-// Panning is arrows / middle-drag / wheel; letter keys are reserved for commands.
+// Panning is arrows / middle-drag / wheel; letter keys are commands.
 const PAN_KEYS: Record<string, PanKey> = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -31,6 +31,10 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       app.attackArmed = true; // next left-click = attack (unit) or attack-move (ground)
       return;
     }
+    if (e.code === "KeyZ") return setStance(app, "aggressive"); // "At 'em"
+    if (e.code === "KeyX") return setStance(app, "holdGround"); // "Hold fast"
+    if (e.code === "KeyC") return setStance(app, "ceaseFire"); // "Hold fire"
+    if (e.code === "KeyS") return halt(app); // stop and hold
     if (e.code === "KeyF") {
       app.formation = app.formation === "tight" ? "loose" : "tight";
       return;
@@ -86,20 +90,20 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       return;
     }
     if (e.button === 2) {
-      // right-click: contextual — a live enemy under the cursor = attack it; else formation-move
+      // right-click: contextual — live enemy = attack; else formation-move
       const p = xy(e);
       const hit = pickUnit(app, p.x, p.y);
       if (hit && hit.side === "enemy" && hit.state !== "down") orderAttack(app, hit.id);
-      else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
+      else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH), false);
       return;
     }
     if (e.button === 0) {
       const p = xy(e);
       if (app.attackArmed) {
-        // A-armed: click a live enemy to attack it, or ground to attack-move
+        // A-armed: enemy = attack it; ground = attack-move
         const hit = pickUnit(app, p.x, p.y);
         if (hit && hit.side === "enemy" && hit.state !== "down") orderAttack(app, hit.id);
-        else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
+        else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH), true);
         app.attackArmed = false;
         return;
       }
@@ -173,8 +177,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
   );
 }
 
-// Per-frame keyboard panning (variable dt). Screen-space speed so it feels the
-// same at any zoom level.
+// Per-frame keyboard panning (variable dt).
 export function updateCamera(app: App, realDt: number) {
   if (app.held.size === 0) return;
   const d = (CAMERA.panSpeed * realDt) / app.camera.zoom;
@@ -185,7 +188,7 @@ export function updateCamera(app: App, realDt: number) {
   clampCamera(app.camera);
 }
 
-// ---- order helpers (act on the living selection) ---------------------------
+// ---- orders (act on the living selection) ----------------------------------
 function living(app: App): Unit[] {
   return app.world.units.filter((u) => app.selected.has(u.id) && u.state !== "down");
 }
@@ -194,10 +197,11 @@ function orderAttack(app: App, targetId: number) {
   for (const u of living(app)) {
     u.attackTargetId = targetId;
     u.moveTarget = null;
+    u.attackMove = false;
   }
 }
 
-function orderFormationMove(app: App, wpt: { x: number; y: number }) {
+function orderFormationMove(app: App, wpt: { x: number; y: number }, attackMove: boolean) {
   const sel = living(app);
   if (sel.length === 0) return;
   const spacing = app.formation === "loose" ? FORMATION.looseSpacing : FORMATION.tightSpacing;
@@ -207,6 +211,20 @@ function orderFormationMove(app: App, wpt: { x: number; y: number }) {
   for (let i = 0; i < sel.length; i++) {
     sel[i].moveTarget = { x: slots[i].x, y: slots[i].y };
     sel[i].attackTargetId = null;
+    sel[i].attackMove = attackMove;
+  }
+}
+
+function setStance(app: App, stance: Stance) {
+  for (const u of living(app)) u.stance = stance;
+}
+
+function halt(app: App) {
+  for (const u of living(app)) {
+    u.moveTarget = null;
+    u.attackTargetId = null;
+    u.attackMove = false;
+    u.stance = "holdGround";
   }
 }
 

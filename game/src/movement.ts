@@ -1,13 +1,27 @@
 import type { World } from "./world";
-import { MOVE, WEAPON, SEPARATION, WORLD } from "./constants";
+import type { Unit } from "./types";
+import { MOVE, WEAPON, SEPARATION, WORLD, COMBAT } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
 import { desc } from "./naming";
 
-// Advance units toward their orders. Routers flee their own edge and ignore orders;
-// a wavering figure drags its feet; an explicit move takes priority; else a unit
-// ordered to attack an out-of-range foe closes to firing range and faces it. Pure &
-// deterministic; the down are skipped.
+function nearestEnemyWithin(world: World, u: Unit, range: number): Unit | null {
+  let best: Unit | null = null;
+  let bd = range;
+  for (const o of world.units) {
+    if (o.side === u.side || o.state === "down") continue;
+    const d = dist(u.x, u.y, o.x, o.y);
+    if (d < bd) {
+      bd = d;
+      best = o;
+    }
+  }
+  return best;
+}
+
+// Order of will: routers flee; a plain move is obeyed to the letter; otherwise a
+// figure may engage — an explicit target, an aggressive stance's auto-acquire, or an
+// attack-move — closing to firing range and facing the foe. Pure & deterministic.
 export function stepMovement(world: World, dt: number) {
   for (const u of world.units) {
     if (u.state === "down") continue;
@@ -24,23 +38,38 @@ export function stepMovement(world: World, dt: number) {
       tx = u.x;
       ty = u.side === "player" ? WORLD.height + 60 : -60;
       moving = true;
-    } else if (u.moveTarget) {
+    } else if (u.moveTarget && !u.attackMove) {
+      // plain move — obey the order, ignore the enemy
       tx = u.moveTarget.x;
       ty = u.moveTarget.y;
       moving = true;
       clearOnArrive = true;
-    } else if (u.attackTargetId != null) {
-      const t = world.units.find((x) => x.id === u.attackTargetId);
-      if (!t || t.state === "down" || t.side === u.side) {
-        u.attackTargetId = null;
-      } else {
-        faceX = t.x;
-        faceY = t.y;
-        if (dist(u.x, u.y, t.x, t.y) > WEAPON[u.weapon].rangeMax * MOVE.engageFraction) {
-          tx = t.x;
-          ty = t.y;
+    } else {
+      // may engage: an explicit target, then aggressive/attack-move auto-acquire
+      let engage: Unit | null = null;
+      if (u.attackTargetId != null) {
+        const t = world.units.find((x) => x.id === u.attackTargetId);
+        if (t && t.state !== "down" && t.side !== u.side) engage = t;
+        else u.attackTargetId = null;
+      }
+      if (!engage && (u.attackMove || u.stance === "aggressive")) {
+        engage = nearestEnemyWithin(world, u, COMBAT.acquireRange);
+      }
+
+      if (engage) {
+        faceX = engage.x;
+        faceY = engage.y;
+        if (dist(u.x, u.y, engage.x, engage.y) > WEAPON[u.weapon].rangeMax * MOVE.engageFraction) {
+          tx = engage.x;
+          ty = engage.y;
           moving = true;
         }
+      } else if (u.moveTarget) {
+        // attack-moving with no enemy in reach → proceed to the rally point
+        tx = u.moveTarget.x;
+        ty = u.moveTarget.y;
+        moving = true;
+        clearOnArrive = true;
       }
     }
 
@@ -49,7 +78,10 @@ export function stepMovement(world: World, dt: number) {
       const dy = ty - u.y;
       const d = Math.hypot(dx, dy);
       if (d <= MOVE.arriveSlack) {
-        if (clearOnArrive) u.moveTarget = null;
+        if (clearOnArrive) {
+          u.moveTarget = null;
+          u.attackMove = false;
+        }
       } else {
         u.facing = (Math.atan2(dy, dx) * 180) / Math.PI;
         const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
@@ -59,9 +91,12 @@ export function stepMovement(world: World, dt: number) {
       }
     } else if (faceX !== null && faceY !== null) {
       u.facing = (Math.atan2(faceY - u.y, faceX - u.x) * 180) / Math.PI; // stand and face the foe
+    } else if (u.state !== "routing") {
+      // idle — aim at the nearest enemy in weapon range so we can still fire
+      const near = nearestEnemyWithin(world, u, WEAPON[u.weapon].rangeMax);
+      if (near) u.facing = (Math.atan2(near.y - u.y, near.x - u.x) * 180) / Math.PI;
     }
 
-    // fled off the field → gone
     if (u.state === "routing" && (u.y > WORLD.height || u.y < 0)) {
       u.state = "down";
       signal(world, `${desc(u)} flee the field.`);
@@ -70,7 +105,7 @@ export function stepMovement(world: World, dt: number) {
 }
 
 // Personal space: push overlapping figures apart. Deterministic; tuned below
-// formation spacing so it only resolves real overlap. O(n²) for now.
+// formation spacing so it only resolves real overlap.
 export function stepSeparation(world: World) {
   const us = world.units;
   const rad = SEPARATION.radius;

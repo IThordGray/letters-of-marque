@@ -6,6 +6,7 @@ export type UnitKind = "pirate" | "officer";
 export type WeaponType = "musket" | "pistol" | "cannon";
 export type UnitState = "steady" | "wavering" | "routing" | "down";
 export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
+export type Stance = "aggressive" | "holdGround" | "ceaseFire";
 
 export interface Unit {
   id: number;
@@ -29,4 +30,8 @@ export interface Unit {
   state: UnitState;
   lastCause: Cause; // why morale last fell (for legible logs)
   lastHitAt: number; // sim time of last morale blow (recovery cooldown)
+
+  // command (KAN-15)
+  stance: Stance;
+  attackMove: boolean; // advancing to a point but engaging enemies met on the way
 }

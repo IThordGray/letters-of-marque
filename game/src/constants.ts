@@ -42,6 +42,7 @@ export const COMBAT = {
   fireArcHalfAngle: 78, // a figure fires within this of its facing
   rangeFalloffPow: 1.25, // hit chance falls with distance to this power
   rangeFloor: 0.12, // minimum range scalar inside max range
+  acquireRange: 340, // an aggressive figure auto-engages enemies within this
 };
 
 export const FLASH = { ttl: 0.25 };
@@ -108,4 +109,7 @@ export const COLOR = {
   moraleGood: "#6de07a",
   moraleWaver: "#e0d46d",
   moraleRout: "#ff6b52",
+  stanceAggressive: "#ff9a3c",
+  stanceHold: "#6fc6ff",
+  stanceCease: "#9fb9c6",
 };

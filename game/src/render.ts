@@ -75,6 +75,15 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.fillRect(bx, byM, bw, 3);
     ctx.fillStyle = moraleColor(u);
     ctx.fillRect(bx, byM, bw * (u.morale / 100), 3);
+
+    // stance pip below the figure (not while routing)
+    if (u.state !== "routing") {
+      ctx.fillStyle =
+        u.stance === "aggressive" ? COLOR.stanceAggressive : u.stance === "holdGround" ? COLOR.stanceHold : COLOR.stanceCease;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y + rad + 3, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // shot flashes (fade over their ttl)
