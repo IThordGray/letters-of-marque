@@ -2,8 +2,8 @@ import type { UnitKind, WeaponType } from "./types";
 
 // ============================================================================
 // LAND MODULE — durable build. Data-oriented: plain structs + pure systems.
-// Units are paces; time is real seconds (with time controls). The world is a
-// fixed field the camera navigates. All values are starting guesses — tune fast.
+// Units are paces; time is real seconds (with time controls). All values are
+// starting guesses — tune fast (morale especially, alongside a playtest).
 // ============================================================================
 
 export const WORLD = { width: 2000, height: 1500 };
@@ -16,24 +16,26 @@ export const SIM = {
 };
 
 // ---- Harness (determinism / pause / speed / log) ---------------------------
-export const SEED = 1337; // fixed default RNG seed — reproducible battles
-export const SPEEDS = [0.5, 1, 2, 4]; // selectable sim-time multipliers (keys 1–4)
-export const LOG = { display: 60 }; // signal-log lines shown in the panel
+export const SEED = 1337;
+export const SPEEDS = [0.5, 1, 2, 4];
+export const LOG = { display: 60 };
 
 // ---- Figures ---------------------------------------------------------------
-export const UNIT: Record<UnitKind, { size: number; hp: number }> = {
-  pirate: { size: 7, hp: 3 }, // size = radius in paces
-  officer: { size: 11, hp: 6 },
+export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number }> = {
+  pirate: { size: 7, hp: 3, morale: 60 },
+  officer: { size: 11, hp: 6, morale: 85 }, // officers start steadier
 };
 
 // ---- Weapons ---------------------------------------------------------------
-// KAN-13 is attrition-only, so hit chance = accuracy × range-falloff (the marks
-// stat and morale join in KAN-14, when accuracy drops and morale becomes the real
-// "health"). Reloads are in real seconds; use the time controls to speed drills.
-export const WEAPON: Record<WeaponType, { rangeMax: number; reload: number; accuracy: number; powder: number }> = {
-  musket: { rangeMax: 300, reload: 4, accuracy: 0.6, powder: 20 },
-  pistol: { rangeMax: 120, reload: 2, accuracy: 0.7, powder: 12 },
-  cannon: { rangeMax: 600, reload: 6, accuracy: 0.4, powder: 30 },
+// Accuracy is deliberately LOW and moraleShot HIGH: you win by breaking WILL, so
+// fear must outpace lethality — figures should rout well before they're killed.
+export const WEAPON: Record<
+  WeaponType,
+  { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number }
+> = {
+  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 20, moraleShot: 8 },
+  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 12, moraleShot: 7 },
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 30, moraleShot: 15 }, // a terror weapon
 };
 
 export const COMBAT = {
@@ -42,45 +44,46 @@ export const COMBAT = {
   rangeFloor: 0.12, // minimum range scalar inside max range
 };
 
-export const FLASH = { ttl: 0.25 }; // seconds a shot line lingers on screen
+export const FLASH = { ttl: 0.25 };
 
-// ---- Test spawn (throwaway: gives us something to see and fight) -----------
+// ---- Morale — per figure, the real "health" --------------------------------
+export const MORALE = {
+  max: 100,
+  steadyAbove: 55, // steady while morale is above this
+  waverAbove: 25, // wavering above this; below → routing
+  hysteresis: 5, // must climb this far back past a threshold to recover
+  suppression: 2.6, // morale drained just by being shot at (hit or miss)
+  rallyRate: 8, // morale/sec recovered out of contact
+  contactCooldown: 3, // seconds after a blow before recovery starts
+  enemyNearDist: 120, // an enemy this close counts as "in contact" (no recovery)
+};
+
+// ---- Test spawn ------------------------------------------------------------
 export const SPAWN = {
-  pirates: 8, // pirates per band, plus one officer
-  spacing: 44, // paces between figures in a rank
-  rankOffset: 55, // pirates sit this far toward the foe from their officer
-  edgeInset: 220, // how far each band deploys from its own edge
+  pirates: 8,
+  spacing: 44,
+  rankOffset: 55,
+  edgeInset: 220,
 };
 
 // ---- Movement --------------------------------------------------------------
 export const MOVE = {
-  speed: 90, // paces/sec (test value)
-  arriveSlack: 6, // stop when this close to the target
-  engageFraction: 0.6, // pursue until within this fraction of weapon range — close enough to fire effectively
+  speed: 90, // paces/sec
+  arriveSlack: 6,
+  engageFraction: 0.6, // pursue until within this fraction of weapon range
+  waverSpeedMult: 0.65, // the wavering move reluctantly
+  routSpeedMult: 1.4, // routers run
 };
 
 // ---- Formation & personal space --------------------------------------------
-export const FORMATION = {
-  tightSpacing: 26,
-  looseSpacing: 46,
-  aspect: 2.4, // ellipse width : depth — wide, not high
-};
-export const SEPARATION = {
-  radius: 14, // personal space; keep under a tight formation's closest gap
-};
+export const FORMATION = { tightSpacing: 26, looseSpacing: 46, aspect: 2.4 };
+export const SEPARATION = { radius: 14 };
 
 // ---- Camera ----------------------------------------------------------------
-export const CAMERA = {
-  zoomMin: 0.15,
-  zoomMax: 4,
-  zoomStep: 1.15,
-  panSpeed: 1100, // screen px/sec for keyboard pan
-};
+export const CAMERA = { zoomMin: 0.15, zoomMax: 4, zoomStep: 1.15, panSpeed: 1100 };
 
 // ---- Selection -------------------------------------------------------------
-export const SELECT = {
-  pickSlack: 6, // extra px around a figure that still counts as a click on it
-};
+export const SELECT = { pickSlack: 6 };
 
 export const COLOR = {
   background: "#08151b",
@@ -102,4 +105,8 @@ export const COLOR = {
   hpGood: "#6de07a",
   hpMid: "#e0d46d",
   hpLow: "#ff6b52",
+  routing: "#8a8f95", // routers wash out to grey
+  moraleGood: "#6de07a",
+  moraleWaver: "#e0d46d",
+  moraleRout: "#ff6b52",
 };

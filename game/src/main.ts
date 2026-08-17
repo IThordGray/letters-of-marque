@@ -9,6 +9,7 @@ import { installUI } from "./ui";
 import { startLoop } from "./loop";
 import { stepMovement, stepSeparation } from "./movement";
 import { stepCombat } from "./combat";
+import { stepMorale } from "./morale";
 import { signal } from "./log";
 import { SIM } from "./constants";
 
@@ -52,6 +53,7 @@ startLoop({
   update: (dt) => {
     stepMovement(world, dt);
     stepCombat(world, dt);
+    stepMorale(world, dt);
     stepSeparation(world);
     world.time += dt;
   },

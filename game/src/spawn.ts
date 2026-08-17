@@ -21,13 +21,17 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
     powder: WEAPON[weapon].powder,
     reload: 0,
     attackTargetId: null,
+    morale: UNIT[kind].morale,
+    state: "steady",
+    lastCause: null,
+    lastHitAt: -999,
   });
   return id;
 }
 
 // One band: an officer with a rank of pirates in front of him, facing the foe.
 function spawnBand(world: World, side: Side, cx: number, cy: number) {
-  const toward = side === "player" ? -1 : 1; // pirates stand a rank toward the enemy edge
+  const toward = side === "player" ? -1 : 1;
   spawnUnit(world, side, "officer", cx, cy);
   const half = (SPAWN.pirates - 1) / 2;
   for (let i = 0; i < SPAWN.pirates; i++) {

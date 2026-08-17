@@ -1,10 +1,11 @@
 // Entity data for the land module. Plain data only — behaviour lives in systems
-// (pure functions over the world), never on the struct. Fields join per slice, as
-// the system that uses them lands. Morale/stat fields arrive with KAN-14.
+// (pure functions over the world), never on the struct.
 
 export type Side = "player" | "enemy";
 export type UnitKind = "pirate" | "officer";
 export type WeaponType = "musket" | "pistol" | "cannon";
+export type UnitState = "steady" | "wavering" | "routing" | "down";
+export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
 
 export interface Unit {
   id: number;
@@ -13,13 +14,19 @@ export interface Unit {
   x: number; // world position, paces
   y: number;
   facing: number; // degrees, 0 = +x, y down
-  moveTarget: { x: number; y: number } | null; // active move order, world paces
+  moveTarget: { x: number; y: number } | null;
 
-  // combat (KAN-13, attrition only)
+  // combat
   hp: number;
   maxHp: number;
   weapon: WeaponType;
-  powder: number; // shots remaining
+  powder: number;
   reload: number; // seconds until it can fire again
-  attackTargetId: number | null; // ordered fire target
+  attackTargetId: number | null;
+
+  // morale (KAN-14) — the real "health": break it and they rout, before they die
+  morale: number; // 0..100
+  state: UnitState;
+  lastCause: Cause; // why morale last fell (for legible logs)
+  lastHitAt: number; // sim time of last morale blow (recovery cooldown)
 }

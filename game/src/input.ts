@@ -89,7 +89,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       // right-click: contextual — a live enemy under the cursor = attack it; else formation-move
       const p = xy(e);
       const hit = pickUnit(app, p.x, p.y);
-      if (hit && hit.side === "enemy" && hit.hp > 0) orderAttack(app, hit.id);
+      if (hit && hit.side === "enemy" && hit.state !== "down") orderAttack(app, hit.id);
       else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
       return;
     }
@@ -98,7 +98,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       if (app.attackArmed) {
         // A-armed: click a live enemy to attack it, or ground to attack-move
         const hit = pickUnit(app, p.x, p.y);
-        if (hit && hit.side === "enemy" && hit.hp > 0) orderAttack(app, hit.id);
+        if (hit && hit.side === "enemy" && hit.state !== "down") orderAttack(app, hit.id);
         else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
         app.attackArmed = false;
         return;
@@ -140,7 +140,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     if (dragging) {
       if (!e.shiftKey) app.selected.clear();
       for (const u of app.world.units) {
-        if (u.side !== "player" || u.hp <= 0) continue;
+        if (u.side !== "player" || u.state === "down") continue;
         const p = worldToScreen(app.camera, u.x, u.y, app.viewW, app.viewH);
         if (inBox(p.x, p.y, box)) app.selected.add(u.id);
       }
@@ -187,7 +187,7 @@ export function updateCamera(app: App, realDt: number) {
 
 // ---- order helpers (act on the living selection) ---------------------------
 function living(app: App): Unit[] {
-  return app.world.units.filter((u) => app.selected.has(u.id) && u.hp > 0);
+  return app.world.units.filter((u) => app.selected.has(u.id) && u.state !== "down");
 }
 
 function orderAttack(app: App, targetId: number) {
@@ -218,7 +218,7 @@ function pickUnit(app: App, sx: number, sy: number): Unit | null {
   let best: Unit | null = null;
   let bd = Infinity;
   for (const u of app.world.units) {
-    if (u.hp <= 0) continue;
+    if (u.state === "down") continue;
     const p = worldToScreen(app.camera, u.x, u.y, app.viewW, app.viewH);
     const r = UNIT[u.kind].size * app.camera.zoom + SELECT.pickSlack;
     const d = dist(p.x, p.y, sx, sy);

@@ -1,14 +1,16 @@
 import type { World } from "./world";
-import { MOVE, WEAPON, SEPARATION } from "./constants";
+import { MOVE, WEAPON, SEPARATION, WORLD } from "./constants";
 import { dist } from "./math";
+import { signal } from "./log";
+import { desc } from "./naming";
 
-// Advance units toward their orders. An explicit move order takes priority; else a
-// unit ordered to attack an out-of-range foe closes to firing range (basic pursuit)
-// and faces it. Pure & deterministic; dead figures are skipped. (Full attack-move /
-// stances are KAN-15.)
+// Advance units toward their orders. Routers flee their own edge and ignore orders;
+// a wavering figure drags its feet; an explicit move takes priority; else a unit
+// ordered to attack an out-of-range foe closes to firing range and faces it. Pure &
+// deterministic; the down are skipped.
 export function stepMovement(world: World, dt: number) {
   for (const u of world.units) {
-    if (u.hp <= 0) continue;
+    if (u.state === "down") continue;
 
     let tx = 0;
     let ty = 0;
@@ -17,14 +19,19 @@ export function stepMovement(world: World, dt: number) {
     let faceX: number | null = null;
     let faceY: number | null = null;
 
-    if (u.moveTarget) {
+    if (u.state === "routing") {
+      // break for your own edge, deaf to orders
+      tx = u.x;
+      ty = u.side === "player" ? WORLD.height + 60 : -60;
+      moving = true;
+    } else if (u.moveTarget) {
       tx = u.moveTarget.x;
       ty = u.moveTarget.y;
       moving = true;
       clearOnArrive = true;
     } else if (u.attackTargetId != null) {
       const t = world.units.find((x) => x.id === u.attackTargetId);
-      if (!t || t.hp <= 0 || t.side === u.side) {
+      if (!t || t.state === "down" || t.side === u.side) {
         u.attackTargetId = null;
       } else {
         faceX = t.x;
@@ -32,7 +39,7 @@ export function stepMovement(world: World, dt: number) {
         if (dist(u.x, u.y, t.x, t.y) > WEAPON[u.weapon].rangeMax * MOVE.engageFraction) {
           tx = t.x;
           ty = t.y;
-          moving = true; // close in to open fire
+          moving = true;
         }
       }
     }
@@ -45,28 +52,34 @@ export function stepMovement(world: World, dt: number) {
         if (clearOnArrive) u.moveTarget = null;
       } else {
         u.facing = (Math.atan2(dy, dx) * 180) / Math.PI;
-        const stepDist = Math.min(MOVE.speed * dt, d);
-        u.x += (dx / d) * stepDist;
-        u.y += (dy / d) * stepDist;
+        const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
+        const step = Math.min(MOVE.speed * mult * dt, d);
+        u.x += (dx / d) * step;
+        u.y += (dy / d) * step;
       }
     } else if (faceX !== null && faceY !== null) {
       u.facing = (Math.atan2(faceY - u.y, faceX - u.x) * 180) / Math.PI; // stand and face the foe
     }
+
+    // fled off the field → gone
+    if (u.state === "routing" && (u.y > WORLD.height || u.y < 0)) {
+      u.state = "down";
+      signal(world, `${desc(u)} flee the field.`);
+    }
   }
 }
 
-// Personal space: push overlapping figures apart. Position-based soft resolve —
-// deterministic, tuned below formation spacing so it only fixes real overlap. O(n²)
-// for now; a spatial grid comes when counts justify it.
+// Personal space: push overlapping figures apart. Deterministic; tuned below
+// formation spacing so it only resolves real overlap. O(n²) for now.
 export function stepSeparation(world: World) {
   const us = world.units;
   const rad = SEPARATION.radius;
   for (let i = 0; i < us.length; i++) {
     const a = us[i];
-    if (a.hp <= 0) continue;
+    if (a.state === "down") continue;
     for (let j = i + 1; j < us.length; j++) {
       const b = us[j];
-      if (b.hp <= 0) continue;
+      if (b.state === "down") continue;
       const dx = a.x - b.x;
       const dy = a.y - b.y;
       const d = Math.hypot(dx, dy);

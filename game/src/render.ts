@@ -4,8 +4,12 @@ import { WORLD, COLOR, UNIT, FLASH } from "./constants";
 import { worldToScreen } from "./camera";
 
 function unitColor(u: Unit): string {
+  if (u.state === "routing") return COLOR.routing; // routers wash out to grey
   if (u.side === "player") return u.kind === "officer" ? COLOR.playerOfficer : COLOR.player;
   return u.kind === "officer" ? COLOR.enemyOfficer : COLOR.enemy;
+}
+function moraleColor(u: Unit): string {
+  return u.state === "routing" ? COLOR.moraleRout : u.state === "wavering" ? COLOR.moraleWaver : COLOR.moraleGood;
 }
 
 export function render(ctx: CanvasRenderingContext2D, app: App) {
@@ -14,7 +18,6 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   ctx.fillStyle = COLOR.background;
   ctx.fillRect(0, 0, w, h);
 
-  // the field, drawn through the camera
   const tl = worldToScreen(cam, 0, 0, w, h);
   const br = worldToScreen(cam, WORLD.width, WORLD.height, w, h);
   ctx.fillStyle = COLOR.field;
@@ -25,7 +28,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
 
   // the fallen first, dim, so the living draw over them
   for (const u of world.units) {
-    if (u.hp > 0) continue;
+    if (u.state !== "down") continue;
     const p = worldToScreen(cam, u.x, u.y, w, h);
     ctx.fillStyle = COLOR.dead;
     ctx.beginPath();
@@ -33,10 +36,11 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.fill();
   }
 
-  // the living — coloured discs, officers ringed, selection ringed white
+  // the living — discs (routers grey), officers ringed, selection ringed white,
+  // with a thin hp bar and a morale bar (morale is the real "health")
   let standing = 0;
   for (const u of world.units) {
-    if (u.hp <= 0) continue;
+    if (u.state === "down") continue;
     standing++;
     const p = worldToScreen(cam, u.x, u.y, w, h);
     const rad = Math.max(UNIT[u.kind].size * cam.zoom, 2.5);
@@ -57,18 +61,23 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.stroke();
     }
 
-    // health bar above the figure
+    // bars above the figure: hp (thin) then morale (thicker, coloured by state)
     const bw = Math.max(rad * 2, 9);
     const bx = p.x - bw / 2;
-    const by = p.y - rad - 7;
-    const frac = u.hp / u.maxHp;
+    const byHp = p.y - rad - 10;
     ctx.fillStyle = COLOR.hpBack;
-    ctx.fillRect(bx, by, bw, 3);
-    ctx.fillStyle = frac > 0.5 ? COLOR.hpGood : frac > 0.25 ? COLOR.hpMid : COLOR.hpLow;
-    ctx.fillRect(bx, by, bw * frac, 3);
+    ctx.fillRect(bx, byHp, bw, 2);
+    const hpFrac = u.hp / u.maxHp;
+    ctx.fillStyle = hpFrac > 0.5 ? COLOR.hpGood : hpFrac > 0.25 ? COLOR.hpMid : COLOR.hpLow;
+    ctx.fillRect(bx, byHp, bw * hpFrac, 2);
+    const byM = byHp + 3;
+    ctx.fillStyle = COLOR.hpBack;
+    ctx.fillRect(bx, byM, bw, 3);
+    ctx.fillStyle = moraleColor(u);
+    ctx.fillRect(bx, byM, bw * (u.morale / 100), 3);
   }
 
-  // shot flashes (fade out over their ttl)
+  // shot flashes (fade over their ttl)
   ctx.lineWidth = 1;
   for (const f of world.flashes) {
     const a = worldToScreen(cam, f.ax, f.ay, w, h);
@@ -86,7 +95,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   ctx.strokeStyle = COLOR.moveMarker;
   ctx.lineWidth = 1.5;
   for (const u of world.units) {
-    if (u.hp <= 0 || !u.moveTarget || !app.selected.has(u.id)) continue;
+    if (u.state === "down" || !u.moveTarget || !app.selected.has(u.id)) continue;
     const p = worldToScreen(cam, u.moveTarget.x, u.moveTarget.y, w, h);
     ctx.beginPath();
     ctx.moveTo(p.x - 5, p.y);
@@ -112,7 +121,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     }
   }
 
-  // hud line, fixed to the screen
+  // hud line
   const speed = app.paused ? "paused" : `×${app.timeScale}`;
   const outcome = world.over ? ` · ${world.outcome}` : "";
   ctx.fillStyle = COLOR.text;
