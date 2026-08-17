@@ -5,14 +5,11 @@ import { CAMERA, UNIT, SELECT, FORMATION, SPEEDS } from "./constants";
 import { formationSlots } from "./formation";
 import { dist } from "./math";
 
+// Panning is arrows / middle-drag / wheel; letter keys are reserved for commands.
 const PAN_KEYS: Record<string, PanKey> = {
-  KeyW: "up",
   ArrowUp: "up",
-  KeyS: "down",
   ArrowDown: "down",
-  KeyA: "left",
   ArrowLeft: "left",
-  KeyD: "right",
   ArrowRight: "right",
 };
 
@@ -27,6 +24,11 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape") {
       app.selected.clear();
+      app.attackArmed = false;
+      return;
+    }
+    if (e.code === "KeyA") {
+      app.attackArmed = true; // next left-click = attack (unit) or attack-move (ground)
       return;
     }
     if (e.code === "KeyF") {
@@ -67,7 +69,6 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
 
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  // Middle-button drag pans; left button selects.
   let panning = false;
   let panX = 0;
   let panY = 0;
@@ -85,22 +86,23 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       return;
     }
     if (e.button === 2) {
-      // right-click: spread the selection into a formation centred on the cursor
+      // right-click: contextual — a live enemy under the cursor = attack it; else formation-move
       const p = xy(e);
-      const wpt = screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH);
-      const sel = app.world.units.filter((u) => app.selected.has(u.id));
-      if (sel.length > 0) {
-        const spacing = app.formation === "loose" ? FORMATION.looseSpacing : FORMATION.tightSpacing;
-        const slots = formationSlots(sel.length, wpt.x, wpt.y, spacing);
-        // pair left-to-right so the group's paths don't cross on the way in
-        sel.sort((a, b) => a.x - b.x);
-        slots.sort((a, b) => a.x - b.x);
-        for (let i = 0; i < sel.length; i++) sel[i].moveTarget = { x: slots[i].x, y: slots[i].y };
-      }
+      const hit = pickUnit(app, p.x, p.y);
+      if (hit && hit.side === "enemy" && hit.hp > 0) orderAttack(app, hit.id);
+      else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
       return;
     }
     if (e.button === 0) {
       const p = xy(e);
+      if (app.attackArmed) {
+        // A-armed: click a live enemy to attack it, or ground to attack-move
+        const hit = pickUnit(app, p.x, p.y);
+        if (hit && hit.side === "enemy" && hit.hp > 0) orderAttack(app, hit.id);
+        else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH));
+        app.attackArmed = false;
+        return;
+      }
       downX = p.x;
       downY = p.y;
       selecting = true;
@@ -136,15 +138,13 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     if (!box) return;
 
     if (dragging) {
-      // box-select every player figure whose centre falls in the marquee
       if (!e.shiftKey) app.selected.clear();
       for (const u of app.world.units) {
-        if (u.side !== "player") continue;
+        if (u.side !== "player" || u.hp <= 0) continue;
         const p = worldToScreen(app.camera, u.x, u.y, app.viewW, app.viewH);
         if (inBox(p.x, p.y, box)) app.selected.add(u.id);
       }
     } else {
-      // a click: pick the figure under the cursor
       const hit = pickUnit(app, box.x0, box.y0);
       if (hit && hit.side === "player") {
         if (e.shiftKey) {
@@ -155,12 +155,11 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
           app.selected.add(hit.id);
         }
       } else if (!e.shiftKey) {
-        app.selected.clear(); // clicked empty ground
+        app.selected.clear();
       }
     }
   });
 
-  // Wheel zooms toward the cursor.
   canvas.addEventListener(
     "wheel",
     (e) => {
@@ -186,6 +185,31 @@ export function updateCamera(app: App, realDt: number) {
   clampCamera(app.camera);
 }
 
+// ---- order helpers (act on the living selection) ---------------------------
+function living(app: App): Unit[] {
+  return app.world.units.filter((u) => app.selected.has(u.id) && u.hp > 0);
+}
+
+function orderAttack(app: App, targetId: number) {
+  for (const u of living(app)) {
+    u.attackTargetId = targetId;
+    u.moveTarget = null;
+  }
+}
+
+function orderFormationMove(app: App, wpt: { x: number; y: number }) {
+  const sel = living(app);
+  if (sel.length === 0) return;
+  const spacing = app.formation === "loose" ? FORMATION.looseSpacing : FORMATION.tightSpacing;
+  const slots = formationSlots(sel.length, wpt.x, wpt.y, spacing);
+  sel.sort((a, b) => a.x - b.x);
+  slots.sort((a, b) => a.x - b.x);
+  for (let i = 0; i < sel.length; i++) {
+    sel[i].moveTarget = { x: slots[i].x, y: slots[i].y };
+    sel[i].attackTargetId = null;
+  }
+}
+
 function inBox(x: number, y: number, b: DragBox): boolean {
   return x >= Math.min(b.x0, b.x1) && x <= Math.max(b.x0, b.x1) && y >= Math.min(b.y0, b.y1) && y <= Math.max(b.y0, b.y1);
 }
@@ -194,6 +218,7 @@ function pickUnit(app: App, sx: number, sy: number): Unit | null {
   let best: Unit | null = null;
   let bd = Infinity;
   for (const u of app.world.units) {
+    if (u.hp <= 0) continue;
     const p = worldToScreen(app.camera, u.x, u.y, app.viewW, app.viewH);
     const r = UNIT[u.kind].size * app.camera.zoom + SELECT.pickSlack;
     const d = dist(p.x, p.y, sx, sy);

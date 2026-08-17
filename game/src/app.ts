@@ -22,6 +22,7 @@ export interface App {
   drag: DragBox | null; // active left-drag box-select
   held: Set<PanKey>; // camera pan keys currently down
   formation: FormationDensity; // density used for the next move order
+  attackArmed: boolean; // A pressed — next left-click is an attack / attack-move
   paused: boolean; // sim paused (view & camera stay live)
   timeScale: number; // sim-time multiplier when not paused
   viewW: number; // viewport size, px

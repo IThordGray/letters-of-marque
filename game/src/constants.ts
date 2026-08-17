@@ -1,7 +1,9 @@
+import type { UnitKind, WeaponType } from "./types";
+
 // ============================================================================
 // LAND MODULE — durable build. Data-oriented: plain structs + pure systems.
-// Units are paces; time is seconds. The world is a fixed field the camera
-// navigates. All values are starting guesses — tune fast.
+// Units are paces; time is real seconds (with time controls). The world is a
+// fixed field the camera navigates. All values are starting guesses — tune fast.
 // ============================================================================
 
 export const WORLD = { width: 2000, height: 1500 };
@@ -19,12 +21,30 @@ export const SPEEDS = [0.5, 1, 2, 4]; // selectable sim-time multipliers (keys 1
 export const LOG = { display: 60 }; // signal-log lines shown in the panel
 
 // ---- Figures ---------------------------------------------------------------
-export const UNIT = {
-  pirate: { size: 7 }, // radius in paces
-  officer: { size: 11 },
+export const UNIT: Record<UnitKind, { size: number; hp: number }> = {
+  pirate: { size: 7, hp: 3 }, // size = radius in paces
+  officer: { size: 11, hp: 6 },
 };
 
-// ---- Test spawn (throwaway: gives us something to see and select) ----------
+// ---- Weapons ---------------------------------------------------------------
+// KAN-13 is attrition-only, so hit chance = accuracy × range-falloff (the marks
+// stat and morale join in KAN-14, when accuracy drops and morale becomes the real
+// "health"). Reloads are in real seconds; use the time controls to speed drills.
+export const WEAPON: Record<WeaponType, { rangeMax: number; reload: number; accuracy: number; powder: number }> = {
+  musket: { rangeMax: 300, reload: 4, accuracy: 0.6, powder: 20 },
+  pistol: { rangeMax: 120, reload: 2, accuracy: 0.7, powder: 12 },
+  cannon: { rangeMax: 600, reload: 6, accuracy: 0.4, powder: 30 },
+};
+
+export const COMBAT = {
+  fireArcHalfAngle: 78, // a figure fires within this of its facing
+  rangeFalloffPow: 1.25, // hit chance falls with distance to this power
+  rangeFloor: 0.12, // minimum range scalar inside max range
+};
+
+export const FLASH = { ttl: 0.25 }; // seconds a shot line lingers on screen
+
+// ---- Test spawn (throwaway: gives us something to see and fight) -----------
 export const SPAWN = {
   pirates: 8, // pirates per band, plus one officer
   spacing: 44, // paces between figures in a rank
@@ -40,22 +60,19 @@ export const MOVE = {
 
 // ---- Formation & personal space --------------------------------------------
 export const FORMATION = {
-  tightSpacing: 26, // paces between neighbours in a tight formation
-  looseSpacing: 46, // ...and a loose one
+  tightSpacing: 26,
+  looseSpacing: 46,
   aspect: 2.4, // ellipse width : depth — wide, not high
 };
 export const SEPARATION = {
-  // Personal space: below this centre-distance, figures push apart. Keep it under
-  // a tight formation's closest gap (~0.6 × tightSpacing ≈ 16) so separation only
-  // resolves real overlap and never loosens the formation. ~1 figure-diameter.
-  radius: 14,
+  radius: 14, // personal space; keep under a tight formation's closest gap
 };
 
 // ---- Camera ----------------------------------------------------------------
 export const CAMERA = {
-  zoomMin: 0.15, // px per pace
+  zoomMin: 0.15,
   zoomMax: 4,
-  zoomStep: 1.15, // multiply per wheel notch
+  zoomStep: 1.15,
   panSpeed: 1100, // screen px/sec for keyboard pan
 };
 
@@ -78,4 +95,6 @@ export const COLOR = {
   dragBox: "#9fe0ff",
   dragFill: "rgba(159, 224, 255, 0.12)",
   moveMarker: "#ffd36b",
+  dead: "#4a5348",
+  fire: "#ffd36b",
 };

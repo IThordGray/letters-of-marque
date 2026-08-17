@@ -8,6 +8,7 @@ import { installInput, updateCamera } from "./input";
 import { installUI } from "./ui";
 import { startLoop } from "./loop";
 import { stepMovement, stepSeparation } from "./movement";
+import { stepCombat } from "./combat";
 import { signal } from "./log";
 import { SIM } from "./constants";
 
@@ -27,6 +28,7 @@ const app: App = {
   drag: null,
   held: new Set(),
   formation: "tight",
+  attackArmed: false,
   paused: false,
   timeScale: 1,
   viewW: window.innerWidth,
@@ -49,6 +51,7 @@ startLoop({
   hz: SIM.hz,
   update: (dt) => {
     stepMovement(world, dt);
+    stepCombat(world, dt);
     stepSeparation(world);
     world.time += dt;
   },

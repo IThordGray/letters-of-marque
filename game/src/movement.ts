@@ -6,6 +6,7 @@ import { MOVE, SEPARATION } from "./constants";
 // headless-testable and never depends on the camera or the frame rate.
 export function stepMovement(world: World, dt: number) {
   for (const u of world.units) {
+    if (u.hp <= 0) continue;
     if (!u.moveTarget) continue;
     const dx = u.moveTarget.x - u.x;
     const dy = u.moveTarget.y - u.y;
@@ -30,8 +31,10 @@ export function stepSeparation(world: World) {
   const rad = SEPARATION.radius;
   for (let i = 0; i < us.length; i++) {
     const a = us[i];
+    if (a.hp <= 0) continue;
     for (let j = i + 1; j < us.length; j++) {
       const b = us[j];
+      if (b.hp <= 0) continue;
       const dx = a.x - b.x;
       const dy = a.y - b.y;
       const d = Math.hypot(dx, dy);
