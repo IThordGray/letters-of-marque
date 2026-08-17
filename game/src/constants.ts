@@ -27,6 +27,12 @@ export const SPAWN = {
   edgeInset: 220, // how far each band deploys from its own edge
 };
 
+// ---- Movement --------------------------------------------------------------
+export const MOVE = {
+  speed: 90, // paces/sec (test value)
+  arriveSlack: 6, // stop when this close to the target
+};
+
 // ---- Camera ----------------------------------------------------------------
 export const CAMERA = {
   zoomMin: 0.15, // px per pace
@@ -53,4 +59,5 @@ export const COLOR = {
   selection: "#ffffff",
   dragBox: "#9fe0ff",
   dragFill: "rgba(159, 224, 255, 0.12)",
+  moveMarker: "#ffd36b",
 };

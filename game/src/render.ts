@@ -45,6 +45,20 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     }
   }
 
+  // move-order markers — a small cross at each selected figure's target
+  ctx.strokeStyle = COLOR.moveMarker;
+  ctx.lineWidth = 1.5;
+  for (const u of world.units) {
+    if (!u.moveTarget || !app.selected.has(u.id)) continue;
+    const p = worldToScreen(cam, u.moveTarget.x, u.moveTarget.y, w, h);
+    ctx.beginPath();
+    ctx.moveTo(p.x - 5, p.y);
+    ctx.lineTo(p.x + 5, p.y);
+    ctx.moveTo(p.x, p.y - 5);
+    ctx.lineTo(p.x, p.y + 5);
+    ctx.stroke();
+  }
+
   // the marquee (only once it's an actual drag, not a click)
   if (app.drag) {
     const b = app.drag;

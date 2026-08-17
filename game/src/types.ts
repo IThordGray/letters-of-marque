@@ -12,4 +12,5 @@ export interface Unit {
   x: number; // world position, paces
   y: number;
   facing: number; // degrees, 0 = +x, y down
+  moveTarget: { x: number; y: number } | null; // active move order, world paces
 }

@@ -6,7 +6,7 @@ import { WORLD, SPAWN } from "./constants";
 export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y: number): number {
   const id = world.nextId++;
   const facing = side === "player" ? 270 : 90; // player faces up-field, enemy faces down
-  world.units.push({ id, side, kind, x, y, facing });
+  world.units.push({ id, side, kind, x, y, facing, moveTarget: null });
   return id;
 }
 

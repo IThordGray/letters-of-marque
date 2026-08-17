@@ -1,6 +1,6 @@
 import type { App, PanKey, DragBox } from "./app";
 import type { Unit } from "./types";
-import { panByScreen, zoomAt, clampCamera, worldToScreen } from "./camera";
+import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "./camera";
 import { CAMERA, UNIT, SELECT } from "./constants";
 import { dist } from "./math";
 
@@ -56,6 +56,15 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       panX = e.clientX;
       panY = e.clientY;
       e.preventDefault();
+      return;
+    }
+    if (e.button === 2) {
+      // right-click orders the selection to move to the world point under the cursor
+      const p = xy(e);
+      const wpt = screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH);
+      for (const u of app.world.units) {
+        if (app.selected.has(u.id)) u.moveTarget = { x: wpt.x, y: wpt.y };
+      }
       return;
     }
     if (e.button === 0) {

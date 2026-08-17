@@ -2,6 +2,7 @@ import "./style.css";
 import type { App } from "./app";
 import { makeWorld } from "./world";
 import { populateTestBattle } from "./spawn";
+import { stepMovement } from "./movement";
 import { makeCamera } from "./camera";
 import { render } from "./render";
 import { installInput, updateCamera } from "./input";
@@ -40,7 +41,8 @@ installInput(app, canvas);
 startLoop({
   hz: SIM.hz,
   update: (dt) => {
-    world.time += dt; // no unit systems yet — movement / combat arrive later
+    stepMovement(world, dt);
+    world.time += dt;
   },
   frame: (realDt) => updateCamera(app, realDt),
   render: () => render(ctx, app),
