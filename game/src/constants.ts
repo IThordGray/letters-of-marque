@@ -35,6 +35,11 @@ export const CAMERA = {
   panSpeed: 1100, // screen px/sec for keyboard pan
 };
 
+// ---- Selection -------------------------------------------------------------
+export const SELECT = {
+  pickSlack: 6, // extra px around a figure that still counts as a click on it
+};
+
 export const COLOR = {
   background: "#08151b",
   field: "#20301c",
@@ -45,4 +50,7 @@ export const COLOR = {
   enemy: "#ff6b52",
   enemyOfficer: "#ffc2b5",
   outline: "#0b1410",
+  selection: "#ffffff",
+  dragBox: "#9fe0ff",
+  dragFill: "rgba(159, 224, 255, 0.12)",
 };

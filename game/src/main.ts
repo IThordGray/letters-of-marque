@@ -19,6 +19,8 @@ populateTestBattle(world);
 const app: App = {
   world,
   camera: makeCamera(window.innerWidth, window.innerHeight),
+  selected: new Set(),
+  drag: null,
   held: new Set(),
   viewW: window.innerWidth,
   viewH: window.innerHeight,
