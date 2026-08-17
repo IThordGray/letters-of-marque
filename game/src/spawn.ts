@@ -1,6 +1,7 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType } from "./types";
 import { WORLD, SPAWN, UNIT, WEAPON } from "./constants";
+import { formationSlots } from "./formation";
 
 // The one place unit ids are minted. Returns the new unit's id.
 export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y: number): number {
@@ -29,15 +30,12 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
   return id;
 }
 
-// One band: an officer with a rank of pirates in front of him, facing the foe.
+// One band: an officer and his pirates clustered into a bunch, facing the foe.
 function spawnBand(world: World, side: Side, cx: number, cy: number) {
-  const toward = side === "player" ? -1 : 1;
-  spawnUnit(world, side, "officer", cx, cy);
-  const half = (SPAWN.pirates - 1) / 2;
-  for (let i = 0; i < SPAWN.pirates; i++) {
-    const x = cx + (i - half) * SPAWN.spacing;
-    spawnUnit(world, side, "pirate", x, cy + toward * SPAWN.rankOffset);
-  }
+  const n = SPAWN.pirates + 1;
+  const slots = formationSlots(n, cx, cy, SPAWN.spacing);
+  spawnUnit(world, side, "officer", slots[0].x, slots[0].y); // officer near the centre of the bunch
+  for (let i = 1; i < n; i++) spawnUnit(world, side, "pirate", slots[i].x, slots[i].y);
 }
 
 // Throwaway two-band skirmish so there's something to see, command, and fight.

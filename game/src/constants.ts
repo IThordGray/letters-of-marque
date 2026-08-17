@@ -62,7 +62,6 @@ export const MORALE = {
 export const SPAWN = {
   pirates: 8,
   spacing: 44,
-  rankOffset: 55,
   edgeInset: 220,
 };
 
