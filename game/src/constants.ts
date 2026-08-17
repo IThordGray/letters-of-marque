@@ -21,9 +21,9 @@ export const SPEEDS = [0.5, 1, 2, 4];
 export const LOG = { display: 60 };
 
 // ---- Figures ---------------------------------------------------------------
-export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number }> = {
-  pirate: { size: 7, hp: 3, morale: 60 },
-  officer: { size: 11, hp: 6, morale: 85 }, // officers start steadier
+export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number; ferocity: number }> = {
+  pirate: { size: 7, hp: 3, morale: 60, ferocity: 42 },
+  officer: { size: 11, hp: 6, morale: 85, ferocity: 70 }, // officers start steadier and fiercer
 };
 
 // ---- Weapons ---------------------------------------------------------------
@@ -31,11 +31,11 @@ export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number }
 // fear must outpace lethality — figures should rout well before they're killed.
 export const WEAPON: Record<
   WeaponType,
-  { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number }
+  { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number; meleeMult: number }
 > = {
-  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 60, moraleShot: 8 },
-  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 40, moraleShot: 7 },
-  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 50, moraleShot: 15 }, // a terror weapon
+  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 60, moraleShot: 8, meleeMult: 0.8 },
+  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 40, moraleShot: 7, meleeMult: 1.5 }, // pistol & cutlass — shock troops
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon, helpless up close
 };
 
 export const COMBAT = {
@@ -43,6 +43,9 @@ export const COMBAT = {
   rangeFalloffPow: 1.25, // hit chance falls with distance to this power
   rangeFloor: 0.12, // minimum range scalar inside max range
   acquireRange: 340, // an aggressive figure auto-engages enemies within this
+  meleeRange: 16, // at this range figures melee instead of shoot (kept > separation radius)
+  meleeReload: 1.4, // seconds between melee blows
+  meleeMoraleHit: 11, // close work terrifies — a big morale blow
 };
 
 export const FLASH = { ttl: 0.25 };
@@ -101,6 +104,7 @@ export const COLOR = {
   moveMarker: "#ffd36b",
   dead: "#4a5348",
   fire: "#ffd36b",
+  melee: "#ff8c3c",
   hpBack: "rgba(0, 0, 0, 0.55)",
   hpGood: "#6de07a",
   hpMid: "#e0d46d",

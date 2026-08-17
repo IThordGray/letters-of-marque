@@ -7,7 +7,7 @@ import { clamp, dist, angleTo, angleDiff } from "./math";
 import { applyMorale } from "./morale";
 import { desc } from "./naming";
 
-// Ranged fire. Lethality is low and morale drains high (see WEAPON) — figures rout
+// Ranged fire and melee. Lethality is low and morale drains high — figures rout
 // before they die. Pure and deterministic given the world's seeded rng.
 
 function alive(u: Unit): boolean {
@@ -15,6 +15,19 @@ function alive(u: Unit): boolean {
 }
 function foeSide(s: Side): Side {
   return s === "player" ? "enemy" : "player";
+}
+function meleeFoe(world: World, u: Unit): Unit | undefined {
+  let best: Unit | undefined;
+  let bd = COMBAT.meleeRange;
+  for (const e of world.units) {
+    if (e.side === u.side || !alive(e)) continue;
+    const d = dist(u.x, u.y, e.x, e.y);
+    if (d <= bd) {
+      bd = d;
+      best = e;
+    }
+  }
+  return best;
 }
 
 export function stepCombat(world: World, dt: number) {
@@ -25,8 +38,17 @@ export function stepCombat(world: World, dt: number) {
   if (world.over) return;
 
   for (const u of world.units) {
-    if (!alive(u) || u.state === "routing") continue; // routers flee, they don't fire
+    if (!alive(u) || u.state === "routing") continue;
     u.reload -= dt;
+    u.meleeReload -= dt;
+
+    // an adjacent enemy → melee (self-defence: ignores cease-fire and powder)
+    const foe = meleeFoe(world, u);
+    if (foe) {
+      if (u.meleeReload <= 0) doMelee(world, u, foe);
+      continue;
+    }
+
     if (u.reload > 0 || u.powder <= 0) continue;
 
     const w = WEAPON[u.weapon];
@@ -64,7 +86,7 @@ function fire(world: World, shooter: Unit, target: Unit) {
   const rangeScalar = clamp(Math.pow(1 - d / w.rangeMax, COMBAT.rangeFalloffPow), COMBAT.rangeFloor, 1);
   shooter.reload = w.reload;
   shooter.powder -= 1;
-  world.flashes.push({ ax: shooter.x, ay: shooter.y, bx: target.x, by: target.y, ttl: FLASH.ttl });
+  world.flashes.push({ ax: shooter.x, ay: shooter.y, bx: target.x, by: target.y, ttl: FLASH.ttl, kind: "fire" });
 
   // being shot at rattles a figure even on a miss — this is what breaks lines
   applyMorale(world, target, MORALE.suppression, "fire");
@@ -73,6 +95,21 @@ function fire(world: World, shooter: Unit, target: Unit) {
     target.hp -= 1;
     applyMorale(world, target, w.moraleShot, "fire");
     if (target.hp <= 0) kill(world, target);
+  }
+}
+
+// Melee is a shock + will contest decided by ferocity (× the weapon's melee mult),
+// not a straight hp swap: a blow craters morale far more than it wounds. This is how
+// pistol-and-cutlass shock troops win — by terror at close quarters.
+function doMelee(world: World, a: Unit, foe: Unit) {
+  a.meleeReload = COMBAT.meleeReload;
+  const aFero = a.ferocity * WEAPON[a.weapon].meleeMult;
+  const p = clamp(0.32 + (aFero - foe.ferocity) / 300, 0.08, 0.9);
+  world.flashes.push({ ax: a.x, ay: a.y, bx: foe.x, by: foe.y, ttl: FLASH.ttl, kind: "melee" });
+  if (nextFloat(world.rng) < p) {
+    foe.hp -= 1;
+    applyMorale(world, foe, COMBAT.meleeMoraleHit, "melee");
+    if (foe.hp <= 0) kill(world, foe);
   }
 }
 

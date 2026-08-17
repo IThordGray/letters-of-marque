@@ -11,6 +11,7 @@ export interface Flash {
   bx: number;
   by: number;
   ttl: number;
+  kind: "fire" | "melee";
 }
 
 // The mutable state of one land battle. Data-oriented: the world owns flat

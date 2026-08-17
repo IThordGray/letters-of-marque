@@ -92,7 +92,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     const a = worldToScreen(cam, f.ax, f.ay, w, h);
     const b = worldToScreen(cam, f.bx, f.by, w, h);
     ctx.globalAlpha = Math.max(0, Math.min(1, f.ttl / FLASH.ttl));
-    ctx.strokeStyle = COLOR.fire;
+    ctx.strokeStyle = f.kind === "melee" ? COLOR.melee : COLOR.fire;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);

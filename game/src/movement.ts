@@ -59,7 +59,9 @@ export function stepMovement(world: World, dt: number) {
       if (engage) {
         faceX = engage.x;
         faceY = engage.y;
-        if (dist(u.x, u.y, engage.x, engage.y) > WEAPON[u.weapon].rangeMax * MOVE.engageFraction) {
+        // shock troops (pistol & cutlass) close all the way to melee; others hold at firing range
+        const engageDist = u.weapon === "pistol" ? COMBAT.meleeRange : WEAPON[u.weapon].rangeMax * MOVE.engageFraction;
+        if (dist(u.x, u.y, engage.x, engage.y) > engageDist) {
           tx = engage.x;
           ty = engage.y;
           moving = true;

@@ -23,7 +23,9 @@ export interface Unit {
   weapon: WeaponType;
   powder: number;
   reload: number; // seconds until it can fire again
+  meleeReload: number; // seconds until the next melee blow
   attackTargetId: number | null;
+  ferocity: number; // melee prowess, 0..100
 
   // morale (KAN-14) — the real "health": break it and they rout, before they die
   morale: number; // 0..100
