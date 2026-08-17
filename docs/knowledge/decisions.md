@@ -10,6 +10,36 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-17 — Contextual command (right-click resolves; menu only when ambiguous; verb-key bypass)
+The universal command interaction across land, naval, and strategic:
+- **Right-click resolves the valid actions** for (selection → target): 0 → nothing;
+  **1 → do it immediately, no menu** (ground → move; live enemy → attack); **2+ → a
+  context menu** (surrendered enemy → kill / take prisoner / loot; ship → attack /
+  board / ram).
+- **Explicit-verb bypass:** press a verb key then click — `A` + unit → attack it,
+  `A` + ground → attack-move.
+- **Same mechanic everywhere;** only the verb set changes with context. The
+  "enemy has given up" verbs are the *payoff* of breaking will.
+*Why:* one fast, legible interaction — no modes for the common case, full depth when
+there's a real choice.
+
+---
+
+### 2026-08-17 — Land combat: faithful port of the proven will-spine sim
+Durable land combat ports `prototype-land/src/sim.ts` (playtested fire / melee /
+per-figure morale / flanking / rout / contagion / officer presence / rally; win =
+enemy will broken, never annihilation) into `game/` as pure systems. Durable-build
+changes: a **seeded PRNG** in world state (morale state machine stays deterministic;
+lethality stochastic-but-replayable, headless-testable); neighbour / side queries
+behind one helper so a spatial grid drops in later. Command = contextual right-click
+(above) + **three postures** (*At 'em / Hold fast / Hold fire*) shown per-unit + a
+Halt action; loose formation default. Delivered as a nine-story epic, **morale the
+gate, taken slowly.** Borrow "broken men stop obeying"; never steady-men disobedience
+(the naval-interpretation layer, banned on land).
+*Why:* the fun is validated — the work is a faithful, durable, legible port, not a redesign.
+
+---
+
 ### 2026-08-17 — Design informed by heritage + comparable games (game-designer)
 Added a `game-designer` specialist: it knows the *Cutthroats* heritage and how
 comparable games handle similar mechanics, and feeds pirate-flavoured options into

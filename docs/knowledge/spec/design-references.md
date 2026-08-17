@@ -35,7 +35,20 @@ shines, where it drags, and the pirate-flavour verdict.
   not a cloud of dots. *Pirate verdict:* good as an option, but keep it **loose** —
   privateer bands are ragged, not drilled ranks. (Currently we auto-slot into a wide
   oval; drag-to-shape would be the manual upgrade.)
-- _(More as we hit them: stances, group cohesion, spacing, morale display.)_
+- **Attack orders (genre patterns):** (A) *smart right-click context order* — one
+  button, instantly legible, but ambiguous when an enemy sits on target ground, and it
+  collides with formation-move-on-right-click; (B) *attack-move* (advance & engage on
+  contact) — the order an advancing raid needs, but a hidden keybind; (C) *stances /
+  postures* (guard / skirmish / fire-at-will) — the anti-babysitting layer, but keep
+  the set tiny and **show** each unit's posture or it becomes hidden state; (D)
+  *morale-first command* (Close Combat) — morale overrides orders (our thesis, and it
+  shipped!), but borrow only **broken**-men-stop-obeying — **never** steady-men
+  disobedience (that's the naval-interpretation layer, banned on land).
+- **RATIFIED — contextual command (universal):** right-click resolves the valid
+  actions — 1 → do it (ground = move, live enemy = attack); 2+ → a menu (surrendered
+  enemy → kill / prisoner / loot; ship → attack / board / ram). Verb-key bypass: `A` +
+  click = attack unit / attack-move ground. Land postures: *At 'em / Hold fast / Hold
+  fire* + Halt; loose default. (See `../decisions.md`.)
 
 ### Morale / will
 - _(To research: how games make a rout **read as a cause**, not a bug — visible fear,
