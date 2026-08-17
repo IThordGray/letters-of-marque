@@ -10,6 +10,17 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-17 — Design informed by heritage + comparable games (game-designer)
+Added a `game-designer` specialist: it knows the *Cutthroats* heritage and how
+comparable games handle similar mechanics, and feeds pirate-flavoured options into
+how features are built — so design draws on deeper game knowledge, not just the
+literal request. Uncertain calls get verified with the human. Standing reference:
+[spec/design-references.md](spec/design-references.md). We adapt genre patterns to
+pirate/privateer flavour; we never clone another title.
+*Why:* better mechanics come from knowing the lineage and the genre.
+
+---
+
 ### 2026-08-17 — Durable build begins: TS/Vite, land first, data-oriented
 Starting the durable game build in **TypeScript + Vite** (same stack as the
 prototypes), beginning with the **land module** in a new `game/` project.

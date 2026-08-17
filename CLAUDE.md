@@ -29,6 +29,10 @@ durable is committed. Full detail:
 5. **Guard scope.** The design doc is the long game; prototypes build only the thin
    slice their brief defines. Don't let a request balloon past its brief; if a brief
    is ambiguous, ask before implementing.
+6. **Design from knowledge, not just the brief.** When shaping a feature or mechanic,
+   consult the `game-designer` (Cutthroats heritage + how comparable games solve it,
+   adapted to pirate flavour) so the build is informed by deeper design knowledge —
+   not only the literal request. When a design call is uncertain, verify with the human.
 
 ## Delegation protocol
 - Read the request → identify its scope (`cross-cutting` · `naval` · `land` ·
@@ -49,6 +53,7 @@ only when a real, recurring need appears (stay lean).
 | Agent | Delegate to it for |
 |-------|--------------------|
 | `ticket-manager` | Capturing/updating work on the Jira board — tickets, epics→stories, `ai` label, commit links. (Needs the Atlassian connector authorized.) |
+| `game-designer` | Shaping any feature/mechanic — grounds proposals in the Cutthroats heritage + design pillars, surveys how comparable games handle it, returns pirate-flavoured options & trade-offs. Advises; writes no code. |
 | *generic:* general-purpose · Explore · Plan | Search, research, planning when no specialist fits. |
 
 ## Knowledge base — `docs/knowledge/`
@@ -61,7 +66,7 @@ Index: [docs/knowledge/README.md](docs/knowledge/README.md).
 tool choices; never mix the two in one file.
 
 - **Canonical spec (WHAT):** [docs/design-doc.md](docs/design-doc.md) (v0.17) — THE game design.
-- **WHAT** — [spec/](docs/knowledge/spec/README.md): behaviour, rules, requirements, data-to-persist, algorithm specs.
+- **WHAT** — [spec/](docs/knowledge/spec/README.md): behaviour, rules, requirements, data-to-persist, algorithm specs · [spec/design-references.md](docs/knowledge/spec/design-references.md) (Cutthroats heritage + comparable-game patterns).
 - **Process** — [process/workflow.md](docs/knowledge/process/workflow.md): tickets & commits (Jira, 1 ticket = 1 commit, `ai` tag).
 - **HOW** — [implementation/solution-architecture.md](docs/knowledge/implementation/solution-architecture.md) (stack, layout) · [implementation/coding-rules.md](docs/knowledge/implementation/coding-rules.md) (code rules).
 - **Cross-cutting** — [decisions.md](docs/knowledge/decisions.md): ratified decisions, rationale, design pillars.
