@@ -1,7 +1,7 @@
 import type { App, PanKey, DragBox } from "./app";
 import type { Unit } from "./types";
 import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "./camera";
-import { CAMERA, UNIT, SELECT, FORMATION } from "./constants";
+import { CAMERA, UNIT, SELECT, FORMATION, SPEEDS } from "./constants";
 import { formationSlots } from "./formation";
 import { dist } from "./math";
 
@@ -31,6 +31,27 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     }
     if (e.code === "KeyF") {
       app.formation = app.formation === "tight" ? "loose" : "tight";
+      return;
+    }
+    if (e.code === "Space") {
+      app.paused = !app.paused;
+      e.preventDefault();
+      return;
+    }
+    if (e.code === "Digit1") {
+      app.timeScale = SPEEDS[0];
+      return;
+    }
+    if (e.code === "Digit2") {
+      app.timeScale = SPEEDS[1];
+      return;
+    }
+    if (e.code === "Digit3") {
+      app.timeScale = SPEEDS[2];
+      return;
+    }
+    if (e.code === "Digit4") {
+      app.timeScale = SPEEDS[3];
       return;
     }
     const k = PAN_KEYS[e.code];

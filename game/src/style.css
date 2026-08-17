@@ -21,3 +21,35 @@ body {
   z-index: 0;
   display: block;
 }
+
+/* DOM UI overlay — panels/menus that don't belong on the canvas */
+.ui-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.log {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 340px;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(6, 18, 24, 0.85);
+  border: 1px solid #24414d;
+  border-radius: 6px;
+  pointer-events: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.log-line {
+  padding: 1px 0;
+}
+.log-t {
+  color: #56788a;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}

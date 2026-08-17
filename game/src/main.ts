@@ -2,11 +2,13 @@ import "./style.css";
 import type { App } from "./app";
 import { makeWorld } from "./world";
 import { populateTestBattle } from "./spawn";
-import { stepMovement, stepSeparation } from "./movement";
 import { makeCamera } from "./camera";
 import { render } from "./render";
 import { installInput, updateCamera } from "./input";
+import { installUI } from "./ui";
 import { startLoop } from "./loop";
+import { stepMovement, stepSeparation } from "./movement";
+import { signal } from "./log";
 import { SIM } from "./constants";
 
 const canvas = document.createElement("canvas");
@@ -16,6 +18,7 @@ const ctx = canvas.getContext("2d")!;
 
 const world = makeWorld();
 populateTestBattle(world);
+signal(world, "The bands take the field.");
 
 const app: App = {
   world,
@@ -24,6 +27,8 @@ const app: App = {
   drag: null,
   held: new Set(),
   formation: "tight",
+  paused: false,
+  timeScale: 1,
   viewW: window.innerWidth,
   viewH: window.innerHeight,
 };
@@ -38,6 +43,7 @@ window.addEventListener("resize", resize);
 resize();
 
 installInput(app, canvas);
+const ui = installUI(app);
 
 startLoop({
   hz: SIM.hz,
@@ -47,5 +53,9 @@ startLoop({
     world.time += dt;
   },
   frame: (realDt) => updateCamera(app, realDt),
-  render: () => render(ctx, app),
+  render: () => {
+    render(ctx, app);
+    ui.refresh();
+  },
+  speed: () => (app.paused ? 0 : app.timeScale),
 });

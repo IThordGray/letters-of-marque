@@ -13,6 +13,11 @@ export const SIM = {
   },
 };
 
+// ---- Harness (determinism / pause / speed / log) ---------------------------
+export const SEED = 1337; // fixed default RNG seed — reproducible battles
+export const SPEEDS = [0.5, 1, 2, 4]; // selectable sim-time multipliers (keys 1–4)
+export const LOG = { display: 60 }; // signal-log lines shown in the panel
+
 // ---- Figures ---------------------------------------------------------------
 export const UNIT = {
   pirate: { size: 7 }, // radius in paces

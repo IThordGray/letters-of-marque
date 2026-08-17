@@ -76,10 +76,11 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   }
 
   // hud line, fixed to the screen (the field scrolls under it)
+  const speed = app.paused ? "paused" : `×${app.timeScale}`;
   ctx.fillStyle = COLOR.text;
   ctx.font = "14px system-ui, sans-serif";
   ctx.fillText(
-    `Land module · ${world.units.length} figures · ${app.selected.size} selected · ${app.formation} · sim ${world.time.toFixed(1)}s`,
+    `Land · ${world.units.length} figures · ${app.selected.size} selected · ${app.formation} · ${speed} · ${world.time.toFixed(1)}s`,
     12,
     22,
   );
