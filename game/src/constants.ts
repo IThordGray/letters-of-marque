@@ -33,9 +33,9 @@ export const WEAPON: Record<
   WeaponType,
   { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number }
 > = {
-  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 20, moraleShot: 8 },
-  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 12, moraleShot: 7 },
-  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 30, moraleShot: 15 }, // a terror weapon
+  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 60, moraleShot: 8 },
+  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 40, moraleShot: 7 },
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 50, moraleShot: 15 }, // a terror weapon
 };
 
 export const COMBAT = {
