@@ -25,6 +25,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape") {
       app.selected.clear();
+      app.inspected = null;
       app.attackArmed = false;
       return;
     }
@@ -150,8 +151,10 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
         const p = worldToScreen(app.camera, u.x, u.y, app.viewW, app.viewH);
         if (inBox(p.x, p.y, box)) app.selected.add(u.id);
       }
+      app.inspected = null; // box-select → the HUD follows the selection
     } else {
       const hit = pickUnit(app, box.x0, box.y0);
+      app.inspected = hit ? hit.id : null; // click anything to inspect it; empty ground clears it
       if (hit && hit.side === "player") {
         if (e.shiftKey) {
           if (app.selected.has(hit.id)) app.selected.delete(hit.id);
@@ -160,9 +163,10 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
           app.selected.clear();
           app.selected.add(hit.id);
         }
-      } else if (!e.shiftKey) {
+      } else if (!hit && !e.shiftKey) {
         app.selected.clear();
       }
+      // clicking an enemy inspects only — the player selection is left intact
     }
   });
 

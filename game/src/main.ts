@@ -26,6 +26,7 @@ const app: App = {
   world,
   camera: makeCamera(window.innerWidth, window.innerHeight),
   selected: new Set(),
+  inspected: null,
   drag: null,
   held: new Set(),
   formation: "tight",

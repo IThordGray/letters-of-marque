@@ -53,3 +53,37 @@ body {
   font-variant-numeric: tabular-nums;
   margin-right: 4px;
 }
+
+/* selection / inspection detail panel (top-left) */
+.panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  min-width: 190px;
+  background: rgba(10, 26, 34, 0.86);
+  border: 1px solid #24414d;
+  border-left: 3px solid #24414d;
+  border-radius: 6px;
+  padding: 8px 11px;
+  pointer-events: auto;
+}
+.panel.hidden {
+  display: none;
+}
+.panel.player {
+  border-left-color: #4ea3ff;
+}
+.panel.enemy {
+  border-left-color: #ff6b52;
+}
+.panel-head {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+}
+.panel-line {
+  color: #b9d4e0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}

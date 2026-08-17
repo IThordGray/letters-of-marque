@@ -19,6 +19,7 @@ export interface App {
   world: World;
   camera: Camera;
   selected: Set<number>; // selected player unit ids
+  inspected: number | null; // id of the figure shown in the detail HUD (ally or enemy)
   drag: DragBox | null; // active left-drag box-select
   held: Set<PanKey>; // camera pan keys currently down
   formation: FormationDensity; // density used for the next move order

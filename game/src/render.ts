@@ -68,6 +68,12 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, rad + 4, 0, Math.PI * 2);
       ctx.stroke();
+    } else if (app.inspected === u.id) {
+      ctx.strokeStyle = COLOR.inspect;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, rad + 4, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     // bars above the figure: hp (thin) then morale (thicker, coloured by state)

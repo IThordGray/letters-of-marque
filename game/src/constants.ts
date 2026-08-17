@@ -140,6 +140,7 @@ export const COLOR = {
   hpLow: "#ff6b52",
   routing: "#8a8f95", // routers wash out to grey
   aura: "#7fd0ff", // officer presence ring
+  inspect: "#ffd36b", // ring around the inspected figure
   moraleGood: "#6de07a",
   moraleWaver: "#e0d46d",
   moraleRout: "#ff6b52",
