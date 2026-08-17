@@ -21,9 +21,9 @@ export const SPEEDS = [0.5, 1, 2, 4];
 export const LOG = { display: 60 };
 
 // ---- Figures ---------------------------------------------------------------
-export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number; ferocity: number }> = {
-  pirate: { size: 7, hp: 3, morale: 60, ferocity: 42 },
-  officer: { size: 11, hp: 6, morale: 85, ferocity: 70 }, // officers start steadier and fiercer
+export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number; ferocity: number; marks: number }> = {
+  pirate: { size: 7, hp: 3, morale: 60, ferocity: 42, marks: 38 },
+  officer: { size: 11, hp: 6, morale: 85, ferocity: 70, marks: 72 }, // officers start steadier, fiercer, better shots
 };
 
 // ---- Weapons ---------------------------------------------------------------
@@ -33,9 +33,11 @@ export const WEAPON: Record<
   WeaponType,
   { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number; meleeMult: number }
 > = {
-  musket: { rangeMax: 300, reload: 3, accuracy: 0.42, powder: 60, moraleShot: 8, meleeMult: 0.8 },
-  pistol: { rangeMax: 120, reload: 1.5, accuracy: 0.5, powder: 40, moraleShot: 7, meleeMult: 1.5 }, // pistol & cutlass — shock troops
-  cannon: { rangeMax: 600, reload: 5, accuracy: 0.3, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon, helpless up close
+  // accuracy is now multiplied by the shooter's marks/100 (~0.38 for a pirate), so
+  // these bases are higher — a pirate's net hit rate stays about what it was.
+  musket: { rangeMax: 300, reload: 3, accuracy: 1.1, powder: 60, moraleShot: 8, meleeMult: 0.8 },
+  pistol: { rangeMax: 120, reload: 1.5, accuracy: 1.3, powder: 40, moraleShot: 7, meleeMult: 1.5 }, // pistol & cutlass — shock troops
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.8, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon, helpless up close
 };
 
 export const COMBAT = {
@@ -58,6 +60,19 @@ export const FLANK = {
   meleeToHitRear: 1.6,
 };
 
+// ---- Officers — the connective tissue --------------------------------------
+export const CARRY = { fraction: 0.4 }; // a pirate is lifted this far toward his officer's skill
+export const PRESENCE = {
+  radius: 165, // a friendly officer within this steadies you
+  floor: 42, // ...morale won't sink below this near him
+  resilience: 0.25, // ...and incoming combat morale is cut by this
+};
+export const RALLY = {
+  radius: 170,
+  boost: 28, // morale restored to nearby friends
+  cooldown: 22, // seconds between an officer's rallies
+};
+
 export const FLASH = { ttl: 0.25 };
 
 // ---- Morale — per figure, the real "health" --------------------------------
@@ -73,6 +88,7 @@ export const MORALE = {
   contagionRadius: 150, // a friend falling or breaking within this shakes you
   perDown: 14, // morale lost when a nearby friend falls
   perRout: 9, // ...and when a nearby friend breaks and runs
+  perOfficerDown: 24, // ...and the shock when an officer is cut down
 };
 
 // ---- Test spawn ------------------------------------------------------------
@@ -123,6 +139,7 @@ export const COLOR = {
   hpMid: "#e0d46d",
   hpLow: "#ff6b52",
   routing: "#8a8f95", // routers wash out to grey
+  aura: "#7fd0ff", // officer presence ring
   moraleGood: "#6de07a",
   moraleWaver: "#e0d46d",
   moraleRout: "#ff6b52",

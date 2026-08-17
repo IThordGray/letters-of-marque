@@ -26,6 +26,7 @@ export interface Unit {
   meleeReload: number; // seconds until the next melee blow
   attackTargetId: number | null;
   ferocity: number; // melee prowess, 0..100
+  marks: number; // marksmanship (accuracy stat), 0..100
 
   // morale (KAN-14) — the real "health": break it and they rout, before they die
   morale: number; // 0..100
@@ -36,4 +37,8 @@ export interface Unit {
   // command (KAN-15)
   stance: Stance;
   attackMove: boolean; // advancing to a point but engaging enemies met on the way
+
+  // officers (KAN-18)
+  squadId: number; // id of this figure's squad officer (an officer's own id for himself)
+  rallyReadyAt: number; // sim time an officer may rally again
 }

@@ -4,7 +4,7 @@ import { WORLD, SPAWN, UNIT, WEAPON } from "./constants";
 import { formationSlots } from "./formation";
 
 // The one place unit ids are minted. Returns the new unit's id.
-export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y: number): number {
+export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y: number, squadId?: number): number {
   const id = world.nextId++;
   const facing = side === "player" ? 270 : 90; // player faces up-field, enemy faces down
   const weapon: WeaponType = kind === "officer" ? "pistol" : "musket";
@@ -24,12 +24,15 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
     meleeReload: 0,
     attackTargetId: null,
     ferocity: UNIT[kind].ferocity,
+    marks: UNIT[kind].marks,
     morale: UNIT[kind].morale,
     state: "steady",
     lastCause: null,
     lastHitAt: -999,
     stance: side === "player" ? "aggressive" : "holdGround",
     attackMove: false,
+    squadId: kind === "officer" ? id : (squadId ?? id),
+    rallyReadyAt: 0,
   });
   return id;
 }
@@ -38,8 +41,8 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
 function spawnBand(world: World, side: Side, cx: number, cy: number) {
   const n = SPAWN.pirates + 1;
   const slots = formationSlots(n, cx, cy, SPAWN.spacing);
-  spawnUnit(world, side, "officer", slots[0].x, slots[0].y); // officer near the centre of the bunch
-  for (let i = 1; i < n; i++) spawnUnit(world, side, "pirate", slots[i].x, slots[i].y);
+  const officerId = spawnUnit(world, side, "officer", slots[0].x, slots[0].y); // officer near the centre
+  for (let i = 1; i < n; i++) spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, officerId);
 }
 
 // Throwaway two-band skirmish so there's something to see, command, and fight.

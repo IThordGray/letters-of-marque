@@ -1,6 +1,6 @@
 import type { App } from "./app";
 import type { Unit } from "./types";
-import { WORLD, COLOR, UNIT, FLASH } from "./constants";
+import { WORLD, COLOR, UNIT, FLASH, PRESENCE } from "./constants";
 import { worldToScreen } from "./camera";
 
 function unitColor(u: Unit): string {
@@ -52,6 +52,15 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.strokeStyle = COLOR.outline;
       ctx.lineWidth = 2;
       ctx.stroke();
+      if (u.state !== "routing") {
+        ctx.globalAlpha = 0.12;
+        ctx.strokeStyle = COLOR.aura;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, PRESENCE.radius * cam.zoom, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
     }
     if (app.selected.has(u.id)) {
       ctx.strokeStyle = COLOR.selection;

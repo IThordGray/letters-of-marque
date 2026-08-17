@@ -3,6 +3,7 @@ import type { Unit, Stance } from "./types";
 import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "./camera";
 import { CAMERA, UNIT, SELECT, FORMATION, SPEEDS } from "./constants";
 import { formationSlots } from "./formation";
+import { rally } from "./officers";
 import { dist } from "./math";
 
 // Panning is arrows / middle-drag / wheel; letter keys are commands.
@@ -35,6 +36,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     if (e.code === "KeyX") return setStance(app, "holdGround"); // "Hold fast"
     if (e.code === "KeyC") return setStance(app, "ceaseFire"); // "Hold fire"
     if (e.code === "KeyS") return halt(app); // stop and hold
+    if (e.code === "KeyR") return rally(app.world); // officers rally the men
     if (e.code === "KeyF") {
       app.formation = app.formation === "tight" ? "loose" : "tight";
       return;

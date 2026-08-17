@@ -5,11 +5,12 @@ import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { clamp, dist, angleTo, angleDiff } from "./math";
 import { applyMorale, contagion } from "./morale";
+import { effMarks, effFerocity, presenceAura } from "./officers";
 import { desc } from "./naming";
 
-// Ranged fire and melee. Lethality is low, morale drains high, and where a blow
-// lands (front / flank / rear) matters more than that it lands — positioning is
-// how you break a line. Pure and deterministic given the world's seeded rng.
+// Ranged fire and melee. Lethality is low, morale drains high, arc (front/flank/rear)
+// matters more than the hit itself, and an officer's carry-over lifts his men while
+// his presence blunts incoming blows. Pure and deterministic given the seeded rng.
 
 type Arc = "front" | "flank" | "rear";
 
@@ -20,7 +21,6 @@ function foeSide(s: Side): Side {
   return s === "player" ? "enemy" : "player";
 }
 
-// Which arc of the target a blow comes from, by the target's facing.
 function arcOf(target: Unit, fromX: number, fromY: number): Arc {
   const rel = Math.abs(angleDiff(target.facing, angleTo(target.x, target.y, fromX, fromY)));
   if (rel <= FLANK.frontHalfAngle) return "front";
@@ -28,11 +28,14 @@ function arcOf(target: Unit, fromX: number, fromY: number): Arc {
   return "flank";
 }
 
-// A morale blow scaled by the arc it lands from — flanks and rears terrify.
+// A morale blow scaled by arc (flanks/rears terrify) and blunted by an officer's
+// presence (resilience).
 function arcMorale(world: World, target: Unit, base: number, arc: Arc, frontCause: "fire" | "melee") {
   const mult = arc === "flank" ? FLANK.flankMoraleMult : arc === "rear" ? FLANK.rearMoraleMult : 1;
+  const aura = presenceAura(world, target);
+  const resist = aura ? 1 - aura.resilience : 1;
   const cause = arc === "flank" ? "flank" : arc === "rear" ? "rear" : frontCause;
-  applyMorale(world, target, base * mult, cause);
+  applyMorale(world, target, base * mult * resist, cause);
 }
 
 function meleeFoe(world: World, u: Unit): Unit | undefined {
@@ -110,21 +113,22 @@ function fire(world: World, shooter: Unit, target: Unit) {
   // being shot at rattles a figure even on a miss
   applyMorale(world, target, MORALE.suppression, "fire");
 
-  if (nextFloat(world.rng) < w.accuracy * rangeScalar) {
+  const p = clamp(w.accuracy * (effMarks(world, shooter) / 100) * rangeScalar, 0, 0.95);
+  if (nextFloat(world.rng) < p) {
     target.hp -= 1;
     arcMorale(world, target, w.moraleShot, arcOf(target, shooter.x, shooter.y), "fire");
     if (target.hp <= 0) kill(world, target);
   }
 }
 
-// Melee is a shock + will contest decided by ferocity (× the weapon's melee mult);
-// a blow from the flank or rear both lands more easily and terrifies far more.
+// Melee is a shock + will contest decided by (carry-over) ferocity × the weapon's
+// melee mult; a blow from the flank or rear both lands more easily and terrifies more.
 function doMelee(world: World, a: Unit, foe: Unit) {
   a.meleeReload = COMBAT.meleeReload;
   const arc = arcOf(foe, a.x, a.y);
   const toHit = arc === "flank" ? FLANK.meleeToHitFlank : arc === "rear" ? FLANK.meleeToHitRear : 1;
-  const aFero = a.ferocity * WEAPON[a.weapon].meleeMult;
-  const p = clamp(0.32 + (aFero - foe.ferocity) / 300, 0.08, 0.9) * toHit;
+  const aFero = effFerocity(world, a) * WEAPON[a.weapon].meleeMult;
+  const p = clamp(0.32 + (aFero - effFerocity(world, foe)) / 300, 0.08, 0.9) * toHit;
   world.flashes.push({ ax: a.x, ay: a.y, bx: foe.x, by: foe.y, ttl: FLASH.ttl, kind: "melee" });
   if (nextFloat(world.rng) < p) {
     foe.hp -= 1;
@@ -136,8 +140,9 @@ function doMelee(world: World, a: Unit, foe: Unit) {
 function kill(world: World, u: Unit) {
   u.state = "down";
   u.hp = 0;
-  signal(world, `${desc(u)} falls.`);
-  contagion(world, u, MORALE.perDown); // a friend falling shakes the men around him
+  signal(world, u.kind === "officer" ? `${desc(u)} is cut down!` : `${desc(u)} falls.`);
+  // a friend falling shakes the men around him — an officer's fall, far more
+  contagion(world, u, u.kind === "officer" ? MORALE.perOfficerDown : MORALE.perDown);
 }
 
 // Win by breaking WILL: a side is beaten once none of its figures are still

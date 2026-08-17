@@ -4,6 +4,7 @@ import { MORALE } from "./constants";
 import { signal } from "./log";
 import { clamp, dist } from "./math";
 import { desc, causePhrase } from "./naming";
+import { presenceAura } from "./officers";
 
 // Apply a morale blow and remember its cause (for legible logs + the recovery
 // cooldown). The single entry point combat calls when a figure is shot at / hit.
@@ -39,6 +40,10 @@ export function stepMorale(world: World, dt: number) {
     if (u.state === "down") continue;
     const calm = world.time - u.lastHitAt > MORALE.contactCooldown && !enemyNear(world, u);
     if (calm) u.morale = clamp(u.morale + MORALE.rallyRate * dt, 0, MORALE.max);
+
+    // an officer's presence pulls nearby men up toward a morale floor
+    const aura = presenceAura(world, u);
+    if (aura && u.morale < aura.floor) u.morale = clamp(u.morale + MORALE.rallyRate * dt, 0, aura.floor);
 
     const next = stateFromMorale(u.morale, u.state);
     if (next !== u.state) transition(world, u, next);
