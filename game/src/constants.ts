@@ -56,6 +56,7 @@ export const SPAWN = {
 export const MOVE = {
   speed: 90, // paces/sec (test value)
   arriveSlack: 6, // stop when this close to the target
+  engageFraction: 0.6, // pursue until within this fraction of weapon range — close enough to fire effectively
 };
 
 // ---- Formation & personal space --------------------------------------------
@@ -97,4 +98,8 @@ export const COLOR = {
   moveMarker: "#ffd36b",
   dead: "#4a5348",
   fire: "#ffd36b",
+  hpBack: "rgba(0, 0, 0, 0.55)",
+  hpGood: "#6de07a",
+  hpMid: "#e0d46d",
+  hpLow: "#ff6b52",
 };

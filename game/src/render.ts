@@ -56,6 +56,16 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.arc(p.x, p.y, rad + 4, 0, Math.PI * 2);
       ctx.stroke();
     }
+
+    // health bar above the figure
+    const bw = Math.max(rad * 2, 9);
+    const bx = p.x - bw / 2;
+    const by = p.y - rad - 7;
+    const frac = u.hp / u.maxHp;
+    ctx.fillStyle = COLOR.hpBack;
+    ctx.fillRect(bx, by, bw, 3);
+    ctx.fillStyle = frac > 0.5 ? COLOR.hpGood : frac > 0.25 ? COLOR.hpMid : COLOR.hpLow;
+    ctx.fillRect(bx, by, bw * frac, 3);
   }
 
   // shot flashes (fade out over their ttl)
