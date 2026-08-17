@@ -1,0 +1,46 @@
+# Solution Architecture
+
+**Layer:** HOW (implementation) · **Scope:** cross-cutting · **Authority:** human edits win.
+
+*How the project is currently built. Tooling here is **swappable** — the WHAT it
+serves lives under [`../spec/`](../spec/README.md) and stays stable when tools change.*
+
+## What exists today
+**Design spec + two throwaway prototypes**, plus the **durable build now beginning**
+in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026-08-17).
+
+- `docs/design-doc.md` — canonical game design (the WHAT; see [`../spec/`](../spec/README.md)).
+- `docs/PROTOTYPE.md` / `docs/PROTOTYPE-LAND.md` — prototype briefs (scope).
+- `prototype/` — **naval** prototype. TS / Vite / canvas. Run: `cd prototype && npm run dev`.
+- `prototype-land/` — **land** prototype. TS / Vite / canvas. Run: `cd prototype-land && npm run dev`.
+- `game/` — **durable build** (land module first). TS / Vite / canvas, data-oriented. Run: `cd game && npm run dev`.
+- `docs/knowledge/` — this knowledge base.
+
+## Tech & conventions
+- Both prototypes: **TypeScript on an HTML canvas**, each self-contained (own
+  `package.json`), **programmer-art only**, deliberately **disposable**.
+- One constants file per prototype (every tunable number in one place).
+- Sim logic is verified **headless** under Node (esbuild bundle); the DOM/canvas
+  layer only runs in a browser. See [coding-rules.md](coding-rules.md).
+
+## The durable build — `game/`
+- **TypeScript + Vite on an HTML canvas** (same stack as the prototypes) — but built
+  for **reuse / scale / performance**, not disposability.
+- **Data-oriented:** entities are plain structs in flat arrays; behaviour lives in
+  **pure systems** (functions over the world), never on the data. No OOP class graph,
+  no ECS framework — generalise only once something repeats.
+- Performance is spent where it bites — a spatial grid for neighbour queries, batched
+  rendering — added when profiling / counts justify it, not up front.
+- Fixed-timestep sim loop (`loop.ts`), rendering decoupled. Sim systems stay pure so
+  they're headless-testable; the DOM/canvas layer only runs in a browser.
+
+## Deliberate non-choices
+- **Durable stack = TypeScript + Vite** (decided 2026-08-17). The earlier C#/.NET +
+  Godot durable build stays set aside — don't re-propose *that* engine/language.
+- **No datastore chosen yet.** *What* to persist is a WHAT question for `../spec/`;
+  *which* database is a HOW decision, deferred until the spec needs it.
+  (See [`../decisions.md`](../decisions.md).)
+
+> The prototypes' opposite *control philosophies* (naval = group-command / captains
+> interpret; land = direct RTS) are **design**, not architecture — they live in the
+> spec, not here. See [`../spec/README.md`](../spec/README.md) and `design-doc.md`.

@@ -1,0 +1,274 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #08151b;
+  color: #e8f4fb;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+}
+
+.ui-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* interactive bits catch clicks; everything else lets clicks reach the canvas */
+.panel,
+.order-btn,
+.log,
+.over-card,
+.btn {
+  pointer-events: auto;
+}
+
+/* ---- left column: group panels ---- */
+.panel-col {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.panel {
+  background: rgba(10, 26, 34, 0.86);
+  border: 1px solid #24414d;
+  border-radius: 6px;
+  padding: 8px 9px;
+  cursor: pointer;
+}
+.panel.selected {
+  border-color: #6fc6ff;
+  box-shadow: 0 0 0 1px #6fc6ff inset;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.panel-name {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.cohesion {
+  font-size: 11px;
+  color: #93c7dc;
+}
+.cohesion.warn {
+  color: #ffb14e;
+  font-weight: 700;
+}
+
+.ship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+.ship-row {
+  border-left: 2px solid #2c515f;
+  padding-left: 6px;
+}
+.ship-row.struck {
+  opacity: 0.45;
+}
+.ship-name {
+  font-weight: 600;
+}
+.ship-capt {
+  font-size: 11px;
+  color: #9fb9c6;
+}
+.ship-bars {
+  display: flex;
+  gap: 4px;
+  margin: 3px 0 1px;
+}
+.bar {
+  position: relative;
+  height: 5px;
+  flex: 1;
+  background: #00000066;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bar .fill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+}
+.bar.hull .fill {
+  background: #6de07a;
+}
+.bar.rig .fill {
+  background: #e0d46d;
+}
+.ship-status {
+  font-size: 10.5px;
+  color: #ffb14e;
+  min-height: 12px;
+}
+
+.orders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-top: 5px;
+}
+.order-btn {
+  font: inherit;
+  font-size: 11px;
+  color: #dceaf2;
+  background: #143240;
+  border: 1px solid #285163;
+  border-radius: 4px;
+  padding: 5px 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.order-btn:hover {
+  background: #1c455a;
+}
+.order-btn.active {
+  background: #7a3b12;
+  border-color: #ff9a3c;
+  color: #ffd9b0;
+}
+
+.hint {
+  font-size: 10.5px;
+  color: #6f92a1;
+  padding: 2px 2px;
+}
+
+/* ---- HUD top-right ---- */
+.hud {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  text-align: right;
+  background: rgba(10, 26, 34, 0.7);
+  border: 1px solid #24414d;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+.hud-line {
+  font-variant-numeric: tabular-nums;
+  padding: 1px 0;
+}
+.hud-line.ok {
+  color: #6de07a;
+}
+
+/* ---- signal log ---- */
+.log {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 380px;
+  max-height: 42vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(6, 18, 24, 0.9);
+  border: 1px solid #24414d;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.log-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #6f92a1;
+  padding: 6px 9px 3px;
+  border-bottom: 1px solid #16303a;
+}
+.log-body {
+  overflow-y: auto;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.log-line {
+  line-height: 1.35;
+}
+.log-t {
+  color: #56788a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- battle-end overlay ---- */
+.over {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 10, 14, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.over.hidden {
+  display: none;
+}
+.over-card {
+  background: #0d222c;
+  border: 1px solid #2c515f;
+  border-radius: 10px;
+  padding: 24px 28px;
+  max-width: 560px;
+  text-align: center;
+}
+.over-card h1 {
+  margin-bottom: 14px;
+  font-size: 22px;
+}
+.over-stats {
+  text-align: left;
+  background: #061219;
+  border: 1px solid #1c3945;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: #b9d4e0;
+  margin-bottom: 16px;
+}
+.btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #2c515f;
+  background: #143240;
+  color: #dceaf2;
+  padding: 9px 16px;
+  margin: 0 5px;
+}
+.btn.primary {
+  background: #1f6f4a;
+  border-color: #2fae74;
+  color: #d9ffe9;
+}
+.btn:hover {
+  filter: brightness(1.15);
+}

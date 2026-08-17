@@ -1,0 +1,278 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: #07100a;
+  color: #e8f4ec;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: block;
+}
+
+.ui-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.col,
+.crow,
+.order-btn,
+.log,
+.over-card,
+.btn {
+  pointer-events: auto;
+}
+
+.col {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 268px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #7fae8c;
+}
+
+.crow {
+  background: rgba(12, 26, 16, 0.86);
+  border: 1px solid #274a30;
+  border-radius: 5px;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name men" "sub sub" "mbar mbar";
+  gap: 2px 6px;
+}
+.crow.selected {
+  border-color: #7fd0ff;
+  box-shadow: 0 0 0 1px #7fd0ff inset;
+}
+.crow.broken {
+  opacity: 0.4;
+}
+.cname {
+  grid-area: name;
+  font-weight: 600;
+}
+.men {
+  grid-area: men;
+  color: #b9cfc0;
+  font-variant-numeric: tabular-nums;
+}
+.csub {
+  grid-area: sub;
+  font-size: 11px;
+  color: #9fb9a8;
+}
+.mbar {
+  grid-area: mbar;
+  height: 5px;
+  background: #00000066;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mfill {
+  height: 100%;
+  width: 100%;
+  background: #6de07a;
+}
+.st {
+  font-weight: 600;
+}
+.st.steady {
+  color: #6de07a;
+}
+.st.wavering {
+  color: #e0d46d;
+}
+.st.routing {
+  color: #ff6b52;
+}
+.st.broken {
+  color: #8a8f95;
+}
+
+.orders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.order-btn {
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  color: #dcefe2;
+  background: #143a22;
+  border: 1px solid #285b39;
+  border-radius: 4px;
+  padding: 6px 7px;
+  cursor: pointer;
+}
+.order-btn:hover {
+  background: #1c4d2d;
+}
+.order-btn.active {
+  background: #1f6f4a;
+  border-color: #2fae74;
+  color: #d9ffe9;
+}
+.order-btn.inspire {
+  background: #4a3a12;
+  border-color: #7a5f1c;
+}
+.order-btn.inspire.ready {
+  background: #7a5f1c;
+  border-color: #ffd36b;
+  color: #fff3d4;
+}
+
+.hint {
+  font-size: 10.5px;
+  color: #6f927e;
+}
+
+.hud {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  text-align: right;
+  background: rgba(12, 26, 16, 0.72);
+  border: 1px solid #274a30;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+.hud-line {
+  padding: 1px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.log {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 400px;
+  max-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(6, 16, 10, 0.9);
+  border: 1px solid #274a30;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.log-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #6f927e;
+  padding: 6px 9px 3px;
+  border-bottom: 1px solid #163021;
+}
+.log-body {
+  overflow-y: auto;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.log-line {
+  line-height: 1.35;
+}
+.log-t {
+  color: #56826a;
+  font-variant-numeric: tabular-nums;
+}
+
+.over {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 8, 5, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.over.hidden {
+  display: none;
+}
+.over-card {
+  background: #0d2214;
+  border: 1px solid #2c5b39;
+  border-radius: 10px;
+  padding: 24px 28px;
+  max-width: 600px;
+  text-align: center;
+}
+.over-card h1 {
+  margin-bottom: 14px;
+  font-size: 22px;
+}
+.over-stats {
+  text-align: left;
+  background: #061610;
+  border: 1px solid #1c3a26;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: #b9d4c2;
+  margin-bottom: 16px;
+}
+.btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #2c5b39;
+  background: #143a22;
+  color: #dcefe2;
+  padding: 9px 16px;
+  margin: 0 5px;
+}
+.btn.primary {
+  background: #1f6f4a;
+  border-color: #2fae74;
+  color: #d9ffe9;
+}
+.btn:hover {
+  filter: brightness(1.15);
+}
+
+.selbox {
+  background: rgba(12, 26, 16, 0.86);
+  border: 1px solid #274a30;
+  border-radius: 5px;
+  padding: 6px 8px;
+  min-height: 22px;
+}
+.selcount {
+  font-weight: 600;
+  color: #cfe0d2;
+}
+.selname {
+  margin-top: 3px;
+  font-weight: 600;
+  color: #dbeeff;
+}
+.selstat {
+  font-size: 11px;
+  color: #9fb9a8;
+}
