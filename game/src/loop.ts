@@ -1,7 +1,7 @@
-// Fixed-timestep loop: update() runs in fixed `dt` steps (deterministic sim),
-// render() runs once per animation frame (decoupled from the sim rate). A small
-// reusable primitive — naval/strategic modules will want the same shape, so it
-// lives on its own rather than baked into main.
+// Fixed-timestep loop. update() runs in fixed `dt` steps (deterministic sim);
+// frame() runs once per animation frame with the real elapsed time (view work
+// like camera panning that should be framerate-smooth, not sim-locked); render()
+// draws. A reusable primitive — naval/strategic will want the same shape.
 
 export interface LoopHandle {
   stop(): void;
@@ -10,6 +10,7 @@ export interface LoopHandle {
 export function startLoop(opts: {
   hz: number;
   update: (dt: number) => void;
+  frame?: (realDt: number) => void;
   render: () => void;
 }): LoopHandle {
   const step = 1 / opts.hz;
@@ -18,7 +19,7 @@ export function startLoop(opts: {
   let raf = 0;
   let running = true;
 
-  function frame(now: number) {
+  function tick(now: number) {
     if (!running) return;
     const realDt = Math.min((now - last) / 1000, 0.1); // clamp long stalls (tab hidden, breakpoint)
     last = now;
@@ -29,10 +30,11 @@ export function startLoop(opts: {
       acc -= step;
       steps++;
     }
+    opts.frame?.(realDt);
     opts.render();
-    raf = requestAnimationFrame(frame);
+    raf = requestAnimationFrame(tick);
   }
-  raf = requestAnimationFrame(frame);
+  raf = requestAnimationFrame(tick);
 
   return {
     stop() {

@@ -1,7 +1,10 @@
 import "./style.css";
+import type { App } from "./app";
 import { makeWorld } from "./world";
 import { populateTestBattle } from "./spawn";
+import { makeCamera } from "./camera";
 import { render } from "./render";
+import { installInput, updateCamera } from "./input";
 import { startLoop } from "./loop";
 import { SIM } from "./constants";
 
@@ -10,20 +13,33 @@ canvas.id = "game";
 document.body.appendChild(canvas);
 const ctx = canvas.getContext("2d")!;
 
+const world = makeWorld();
+populateTestBattle(world);
+
+const app: App = {
+  world,
+  camera: makeCamera(window.innerWidth, window.innerHeight),
+  held: new Set(),
+  viewW: window.innerWidth,
+  viewH: window.innerHeight,
+};
+
 function resize() {
   canvas.width = window.innerWidth; // CSS px == backing px (fine for programmer art)
   canvas.height = window.innerHeight;
+  app.viewW = canvas.width;
+  app.viewH = canvas.height;
 }
 window.addEventListener("resize", resize);
 resize();
 
-const world = makeWorld();
-populateTestBattle(world);
+installInput(app, canvas);
 
 startLoop({
   hz: SIM.hz,
   update: (dt) => {
     world.time += dt; // no unit systems yet — movement / combat arrive later
   },
-  render: () => render(ctx, world, canvas.width, canvas.height),
+  frame: (realDt) => updateCamera(app, realDt),
+  render: () => render(ctx, app),
 });

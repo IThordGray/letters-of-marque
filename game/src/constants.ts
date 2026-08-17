@@ -27,6 +27,14 @@ export const SPAWN = {
   edgeInset: 220, // how far each band deploys from its own edge
 };
 
+// ---- Camera ----------------------------------------------------------------
+export const CAMERA = {
+  zoomMin: 0.15, // px per pace
+  zoomMax: 4,
+  zoomStep: 1.15, // multiply per wheel notch
+  panSpeed: 1100, // screen px/sec for keyboard pan
+};
+
 export const COLOR = {
   background: "#08151b",
   field: "#20301c",
