@@ -2,7 +2,7 @@ import "./style.css";
 import type { App } from "./app";
 import { makeWorld } from "./world";
 import { populateTestBattle } from "./spawn";
-import { stepMovement } from "./movement";
+import { stepMovement, stepSeparation } from "./movement";
 import { makeCamera } from "./camera";
 import { render } from "./render";
 import { installInput, updateCamera } from "./input";
@@ -23,6 +23,7 @@ const app: App = {
   selected: new Set(),
   drag: null,
   held: new Set(),
+  formation: "tight",
   viewW: window.innerWidth,
   viewH: window.innerHeight,
 };
@@ -42,6 +43,7 @@ startLoop({
   hz: SIM.hz,
   update: (dt) => {
     stepMovement(world, dt);
+    stepSeparation(world);
     world.time += dt;
   },
   frame: (realDt) => updateCamera(app, realDt),

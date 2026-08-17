@@ -2,6 +2,7 @@ import type { World } from "./world";
 import type { Camera } from "./camera";
 
 export type PanKey = "up" | "down" | "left" | "right";
+export type FormationDensity = "loose" | "tight";
 
 // A left-drag marquee, in screen pixels.
 export interface DragBox {
@@ -20,6 +21,7 @@ export interface App {
   selected: Set<number>; // selected player unit ids
   drag: DragBox | null; // active left-drag box-select
   held: Set<PanKey>; // camera pan keys currently down
+  formation: FormationDensity; // density used for the next move order
   viewW: number; // viewport size, px
   viewH: number;
 }

@@ -1,7 +1,8 @@
 import type { App, PanKey, DragBox } from "./app";
 import type { Unit } from "./types";
 import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "./camera";
-import { CAMERA, UNIT, SELECT } from "./constants";
+import { CAMERA, UNIT, SELECT, FORMATION } from "./constants";
+import { formationSlots } from "./formation";
 import { dist } from "./math";
 
 const PAN_KEYS: Record<string, PanKey> = {
@@ -26,6 +27,10 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape") {
       app.selected.clear();
+      return;
+    }
+    if (e.code === "KeyF") {
+      app.formation = app.formation === "tight" ? "loose" : "tight";
       return;
     }
     const k = PAN_KEYS[e.code];
@@ -59,11 +64,17 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       return;
     }
     if (e.button === 2) {
-      // right-click orders the selection to move to the world point under the cursor
+      // right-click: spread the selection into a formation centred on the cursor
       const p = xy(e);
       const wpt = screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH);
-      for (const u of app.world.units) {
-        if (app.selected.has(u.id)) u.moveTarget = { x: wpt.x, y: wpt.y };
+      const sel = app.world.units.filter((u) => app.selected.has(u.id));
+      if (sel.length > 0) {
+        const spacing = app.formation === "loose" ? FORMATION.looseSpacing : FORMATION.tightSpacing;
+        const slots = formationSlots(sel.length, wpt.x, wpt.y, spacing);
+        // pair left-to-right so the group's paths don't cross on the way in
+        sel.sort((a, b) => a.x - b.x);
+        slots.sort((a, b) => a.x - b.x);
+        for (let i = 0; i < sel.length; i++) sel[i].moveTarget = { x: slots[i].x, y: slots[i].y };
       }
       return;
     }

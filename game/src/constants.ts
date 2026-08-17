@@ -33,6 +33,19 @@ export const MOVE = {
   arriveSlack: 6, // stop when this close to the target
 };
 
+// ---- Formation & personal space --------------------------------------------
+export const FORMATION = {
+  tightSpacing: 26, // paces between neighbours in a tight formation
+  looseSpacing: 46, // ...and a loose one
+  aspect: 2.4, // ellipse width : depth — wide, not high
+};
+export const SEPARATION = {
+  // Personal space: below this centre-distance, figures push apart. Keep it under
+  // a tight formation's closest gap (~0.6 × tightSpacing ≈ 16) so separation only
+  // resolves real overlap and never loosens the formation. ~1 figure-diameter.
+  radius: 14,
+};
+
 // ---- Camera ----------------------------------------------------------------
 export const CAMERA = {
   zoomMin: 0.15, // px per pace
