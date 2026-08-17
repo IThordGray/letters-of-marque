@@ -1,5 +1,6 @@
 import "./style.css";
 import { makeWorld } from "./world";
+import { populateTestBattle } from "./spawn";
 import { render } from "./render";
 import { startLoop } from "./loop";
 import { SIM } from "./constants";
@@ -17,11 +18,12 @@ window.addEventListener("resize", resize);
 resize();
 
 const world = makeWorld();
+populateTestBattle(world);
 
 startLoop({
   hz: SIM.hz,
   update: (dt) => {
-    world.time += dt; // the only "system" for now — KAN-4 adds the entity systems
+    world.time += dt; // no unit systems yet — movement / combat arrive later
   },
   render: () => render(ctx, world, canvas.width, canvas.height),
 });

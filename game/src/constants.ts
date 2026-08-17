@@ -13,9 +13,28 @@ export const SIM = {
   },
 };
 
+// ---- Figures ---------------------------------------------------------------
+export const UNIT = {
+  pirate: { size: 7 }, // radius in paces
+  officer: { size: 11 },
+};
+
+// ---- Test spawn (throwaway: gives us something to see and select) ----------
+export const SPAWN = {
+  pirates: 8, // pirates per band, plus one officer
+  spacing: 44, // paces between figures in a rank
+  rankOffset: 55, // pirates sit this far toward the foe from their officer
+  edgeInset: 220, // how far each band deploys from its own edge
+};
+
 export const COLOR = {
   background: "#08151b",
   field: "#20301c",
   fieldEdge: "#3a5330",
   text: "#9fb9c6",
+  player: "#4ea3ff",
+  playerOfficer: "#bfe0ff",
+  enemy: "#ff6b52",
+  enemyOfficer: "#ffc2b5",
+  outline: "#0b1410",
 };
