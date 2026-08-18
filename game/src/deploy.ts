@@ -2,6 +2,7 @@ import type { PartySpec, SquadSpec } from "./spawn";
 import type { OfficerProfile, Roster } from "./roster";
 import type { WeaponType } from "./types";
 import { makeRoster } from "./roster";
+import { enemyGarrisonSize } from "./spawn";
 import { UNIT, CARRY, PRESENCE } from "./constants";
 
 // Weapon choices — matches the WEAPON table. Compact labels for the per-squad picker.
@@ -70,6 +71,12 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
   sub.className = "deploy-sub";
   sub.textContent = "Load the boats — bring your officers, hand each a share of the crew, and arm the squad.";
   card.append(title, sub);
+
+  // --- the garrison you face (informs the choice — this is an asymmetric raid) ---
+  const garrison = document.createElement("div");
+  garrison.className = "deploy-garrison";
+  garrison.textContent = `The garrison holds ~${enemyGarrisonSize()} defenders, dug in. You'll be outnumbered — break their will, don't try to outlast them.`;
+  card.append(garrison);
 
   // --- crew readout (allocation is per-squad; this tracks the shared pool) ---
   const crew = document.createElement("div");
@@ -175,7 +182,11 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
     rows.push({ o, wrap, headCount, body, allocCount, minus, plus, wepButtons });
   }
 
-  // --- launch ---
+  // --- party summary + launch ---
+  const summary = document.createElement("div");
+  summary.className = "deploy-summary";
+  card.append(summary);
+
   const launch = document.createElement("button");
   launch.type = "button";
   launch.className = "deploy-launch";
@@ -200,6 +211,16 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
       r.plus.disabled = left <= 0;
       for (const { value, el } of r.wepButtons) el.classList.toggle("selected", value === state.weapons[r.o.id]);
     }
+    const officers = state.chosen.size;
+    const p = used();
+    const yours = officers + p;
+    const g = enemyGarrisonSize();
+    const ready = officers >= 1 && p >= 1;
+    summary.textContent = ready
+      ? `Your raid — ${p} pirates under ${officers} officer${officers === 1 ? "" : "s"} in ${officers} squad${officers === 1 ? "" : "s"} · ${yours} ashore vs ~${g} defenders${yours < g ? " — outnumbered" : ""}`
+      : "Bring at least one officer and some crew to launch the raid.";
+    summary.classList.toggle("warn", !ready);
+    launch.disabled = !ready;
   }
 
   paint();

@@ -114,6 +114,12 @@ function spawnEnemyGarrison(world: World) {
   spawnPlainBand(world, "enemy", WORLD.width / 2, SPAWN.edgeInset, DEPLOY.garrison, "musket");
 }
 
+// The garrison's strength (defenders + their officer) — surfaced so the deploy screen
+// can preview what the raid faces, straight from the same source it spawns from.
+export function enemyGarrisonSize(): number {
+  return DEPLOY.garrison + 1;
+}
+
 // Static field features to fight over (throwaway test layout).
 function seedTerrain(world: World) {
   world.terrain.push(

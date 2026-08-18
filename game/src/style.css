@@ -252,6 +252,30 @@ body {
 .deploy-launch:hover {
   background: #6db4ff;
 }
+.deploy-launch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.deploy-garrison {
+  color: #e0b48f;
+  font-size: 12.5px;
+  line-height: 1.4;
+  background: rgba(90, 40, 30, 0.28);
+  border: 1px solid #5a3a30;
+  border-left: 3px solid #ff6b52;
+  border-radius: 6px;
+  padding: 8px 11px;
+  margin-bottom: 18px;
+}
+.deploy-summary {
+  color: #b9d4e0;
+  font-size: 12.5px;
+  margin: 4px 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+.deploy-summary.warn {
+  color: #e0c06d;
+}
 .deploy-crew-readout {
   color: #b9d4e0;
   font-weight: 600;
