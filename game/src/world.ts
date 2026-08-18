@@ -26,8 +26,9 @@ export interface World {
   over: boolean; // battle decided
   outcome: string; // how it ended
   terrain: Terrain[]; // static field features (cover / high ground / chokes)
+  aiNextAt: number; // sim time of the enemy AI's next decision
 }
 
 export function makeWorld(): World {
-  return { time: 0, units: [], nextId: 1, rng: makeRng(SEED), log: [], flashes: [], over: false, outcome: "", terrain: [] };
+  return { time: 0, units: [], nextId: 1, rng: makeRng(SEED), log: [], flashes: [], over: false, outcome: "", terrain: [], aiNextAt: 0 };
 }

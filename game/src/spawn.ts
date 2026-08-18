@@ -29,7 +29,7 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
     state: "steady",
     lastCause: null,
     lastHitAt: -999,
-    stance: side === "player" ? "aggressive" : "holdGround",
+    stance: "aggressive",
     attackMove: false,
     squadId: kind === "officer" ? id : (squadId ?? id),
     rallyReadyAt: 0,

@@ -83,6 +83,9 @@ export const TERRAIN = {
   chokeSpeedMult: 0.5, // a choke is slow going
 };
 
+// ---- Enemy AI --------------------------------------------------------------
+export const AI = { decisionInterval: 1 }; // seconds between enemy AI re-decisions
+
 export const FLASH = { ttl: 0.25 };
 
 // ---- Morale — per figure, the real "health" --------------------------------

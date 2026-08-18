@@ -10,6 +10,7 @@ import { startLoop } from "./loop";
 import { stepMovement, stepSeparation } from "./movement";
 import { stepCombat } from "./combat";
 import { stepMorale } from "./morale";
+import { stepAI } from "./ai";
 import { signal } from "./log";
 import { SIM } from "./constants";
 
@@ -52,6 +53,7 @@ const ui = installUI(app);
 startLoop({
   hz: SIM.hz,
   update: (dt) => {
+    stepAI(world);
     stepMovement(world, dt);
     stepCombat(world, dt);
     stepMorale(world, dt);
