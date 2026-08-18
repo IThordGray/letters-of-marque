@@ -252,3 +252,52 @@ body {
 .deploy-launch:hover {
   background: #6db4ff;
 }
+.deploy-crew-readout {
+  color: #b9d4e0;
+  font-weight: 600;
+  margin-bottom: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.deploy-squad-body.hidden {
+  display: none;
+}
+.deploy-carry {
+  color: #83c091;
+  font-size: 11.5px;
+  margin: 6px 0 0 22px;
+}
+.deploy-alloc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 9px 0 0 22px;
+}
+.deploy-alloc-label {
+  color: #8fb0c0;
+  font-size: 12px;
+  margin-right: 2px;
+}
+.deploy-alloc-step {
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+  line-height: 1;
+  color: #e8f4fb;
+  background: #123040;
+  border: 1px solid #2c5064;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.deploy-alloc-step:hover {
+  background: rgba(23, 65, 86, 0.7);
+}
+.deploy-alloc-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.deploy-alloc-count {
+  min-width: 24px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
