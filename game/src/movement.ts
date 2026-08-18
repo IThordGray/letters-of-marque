@@ -1,9 +1,10 @@
 import type { World } from "./world";
 import type { Unit } from "./types";
-import { MOVE, WEAPON, SEPARATION, WORLD, COMBAT } from "./constants";
+import { MOVE, WEAPON, SEPARATION, WORLD, COMBAT, TERRAIN } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
 import { desc } from "./naming";
+import { terrainAt } from "./terrain";
 
 function nearestEnemyWithin(world: World, u: Unit, range: number): Unit | null {
   let best: Unit | null = null;
@@ -87,7 +88,8 @@ export function stepMovement(world: World, dt: number) {
       } else {
         u.facing = (Math.atan2(dy, dx) * 180) / Math.PI;
         const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
-        const step = Math.min(MOVE.speed * mult * dt, d);
+        const choke = terrainAt(world, u.x, u.y) === "choke" ? TERRAIN.chokeSpeedMult : 1;
+        const step = Math.min(MOVE.speed * mult * choke * dt, d);
         u.x += (dx / d) * step;
         u.y += (dy / d) * step;
       }

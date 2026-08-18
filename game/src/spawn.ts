@@ -47,6 +47,12 @@ function spawnBand(world: World, side: Side, cx: number, cy: number) {
 
 // Throwaway two-band skirmish so there's something to see, command, and fight.
 export function populateTestBattle(world: World) {
+  // a few field features between the bands to fight over (throwaway test layout)
+  world.terrain.push(
+    { kind: "cover", x: WORLD.width / 2 - 300, y: WORLD.height / 2 - 50, w: 600, h: 100 },
+    { kind: "highGround", x: WORLD.width / 2 - 720, y: WORLD.height / 2 - 130, w: 260, h: 220 },
+    { kind: "choke", x: WORLD.width / 2 + 440, y: WORLD.height / 2 - 260, w: 150, h: 520 },
+  );
   spawnBand(world, "player", WORLD.width / 2, WORLD.height - SPAWN.edgeInset);
   spawnBand(world, "enemy", WORLD.width / 2, SPAWN.edgeInset);
 }

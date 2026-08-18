@@ -26,6 +26,16 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   ctx.lineWidth = 2;
   ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
 
+  // terrain features (translucent patches)
+  for (const t of world.terrain) {
+    const a = worldToScreen(cam, t.x, t.y, w, h);
+    const b2 = worldToScreen(cam, t.x + t.w, t.y + t.h, w, h);
+    ctx.fillStyle = t.kind === "cover" ? COLOR.cover : t.kind === "highGround" ? COLOR.highGround : COLOR.choke;
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(a.x, a.y, b2.x - a.x, b2.y - a.y);
+    ctx.globalAlpha = 1;
+  }
+
   // the fallen first, dim, so the living draw over them
   for (const u of world.units) {
     if (u.state !== "down") continue;

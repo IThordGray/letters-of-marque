@@ -73,6 +73,16 @@ export const RALLY = {
   cooldown: 22, // seconds between an officer's rallies
 };
 
+// ---- Terrain — where you fight matters -------------------------------------
+export const TERRAIN = {
+  coverIncomingMult: 0.6, // a figure in cover is harder to hit
+  coverRallyBonus: 4, // ...and steadies faster there
+  highGroundHitBonus: 1.2, // firing from high ground lands better
+  highGroundRangeBonus: 50, // ...and reaches further
+  highGroundFloor: 35, // ...and holds a mild morale floor
+  chokeSpeedMult: 0.5, // a choke is slow going
+};
+
 export const FLASH = { ttl: 0.25 };
 
 // ---- Morale — per figure, the real "health" --------------------------------
@@ -121,6 +131,9 @@ export const COLOR = {
   background: "#08151b",
   field: "#20301c",
   fieldEdge: "#3a5330",
+  cover: "#2f5a34",
+  highGround: "#5a5330",
+  choke: "#4a4038",
   text: "#9fb9c6",
   player: "#4ea3ff",
   playerOfficer: "#bfe0ff",

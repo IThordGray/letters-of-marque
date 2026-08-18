@@ -1,4 +1,4 @@
-import type { Unit } from "./types";
+import type { Unit, Terrain } from "./types";
 import type { LogLine } from "./log";
 import type { Rng } from "./rng";
 import { makeRng } from "./rng";
@@ -25,8 +25,9 @@ export interface World {
   flashes: Flash[]; // transient shot lines
   over: boolean; // battle decided
   outcome: string; // how it ended
+  terrain: Terrain[]; // static field features (cover / high ground / chokes)
 }
 
 export function makeWorld(): World {
-  return { time: 0, units: [], nextId: 1, rng: makeRng(SEED), log: [], flashes: [], over: false, outcome: "" };
+  return { time: 0, units: [], nextId: 1, rng: makeRng(SEED), log: [], flashes: [], over: false, outcome: "", terrain: [] };
 }

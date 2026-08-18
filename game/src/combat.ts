@@ -1,11 +1,12 @@
 import type { World } from "./world";
 import type { Unit, Side } from "./types";
-import { WEAPON, COMBAT, FLASH, MORALE, FLANK } from "./constants";
+import { WEAPON, COMBAT, FLASH, MORALE, FLANK, TERRAIN } from "./constants";
 import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { clamp, dist, angleTo, angleDiff } from "./math";
 import { applyMorale, contagion } from "./morale";
 import { effMarks, effFerocity, presenceAura } from "./officers";
+import { terrainAt } from "./terrain";
 import { desc } from "./naming";
 
 // Ranged fire and melee. Lethality is low, morale drains high, arc (front/flank/rear)
@@ -74,8 +75,9 @@ export function stepCombat(world: World, dt: number) {
     if (u.reload > 0 || u.powder <= 0) continue;
 
     const w = WEAPON[u.weapon];
+    const rangeMax = w.rangeMax + (terrainAt(world, u.x, u.y) === "highGround" ? TERRAIN.highGroundRangeBonus : 0);
     const bears = (e: Unit): boolean => {
-      if (dist(u.x, u.y, e.x, e.y) > w.rangeMax) return false;
+      if (dist(u.x, u.y, e.x, e.y) > rangeMax) return false;
       return Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y))) <= COMBAT.fireArcHalfAngle;
     };
 
@@ -104,8 +106,11 @@ export function stepCombat(world: World, dt: number) {
 
 function fire(world: World, shooter: Unit, target: Unit) {
   const w = WEAPON[shooter.weapon];
+  const onHigh = terrainAt(world, shooter.x, shooter.y) === "highGround";
+  const inCover = terrainAt(world, target.x, target.y) === "cover";
+  const rangeMax = w.rangeMax + (onHigh ? TERRAIN.highGroundRangeBonus : 0);
   const d = dist(shooter.x, shooter.y, target.x, target.y);
-  const rangeScalar = clamp(Math.pow(1 - d / w.rangeMax, COMBAT.rangeFalloffPow), COMBAT.rangeFloor, 1);
+  const rangeScalar = clamp(Math.pow(1 - d / rangeMax, COMBAT.rangeFalloffPow), COMBAT.rangeFloor, 1);
   shooter.reload = w.reload;
   shooter.powder -= 1;
   world.flashes.push({ ax: shooter.x, ay: shooter.y, bx: target.x, by: target.y, ttl: FLASH.ttl, kind: "fire" });
@@ -113,8 +118,10 @@ function fire(world: World, shooter: Unit, target: Unit) {
   // being shot at rattles a figure even on a miss
   applyMorale(world, target, MORALE.suppression, "fire");
 
-  const p = clamp(w.accuracy * (effMarks(world, shooter) / 100) * rangeScalar, 0, 0.95);
-  if (nextFloat(world.rng) < p) {
+  let p = w.accuracy * (effMarks(world, shooter) / 100) * rangeScalar;
+  if (onHigh) p *= TERRAIN.highGroundHitBonus; // firing down from high ground lands better
+  if (inCover) p *= TERRAIN.coverIncomingMult; // a target in cover is harder to hit
+  if (nextFloat(world.rng) < clamp(p, 0, 0.95)) {
     target.hp -= 1;
     arcMorale(world, target, w.moraleShot, arcOf(target, shooter.x, shooter.y), "fire");
     if (target.hp <= 0) kill(world, target);

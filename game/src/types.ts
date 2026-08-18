@@ -42,3 +42,12 @@ export interface Unit {
   squadId: number; // id of this figure's squad officer (an officer's own id for himself)
   rallyReadyAt: number; // sim time an officer may rally again
 }
+
+export type TerrainKind = "cover" | "highGround" | "choke";
+export interface Terrain {
+  kind: TerrainKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}

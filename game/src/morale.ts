@@ -1,10 +1,11 @@
 import type { World } from "./world";
 import type { Unit, Cause, UnitState } from "./types";
-import { MORALE } from "./constants";
+import { MORALE, TERRAIN } from "./constants";
 import { signal } from "./log";
 import { clamp, dist } from "./math";
 import { desc, causePhrase } from "./naming";
 import { presenceAura } from "./officers";
+import { terrainAt } from "./terrain";
 
 // Apply a morale blow and remember its cause (for legible logs + the recovery
 // cooldown). The single entry point combat calls when a figure is shot at / hit.
@@ -38,12 +39,19 @@ function enemyNear(world: World, u: Unit): boolean {
 export function stepMorale(world: World, dt: number) {
   for (const u of world.units) {
     if (u.state === "down") continue;
+    const terr = terrainAt(world, u.x, u.y);
     const calm = world.time - u.lastHitAt > MORALE.contactCooldown && !enemyNear(world, u);
-    if (calm) u.morale = clamp(u.morale + MORALE.rallyRate * dt, 0, MORALE.max);
+    if (calm) {
+      const rate = MORALE.rallyRate + (terr === "cover" ? TERRAIN.coverRallyBonus : 0);
+      u.morale = clamp(u.morale + rate * dt, 0, MORALE.max);
+    }
 
     // an officer's presence pulls nearby men up toward a morale floor
     const aura = presenceAura(world, u);
     if (aura && u.morale < aura.floor) u.morale = clamp(u.morale + MORALE.rallyRate * dt, 0, aura.floor);
+    // high ground holds a mild morale floor of its own
+    if (terr === "highGround" && u.morale < TERRAIN.highGroundFloor)
+      u.morale = clamp(u.morale + MORALE.rallyRate * dt, 0, TERRAIN.highGroundFloor);
 
     const next = stateFromMorale(u.morale, u.state);
     if (next !== u.state) transition(world, u, next);
