@@ -10,6 +10,16 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-17 — Perks / fatigue / instrumentation (KAN-20) rejected as-is
+The prototype's **perks + fatigue + instrumentation** approach is NOT being ported —
+the human doesn't like how the prototype did it. KAN-20 is parked (`backlog`) pending
+a fresh design; do not port it blindly. The rest of the land-combat epic (KAN-12–19)
+shipped as a faithful port of the validated model.
+*Why:* the texture layer deserves a rethink, not a port; the core will-spine is what's
+validated and worth keeping faithful.
+
+---
+
 ### 2026-08-17 — Contextual command (right-click resolves; menu only when ambiguous; verb-key bypass)
 The universal command interaction across land, naval, and strategic:
 - **Right-click resolves the valid actions** for (selection → target): 0 → nothing;
