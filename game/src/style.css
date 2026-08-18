@@ -87,3 +87,115 @@ body {
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
+
+/* pre-battle deploy screen ("load the boats") */
+.deploy-root {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 28%, #0d2430, #06121a 72%);
+}
+.deploy-card {
+  width: 440px;
+  max-width: 92vw;
+  background: rgba(10, 26, 34, 0.92);
+  border: 1px solid #24414d;
+  border-radius: 10px;
+  padding: 26px 26px 22px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+}
+.deploy-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.deploy-sub {
+  color: #8fb0c0;
+  margin: 6px 0 22px;
+  line-height: 1.45;
+}
+.deploy-group {
+  margin-bottom: 20px;
+}
+.deploy-label {
+  color: #b9d4e0;
+  margin-bottom: 9px;
+  font-weight: 600;
+}
+.deploy-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.deploy-step {
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+  line-height: 1;
+  color: #e8f4fb;
+  background: #123040;
+  border: 1px solid #2c5064;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.deploy-step:hover {
+  background: rgba(23, 65, 86, 0.7);
+}
+.deploy-count {
+  min-width: 30px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.deploy-weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.deploy-weapon {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 9px 12px;
+  color: #e8f4fb;
+  background: #0e2530;
+  border: 1px solid #24414d;
+  border-left: 3px solid #24414d;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.deploy-weapon:hover {
+  border-color: #35617a;
+}
+.deploy-weapon.selected {
+  border-left-color: #4ea3ff;
+  background: #12303f;
+}
+.deploy-weapon-name {
+  font-weight: 600;
+}
+.deploy-weapon-blurb {
+  color: #8fb0c0;
+  font-size: 12px;
+}
+.deploy-launch {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #05161e;
+  background: #4ea3ff;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.deploy-launch:hover {
+  background: #6db4ff;
+}
