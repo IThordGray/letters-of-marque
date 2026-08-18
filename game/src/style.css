@@ -151,37 +151,90 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.deploy-weapons {
+.deploy-squads {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
 }
-.deploy-weapon {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
+.deploy-squad {
   padding: 9px 12px;
-  color: #e8f4fb;
   background: #0e2530;
   border: 1px solid #24414d;
   border-left: 3px solid #24414d;
   border-radius: 6px;
-  cursor: pointer;
 }
-.deploy-weapon:hover {
-  border-color: #35617a;
-}
-.deploy-weapon.selected {
+.deploy-squad.selected {
   border-left-color: #4ea3ff;
   background: #12303f;
 }
-.deploy-weapon-name {
+.deploy-squad-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  color: #e8f4fb;
+  cursor: pointer;
+}
+.deploy-squad-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.deploy-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid #4d6f80;
+}
+.deploy-squad.selected .deploy-check {
+  background: #4ea3ff;
+  border-color: #4ea3ff;
+}
+.deploy-squad-name {
   font-weight: 600;
 }
-.deploy-weapon-blurb {
+.deploy-squad-count {
   color: #8fb0c0;
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.deploy-squad-stats {
+  color: #7796a5;
+  font-size: 11.5px;
+  margin: 4px 0 0 22px;
+  font-variant-numeric: tabular-nums;
+}
+.deploy-squad-weapons {
+  display: flex;
+  gap: 6px;
+  margin: 9px 0 2px 22px;
+}
+.deploy-squad-weapons.hidden {
+  display: none;
+}
+.deploy-wep {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: #cfe3ee;
+  background: #0b1e28;
+  border: 1px solid #24414d;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.deploy-wep:hover {
+  border-color: #35617a;
+}
+.deploy-wep.selected {
+  color: #05161e;
+  background: #4ea3ff;
+  border-color: #4ea3ff;
+  font-weight: 600;
 }
 .deploy-launch {
   width: 100%;
@@ -198,41 +251,4 @@ body {
 }
 .deploy-launch:hover {
   background: #6db4ff;
-}
-.deploy-officers {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 210px;
-  overflow-y: auto;
-}
-.deploy-officer {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  text-align: left;
-  padding: 8px 12px;
-  color: #e8f4fb;
-  background: #0e2530;
-  border: 1px solid #24414d;
-  border-left: 3px solid #24414d;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.deploy-officer:hover {
-  border-color: #35617a;
-}
-.deploy-officer.selected {
-  border-left-color: #4ea3ff;
-  background: #12303f;
-}
-.deploy-officer-name {
-  font-weight: 600;
-}
-.deploy-officer-stats {
-  color: #8fb0c0;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
