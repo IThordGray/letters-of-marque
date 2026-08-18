@@ -37,8 +37,12 @@ export const WEAPON: Record<
   // these bases are higher — a pirate's net hit rate stays about what it was.
   musket: { rangeMax: 300, reload: 3, accuracy: 1.1, powder: 60, moraleShot: 8, meleeMult: 0.8 },
   pistol: { rangeMax: 120, reload: 1.5, accuracy: 1.3, powder: 40, moraleShot: 7, meleeMult: 1.5 }, // pistol & cutlass — shock troops
-  cannon: { rangeMax: 600, reload: 5, accuracy: 0.8, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon, helpless up close
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.8, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon; crew fall back on the cutlass up close
 };
+
+// Every figure also carries a cutlass — a melee floor for any weapon when powder
+// runs dry or the fight goes hand-to-hand (shock weapons like the pistol exceed it).
+export const CUTLASS = { meleeMult: 1.1 };
 
 export const COMBAT = {
   fireArcHalfAngle: 78, // a figure fires within this of its facing

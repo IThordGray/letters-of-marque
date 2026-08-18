@@ -1,6 +1,6 @@
 import type { World } from "./world";
 import type { Unit, Side } from "./types";
-import { WEAPON, COMBAT, FLASH, MORALE, FLANK, TERRAIN } from "./constants";
+import { WEAPON, COMBAT, FLASH, MORALE, FLANK, TERRAIN, CUTLASS } from "./constants";
 import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { clamp, dist, angleTo, angleDiff } from "./math";
@@ -134,7 +134,7 @@ function doMelee(world: World, a: Unit, foe: Unit) {
   a.meleeReload = COMBAT.meleeReload;
   const arc = arcOf(foe, a.x, a.y);
   const toHit = arc === "flank" ? FLANK.meleeToHitFlank : arc === "rear" ? FLANK.meleeToHitRear : 1;
-  const aFero = effFerocity(world, a) * WEAPON[a.weapon].meleeMult;
+  const aFero = effFerocity(world, a) * Math.max(WEAPON[a.weapon].meleeMult, CUTLASS.meleeMult);
   const p = clamp(0.32 + (aFero - effFerocity(world, foe)) / 300, 0.08, 0.9) * toHit;
   world.flashes.push({ ax: a.x, ay: a.y, bx: foe.x, by: foe.y, ttl: FLASH.ttl, kind: "melee" });
   if (nextFloat(world.rng) < p) {
