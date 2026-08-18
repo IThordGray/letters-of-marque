@@ -10,6 +10,35 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-18 — Deploy & Equip: outfit a raid once (unnamed crew pool + named officers, per-unit ammo, permadeath)
+How the player composes and kits a landing party before a raid — the front end that
+replaces the fixed test spawn. Ratified shape (shaped with the game-designer):
+- **No artificial cap.** A hard "boat capacity" limit was rejected as unnecessary
+  friction — boats shuttle under cover of dark. Landing *more* crew is a genuine
+  **benefit** (raw force in an outnumbered raid), so the raid must not tax party size.
+  The real constraint sits **upstream, at the voyage/strategic layer**: sustaining a
+  large crew — provisioning + keeping morale up across a voyage — is the hard part; a
+  player who pulled that off has *earned* the option to land them in force. (A bigger
+  party being *louder* — alarm/stealth — is at most a soft, optional factor, never
+  load-bearing.)
+- **Per-unit ammo, not a shared pool.** Each figure carries its own powder and can
+  reload a few times; dry → falls back to the cutlass (KAN-30). Per-unit ammo makes
+  *how you use, layer and rotate* your musketeers a real tactic.
+- **Death is permanent.** A figure cut down is lost for good (no post-battle recovery).
+  A future **medic** specialised unit will stave off fatalities — but until specialised
+  units exist, down = dead.
+- **Unnamed crew pool + named officers.** For now pirates are an **unnamed pool** you
+  draw from and equip by group; **officers are named**, freely chosen and assigned to
+  lead squads (their stats carry over to their men).
+- **Framing:** outfitting is a one-time "load the boats" expedition decision — batched,
+  diegetic — *not* a screen serviced before every skirmish (distinct from the naval
+  standing-organisation rule).
+*Why:* keeps the interesting choices (weapon mix, which officers to risk, how to spend
+per-unit ammo) without the busywork Cutthroats was criticised for; composition pressure
+is diegetic, never an arbitrary number.
+
+---
+
 ### 2026-08-17 — Perks / fatigue / instrumentation (KAN-20) rejected as-is
 The prototype's **perks + fatigue + instrumentation** approach is NOT being ported —
 the human doesn't like how the prototype did it. KAN-20 is parked (`backlog`) pending

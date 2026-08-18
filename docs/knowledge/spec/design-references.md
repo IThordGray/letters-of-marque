@@ -54,6 +54,51 @@ shines, where it drags, and the pirate-flavour verdict.
 - _(To research: how games make a rout **read as a cause**, not a bug — visible fear,
   contagion, rally moments.)_
 
+### Deploy & equip (pre-battle roster + loadout)
+How comparable games compose + kit a party before battle — research inputs only.
+- **Squad-slot cap + fast loadout (XCOM-like):** a hard slot cap makes every pick
+  precious; quick, legible screen. *Drags:* a gate before *every* mission + re-shopping
+  single-use consumables each run — the busywork our no-timer pillar forbids.
+- **Party-from-roster + provisioning (Darkest-Dungeon-like):** draw a small party from a
+  churning expendable roster, buy consumables for the run. *Good:* role-driven
+  composition, loss stings but recovers. *Drags:* provisioning becomes guesswork / a
+  restock chore if you can't read the coming fight.
+- **Roster > field-cap + shared stash (Battle-Brothers-like):** more troops than you can
+  field forces "who sits out"; gear-to-threat matching. *Reject:* daily **wages** upkeep
+  (a timer) and heavy stash management.
+- **Diegetic cap, no loadout screen (Mount-&-Blade / Pirates!-like):** party size capped
+  by a leadership/renown stat; fight with who you travel with; troops are tiers. *Good:*
+  no per-battle ritual, cap scales with progress. *Drags:* faceless troops, little
+  loadout granularity.
+- **RATIFIED — pirate verdict:** outfit a raid **once** ("load the boats"), not
+  per-skirmish. **No artificial cap** (boats shuttle at night — unconvincing friction);
+  landing more crew is a *benefit*, so the raid doesn't tax size — the cost is upstream
+  (sustaining a big crew on voyage: provisioning + morale). Louder-by-size is soft/optional.
+  **Per-unit ammo**, not a shared pool (layer/rotate musketeers; dry → cutlass).
+  **Permadeath** (a future medic softens it). Pirates = **unnamed pool** equipped by
+  group; officers = **named**, freely assigned to lead squads. (See `../decisions.md`.)
+
+### Naval command & fleet
+- _(To research at naval kickoff — **KAN-21**: how *Homeworld* solves group-command
+  in a large open space with a fleet that persists across a career, and how much of
+  it adapts. Candidates: fleet persistence, capture-over-kill (salvage → prize-taking),
+  formations & slowest-ship speed, per-group stances, the sensors-manager zoom-out,
+  subsystem targeting → masts/rudder/crew. Expected reject: mid-battle resource
+  harvesting. Wind, tacking and the interpretation layer are ratified and out of
+  scope for the spike.)_
+
+### Camera & UI presentation
+- **Zoom-driven view switch (KAN-26)** — _(to explore)_ isometric close in, flipping to a
+  **top-down tactical** view past a zoom threshold: one control serving two jobs —
+  read the *figures* up close, read the *shape of the engagement* far out, with no
+  separate tactical-map mode to learn. Reference: **Masasa** **[confirm title]**.
+  Overlaps the sensors-manager zoom-out in KAN-21 — look at them together.
+- **Character-in-motion UI (KAN-27)** — _(to explore)_ how a *running figure* reads:
+  animation weight, the furniture attached to it (selection ring, destination, path,
+  state), camera relationship, movement feedback. Reference: **Hordeguard**
+  **[confirm title]**. Open question first: *which* of those the human means. Key
+  test — a solo-character UI often doesn't survive twenty men at once.
+
 ### Boarding / raiding · campaign / reputation · trade
 - _(Seeded as those features arrive.)_
 
