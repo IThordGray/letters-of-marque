@@ -12,6 +12,7 @@ export interface Unit {
   id: number;
   side: Side;
   kind: UnitKind;
+  name?: string; // named officers (from the deploy roster); rank-and-file pirates are unnamed
   x: number; // world position, paces
   y: number;
   facing: number; // degrees, 0 = +x, y down

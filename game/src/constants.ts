@@ -115,6 +115,14 @@ export const SPAWN = {
   edgeInset: 220,
 };
 
+// ---- Deploy & equip — the roster the player draws from ---------------------
+export const DEPLOY = {
+  crewPool: 24, // unnamed pirates available to land
+  officerRoster: 5, // named officers on the roster to choose among
+  officerSpread: 0.2, // rolled officer stats vary this far around the base
+  garrison: 14, // enemy defenders (grown for the asymmetric feel — see S5)
+};
+
 // ---- Movement --------------------------------------------------------------
 export const MOVE = {
   speed: 90, // paces/sec

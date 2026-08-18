@@ -1,5 +1,7 @@
-import type { PartySpec } from "./spawn";
+import type { PartySpec, SquadSpec } from "./spawn";
+import type { OfficerProfile, Roster } from "./roster";
 import type { WeaponType } from "./types";
+import { makeRoster } from "./roster";
 
 // The three ways a band goes ashore — matches the WEAPON table, phrased as a choice.
 const WEAPONS: { value: WeaponType; label: string; blurb: string }[] = [
@@ -8,34 +10,55 @@ const WEAPONS: { value: WeaponType; label: string; blurb: string }[] = [
   { value: "cannon", label: "Cannon", blurb: "a terror weapon; falls to the cutlass up close" },
 ];
 
-const DEFAULT: PartySpec = { pirates: 8, weapon: "musket" };
-const MIN_PIRATES = 1;
-const MAX_PIRATES = 20;
+interface DeployState {
+  pirates: number;
+  weapon: WeaponType;
+  chosen: Set<string>; // ids of officers to bring
+}
+
+// Split the pirates evenly among the chosen officers into squads (remainder to the
+// first squads); no officers → one leaderless band.
+function buildSpec(state: DeployState, roster: Roster): PartySpec {
+  const chosen = roster.officers.filter((o) => state.chosen.has(o.id));
+  if (chosen.length === 0) return { squads: [{ officer: null, pirates: state.pirates, weapon: state.weapon }] };
+  const per = Math.floor(state.pirates / chosen.length);
+  let rem = state.pirates % chosen.length;
+  const squads: SquadSpec[] = chosen.map((officer) => {
+    const extra = rem > 0 ? 1 : 0;
+    if (rem > 0) rem--;
+    return { officer, pirates: per + extra, weapon: state.weapon };
+  });
+  return { squads };
+}
 
 // The pre-battle deploy screen — a one-time "load the boats" decision, not a per-battle
-// ritual. Pick the band's size and weapon, then land it. Calls `onConfirm` with the
-// chosen spec and removes itself; the battle takes over from there.
+// ritual. Draw a band from the finite crew pool, pick which named officers lead it, arm
+// it, then land it. Calls `onConfirm` with the composed party and removes itself.
 export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
-  const spec: PartySpec = { ...DEFAULT };
+  const roster = makeRoster();
+  const state: DeployState = {
+    pirates: Math.min(8, roster.poolSize),
+    weapon: "musket",
+    chosen: new Set<string>(roster.officers.length ? [roster.officers[0].id] : []),
+  };
 
   const root = document.createElement("div");
   root.className = "deploy-root";
   const card = document.createElement("div");
   card.className = "deploy-card";
+  root.append(card);
 
   const title = document.createElement("h1");
   title.className = "deploy-title";
   title.textContent = "Outfit the landing party";
   const sub = document.createElement("p");
   sub.className = "deploy-sub";
-  sub.textContent = "Load the boats for the raid — choose your band, then put them ashore.";
+  sub.textContent = "Load the boats for the raid — draw your band and its officers, arm them, then put them ashore.";
   card.append(title, sub);
 
-  // --- party size ---
-  const sizeGroup = document.createElement("div");
-  sizeGroup.className = "deploy-group";
-  const sizeLabel = document.createElement("div");
-  sizeLabel.className = "deploy-label";
+  // --- party size (capped by the finite crew pool) ---
+  const sizeGroup = group(card);
+  const sizeLabel = label(sizeGroup);
   const stepper = document.createElement("div");
   stepper.className = "deploy-stepper";
   const dec = stepButton("−");
@@ -43,28 +66,24 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
   const count = document.createElement("span");
   count.className = "deploy-count";
   stepper.append(dec, count, inc);
-  sizeGroup.append(sizeLabel, stepper);
-
+  sizeGroup.append(stepper);
   const renderSize = () => {
-    count.textContent = String(spec.pirates);
-    sizeLabel.textContent = `Pirates ashore — ${spec.pirates}, plus 1 officer to lead them`;
+    count.textContent = String(state.pirates);
+    sizeLabel.textContent = `Pirates ashore — ${state.pirates} of ${roster.poolSize} in the crew`;
   };
   dec.onclick = () => {
-    spec.pirates = Math.max(MIN_PIRATES, spec.pirates - 1);
+    state.pirates = Math.max(1, state.pirates - 1);
     renderSize();
   };
   inc.onclick = () => {
-    spec.pirates = Math.min(MAX_PIRATES, spec.pirates + 1);
+    state.pirates = Math.min(roster.poolSize, state.pirates + 1);
     renderSize();
   };
   renderSize();
 
-  // --- weapon ---
-  const wepGroup = document.createElement("div");
-  wepGroup.className = "deploy-group";
-  const wepLabel = document.createElement("div");
-  wepLabel.className = "deploy-label";
-  wepLabel.textContent = "Arm the band with";
+  // --- weapon (party-wide for now; per-squad comes later) ---
+  const wepGroup = group(card);
+  label(wepGroup).textContent = "Arm the band with";
   const wepRow = document.createElement("div");
   wepRow.className = "deploy-weapons";
   const wepButtons: { value: WeaponType; el: HTMLButtonElement }[] = [];
@@ -80,17 +99,48 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
     blurb.textContent = w.blurb;
     b.append(name, blurb);
     b.onclick = () => {
-      spec.weapon = w.value;
+      state.weapon = w.value;
       paintWeapons();
     };
     wepButtons.push({ value: w.value, el: b });
     wepRow.append(b);
   }
   const paintWeapons = () => {
-    for (const { value, el } of wepButtons) el.classList.toggle("selected", value === spec.weapon);
+    for (const { value, el } of wepButtons) el.classList.toggle("selected", value === state.weapon);
   };
   paintWeapons();
-  wepGroup.append(wepLabel, wepRow);
+  wepGroup.append(wepRow);
+
+  // --- officers to bring (each leads a squad) ---
+  const offGroup = group(card);
+  label(offGroup).textContent = "Officers to bring — each leads a squad";
+  const offList = document.createElement("div");
+  offList.className = "deploy-officers";
+  const offRows: { o: OfficerProfile; el: HTMLButtonElement }[] = [];
+  for (const o of roster.officers) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "deploy-officer";
+    const name = document.createElement("span");
+    name.className = "deploy-officer-name";
+    name.textContent = o.name;
+    const stats = document.createElement("span");
+    stats.className = "deploy-officer-stats";
+    stats.textContent = `fero ${o.ferocity} · marks ${o.marks} · morale ${o.morale}`;
+    b.append(name, stats);
+    b.onclick = () => {
+      if (state.chosen.has(o.id)) state.chosen.delete(o.id);
+      else state.chosen.add(o.id);
+      paintOfficers();
+    };
+    offRows.push({ o, el: b });
+    offList.append(b);
+  }
+  const paintOfficers = () => {
+    for (const { o, el } of offRows) el.classList.toggle("selected", state.chosen.has(o.id));
+  };
+  paintOfficers();
+  offGroup.append(offList);
 
   // --- launch ---
   const launch = document.createElement("button");
@@ -99,12 +149,25 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
   launch.textContent = "Land the party";
   launch.onclick = () => {
     root.remove();
-    onConfirm({ ...spec });
+    onConfirm(buildSpec(state, roster));
   };
+  card.append(launch);
 
-  card.append(sizeGroup, wepGroup, launch);
-  root.append(card);
   document.body.appendChild(root);
+}
+
+function group(parent: HTMLElement): HTMLElement {
+  const g = document.createElement("div");
+  g.className = "deploy-group";
+  parent.append(g);
+  return g;
+}
+
+function label(parent: HTMLElement): HTMLElement {
+  const l = document.createElement("div");
+  l.className = "deploy-label";
+  parent.append(l);
+  return l;
 }
 
 function stepButton(text: string): HTMLButtonElement {

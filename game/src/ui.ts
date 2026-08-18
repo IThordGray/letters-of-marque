@@ -74,7 +74,7 @@ function updatePanel(app: App, panel: HTMLElement) {
   if (u) {
     panel.className = `panel ${u.side}`;
     panel.replaceChildren(
-      row("panel-head", `${u.side === "player" ? "Ally" : "Enemy"} · ${u.kind === "officer" ? "Officer" : "Pirate"}`),
+      row("panel-head", `${u.side === "player" ? "Ally" : "Enemy"} · ${u.kind === "officer" ? (u.name ?? "Officer") : "Pirate"}`),
       row("panel-line", `${STATE_LABEL[u.state]} · morale ${Math.round(u.morale)}`),
       row("panel-line", `HP ${u.hp}/${u.maxHp} · ${WEAPON_LABEL[u.weapon]}`),
       row("panel-line", `${STANCE_LABEL[u.stance]} · fero ${u.ferocity} · marks ${u.marks}`),

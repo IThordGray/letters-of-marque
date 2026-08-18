@@ -199,3 +199,40 @@ body {
 .deploy-launch:hover {
   background: #6db4ff;
 }
+.deploy-officers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+.deploy-officer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 12px;
+  color: #e8f4fb;
+  background: #0e2530;
+  border: 1px solid #24414d;
+  border-left: 3px solid #24414d;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.deploy-officer:hover {
+  border-color: #35617a;
+}
+.deploy-officer.selected {
+  border-left-color: #4ea3ff;
+  background: #12303f;
+}
+.deploy-officer-name {
+  font-weight: 600;
+}
+.deploy-officer-stats {
+  color: #8fb0c0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
