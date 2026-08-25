@@ -88,7 +88,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.fillStyle = COLOR.text;
     ctx.font = "12px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(obj.seized ? "Strongbox — seized" : "Strongbox", c.x, c.y - s - 8);
+    ctx.fillText(obj.seized ? "Strongbox — carried" : "Strongbox", c.x, c.y - s - 8);
     ctx.textAlign = "left";
   }
 

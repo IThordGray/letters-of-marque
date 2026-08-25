@@ -3,11 +3,13 @@ import type { Unit } from "./types";
 import { RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
+import { desc } from "./naming";
 
-// The raid scenario layer: the objective (seize it), the extraction zone (the boats), and
-// the graded outcome. "Win by breaking WILL" is preserved — only now it's shaped into an
-// objective raid: take the prize and get it to the boats; you lose when your own will
-// breaks. Pure and deterministic; run after movement/morale so it reads current state.
+// The raid scenario layer: the objective (seize it, then carry it), the extraction zone
+// (the boats), the alarm (the garrison rouses), and the graded outcome. "Win by breaking
+// WILL" is preserved — shaped into an objective raid: take the prize and get it to the
+// boats; you lose when your own will breaks. Pure and deterministic; run after
+// movement/morale so it reads current positions and states.
 export function stepRaid(world: World, dt: number) {
   if (world.over) return;
 
@@ -18,21 +20,40 @@ export function stepRaid(world: World, dt: number) {
   }
 
   const obj = world.raid.objective;
+
+  // a carried prize rides with its carrier; a fallen or broken carrier drops it where he stands
+  if (obj && obj.seized && world.raid.carrierId != null) {
+    const carrier = world.units.find((u) => u.id === world.raid.carrierId);
+    if (!carrier || carrier.state === "down" || carrier.state === "routing") {
+      obj.seized = false;
+      obj.seizeProgress = 0;
+      world.raid.carrierId = null;
+      signal(world, "The strongbox is dropped — take it up again!");
+    } else {
+      obj.x = carrier.x;
+      obj.y = carrier.y;
+    }
+  }
+
+  // seize / re-take the prize when it's on the ground
   if (obj && !obj.seized) {
-    let onIt = false;
+    let holder: Unit | undefined;
+    let best = RAID.seizeRange;
     for (const u of world.units) {
       if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
-      if (dist(u.x, u.y, obj.x, obj.y) <= RAID.seizeRange) {
-        onIt = true;
-        break;
+      const d = dist(u.x, u.y, obj.x, obj.y);
+      if (d <= best) {
+        best = d;
+        holder = u;
       }
     }
-    if (onIt) {
+    if (holder) {
       obj.seizeProgress += dt;
       if (obj.seizeProgress >= RAID.seizeTime) {
         obj.seized = true;
+        world.raid.carrierId = holder.id;
         world.raid.alarm = Math.max(world.raid.alarm, 1); // the theft is discovered
-        signal(world, "The strongbox is seized — now get it to the boats!");
+        signal(world, `${desc(holder)} takes the strongbox — get it to the boats!`);
       }
     } else {
       obj.seizeProgress = 0; // slip off it and the work is lost
@@ -59,13 +80,11 @@ function raidersSpotted(world: World): boolean {
 }
 
 // Graded outcome. The objective is the point and breaking will is the means: you win by
-// getting the seized prize to the boats (or clearing the field once you hold it); you can
-// withdraw empty-handed and survive; you lose when your band's own will breaks.
+// getting the carried prize to the boats (or clearing the field while you hold it); you
+// can withdraw empty-handed and survive; you lose when your band's own will breaks.
 function checkRaidOutcome(world: World) {
   if (world.over) return;
-  const obj = world.raid.objective;
   const ext = world.raid.extraction;
-  const seized = !!obj?.seized;
 
   const living = world.units.filter((u) => u.side === "player" && u.state !== "down");
   const atBoats = (u: Unit) => !!ext && u.state !== "routing" && u.y >= ext.y;
@@ -76,8 +95,11 @@ function checkRaidOutcome(world: World) {
   for (const u of living) if (fighting(u) && !atBoats(u)) pFight++;
   const pDown = world.units.filter((u) => u.side === "player" && u.state === "down").length;
 
-  // success — the prize is seized and either aboard, or the field is clear to carry it out
-  if (seized && (living.some(atBoats) || eFight === 0)) {
+  const carrier = world.raid.carrierId != null ? world.units.find((u) => u.id === world.raid.carrierId) : undefined;
+  const held = !!carrier && carrier.state !== "down";
+
+  // success — the carrier gets the prize to the boats, or the field is cleared while held
+  if (held && (atBoats(carrier!) || eFight === 0)) {
     const grade: RaidResult = pDown === 0 ? "clean" : "pyrrhic";
     endRaid(
       world,
@@ -90,12 +112,12 @@ function checkRaidOutcome(world: World) {
   }
 
   // failed but survived — empty-handed, but the whole living band has pulled back to the boats
-  if (obj && !seized && living.length > 0 && living.every(atBoats)) {
+  if (!held && living.length > 0 && living.every(atBoats)) {
     endRaid(world, "failed", "You pull back to the boats empty-handed — your people live to raid again.");
     return;
   }
 
-  // disaster — no one left willing to fight (and the prize isn't away)
+  // disaster — no one left willing to fight and the prize isn't away
   if (pFight === 0) {
     endRaid(world, "disaster", "Your band breaks and scatters — the raid fails.");
   }
