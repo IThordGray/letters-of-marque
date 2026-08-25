@@ -3,6 +3,27 @@ import type { Unit } from "./types";
 import { WORLD, COLOR, UNIT, FLASH, PRESENCE, RAID } from "./constants";
 import { worldToScreen } from "./camera";
 
+const ROOF: Record<string, string> = {
+  dwelling: COLOR.roofDwelling,
+  warehouse: COLOR.roofWarehouse,
+  church: COLOR.roofStone,
+  governor: COLOR.roofStone,
+  fort: COLOR.roofStone,
+  gaol: COLOR.roofBarracks,
+  barracks: COLOR.roofBarracks,
+  magazine: COLOR.roofMagazine,
+  wall: COLOR.wall,
+};
+const BUILDING_LABEL: Record<string, string> = {
+  church: "Strong-house",
+  governor: "Governor's",
+  fort: "Battery",
+  barracks: "Barracks",
+  magazine: "Powder",
+  warehouse: "Goods",
+  gaol: "Gaol",
+};
+
 function unitColor(u: Unit): string {
   if (u.state === "routing") return COLOR.routing; // routers wash out to grey
   if (u.side === "player") return u.kind === "officer" ? COLOR.playerOfficer : COLOR.player;
@@ -34,6 +55,45 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.globalAlpha = 0.55;
     ctx.fillRect(a.x, a.y, b2.x - a.x, b2.y - a.y);
     ctx.globalAlpha = 1;
+  }
+
+  // the town — sea + beach along the near edge, a cobbled plaza, then the buildings
+  {
+    const br = worldToScreen(cam, WORLD.width, WORLD.height, w, h);
+    const seaT = worldToScreen(cam, 0, WORLD.height - 140, w, h);
+    ctx.fillStyle = COLOR.sea;
+    ctx.fillRect(seaT.x, seaT.y, br.x - seaT.x, br.y - seaT.y);
+    const beachT = worldToScreen(cam, 0, WORLD.height - 420, w, h);
+    ctx.fillStyle = COLOR.beach;
+    ctx.fillRect(beachT.x, beachT.y, br.x - beachT.x, seaT.y - beachT.y);
+    const p0 = worldToScreen(cam, 980, 500, w, h);
+    const p1 = worldToScreen(cam, 1440, 820, w, h);
+    ctx.fillStyle = COLOR.plaza;
+    ctx.fillRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "11px system-ui, sans-serif";
+    for (const bld of world.buildings) {
+      const a2 = worldToScreen(cam, bld.x, bld.y, w, h);
+      const c2 = worldToScreen(cam, bld.x + bld.w, bld.y + bld.h, w, h);
+      const bw2 = c2.x - a2.x;
+      const bh2 = c2.y - a2.y;
+      ctx.fillStyle = COLOR.buildingShadow;
+      ctx.fillRect(a2.x + 3, a2.y + 4, bw2, bh2);
+      ctx.fillStyle = ROOF[bld.kind] ?? COLOR.roofDwelling;
+      ctx.fillRect(a2.x, a2.y, bw2, bh2);
+      ctx.strokeStyle = COLOR.buildingOutline;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(a2.x, a2.y, bw2, bh2);
+      const lbl = BUILDING_LABEL[bld.kind];
+      if (lbl && bh2 > 16) {
+        ctx.fillStyle = COLOR.text;
+        ctx.fillText(lbl, a2.x + bw2 / 2, a2.y + bh2 / 2);
+      }
+    }
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
   }
 
   // the extraction zone — the beach / boats along the near edge

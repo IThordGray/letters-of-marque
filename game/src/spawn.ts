@@ -1,5 +1,5 @@
 import type { World } from "./world";
-import type { Side, UnitKind, WeaponType, Stance } from "./types";
+import type { Side, UnitKind, WeaponType, Stance, BuildingKind } from "./types";
 import type { OfficerProfile } from "./roster";
 import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID } from "./constants";
 import { formationSlots } from "./formation";
@@ -148,10 +148,41 @@ function seedTerrain(world: World) {
   );
 }
 
+// The town — an open Caribbean port authored by hand (S2). A landward palisade + central
+// gate at the back, the plaza with the strong-house (the prize lives inside it), the
+// governor's house and the battery, dwellings + a gaol/magazine down the main street, and
+// warehouses on the docks by the water. Buildings only render for now (no collision yet).
+function seedTown(world: World) {
+  let id = 1;
+  const b = (kind: BuildingKind, x: number, y: number, w: number, h: number) =>
+    world.buildings.push({ id: id++, kind, x, y, w, h, state: "intact" });
+  // landward palisade with a central gate gap (the muster pours through it)
+  b("wall", 180, 130, 760, 36);
+  b("wall", 1460, 130, 760, 36);
+  b("barracks", 1080, 180, 240, 120);
+  // the plaza ring — strong-house (prize inside), governor's house, the battery on the rise
+  b("fort", 720, 300, 190, 200);
+  b("church", 1085, 330, 230, 160);
+  b("governor", 1520, 330, 210, 150);
+  // the town proper — dwellings + a gaol and powder magazine flanking the main street
+  b("dwelling", 560, 820, 200, 150);
+  b("dwelling", 820, 900, 190, 140);
+  b("gaol", 1560, 860, 220, 150);
+  b("dwelling", 1560, 1080, 200, 150);
+  b("dwelling", 560, 1120, 210, 150);
+  b("magazine", 880, 1300, 170, 150);
+  b("dwelling", 1500, 1350, 200, 150);
+  // docks + warehouses by the water
+  b("warehouse", 640, 1820, 300, 180);
+  b("warehouse", 1460, 1820, 320, 180);
+  b("dwelling", 1050, 1900, 220, 150);
+}
+
 // Build a battle: the player's composed landing party vs the fixed garrison, with the
 // raid objective set behind the defenders (you must drive through them to reach it).
 export function populateBattle(world: World, party: PartySpec) {
   seedTerrain(world);
+  seedTown(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
   world.raid.objective = { x: WORLD.width / 2, y: 400, seized: false, seizeProgress: 0 };

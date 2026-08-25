@@ -52,3 +52,29 @@ export interface Terrain {
   w: number;
   h: number;
 }
+
+export type BuildingKind =
+  | "dwelling"
+  | "warehouse"
+  | "church"
+  | "governor"
+  | "gaol"
+  | "magazine"
+  | "barracks"
+  | "fort"
+  | "wall";
+export type BuildingState = "intact" | "looted" | "burning" | "razed";
+
+// A town structure: a footprint + a kind (what it is / will yield) + a state. The state
+// and loot are reserved for the plunder layer (loot / raze / torch); blocking movement
+// and fire come later (S5 / S6). For now buildings render and give the town its shape.
+export interface Building {
+  id: number;
+  kind: BuildingKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  state: BuildingState;
+  loot?: number; // reserved — value carried off when looted
+}

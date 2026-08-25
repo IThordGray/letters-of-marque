@@ -200,4 +200,16 @@ export const COLOR = {
   objectiveRing: "#ffe08a", // seize-progress ring
   objectiveDone: "#6de07a", // seized
   extraction: "#5aa9c0", // the boats / extraction zone
+  // town
+  sea: "#0f2f44",
+  beach: "#8f7d4e",
+  plaza: "#3b382f",
+  roofDwelling: "#7a5236",
+  roofWarehouse: "#8a6a3a",
+  roofStone: "#707480", // church / governor / battery
+  roofBarracks: "#463d34",
+  roofMagazine: "#7c3b31", // powder — reddish
+  buildingShadow: "rgba(0, 0, 0, 0.35)",
+  buildingOutline: "#1c130b",
+  wall: "#5a4632",
 };

@@ -1,4 +1,4 @@
-import type { Unit, Terrain } from "./types";
+import type { Unit, Terrain, Building } from "./types";
 import type { LogLine } from "./log";
 import type { Rng } from "./rng";
 import { makeRng } from "./rng";
@@ -39,6 +39,7 @@ export interface World {
   over: boolean; // battle decided
   outcome: string; // how it ended
   terrain: Terrain[]; // static field features (cover / high ground / chokes)
+  buildings: Building[]; // the town — structures with a kind + state (loot/raze/torch later)
   aiNextAt: number; // sim time of the enemy AI's next decision
   raid: RaidState; // the raid scenario (objective, extraction, alarm)
 }
@@ -54,6 +55,7 @@ export function makeWorld(): World {
     over: false,
     outcome: "",
     terrain: [],
+    buildings: [],
     aiNextAt: 0,
     raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, carrierId: null, result: null },
   };
