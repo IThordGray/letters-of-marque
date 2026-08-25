@@ -5,6 +5,7 @@ import { dist } from "./math";
 import { signal } from "./log";
 import { desc } from "./naming";
 import { terrainAt } from "./terrain";
+import { findPath, pathBlocked } from "./nav";
 
 function nearestEnemyWithin(world: World, u: Unit, range: number): Unit | null {
   let best: Unit | null = null;
@@ -78,15 +79,19 @@ export function stepMovement(world: World, dt: number) {
     }
 
     if (moving) {
-      const dx = tx - u.x;
-      const dy = ty - u.y;
-      const d = Math.hypot(dx, dy);
-      if (d <= MOVE.arriveSlack) {
+      const distToGoal = Math.hypot(tx - u.x, ty - u.y);
+      if (distToGoal <= MOVE.arriveSlack) {
         if (clearOnArrive) {
           u.moveTarget = null;
           u.attackMove = false;
         }
+        u.path = undefined;
       } else {
+        // steer toward the goal directly if the line is clear, else along a path around buildings
+        const nav = navTarget(world, u, tx, ty);
+        const dx = nav.x - u.x;
+        const dy = nav.y - u.y;
+        const d = Math.hypot(dx, dy) || 1;
         u.facing = (Math.atan2(dy, dx) * 180) / Math.PI;
         const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
         const choke = terrainAt(world, u.x, u.y) === "choke" ? TERRAIN.chokeSpeedMult : 1;
@@ -142,6 +147,27 @@ function slideOutOfBuildings(world: World, u: Unit, px: number, py: number) {
   }
   u.x = px;
   u.y = py;
+}
+
+// The immediate point to steer toward: the goal itself if the straight line is clear,
+// else the next waypoint of a cached A* path around the buildings. String-pulled (drop
+// waypoints we can already see past) so the path reads smooth, not grid-jagged.
+function navTarget(world: World, u: Unit, tx: number, ty: number): { x: number; y: number } {
+  if (!pathBlocked(world, u.x, u.y, tx, ty)) {
+    u.path = undefined;
+    u.pathGoal = undefined;
+    return { x: tx, y: ty };
+  }
+  const goalMoved = !u.pathGoal || Math.hypot(u.pathGoal.x - tx, u.pathGoal.y - ty) > 48;
+  if (!u.path || u.path.length === 0 || goalMoved) {
+    u.path = findPath(world, u.x, u.y, tx, ty);
+    u.pathGoal = { x: tx, y: ty };
+  }
+  if (!u.path || u.path.length === 0) return { x: tx, y: ty }; // no path — head straight; wall-slide copes
+  while (u.path.length > 1 && !pathBlocked(world, u.x, u.y, u.path[1].x, u.path[1].y)) u.path.shift();
+  const wp = u.path[0];
+  if (Math.hypot(wp.x - u.x, wp.y - u.y) < 30 && u.path.length > 1) u.path.shift();
+  return u.path[0];
 }
 
 // Personal space: push overlapping figures apart. Deterministic; tuned below

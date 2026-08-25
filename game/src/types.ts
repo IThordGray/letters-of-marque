@@ -42,6 +42,10 @@ export interface Unit {
   // officers (KAN-18)
   squadId: number; // id of this figure's squad officer (an officer's own id for himself)
   rallyReadyAt: number; // sim time an officer may rally again
+
+  // navigation (KAN-52) — a cached path around buildings, recomputed when the goal moves
+  path?: { x: number; y: number }[];
+  pathGoal?: { x: number; y: number };
 }
 
 export type TerrainKind = "cover" | "highGround" | "choke";

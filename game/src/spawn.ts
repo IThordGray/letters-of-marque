@@ -5,6 +5,7 @@ import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID } from "./constants";
 import { formationSlots } from "./formation";
 import { makeRoster } from "./roster";
 import { signal } from "./log";
+import { buildNavGrid } from "./nav";
 
 // Optional overrides for a spawned figure. Omitted fields fall back to the kind's
 // defaults (officer → pistol & base stats, pirate → musket & base stats).
@@ -235,6 +236,7 @@ function seedTown(world: World) {
 export function populateBattle(world: World, party: PartySpec) {
   seedTown(world);
   deriveTerrain(world);
+  world.navGrid = buildNavGrid(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
   world.raid.objective = { x: WORLD.width / 2, y: 490, seized: false, seizeProgress: 0 }; // the church threshold (seized from the steps)

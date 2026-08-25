@@ -27,6 +27,15 @@ export interface RaidState {
   result: RaidResult | null; // set once the raid ends
 }
 
+// A coarse navigation grid over the field: cells flagged blocked where buildings sit, so
+// A* can route figures around them (built once from the town — see nav.ts).
+export interface NavGrid {
+  cols: number;
+  rows: number;
+  cell: number; // cell size in paces
+  blocked: Uint8Array; // 1 = a building occupies this cell
+}
+
 // A patrol: a small band walking a fixed waypoint route while the town is dormant. Once
 // the alarm is raised the AI takes them over (they stop patrolling and converge).
 export interface Patrol {
@@ -48,6 +57,7 @@ export interface World {
   outcome: string; // how it ended
   terrain: Terrain[]; // static field features (cover / high ground / chokes)
   buildings: Building[]; // the town — structures with a kind + state (loot/raze/torch later)
+  navGrid: NavGrid | null; // pathfinding grid, built from the buildings
   patrols: Patrol[]; // enemy patrols walking routes while dormant
   aiNextAt: number; // sim time of the enemy AI's next decision
   raid: RaidState; // the raid scenario (objective, extraction, alarm)
@@ -65,6 +75,7 @@ export function makeWorld(): World {
     outcome: "",
     terrain: [],
     buildings: [],
+    navGrid: null,
     patrols: [],
     aiNextAt: 0,
     raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, carrierId: null, result: null },
