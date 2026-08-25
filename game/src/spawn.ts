@@ -122,7 +122,7 @@ function spawnPlainBand(
 // The fixed test garrison — dug in on the rise in front of the prize, holding their
 // ground (firing from their posts) until the raid rouses them.
 function spawnEnemyGarrison(world: World) {
-  spawnPlainBand(world, "enemy", WORLD.width / 2, 250, DEPLOY.garrison, "musket", "holdGround");
+  spawnPlainBand(world, "enemy", WORLD.width / 2, 560, DEPLOY.garrison, "musket", "holdGround");
 }
 
 // The garrison's strength (defenders + their officer) — surfaced so the deploy screen
@@ -142,9 +142,9 @@ export function spawnReinforcementWave(world: World, pirates: number) {
 // with cover on the raider's approach and a choke on one flank.
 function seedTerrain(world: World) {
   world.terrain.push(
-    { kind: "highGround", x: WORLD.width / 2 - 220, y: 40, w: 440, h: 250 }, // the defended rise — the prize is on it
-    { kind: "cover", x: WORLD.width / 2 - 360, y: WORLD.height / 2 - 30, w: 720, h: 90 }, // cover on the approach
-    { kind: "choke", x: WORLD.width / 2 + 360, y: 300, w: 150, h: 460 }, // a flank choke
+    { kind: "highGround", x: WORLD.width / 2 - 280, y: 260, w: 560, h: 340 }, // the defended rise — the prize is on it
+    { kind: "cover", x: WORLD.width / 2 - 440, y: 1360, w: 880, h: 120 }, // cover on the long approach
+    { kind: "choke", x: WORLD.width / 2 + 520, y: 720, w: 180, h: 760 }, // a flank choke
   );
 }
 
@@ -154,7 +154,7 @@ export function populateBattle(world: World, party: PartySpec) {
   seedTerrain(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
-  world.raid.objective = { x: WORLD.width / 2, y: 150, seized: false, seizeProgress: 0 };
+  world.raid.objective = { x: WORLD.width / 2, y: 400, seized: false, seizeProgress: 0 };
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
 }
 

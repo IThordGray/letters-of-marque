@@ -6,7 +6,7 @@ import type { UnitKind, WeaponType } from "./types";
 // starting guesses — tune fast (morale especially, alongside a playtest).
 // ============================================================================
 
-export const WORLD = { width: 2000, height: 1500 };
+export const WORLD = { width: 2400, height: 2600 }; // deep approach axis — room for a town, not empty field
 
 export const SIM = {
   hz: 60,
