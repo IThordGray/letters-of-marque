@@ -138,14 +138,26 @@ export function spawnReinforcementWave(world: World, pirates: number) {
   signal(world, "Fresh defenders pour in from the town!");
 }
 
-// The raid ground: the prize sits on a defended rise (high ground for the garrison),
-// with cover on the raider's approach and a choke on one flank.
-function seedTerrain(world: World) {
-  world.terrain.push(
-    { kind: "highGround", x: WORLD.width / 2 - 280, y: 260, w: 560, h: 340 }, // the defended rise — the prize is on it
-    { kind: "cover", x: WORLD.width / 2 - 440, y: 1360, w: 880, h: 120 }, // cover on the long approach
-    { kind: "choke", x: WORLD.width / 2 + 520, y: 720, w: 180, h: 760 }, // a flank choke
-  );
+// Terrain read off the town layout: the battery & church sit on high ground, the landward
+// gate is a choke, and every other building gives cover along its walls. terrainAt is
+// first-match, so high ground + choke are pushed before the cover aprons (they win where
+// they overlap).
+function deriveTerrain(world: World) {
+  const t = world.terrain;
+  for (const b of world.buildings) {
+    if (b.kind === "fort" || b.kind === "church") {
+      t.push({ kind: "highGround", x: b.x - 40, y: b.y - 40, w: b.w + 80, h: b.h + 80 });
+    }
+  }
+  const walls = world.buildings.filter((wl) => wl.kind === "wall").sort((a, c) => a.x - c.x);
+  if (walls.length === 2) {
+    const gx0 = walls[0].x + walls[0].w;
+    t.push({ kind: "choke", x: gx0, y: walls[0].y - 30, w: walls[1].x - gx0, h: 150 }); // the gate
+  }
+  for (const b of world.buildings) {
+    if (b.kind === "wall" || b.kind === "fort" || b.kind === "church") continue;
+    t.push({ kind: "cover", x: b.x - 14, y: b.y - 14, w: b.w + 28, h: b.h + 28 }); // fight from the walls
+  }
 }
 
 // The town — a small 16th-century Spanish-colonial port laid out on the "Laws of the
@@ -198,8 +210,8 @@ function seedTown(world: World) {
 // Build a battle: the player's composed landing party vs the fixed garrison, with the
 // raid objective set behind the defenders (you must drive through them to reach it).
 export function populateBattle(world: World, party: PartySpec) {
-  seedTerrain(world);
   seedTown(world);
+  deriveTerrain(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
   world.raid.objective = { x: WORLD.width / 2, y: 400, seized: false, seizeProgress: 0 };

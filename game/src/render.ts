@@ -47,19 +47,8 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   ctx.lineWidth = 2;
   ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
 
-  // terrain features (translucent patches)
-  for (const t of world.terrain) {
-    const a = worldToScreen(cam, t.x, t.y, w, h);
-    const b2 = worldToScreen(cam, t.x + t.w, t.y + t.h, w, h);
-    ctx.fillStyle = t.kind === "cover" ? COLOR.cover : t.kind === "highGround" ? COLOR.highGround : COLOR.choke;
-    ctx.globalAlpha = 0.55;
-    ctx.fillRect(a.x, a.y, b2.x - a.x, b2.y - a.y);
-    ctx.globalAlpha = 1;
-  }
-
-  // the town — sea + beach along the near edge, a cobbled plaza, then the buildings
+  // the ground the town sits on — cleared dirt, then the sea + beach at the near edge
   {
-    // the cleared ground the town sits on — streets read as the dirt between blocks
     const tg0 = worldToScreen(cam, 640, 200, w, h);
     const tg1 = worldToScreen(cam, 1760, 2180, w, h);
     ctx.fillStyle = COLOR.townGround;
@@ -71,6 +60,20 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     const beachT = worldToScreen(cam, 0, WORLD.height - 420, w, h);
     ctx.fillStyle = COLOR.beach;
     ctx.fillRect(beachT.x, beachT.y, br.x - beachT.x, seaT.y - beachT.y);
+  }
+
+  // terrain features (translucent) — on the ground so cover / high ground / chokes read
+  for (const t of world.terrain) {
+    const a = worldToScreen(cam, t.x, t.y, w, h);
+    const b2 = worldToScreen(cam, t.x + t.w, t.y + t.h, w, h);
+    ctx.fillStyle = t.kind === "cover" ? COLOR.cover : t.kind === "highGround" ? COLOR.highGround : COLOR.choke;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(a.x, a.y, b2.x - a.x, b2.y - a.y);
+    ctx.globalAlpha = 1;
+  }
+
+  // the town structures — a cobbled plaza, then the buildings
+  {
     const p0 = worldToScreen(cam, 980, 500, w, h);
     const p1 = worldToScreen(cam, 1440, 820, w, h);
     ctx.fillStyle = COLOR.plaza;
