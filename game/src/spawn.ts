@@ -129,11 +129,13 @@ function seedTerrain(world: World) {
   );
 }
 
-// Build a battle: the player's composed landing party vs the fixed garrison.
+// Build a battle: the player's composed landing party vs the fixed garrison, with the
+// raid objective set behind the defenders (you must drive through them to reach it).
 export function populateBattle(world: World, party: PartySpec) {
   seedTerrain(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
+  world.raid.objective = { x: WORLD.width / 2, y: 150, seized: false, seizeProgress: 0 };
 }
 
 // Default party vs garrison — kept for headless smokes and a no-deploy fallback.

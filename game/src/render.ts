@@ -1,6 +1,6 @@
 import type { App } from "./app";
 import type { Unit } from "./types";
-import { WORLD, COLOR, UNIT, FLASH, PRESENCE } from "./constants";
+import { WORLD, COLOR, UNIT, FLASH, PRESENCE, RAID } from "./constants";
 import { worldToScreen } from "./camera";
 
 function unitColor(u: Unit): string {
@@ -34,6 +34,34 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.globalAlpha = 0.55;
     ctx.fillRect(a.x, a.y, b2.x - a.x, b2.y - a.y);
     ctx.globalAlpha = 1;
+  }
+
+  // the raid objective — a marked prize behind the defenders
+  const obj = world.raid.objective;
+  if (obj) {
+    const c = worldToScreen(cam, obj.x, obj.y, w, h);
+    const s = Math.max(RAID.objectiveRadius * cam.zoom, 6);
+    ctx.save();
+    ctx.translate(c.x, c.y);
+    ctx.rotate(Math.PI / 4); // a diamond reads as "objective", not a terrain rect
+    ctx.fillStyle = obj.seized ? COLOR.objectiveDone : COLOR.objective;
+    ctx.fillRect(-s, -s, s * 2, s * 2);
+    ctx.strokeStyle = COLOR.outline;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-s, -s, s * 2, s * 2);
+    ctx.restore();
+    if (!obj.seized && obj.seizeProgress > 0) {
+      ctx.strokeStyle = COLOR.objectiveRing;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, s + 6, -Math.PI / 2, -Math.PI / 2 + (obj.seizeProgress / RAID.seizeTime) * Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = COLOR.text;
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(obj.seized ? "Strongbox — seized" : "Strongbox", c.x, c.y - s - 8);
+    ctx.textAlign = "left";
   }
 
   // the fallen first, dim, so the living draw over them

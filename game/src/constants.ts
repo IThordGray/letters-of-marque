@@ -123,6 +123,13 @@ export const DEPLOY = {
   garrison: 14, // enemy defenders (grown for the asymmetric feel — see S5)
 };
 
+// ---- Raid scenario — objective / extraction / alarm ------------------------
+export const RAID = {
+  objectiveRadius: 24, // drawn half-size of the objective marker (paces)
+  seizeRange: 46, // a player figure this close can work the objective
+  seizeTime: 2.0, // seconds held on the objective to seize it
+};
+
 // ---- Movement --------------------------------------------------------------
 export const MOVE = {
   speed: 90, // paces/sec
@@ -175,4 +182,7 @@ export const COLOR = {
   stanceAggressive: "#ff9a3c",
   stanceHold: "#6fc6ff",
   stanceCease: "#9fb9c6",
+  objective: "#ffcf4a", // the prize to seize
+  objectiveRing: "#ffe08a", // seize-progress ring
+  objectiveDone: "#6de07a", // seized
 };

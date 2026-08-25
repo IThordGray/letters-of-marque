@@ -11,6 +11,7 @@ import { startLoop } from "./loop";
 import { stepMovement, stepSeparation } from "./movement";
 import { stepCombat } from "./combat";
 import { stepMorale } from "./morale";
+import { stepRaid } from "./raid";
 import { stepAI } from "./ai";
 import { signal } from "./log";
 import { SIM } from "./constants";
@@ -61,6 +62,7 @@ function startBattle(spec: PartySpec) {
       stepMovement(world, dt);
       stepCombat(world, dt);
       stepMorale(world, dt);
+      stepRaid(world, dt);
       stepSeparation(world);
       world.time += dt;
     },
