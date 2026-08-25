@@ -12,6 +12,7 @@ import { stepMovement, stepSeparation } from "./movement";
 import { stepCombat } from "./combat";
 import { stepMorale } from "./morale";
 import { stepRaid } from "./raid";
+import { stepPatrol } from "./patrol";
 import { stepAI } from "./ai";
 import { signal } from "./log";
 import { SIM } from "./constants";
@@ -59,6 +60,7 @@ function startBattle(spec: PartySpec) {
     hz: SIM.hz,
     update: (dt) => {
       stepAI(world);
+      stepPatrol(world);
       stepMovement(world, dt);
       stepCombat(world, dt);
       stepMorale(world, dt);

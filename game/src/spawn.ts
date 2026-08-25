@@ -119,10 +119,33 @@ function spawnPlainBand(
   }
 }
 
-// The fixed test garrison — dug in on the rise in front of the prize, holding their
-// ground (firing from their posts) until the raid rouses them.
+// A sentry post — a pair holding a forward corner (no officer); first to spot raiders.
+function spawnPost(world: World, x: number, y: number, n: number) {
+  const slots = formationSlots(n, x, y, SPAWN.spacing);
+  for (let i = 0; i < n; i++) {
+    spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround" });
+  }
+}
+
+// A patrol — a small band that walks a fixed street route while the town is dormant.
+function spawnPatrol(world: World, route: { x: number; y: number }[], n: number) {
+  const slots = formationSlots(n, route[0].x, route[0].y, SPAWN.spacing);
+  const members: number[] = [];
+  for (let i = 0; i < n; i++) {
+    members.push(spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround" }));
+  }
+  world.patrols.push({ members, route, idx: 1 });
+}
+
+// The garrison, distributed like a town's watch rather than one blob: the main guard holds
+// the plaza (the prize), sentries hold the seaward approach, and two patrols walk the
+// cross-streets. Same headcount as before (matches enemyGarrisonSize), spread in depth.
 function spawnEnemyGarrison(world: World) {
-  spawnPlainBand(world, "enemy", WORLD.width / 2, 640, DEPLOY.garrison, "musket", "holdGround");
+  spawnPlainBand(world, "enemy", 1200, 700, 6, "musket", "holdGround"); // plaza guard (officer + 6)
+  spawnPost(world, 1050, 1680, 2); // sentries — seaward approach, west
+  spawnPost(world, 1350, 1680, 2); // sentries — seaward approach, east
+  spawnPatrol(world, [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], 2); // upper cross-street
+  spawnPatrol(world, [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], 2); // lower cross-street
 }
 
 // The garrison's strength (defenders + their officer) — surfaced so the deploy screen

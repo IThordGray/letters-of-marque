@@ -27,6 +27,14 @@ export interface RaidState {
   result: RaidResult | null; // set once the raid ends
 }
 
+// A patrol: a small band walking a fixed waypoint route while the town is dormant. Once
+// the alarm is raised the AI takes them over (they stop patrolling and converge).
+export interface Patrol {
+  members: number[]; // unit ids
+  route: { x: number; y: number }[];
+  idx: number; // waypoint currently heading to
+}
+
 // The mutable state of one land battle. Data-oriented: the world owns flat
 // collections that pure systems iterate — no behaviour lives on the data itself.
 export interface World {
@@ -40,6 +48,7 @@ export interface World {
   outcome: string; // how it ended
   terrain: Terrain[]; // static field features (cover / high ground / chokes)
   buildings: Building[]; // the town — structures with a kind + state (loot/raze/torch later)
+  patrols: Patrol[]; // enemy patrols walking routes while dormant
   aiNextAt: number; // sim time of the enemy AI's next decision
   raid: RaidState; // the raid scenario (objective, extraction, alarm)
 }
@@ -56,6 +65,7 @@ export function makeWorld(): World {
     outcome: "",
     terrain: [],
     buildings: [],
+    patrols: [],
     aiNextAt: 0,
     raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, carrierId: null, result: null },
   };
