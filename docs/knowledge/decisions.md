@@ -10,6 +10,38 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-25 — The town raid ground: an open Caribbean port; buildings are game objects, not scenery
+The raid happens *in* a town, not on an open field — playtest showed the field fight is a
+slugfest that can't be balanced because the environment does nothing. Ratified shape (shaped
+with the game-designer):
+- **An open Caribbean port**, not a fortress: open waterfront + docks (where you land, and the
+  extraction), a main street up through irregular lanes to a **plaza** with the strong-house (the
+  objective sits *inside* it), warehouses, a gaol, a powder magazine, a **barracks** at the back the
+  muster sorties from, a **battery** on the high ground, a **token landward palisade + gate**. A
+  walled-fort assault is a later *scenario type*, not the default.
+- **Buildings are first-class entities** (a `Building` with `kind` + reserved `state`/`loot`), not
+  render decoration or terrain rects — so the town **feels part of the game, not just obstructions**
+  (the human's explicit steer). You'll **loot / raze / torch** them (deferred plunder layer);
+  churches & the governor's house are the rich targets; and — per Cutthroats — a building is **set
+  alight by spending powder** on it (powder is ammo *and* incendiary). The loot-vs-gold split
+  collapses into one legible **haul**, typed by building.
+- **No fog-of-war / vision cones** (ratified by the human): the player keeps full top-down
+  visibility; buildings block only **fire** (line-of-sight) and **movement**; the alarm stays
+  diegetic-proximity. Keeps it a brawl, not a stealth puzzle.
+- **Distributed garrison** replaces the single clustered band — sentries at posts, patrols on
+  routes, the guard at the plaza, a reaction force sortieing from the barracks — *same headcount,
+  spread in depth*, wired to the alarm already built (a sentry/patrol spotting you is the rouse; the
+  waves are the muster).
+- **Sequencing principle:** most of the town feel + tactical uplift needs **no pathfinding or LOS**
+  — reuse cover/high/choke + placement first; the heavy tail is **movement-block (thin collision) →
+  fire-LOS → full pathfinding**, sequenced last.
+*Why:* geography is what makes the asymmetric raid balanceable and interesting (positioning bites; a
+distributed garrison breaks in pieces, not as one bar); and an interactive town is the substrate the
+open-ended plunder layer needs. Map grows to ~2400×2600 — every added pace town or approach, never
+empty field.
+
+---
+
 ### 2026-08-25 — Raids are open-ended plunder: cost vs reward, not a binary win/lose
 Sharpening the raid frame (from the human). A raid is **piracy**, not a mission with one
 win-flag: you're there to **take what you can and get out before it costs more than it's

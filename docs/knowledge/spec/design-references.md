@@ -26,6 +26,12 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
 - Land raids in the OG were **straight field fights** — no objective / extraction / alarm
   structure. **[confirmed]** Our raid *adds* that deliberately (objective + extraction +
   diegetic alarm) — a departure we chose, not inherited from the lineage.
+- Towns were **lootable / razable at the building level**: you could loot **or** raze any
+  building; churches & the governor's house yielded loot **and** gold; a building could be
+  **set on fire by putting powder in it**. **[confirmed]** We keep the building-level
+  interactivity (loot / raze / torch-by-powder) but fold the loot-vs-gold split into one
+  legible **haul**, typed by building. The human's steer: the town must **feel part of the
+  game, not just obstructions**.
 - _(Add confirmed mechanics and feel here as we go.)_
 
 ## Genre mechanic patterns
@@ -131,6 +137,36 @@ raised by *tactical diegetic events* (gunfire volume, time ashore, seizing, and 
 defenders escaping off-map — the will-spine feeding the clock), and its muster must **close
 the window** rather than invite farming. Loud-vs-quiet is where the deploy-screen weapon
 loadout cashes out.
+
+### Town / settlement raid layout
+How comparable games build a settlement you break into — research inputs only.
+- **Diorama stealth-tactics (Shadow Tactics / Desperados III / Commandos):** dense alleys,
+  courtyards, rooftops, hand-placed guards, sightlines, high/low ground. *Take:* dispersed guards
+  + patrols + sightline-blocking + high/low. *Reject:* vision-cone puzzle-lock + fail-on-detection
+  — ours is a morale brawl, not a solvable lock.
+- **RTS island defense (Bad North — the design-doc's visual reference):** ultra-readable top-down;
+  buildings you defend *and* torch; chokepoints + high ground as the whole vocabulary; "flat maps
+  are undefendable." *Take:* the readability bar, buildings-as-torchable, choke/high-ground as the
+  primary terrain verbs. Our closest cousin.
+- **Campaign-map town raid (Bannerlord / Pirates!):** the militia turns out; street barricades make
+  chokes; a watchtower gives early warning. *Take:* reaction-force turnout, authored choke
+  barricades, early-warning posts. *Reject:* the abstraction (a menu / open field with no real town
+  — the gap we fill).
+- **Urban destructible RTS (C&C / Urban Assault):** buildings as hard LOS + movement blockers;
+  torch / breach as a verb. *Take:* buildings block LOS + movement (our late stories). *Reject:*
+  real-time navmesh rebuild on destruction.
+- **RATIFIED — pirate verdict:** a ragged **open Caribbean port** (open waterfront + landward
+  palisade/gate + battery), plaza-centred, irregular streets, watchmen-not-army; buildings are
+  **game objects** (loot / raze / torch-by-powder), not obstructions; **no fog-of-war, fire-LOS
+  only**; a brawl, not a stealth puzzle. (See `../decisions.md`, 2026-08-25.)
+
+### Garrison distribution / patrols
+- **Sentries at posts** (first contact — spotting you is the rouse), **patrols on waypoint routes**
+  (a town that reads as watched, not parked), the **objective guard** at the plaza, and a **reaction
+  force** sortieing from the **barracks** at the alarm's origin. Same headcount as one band, spread
+  in depth so will breaks in pieces (a sentry runs, a patrol wavers, the plaza guard holds). Ties to
+  the alarm already built; achievable with placement + the existing sally-AI — **no new AI system**.
+  Later refinement: a **local** rouse (nearby posts wake first) before a global one.
 
 ### Boarding · campaign / reputation · trade
 - _(Seeded as those features arrive.)_
