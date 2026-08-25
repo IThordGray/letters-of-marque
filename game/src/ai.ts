@@ -1,12 +1,13 @@
 import type { World } from "./world";
 import { AI } from "./constants";
 
-// Baseline enemy AI: every so often, order each fighting enemy to attack-move toward
-// the player's centre of mass. Movement's attack-move logic does the rest — advance,
-// then auto-engage anything met on the way. Deliberately simple; faction-flavoured
-// tactics are a later story (see KAN-28).
+// Baseline enemy AI. While the garrison is dormant (alarm 0) it holds — dug in, firing
+// from its posts, issuing no advance. Once roused it sallies: every so often, order each
+// fighting enemy to attack-move toward the player's centre of mass; movement does the
+// rest. Deliberately simple; faction-flavoured tactics are a later story (see KAN-28).
 export function stepAI(world: World) {
-  if (world.over || world.time < world.aiNextAt) return;
+  if (world.over || world.raid.alarm === 0) return; // dug in — hold until roused
+  if (world.time < world.aiNextAt) return;
   world.aiNextAt = world.time + AI.decisionInterval;
 
   // the player's living centre of mass
@@ -26,6 +27,7 @@ export function stepAI(world: World) {
 
   for (const e of world.units) {
     if (e.side !== "enemy" || e.state === "down" || e.state === "routing") continue;
+    e.stance = "aggressive"; // leave the posts and drive them off
     e.moveTarget = { x: px, y: py };
     e.attackMove = true;
     e.attackTargetId = null;

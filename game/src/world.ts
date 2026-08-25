@@ -21,6 +21,7 @@ export type RaidResult = "clean" | "pyrrhic" | "failed" | "disaster";
 export interface RaidState {
   objective: { x: number; y: number; seized: boolean; seizeProgress: number } | null;
   extraction: { y: number } | null; // a band along the near edge — the boats you landed from
+  alarm: number; // 0 = Quiet (garrison dug in, dormant); raised as the town wakes (staged in S5)
   result: RaidResult | null; // set once the raid ends
 }
 
@@ -52,6 +53,6 @@ export function makeWorld(): World {
     outcome: "",
     terrain: [],
     aiNextAt: 0,
-    raid: { objective: null, extraction: null, result: null },
+    raid: { objective: null, extraction: null, alarm: 0, result: null },
   };
 }

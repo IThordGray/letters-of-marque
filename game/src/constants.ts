@@ -128,6 +128,7 @@ export const RAID = {
   objectiveRadius: 24, // drawn half-size of the objective marker (paces)
   seizeRange: 46, // a player figure this close can work the objective
   seizeTime: 2.0, // seconds held on the objective to seize it
+  rouseRange: 240, // a raider this close to a dug-in defender rouses the garrison
 };
 
 // ---- Movement --------------------------------------------------------------

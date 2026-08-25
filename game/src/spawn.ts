@@ -1,5 +1,5 @@
 import type { World } from "./world";
-import type { Side, UnitKind, WeaponType } from "./types";
+import type { Side, UnitKind, WeaponType, Stance } from "./types";
 import type { OfficerProfile } from "./roster";
 import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY } from "./constants";
 import { formationSlots } from "./formation";
@@ -14,6 +14,7 @@ interface SpawnOpts {
   ferocity?: number;
   marks?: number;
   morale?: number;
+  stance?: Stance;
 }
 
 // The one place unit ids are minted. Returns the new unit's id.
@@ -43,7 +44,7 @@ export function spawnUnit(world: World, side: Side, kind: UnitKind, x: number, y
     state: "steady",
     lastCause: null,
     lastHitAt: -999,
-    stance: "aggressive",
+    stance: opts.stance ?? "aggressive",
     attackMove: false,
     squadId: kind === "officer" ? id : (opts.squadId ?? id),
     rallyReadyAt: 0,
@@ -101,17 +102,26 @@ function spawnPlayerParty(world: World, party: PartySpec) {
 }
 
 // A plain officer-led band (no roster / no rolled stats) — used for the enemy.
-function spawnPlainBand(world: World, side: Side, cx: number, cy: number, pirates: number, weapon?: WeaponType) {
+function spawnPlainBand(
+  world: World,
+  side: Side,
+  cx: number,
+  cy: number,
+  pirates: number,
+  weapon?: WeaponType,
+  stance?: Stance,
+) {
   const slots = formationSlots(pirates + 1, cx, cy, SPAWN.spacing);
-  const officerId = spawnUnit(world, side, "officer", slots[0].x, slots[0].y);
+  const officerId = spawnUnit(world, side, "officer", slots[0].x, slots[0].y, { stance });
   for (let i = 1; i <= pirates; i++) {
-    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon });
+    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon, stance });
   }
 }
 
-// The fixed test garrison the raid faces.
+// The fixed test garrison — dug in on the rise in front of the prize, holding their
+// ground (firing from their posts) until the raid rouses them.
 function spawnEnemyGarrison(world: World) {
-  spawnPlainBand(world, "enemy", WORLD.width / 2, SPAWN.edgeInset, DEPLOY.garrison, "musket");
+  spawnPlainBand(world, "enemy", WORLD.width / 2, 250, DEPLOY.garrison, "musket", "holdGround");
 }
 
 // The garrison's strength (defenders + their officer) — surfaced so the deploy screen
@@ -120,12 +130,13 @@ export function enemyGarrisonSize(): number {
   return DEPLOY.garrison + 1;
 }
 
-// Static field features to fight over (throwaway test layout).
+// The raid ground: the prize sits on a defended rise (high ground for the garrison),
+// with cover on the raider's approach and a choke on one flank.
 function seedTerrain(world: World) {
   world.terrain.push(
-    { kind: "cover", x: WORLD.width / 2 - 300, y: WORLD.height / 2 - 50, w: 600, h: 100 },
-    { kind: "highGround", x: WORLD.width / 2 - 720, y: WORLD.height / 2 - 130, w: 260, h: 220 },
-    { kind: "choke", x: WORLD.width / 2 + 440, y: WORLD.height / 2 - 260, w: 150, h: 520 },
+    { kind: "highGround", x: WORLD.width / 2 - 220, y: 40, w: 440, h: 250 }, // the defended rise — the prize is on it
+    { kind: "cover", x: WORLD.width / 2 - 360, y: WORLD.height / 2 - 30, w: 720, h: 90 }, // cover on the approach
+    { kind: "choke", x: WORLD.width / 2 + 360, y: 300, w: 150, h: 460 }, // a flank choke
   );
 }
 

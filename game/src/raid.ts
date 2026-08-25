@@ -11,6 +11,12 @@ import { signal } from "./log";
 export function stepRaid(world: World, dt: number) {
   if (world.over) return;
 
+  // the dug-in garrison rouses once raiders are on them
+  if (world.raid.alarm === 0 && raidersSpotted(world)) {
+    world.raid.alarm = 1;
+    signal(world, "The garrison rouses — they sally to drive you off!");
+  }
+
   const obj = world.raid.objective;
   if (obj && !obj.seized) {
     let onIt = false;
@@ -25,6 +31,7 @@ export function stepRaid(world: World, dt: number) {
       obj.seizeProgress += dt;
       if (obj.seizeProgress >= RAID.seizeTime) {
         obj.seized = true;
+        world.raid.alarm = Math.max(world.raid.alarm, 1); // the theft is discovered
         signal(world, "The strongbox is seized — now get it to the boats!");
       }
     } else {
@@ -37,6 +44,18 @@ export function stepRaid(world: World, dt: number) {
 
 function fighting(u: Unit): boolean {
   return u.state === "steady" || u.state === "wavering";
+}
+
+// A dug-in defender rouses once any raider closes within rouseRange of them.
+function raidersSpotted(world: World): boolean {
+  for (const e of world.units) {
+    if (e.side !== "enemy" || e.state === "down") continue;
+    for (const p of world.units) {
+      if (p.side !== "player" || p.state === "down") continue;
+      if (dist(e.x, e.y, p.x, p.y) <= RAID.rouseRange) return true;
+    }
+  }
+  return false;
 }
 
 // Graded outcome. The objective is the point and breaking will is the means: you win by
