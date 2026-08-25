@@ -159,6 +159,12 @@ How comparable games build a settlement you break into — research inputs only.
   palisade/gate + battery), plaza-centred, irregular streets, watchmen-not-army; buildings are
   **game objects** (loot / raze / torch-by-powder), not obstructions; **no fog-of-war, fire-LOS
   only**; a brawl, not a stealth puzzle. (See `../decisions.md`, 2026-08-25.)
+- **Forward — a living town, not a grid of boxes** (human steer): grow the building vocabulary
+  into a working economy — bakers, grocers, smiths, taverns, loggers, farms/plantations, more
+  churches — and loosen the rigid grid toward organic irregularity. Each type is a distinct
+  **loot / production source**, tying the town to the plunder layer and the *real* trade economy
+  (Port-Royale depth). Layout is hand-authored for now; terrain-driven placement comes later. The
+  current small colonial grid is a deliberate first pass, fine for the mechanics exercise.
 
 ### Garrison distribution / patrols
 - **Sentries at posts** (first contact — spotting you is the rouse), **patrols on waypoint routes**
