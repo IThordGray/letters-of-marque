@@ -91,8 +91,11 @@ export function stepMovement(world: World, dt: number) {
         const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
         const choke = terrainAt(world, u.x, u.y) === "choke" ? TERRAIN.chokeSpeedMult : 1;
         const step = Math.min(MOVE.speed * mult * choke * dt, d);
+        const px = u.x;
+        const py = u.y;
         u.x += (dx / d) * step;
         u.y += (dy / d) * step;
+        slideOutOfBuildings(world, u, px, py);
       }
     } else if (faceX !== null && faceY !== null) {
       u.facing = (Math.atan2(faceY - u.y, faceX - u.x) * 180) / Math.PI; // stand and face the foe
@@ -112,6 +115,33 @@ export function stepMovement(world: World, dt: number) {
       }
     }
   }
+}
+
+// Is (x, y) inside any building footprint (expanded by a small margin so figures stop
+// just shy of the wall)?
+function inBuilding(world: World, x: number, y: number): boolean {
+  const m = SEPARATION.radius * 0.5;
+  for (const b of world.buildings) {
+    if (x >= b.x - m && x <= b.x + b.w + m && y >= b.y - m && y <= b.y + b.h + m) return true;
+  }
+  return false;
+}
+
+// Wall-slide: if a step lands inside a building, keep whichever axis is still clear (slide
+// along the wall); if neither is, stay put. Thin and local — no pathfinding (that's S7),
+// so a figure whose target sits directly behind a building will stall at the wall.
+function slideOutOfBuildings(world: World, u: Unit, px: number, py: number) {
+  if (!inBuilding(world, u.x, u.y)) return;
+  if (!inBuilding(world, u.x, py)) {
+    u.y = py; // vertical wall — slide along it in x
+    return;
+  }
+  if (!inBuilding(world, px, u.y)) {
+    u.x = px; // horizontal wall — slide along it in y
+    return;
+  }
+  u.x = px;
+  u.y = py;
 }
 
 // Personal space: push overlapping figures apart. Deterministic; tuned below

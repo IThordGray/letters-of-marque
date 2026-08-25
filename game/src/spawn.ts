@@ -237,7 +237,7 @@ export function populateBattle(world: World, party: PartySpec) {
   deriveTerrain(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
-  world.raid.objective = { x: WORLD.width / 2, y: 400, seized: false, seizeProgress: 0 };
+  world.raid.objective = { x: WORLD.width / 2, y: 490, seized: false, seizeProgress: 0 }; // the church threshold (seized from the steps)
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
 }
 
