@@ -10,6 +10,37 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-25 — The land raid: objective + extraction + a diegetic alarm-clock
+The land engagement is an **outnumbered objective raid**, not a symmetric fight to the
+last. **Win = seize the objective and extract**; outcomes are **graded** — clean success ·
+pyrrhic (got it out, lost people) · failed-but-survived (withdrew empty-handed, your people
+live to raid again) · disaster (your will breaks / you're cut off). The **objective is the
+point; breaking will is the means** — still the one spine, never attrition. A full local
+rout still counts as a clean sweep, but you must be present to take the objective.
+- **The clock is a staged, diegetic ALARM, never a countdown.** *Quiet → Roused → Alarm →
+  General Muster*, surfaced in plain language, raised by *tactical events* — gunfire
+  (muskets are loud), time ashore, seizing, and **routed defenders who escape off-map and
+  raise the cry** (the will-spine feeding the clock). Reinforcements muster in waves, tuned
+  to **push you out, never to be farmed**. Advantage decays raider → defender over time;
+  that decay *is* the get-in-get-out arc.
+- **No-timer pillar reconciled (ratified by the human).** §1.1 governs the *management
+  meta-layer* — recurring decisions serviced on a schedule, gauges you audit. It does NOT
+  govern real-time tactical tension inside a live fight (reload, morale drain, the wind at
+  sea). The raid alarm is the second kind: a threat you feel and react to, reading as a
+  *cause* (mirrors `stepMorale`), asking for no scheduled decision.
+- **Extraction = the beach you landed on** (near edge). Success = the objective (its carrier)
+  reaches it; how many of the band also get out is a *grade*, not a gate. Withdrawing is
+  always available (just move to the boats) — no prompt, no nagging system.
+- **Alarm is driven by ACTIONS, not headcount** — landing more crew stays a *benefit* (per
+  the Deploy & Equip call), not a penalty.
+*Why:* the raid is the origin engagement the whole land module serves; this gives it a
+purpose (objective), a reason to leave (extraction), and rising pressure (alarm) — without
+a management timer, all through the will-spine and the sim we already have. Shaped with the
+game-designer. The objective/extraction/alarm structure is *our* design — the original
+Cutthroats land raids were straight field fights (confirmed by the human).
+
+---
+
 ### 2026-08-18 — Deploy & Equip: outfit a raid once (unnamed crew pool + named officers, per-unit ammo, permadeath)
 How the player composes and kits a landing party before a raid — the front end that
 replaces the fixed test spawn. Ratified shape (shaped with the game-designer):

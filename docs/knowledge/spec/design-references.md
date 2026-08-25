@@ -23,6 +23,9 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
 - Privateer/pirate **career arc** across a Caribbean-style map. **[confirm / enrich]**
 - Ship-to-ship combat and **boarding**; crew as a managed resource. **[confirm / enrich]**
 - Reputation / notoriety shaping how others react. **[confirm / enrich]**
+- Land raids in the OG were **straight field fights** — no objective / extraction / alarm
+  structure. **[confirmed]** Our raid *adds* that deliberately (objective + extraction +
+  diegetic alarm) — a departure we chose, not inherited from the lineage.
 - _(Add confirmed mechanics and feel here as we go.)_
 
 ## Genre mechanic patterns
@@ -99,7 +102,37 @@ How comparable games compose + kit a party before battle — research inputs onl
   **[confirm title]**. Open question first: *which* of those the human means. Key
   test — a solo-character UI often doesn't survive twenty men at once.
 
-### Boarding / raiding · campaign / reputation · trade
+### Raid — objective + extraction
+How comparable games do infiltrate → hit objective → get out, and the pressure that shapes
+it. Research inputs only.
+- **Evac zone (XCOM 2):** "get your people to this tile" — a clean, legible extraction that
+  kills turtling. *Take* the evac zone; *reject* the literal turn-counter (the gamey
+  countdown our no-timer pillar dislikes).
+- **Staged diegetic alarm + exfil (Commandos / Shadow Tactics / Desperados III):** a guard
+  shouts → suspicion → the level floods; the exfil-under-pressure arc *is* the genre. *Take*
+  the staged alarm that reads as fiction; *reject* save-scum puzzle rigidity — our raid is a
+  messy morale brawl, not a clockwork puzzle.
+- **Grab-and-go + loud-vs-quiet (Payday / Monaco):** stay quiet and take your time, or go
+  loud and escalation ramps; grab the loot, reach the van. Loud/quiet == our
+  musket-vs-cutlass. *Reject* the hold-out-for-N-waves survival grind (that's attrition).
+- **Lineage-adjacent (Pirates! land battle / M&B village raids):** fast readable morale-rout
+  fight + "turn out the militia." The gap we fill: those have no objective, no extraction,
+  no real asymmetry.
+- **RATIFIED — pirate verdict:** objective + extraction (evac-zone), a staged diegetic
+  **alarm** (Quiet→Roused→Alarm→Muster) driven by loud actions + escaping runners, **not a
+  countdown**; reinforcement waves that push you **out** (never farmable); the garrison
+  starts dug-in/dormant so advantage decays raider→defender over time. On-spine: the alarm
+  feeds the **will** contest; the objective is taken by breaking local will, not by wiping.
+  (See `../decisions.md`, 2026-08-25.)
+
+### Reinforcement / alarm pressure
+The raid clock must **read as a cause** (mirror `stepMorale` — deterministic, legible), be
+raised by *tactical diegetic events* (gunfire volume, time ashore, seizing, and routed
+defenders escaping off-map — the will-spine feeding the clock), and its muster must **close
+the window** rather than invite farming. Loud-vs-quiet is where the deploy-screen weapon
+loadout cashes out.
+
+### Boarding · campaign / reputation · trade
 - _(Seeded as those features arrive.)_
 
 ## Pirate-flavour fit — the taste test
