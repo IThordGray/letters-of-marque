@@ -10,6 +10,27 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-25 — Raids are open-ended plunder: cost vs reward, not a binary win/lose
+Sharpening the raid frame (from the human). A raid is **piracy**, not a mission with one
+win-flag: you're there to **take what you can and get out before it costs more than it's
+worth**. The single Strongbox in the current slice is *scaffolding* on a reusable spine
+(marker → seize → carry → extract) — the real raid offers a **spread of opportunities**
+(loot warehouses/houses, take **prisoners** for ransom, seize a strongbox, spike guns, torch
+a target), and the player chooses **how greedy to be** against the rising alarm. The outcome
+is a **ledger — haul taken vs cost paid** (men lost, crew you still need to sail home),
+*graded* not binary; sometimes there is no "objective" at all, just *"was it worth it?"*.
+The will-spine stays the **tactical means** (break whoever's between you and the loot);
+**plunder-vs-cost is the raid-level measure**. Each opportunity carries its own take and its
+own **noise/risk** (torching is loud; a warehouse costs time on the clock). Fixed must-take
+objectives (rescue, assassinate) become **one scenario *type*** on the same framework, not
+the default.
+*Why:* matches the Cutthroats heritage (the OG raids were open looting / prisoner-taking, not
+designed objectives) and the "pirate, not an emperor" pillar; makes the core decision
+economic (greed vs risk) — which the graded outcome + alarm clock already seed — and feeds
+the havens layer (pillage / raze / occupy = depths of *taking* a place) and fame/infamy.
+
+---
+
 ### 2026-08-25 — The land raid: objective + extraction + a diegetic alarm-clock
 The land engagement is an **outnumbered objective raid**, not a symmetric fight to the
 last. **Win = seize the objective and extract**; outcomes are **graded** — clean success ·
