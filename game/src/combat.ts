@@ -22,6 +22,44 @@ function foeSide(s: Side): Side {
   return s === "player" ? "enemy" : "player";
 }
 
+// Segment (x0,y0)-(x1,y1) vs axis-aligned rect (Liang–Barsky clip): do they intersect?
+function segIntersectsRect(x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number): boolean {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  let t0 = 0;
+  let t1 = 1;
+  const edges: [number, number][] = [
+    [-dx, x0 - rx],
+    [dx, rx + rw - x0],
+    [-dy, y0 - ry],
+    [dy, ry + rh - y0],
+  ];
+  for (const [p, q] of edges) {
+    if (p === 0) {
+      if (q < 0) return false; // parallel to this edge and outside the slab
+    } else {
+      const r = q / p;
+      if (p < 0) {
+        if (r > t1) return false;
+        if (r > t0) t0 = r;
+      } else {
+        if (r < t0) return false;
+        if (r < t1) t1 = r;
+      }
+    }
+  }
+  return t0 <= t1;
+}
+
+// A shot from (x0,y0) to (x1,y1) is blocked if it crosses any building. Fire LOS only —
+// no fog-of-war; the player still sees the whole town, but can't shoot through walls.
+export function losBlocked(world: World, x0: number, y0: number, x1: number, y1: number): boolean {
+  for (const b of world.buildings) {
+    if (segIntersectsRect(x0, y0, x1, y1, b.x, b.y, b.w, b.h)) return true;
+  }
+  return false;
+}
+
 function arcOf(target: Unit, fromX: number, fromY: number): Arc {
   const rel = Math.abs(angleDiff(target.facing, angleTo(target.x, target.y, fromX, fromY)));
   if (rel <= FLANK.frontHalfAngle) return "front";
@@ -78,7 +116,8 @@ export function stepCombat(world: World, dt: number) {
     const rangeMax = w.rangeMax + (terrainAt(world, u.x, u.y) === "highGround" ? TERRAIN.highGroundRangeBonus : 0);
     const bears = (e: Unit): boolean => {
       if (dist(u.x, u.y, e.x, e.y) > rangeMax) return false;
-      return Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y))) <= COMBAT.fireArcHalfAngle;
+      if (Math.abs(angleDiff(u.facing, angleTo(u.x, u.y, e.x, e.y))) > COMBAT.fireArcHalfAngle) return false;
+      return !losBlocked(world, u.x, u.y, e.x, e.y); // can't shoot through buildings
     };
 
     let target: Unit | undefined;
