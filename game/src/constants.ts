@@ -31,13 +31,14 @@ export const UNIT: Record<UnitKind, { size: number; hp: number; morale: number; 
 // fear must outpace lethality — figures should rout well before they're killed.
 export const WEAPON: Record<
   WeaponType,
-  { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number; meleeMult: number }
+  { rangeMax: number; reload: number; accuracy: number; powder: number; moraleShot: number; meleeMult: number; loud: number }
 > = {
   // accuracy is now multiplied by the shooter's marks/100 (~0.38 for a pirate), so
   // these bases are higher — a pirate's net hit rate stays about what it was.
-  musket: { rangeMax: 300, reload: 3, accuracy: 1.1, powder: 60, moraleShot: 8, meleeMult: 0.8 },
-  pistol: { rangeMax: 120, reload: 1.5, accuracy: 1.3, powder: 40, moraleShot: 7, meleeMult: 1.5 }, // pistol & cutlass — shock troops
-  cannon: { rangeMax: 600, reload: 5, accuracy: 0.8, powder: 50, moraleShot: 15, meleeMult: 0.15 }, // a terror weapon; crew fall back on the cutlass up close
+  // `loud` scales how much each shot wakes the town (the raid alarm); cutlass work is silent.
+  musket: { rangeMax: 300, reload: 3, accuracy: 1.1, powder: 60, moraleShot: 8, meleeMult: 0.8, loud: 1.0 },
+  pistol: { rangeMax: 120, reload: 1.5, accuracy: 1.3, powder: 40, moraleShot: 7, meleeMult: 1.5, loud: 0.5 }, // pistol & cutlass — shock troops, quieter
+  cannon: { rangeMax: 600, reload: 5, accuracy: 0.8, powder: 50, moraleShot: 15, meleeMult: 0.15, loud: 1.6 }, // a terror weapon; loudest of all
 };
 
 // Every figure also carries a cutlass — a melee floor for any weapon when powder
@@ -132,6 +133,7 @@ export const RAID = {
   // The alarm is a staged clock (Quiet→Roused→Alarm→Muster) driven by heat, not a timer.
   alarm: {
     perSec: 1.4, // heat/sec while roused — time ashore creeps the alarm up
+    perShot: 0.3, // heat per gunshot × the weapon's loudness (loud muskets wake the town)
     seizeSpike: 22, // heat added when the prize is seized (the theft is discovered)
     runnerSpike: 9, // heat added when a routed defender escapes off-map (raises the cry)
     roused: 1, // heat thresholds for the stages ↓

@@ -1,6 +1,6 @@
 import type { World } from "./world";
 import type { Unit, Side } from "./types";
-import { WEAPON, COMBAT, FLASH, MORALE, FLANK, TERRAIN, CUTLASS } from "./constants";
+import { WEAPON, COMBAT, FLASH, MORALE, FLANK, TERRAIN, CUTLASS, RAID } from "./constants";
 import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { clamp, dist, angleTo, angleDiff } from "./math";
@@ -111,6 +111,7 @@ function fire(world: World, shooter: Unit, target: Unit) {
   const rangeScalar = clamp(Math.pow(1 - d / rangeMax, COMBAT.rangeFalloffPow), COMBAT.rangeFloor, 1);
   shooter.reload = w.reload;
   shooter.powder -= 1;
+  world.raid.alarmHeat += RAID.alarm.perShot * w.loud; // gunfire wakes the town — loud weapons more so
   world.flashes.push({ ax: shooter.x, ay: shooter.y, bx: target.x, by: target.y, ttl: FLASH.ttl, kind: "fire" });
 
   // being shot at rattles a figure even on a miss
