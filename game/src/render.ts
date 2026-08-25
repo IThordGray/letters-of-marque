@@ -59,6 +59,11 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
 
   // the town — sea + beach along the near edge, a cobbled plaza, then the buildings
   {
+    // the cleared ground the town sits on — streets read as the dirt between blocks
+    const tg0 = worldToScreen(cam, 640, 200, w, h);
+    const tg1 = worldToScreen(cam, 1760, 2180, w, h);
+    ctx.fillStyle = COLOR.townGround;
+    ctx.fillRect(tg0.x, tg0.y, tg1.x - tg0.x, tg1.y - tg0.y);
     const br = worldToScreen(cam, WORLD.width, WORLD.height, w, h);
     const seaT = worldToScreen(cam, 0, WORLD.height - 140, w, h);
     ctx.fillStyle = COLOR.sea;

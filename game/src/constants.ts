@@ -204,6 +204,7 @@ export const COLOR = {
   sea: "#0f2f44",
   beach: "#8f7d4e",
   plaza: "#3b382f",
+  townGround: "#5f5540", // cleared dirt the town sits on (streets = gaps between blocks)
   roofDwelling: "#7a5236",
   roofWarehouse: "#8a6a3a",
   roofStone: "#707480", // church / governor / battery
