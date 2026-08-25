@@ -12,12 +12,13 @@ import { desc } from "./naming";
 // movement/morale so it reads current positions and states.
 export function stepRaid(world: World, dt: number) {
   if (world.over) return;
+  const A = RAID.alarm;
 
-  // the dug-in garrison rouses once raiders are on them
+  // being spotted starts the clock; time ashore then creeps it up (runners/seizing spike it)
   if (world.raid.alarm === 0 && raidersSpotted(world)) {
-    world.raid.alarm = 1;
-    signal(world, "The garrison rouses — they sally to drive you off!");
+    world.raid.alarmHeat = Math.max(world.raid.alarmHeat, A.roused);
   }
+  if (world.raid.alarm >= 1) world.raid.alarmHeat += A.perSec * dt;
 
   const obj = world.raid.objective;
 
@@ -52,7 +53,7 @@ export function stepRaid(world: World, dt: number) {
       if (obj.seizeProgress >= RAID.seizeTime) {
         obj.seized = true;
         world.raid.carrierId = holder.id;
-        world.raid.alarm = Math.max(world.raid.alarm, 1); // the theft is discovered
+        world.raid.alarmHeat += A.seizeSpike; // the theft spikes the alarm
         signal(world, `${desc(holder)} takes the strongbox — get it to the boats!`);
       }
     } else {
@@ -60,7 +61,32 @@ export function stepRaid(world: World, dt: number) {
     }
   }
 
+  advanceAlarm(world);
   checkRaidOutcome(world);
+}
+
+// Plain-language stage transitions — the alarm reads as a *cause*, never a countdown.
+const ALARM_MSG: Record<number, string> = {
+  1: "The watch spots you — the garrison rouses and sallies out!",
+  2: "A bell begins to ring — the town is alarmed!",
+  3: "The garrison turns out in force — a general muster!",
+};
+
+function alarmStage(heat: number): number {
+  const A = RAID.alarm;
+  if (heat >= A.muster) return 3;
+  if (heat >= A.full) return 2;
+  if (heat >= A.roused) return 1;
+  return 0;
+}
+
+// The alarm only ever rises — the town doesn't calm mid-raid. Log each new stage.
+function advanceAlarm(world: World) {
+  const stage = alarmStage(world.raid.alarmHeat);
+  if (stage > world.raid.alarm) {
+    world.raid.alarm = stage;
+    signal(world, ALARM_MSG[stage]);
+  }
 }
 
 function fighting(u: Unit): boolean {

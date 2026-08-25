@@ -211,6 +211,30 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     }
   }
 
+  // alarm banner (top-centre) — the raid clock as a named stage, never a countdown
+  if (world.raid.objective) {
+    const names = ["Quiet", "Roused", "Alarm", "General Muster"];
+    const cols = ["#9fb9c6", "#e0d46d", "#ff9a3c", "#ff6b52"];
+    const stage = Math.max(0, Math.min(3, world.raid.alarm));
+    const label = `Alarm — ${names[stage]}`;
+    ctx.font = "bold 13px system-ui, sans-serif";
+    const bw = ctx.measureText(label).width + 24;
+    const bh = 24;
+    const bx = w / 2 - bw / 2;
+    const by = 8;
+    ctx.fillStyle = "rgba(6, 18, 24, 0.85)";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = cols[stage];
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = cols[stage];
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, w / 2, by + bh / 2);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+  }
+
   // hud line
   const speed = app.paused ? "paused" : `×${app.timeScale}`;
   const outcome = world.over ? ` · ${world.outcome}` : "";

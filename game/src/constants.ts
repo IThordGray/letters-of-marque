@@ -129,6 +129,15 @@ export const RAID = {
   seizeRange: 46, // a player figure this close can work the objective
   seizeTime: 2.0, // seconds held on the objective to seize it
   rouseRange: 240, // a raider this close to a dug-in defender rouses the garrison
+  // The alarm is a staged clock (Quiet→Roused→Alarm→Muster) driven by heat, not a timer.
+  alarm: {
+    perSec: 1.4, // heat/sec while roused — time ashore creeps the alarm up
+    seizeSpike: 22, // heat added when the prize is seized (the theft is discovered)
+    runnerSpike: 9, // heat added when a routed defender escapes off-map (raises the cry)
+    roused: 1, // heat thresholds for the stages ↓
+    full: 45,
+    muster: 85,
+  },
 };
 
 // ---- Movement --------------------------------------------------------------

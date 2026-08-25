@@ -1,6 +1,6 @@
 import type { World } from "./world";
 import type { Unit } from "./types";
-import { MOVE, WEAPON, SEPARATION, WORLD, COMBAT, TERRAIN } from "./constants";
+import { MOVE, WEAPON, SEPARATION, WORLD, COMBAT, TERRAIN, RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
 import { desc } from "./naming";
@@ -104,7 +104,12 @@ export function stepMovement(world: World, dt: number) {
 
     if (u.state === "routing" && (u.y > WORLD.height || u.y < 0)) {
       u.state = "down";
-      signal(world, `${desc(u)} flee the field.`);
+      if (u.side === "enemy") {
+        world.raid.alarmHeat += RAID.alarm.runnerSpike; // a defender who gets away raises the cry
+        signal(world, `${desc(u)} escapes and raises the cry!`);
+      } else {
+        signal(world, `${desc(u)} flee the field.`);
+      }
     }
   }
 }

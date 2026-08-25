@@ -21,7 +21,8 @@ export type RaidResult = "clean" | "pyrrhic" | "failed" | "disaster";
 export interface RaidState {
   objective: { x: number; y: number; seized: boolean; seizeProgress: number } | null;
   extraction: { y: number } | null; // a band along the near edge — the boats you landed from
-  alarm: number; // 0 = Quiet (garrison dug in, dormant); raised as the town wakes (staged in S5)
+  alarm: number; // 0..3 stage: Quiet / Roused / Alarm / General Muster (derived from alarmHeat, only rises)
+  alarmHeat: number; // accumulator that drives the alarm stage (time ashore + seizing + escaping runners)
   carrierId: number | null; // the figure carrying the seized prize (null = it's on the ground)
   result: RaidResult | null; // set once the raid ends
 }
@@ -54,6 +55,6 @@ export function makeWorld(): World {
     outcome: "",
     terrain: [],
     aiNextAt: 0,
-    raid: { objective: null, extraction: null, alarm: 0, carrierId: null, result: null },
+    raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, carrierId: null, result: null },
   };
 }
