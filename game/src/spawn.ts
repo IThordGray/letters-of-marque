@@ -136,6 +136,7 @@ export function populateBattle(world: World, party: PartySpec) {
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
   world.raid.objective = { x: WORLD.width / 2, y: 150, seized: false, seizeProgress: 0 };
+  world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
 }
 
 // Default party vs garrison — kept for headless smokes and a no-deploy fallback.

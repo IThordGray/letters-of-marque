@@ -100,8 +100,6 @@ export function stepCombat(world: World, dt: number) {
     }
     if (target) fire(world, u, target);
   }
-
-  checkOutcome(world);
 }
 
 function fire(world: World, shooter: Unit, target: Unit) {
@@ -152,25 +150,5 @@ function kill(world: World, u: Unit) {
   contagion(world, u, u.kind === "officer" ? MORALE.perOfficerDown : MORALE.perDown);
 }
 
-// Win by breaking WILL: a side is beaten once none of its figures are still
-// fighting (all routing or down) — not by wiping them out.
-function checkOutcome(world: World) {
-  let pFight = 0;
-  let eFight = 0;
-  for (const u of world.units) {
-    if (u.state !== "steady" && u.state !== "wavering") continue;
-    if (u.side === "player") pFight++;
-    else eFight++;
-  }
-  const pBroken = pFight === 0;
-  const eBroken = eFight === 0;
-  if (eBroken && !pBroken) end(world, "The enemy's will breaks — the field is yours.");
-  else if (pBroken && !eBroken) end(world, "Your band breaks and scatters — the raid fails.");
-  else if (pBroken && eBroken) end(world, "Both sides break — a bloody shambles.");
-}
-
-function end(world: World, outcome: string) {
-  world.over = true;
-  world.outcome = outcome;
-  signal(world, outcome);
-}
+// The raid outcome — win by breaking WILL, now graded and objective-aware — is decided in
+// raid.ts (checkRaidOutcome), run each tick after morale.

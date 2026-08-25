@@ -185,4 +185,5 @@ export const COLOR = {
   objective: "#ffcf4a", // the prize to seize
   objectiveRing: "#ffe08a", // seize-progress ring
   objectiveDone: "#6de07a", // seized
+  extraction: "#5aa9c0", // the boats / extraction zone
 };

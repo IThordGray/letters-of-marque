@@ -14,10 +14,14 @@ export interface Flash {
   kind: "fire" | "melee";
 }
 
-// The raid scenario layer: the objective to seize (and, from later stories, the
-// extraction zone and alarm state). Null objective = a plain battle with no raid.
+// The raid scenario layer: the objective to seize, the extraction zone (the boats), and
+// the graded outcome (and, from later stories, the alarm state).
+export type RaidResult = "clean" | "pyrrhic" | "failed" | "disaster";
+
 export interface RaidState {
   objective: { x: number; y: number; seized: boolean; seizeProgress: number } | null;
+  extraction: { y: number } | null; // a band along the near edge — the boats you landed from
+  result: RaidResult | null; // set once the raid ends
 }
 
 // The mutable state of one land battle. Data-oriented: the world owns flat
@@ -48,6 +52,6 @@ export function makeWorld(): World {
     outcome: "",
     terrain: [],
     aiNextAt: 0,
-    raid: { objective: null },
+    raid: { objective: null, extraction: null, result: null },
   };
 }

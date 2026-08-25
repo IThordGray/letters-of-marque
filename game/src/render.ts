@@ -36,6 +36,34 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.globalAlpha = 1;
   }
 
+  // the extraction zone — the beach / boats along the near edge
+  const ext = world.raid.extraction;
+  if (ext) {
+    const ea = worldToScreen(cam, 0, ext.y, w, h);
+    const eb = worldToScreen(cam, WORLD.width, WORLD.height, w, h);
+    ctx.fillStyle = COLOR.extraction;
+    ctx.globalAlpha = 0.16;
+    ctx.fillRect(ea.x, ea.y, eb.x - ea.x, eb.y - ea.y);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = COLOR.extraction;
+    ctx.setLineDash([8, 6]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ea.x, ea.y);
+    ctx.lineTo(eb.x, ea.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = COLOR.text;
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      world.raid.objective?.seized ? "The boats — bring the prize away" : "The boats — extraction",
+      (ea.x + eb.x) / 2,
+      ea.y + 16,
+    );
+    ctx.textAlign = "left";
+  }
+
   // the raid objective — a marked prize behind the defenders
   const obj = world.raid.objective;
   if (obj) {
