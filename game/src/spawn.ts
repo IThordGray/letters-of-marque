@@ -1,9 +1,10 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType, Stance } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID } from "./constants";
 import { formationSlots } from "./formation";
 import { makeRoster } from "./roster";
+import { signal } from "./log";
 
 // Optional overrides for a spawned figure. Omitted fields fall back to the kind's
 // defaults (officer → pistol & base stats, pirate → musket & base stats).
@@ -128,6 +129,13 @@ function spawnEnemyGarrison(world: World) {
 // can preview what the raid faces, straight from the same source it spawns from.
 export function enemyGarrisonSize(): number {
   return DEPLOY.garrison + 1;
+}
+
+// A reinforcement wave that musters from the town gate when the alarm climbs. Spawns
+// aggressive (they come to hunt, not to hold); the AI directs them from there.
+export function spawnReinforcementWave(world: World, pirates: number) {
+  spawnPlainBand(world, "enemy", RAID.musterPoint.x, RAID.musterPoint.y, pirates, "musket", "aggressive");
+  signal(world, "Fresh defenders pour in from the town!");
 }
 
 // The raid ground: the prize sits on a defended rise (high ground for the garrison),

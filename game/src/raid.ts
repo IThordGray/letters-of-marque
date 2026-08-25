@@ -4,6 +4,7 @@ import { RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
 import { desc } from "./naming";
+import { spawnReinforcementWave } from "./spawn";
 
 // The raid scenario layer: the objective (seize it, then carry it), the extraction zone
 // (the boats), the alarm (the garrison rouses), and the graded outcome. "Win by breaking
@@ -80,12 +81,16 @@ function alarmStage(heat: number): number {
   return 0;
 }
 
-// The alarm only ever rises — the town doesn't calm mid-raid. Log each new stage.
+// The alarm only ever rises — the town doesn't calm mid-raid. Step up one stage at a
+// time (so a big spike still fires each stage's message + wave), and muster a
+// reinforcement wave from the gate at Alarm and General Muster.
 function advanceAlarm(world: World) {
   const stage = alarmStage(world.raid.alarmHeat);
-  if (stage > world.raid.alarm) {
-    world.raid.alarm = stage;
-    signal(world, ALARM_MSG[stage]);
+  while (world.raid.alarm < stage) {
+    world.raid.alarm++;
+    signal(world, ALARM_MSG[world.raid.alarm]);
+    if (world.raid.alarm === 2) spawnReinforcementWave(world, RAID.reinforce.wave2);
+    else if (world.raid.alarm === 3) spawnReinforcementWave(world, RAID.reinforce.wave3);
   }
 }
 

@@ -138,6 +138,8 @@ export const RAID = {
     full: 45,
     muster: 85,
   },
+  musterPoint: { x: WORLD.width / 2, y: 40 }, // the town gate reinforcements pour from
+  reinforce: { wave2: 6, wave3: 8 }, // wave sizes (pirates; +1 officer) at Alarm / Muster
 };
 
 // ---- Movement --------------------------------------------------------------
