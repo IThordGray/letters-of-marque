@@ -94,8 +94,14 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.strokeStyle = COLOR.buildingOutline;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(a2.x, a2.y, bw2, bh2);
-      if (bld.state !== "intact") {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.45)"; // ransacked / destroyed reads darker
+      if (bld.state === "burning") {
+        ctx.fillStyle = "rgba(255, 120, 30, 0.5)"; // ablaze
+        ctx.fillRect(a2.x, a2.y, bw2, bh2);
+      } else if (bld.state === "razed") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.66)"; // burnt-out ruin
+        ctx.fillRect(a2.x, a2.y, bw2, bh2);
+      } else if (bld.state === "looted") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.42)"; // ransacked
         ctx.fillRect(a2.x, a2.y, bw2, bh2);
       }
       const lbl = BUILDING_LABEL[bld.kind];

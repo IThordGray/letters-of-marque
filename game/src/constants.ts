@@ -131,7 +131,7 @@ export const RAID = {
   alarm: {
     perSec: 1.4, // heat/sec while roused — time ashore creeps the alarm up
     perShot: 0.3, // heat per gunshot × the weapon's loudness (loud muskets wake the town)
-    seizeSpike: 22, // heat added when the prize is seized (the theft is discovered)
+    torchSpike: 18, // heat when a building is set ablaze (loud + a column of smoke)
     runnerSpike: 9, // heat added when a routed defender escapes off-map (raises the cry)
     roused: 1, // heat thresholds for the stages ↓
     full: 45,
@@ -142,6 +142,7 @@ export const RAID = {
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
   pickupRange: 24, // a free raider this close to a dropped load takes it up
+  torch: { powderCost: 15, burnTime: 4 }, // torching spends this much of a raider's powder; burns for this long
 };
 
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the

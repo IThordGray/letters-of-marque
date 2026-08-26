@@ -1,5 +1,5 @@
 import type { World, RaidResult } from "./world";
-import type { Unit } from "./types";
+import type { Unit, Building } from "./types";
 import { RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
@@ -20,8 +20,45 @@ export function stepRaid(world: World, dt: number) {
 
   lootBuildings(world, dt);
   stepLoads(world);
+  ageFires(world);
   advanceAlarm(world);
   checkRaidOutcome(world);
+}
+
+// Torch (a verb-key order): each selected raider adjacent to an intact/looted building,
+// with powder to spare, sets it alight — spending powder (ammo = incendiary), destroying
+// whatever's still inside, and raising a loud alarm. Fire razes it after a burn time.
+export function torchOrder(world: World, ids: number[]) {
+  for (const id of ids) {
+    const u = world.units.find((x) => x.id === id);
+    if (!u || u.side !== "player" || u.state === "down" || u.powder < RAID.torch.powderCost) continue;
+    let target: Building | undefined;
+    for (const b of world.buildings) {
+      if (b.state !== "intact" && b.state !== "looted") continue;
+      if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
+        target = b;
+        break;
+      }
+    }
+    if (target) {
+      u.powder -= RAID.torch.powderCost;
+      target.state = "burning";
+      target.burnUntil = world.time + RAID.torch.burnTime;
+      target.loot = 0; // whatever's inside is lost to the flames (and its trade to the town — KAN-54)
+      world.raid.alarmHeat += RAID.alarm.torchSpike;
+      signal(world, `The ${target.kind} is set ablaze!`);
+    }
+  }
+}
+
+// Fire runs its course: a burning building razes when its burn time is up.
+function ageFires(world: World) {
+  for (const b of world.buildings) {
+    if (b.state === "burning" && b.burnUntil != null && world.time >= b.burnUntil) {
+      b.state = "razed";
+      signal(world, `The ${b.kind} burns to the ground.`);
+    }
+  }
 }
 
 function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh: number): number {

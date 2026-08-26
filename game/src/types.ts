@@ -82,4 +82,5 @@ export interface Building {
   state: BuildingState;
   loot?: number; // value still inside (0 once looted / destroyed)
   lootProgress?: number; // seconds worked so far while being looted
+  burnUntil?: number; // sim time this burning building becomes razed
 }

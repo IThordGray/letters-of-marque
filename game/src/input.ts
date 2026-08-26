@@ -4,6 +4,7 @@ import { panByScreen, zoomAt, clampCamera, worldToScreen, screenToWorld } from "
 import { CAMERA, UNIT, SELECT, FORMATION, SPEEDS } from "./constants";
 import { formationSlots } from "./formation";
 import { rally } from "./officers";
+import { torchOrder } from "./raid";
 import { dist } from "./math";
 
 // Panning is arrows / middle-drag / wheel; letter keys are commands.
@@ -38,6 +39,7 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     if (e.code === "KeyC") return setStance(app, "ceaseFire"); // "Hold fire"
     if (e.code === "KeyS") return halt(app); // stop and hold
     if (e.code === "KeyR") return rally(app.world); // officers rally the men
+    if (e.code === "KeyT") return torch(app); // set the nearest building alight (spends powder)
     if (e.code === "KeyF") {
       app.formation = app.formation === "tight" ? "loose" : "tight";
       return;
@@ -223,6 +225,13 @@ function orderFormationMove(app: App, wpt: { x: number; y: number }, attackMove:
 
 function setStance(app: App, stance: Stance) {
   for (const u of living(app)) u.stance = stance;
+}
+
+function torch(app: App) {
+  torchOrder(
+    app.world,
+    living(app).map((u) => u.id),
+  );
 }
 
 function halt(app: App) {
