@@ -144,6 +144,7 @@ export const RAID = {
   reinforce: { wave2: 6, wave3: 8 }, // wave sizes (pirates; +1 officer) at Alarm / Muster
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
+  pickupRange: 24, // a free raider this close to a dropped load takes it up
 };
 
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
@@ -167,6 +168,7 @@ export const MOVE = {
   engageFraction: 0.6, // pursue until within this fraction of weapon range
   waverSpeedMult: 0.65, // the wavering move reluctantly
   routSpeedMult: 1.4, // routers run
+  carryMult: 0.6, // a figure laden with plunder is slower
 };
 
 // ---- Formation & personal space --------------------------------------------

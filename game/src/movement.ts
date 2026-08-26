@@ -95,7 +95,8 @@ export function stepMovement(world: World, dt: number) {
         u.facing = (Math.atan2(dy, dx) * 180) / Math.PI;
         const mult = u.state === "routing" ? MOVE.routSpeedMult : u.state === "wavering" ? MOVE.waverSpeedMult : 1;
         const choke = terrainAt(world, u.x, u.y) === "choke" ? TERRAIN.chokeSpeedMult : 1;
-        const step = Math.min(MOVE.speed * mult * choke * dt, d);
+        const carry = world.raid.loads.some((l) => l.carrierId === u.id) ? MOVE.carryMult : 1;
+        const step = Math.min(MOVE.speed * mult * choke * carry * dt, d);
         const px = u.x;
         const py = u.y;
         u.x += (dx / d) * step;

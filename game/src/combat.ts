@@ -103,13 +103,14 @@ export function stepCombat(world: World, dt: number) {
     u.reload -= dt;
     u.meleeReload -= dt;
 
-    // an adjacent enemy → melee (self-defence: ignores cease-fire and powder)
+    // an adjacent enemy → melee (self-defence: ignores cease-fire, powder, and full hands)
     const foe = meleeFoe(world, u);
     if (foe) {
       if (u.meleeReload <= 0) doMelee(world, u, foe);
       continue;
     }
 
+    if (world.raid.loads.some((l) => l.carrierId === u.id)) continue; // laden with plunder — can't fire
     if (u.reload > 0 || u.powder <= 0) continue;
 
     const w = WEAPON[u.weapon];

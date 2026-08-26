@@ -241,6 +241,8 @@ export function populateBattle(world: World, party: PartySpec) {
   spawnEnemyGarrison(world);
   world.raid.objective = { x: WORLD.width / 2, y: 490, seized: false, seizeProgress: 0 }; // the church threshold (seized from the steps)
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
+  const churchB = world.buildings.find((b) => b.kind === "church");
+  if (churchB) churchB.loot = 0; // the church's worth is the objective/strongbox (S3 folds it into a load)
 }
 
 // Default party vs garrison — kept for headless smokes and a no-deploy fallback.

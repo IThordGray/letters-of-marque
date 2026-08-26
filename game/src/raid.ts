@@ -63,6 +63,7 @@ export function stepRaid(world: World, dt: number) {
   }
 
   lootBuildings(world, dt);
+  stepLoads(world);
   advanceAlarm(world);
   checkRaidOutcome(world);
 }
@@ -73,29 +74,64 @@ function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh
   return Math.hypot(dx, dy);
 }
 
-// Buildings are plundered by holding a raider at them (a channel, like a seize) — it costs
-// time, so the alarm bites. S1 credits the value on loot; S2 makes it carried + banked.
+// Buildings are plundered by holding a free-handed raider at them (a channel, like a
+// seize) — it costs time, so the alarm bites. On completion the goods become a carriable
+// load the looter picks up; it only counts once banked at the boats (stepLoads).
 function lootBuildings(world: World, dt: number) {
   for (const b of world.buildings) {
     if (b.state !== "intact" || !b.loot) continue;
-    let working = false;
+    let worker: Unit | undefined;
     for (const u of world.units) {
       if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+      if (world.raid.loads.some((l) => l.carrierId === u.id)) continue; // hands full already
       if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
-        working = true;
+        worker = u;
         break;
       }
     }
-    if (working) {
+    if (worker) {
       b.lootProgress = (b.lootProgress ?? 0) + dt;
       if (b.lootProgress >= RAID.lootTime) {
-        world.raid.haul += b.loot;
-        signal(world, `The ${b.kind} is plundered — +${b.loot} in the haul.`);
+        world.raid.loads.push({ id: world.nextId++, x: worker.x, y: worker.y, value: b.loot, kind: b.kind, carrierId: worker.id });
+        signal(world, `The ${b.kind} is plundered — ${b.loot} to carry off.`);
         b.state = "looted";
         b.loot = 0;
       }
     } else {
       b.lootProgress = 0;
+    }
+  }
+}
+
+// Plunder loads: a carried load rides with its carrier and banks to the haul at the boats;
+// a carrier who falls or breaks drops it, and any free raider reaching a dropped load takes
+// it up. This is the strongbox spine (carry / drop / extract) generalised to N loads.
+function stepLoads(world: World) {
+  const ext = world.raid.extraction;
+  for (let i = world.raid.loads.length - 1; i >= 0; i--) {
+    const load = world.raid.loads[i];
+    const carrier = load.carrierId != null ? world.units.find((u) => u.id === load.carrierId) : undefined;
+    if (carrier && carrier.state !== "down" && carrier.state !== "routing") {
+      load.x = carrier.x;
+      load.y = carrier.y;
+      if (ext && carrier.y >= ext.y) {
+        world.raid.haul += load.value;
+        signal(world, `Plunder aboard — +${load.value} (haul ${world.raid.haul}).`);
+        world.raid.loads.splice(i, 1);
+      }
+      continue;
+    }
+    if (load.carrierId != null) {
+      load.carrierId = null;
+      signal(world, "The plunder is dropped!");
+    }
+    for (const u of world.units) {
+      if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+      if (world.raid.loads.some((l) => l.carrierId === u.id)) continue;
+      if (dist(u.x, u.y, load.x, load.y) <= RAID.pickupRange) {
+        load.carrierId = u.id;
+        break;
+      }
     }
   }
 }

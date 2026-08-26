@@ -239,6 +239,17 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     }
   }
 
+  // plunder loads (carried or dropped) — small gold tokens
+  for (const load of world.raid.loads) {
+    const p = worldToScreen(cam, load.x, load.y, w, h);
+    const s = Math.max(5 * cam.zoom, 3);
+    ctx.fillStyle = COLOR.objective;
+    ctx.fillRect(p.x - s, p.y - s, s * 2, s * 2);
+    ctx.strokeStyle = COLOR.outline;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(p.x - s, p.y - s, s * 2, s * 2);
+  }
+
   // shot flashes (fade over their ttl)
   ctx.lineWidth = 1;
   for (const f of world.flashes) {
