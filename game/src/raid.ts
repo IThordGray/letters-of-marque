@@ -3,6 +3,8 @@ import type { Unit, Building } from "./types";
 import { RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
+import { desc } from "./naming";
+import { applyMorale } from "./morale";
 import { spawnReinforcementWave } from "./spawn";
 
 // The raid scenario layer: plunder (loot buildings → carriable loads), the extraction zone
@@ -51,12 +53,45 @@ export function torchOrder(world: World, ids: number[]) {
   }
 }
 
-// Fire runs its course: a burning building razes when its burn time is up.
+// Fire runs its course: a burning building razes when its burn time is up — but the powder
+// magazine's fire is a lit fuse: when it burns down, it detonates.
 function ageFires(world: World) {
   for (const b of world.buildings) {
-    if (b.state === "burning" && b.burnUntil != null && world.time >= b.burnUntil) {
+    if (b.state !== "burning" || b.burnUntil == null || world.time < b.burnUntil) continue;
+    if (b.kind === "magazine") {
+      explode(world, b);
+    } else {
       b.state = "razed";
       signal(world, `The ${b.kind} burns to the ground.`);
+    }
+  }
+}
+
+// The magazine goes up: a town-waking bang, death to those on top of it, a morale shock to
+// everyone near (both sides), and the neighbouring buildings razed with it.
+function explode(world: World, mag: Building) {
+  mag.state = "razed";
+  mag.loot = 0;
+  world.raid.alarmHeat += RAID.explosion.alarmSpike;
+  signal(world, "The powder magazine goes up in a thunderclap!");
+  const bx = mag.x + mag.w / 2;
+  const by = mag.y + mag.h / 2;
+  for (const u of world.units) {
+    if (u.state === "down") continue;
+    const d = dist(u.x, u.y, bx, by);
+    if (d <= RAID.explosion.lethal) {
+      u.state = "down";
+      u.hp = 0;
+      signal(world, `${desc(u)} is caught in the blast.`);
+    } else if (d <= RAID.explosion.radius) {
+      applyMorale(world, u, RAID.explosion.moraleHit, "fire");
+    }
+  }
+  for (const b of world.buildings) {
+    if (b.id === mag.id || b.state === "razed") continue;
+    if (distToRect(bx, by, b.x, b.y, b.w, b.h) <= RAID.explosion.razeRadius) {
+      b.state = "razed";
+      b.loot = 0;
     }
   }
 }

@@ -142,7 +142,15 @@ export const RAID = {
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
   pickupRange: 24, // a free raider this close to a dropped load takes it up
-  torch: { powderCost: 15, burnTime: 4 }, // torching spends this much of a raider's powder; burns for this long
+  torch: { powderCost: 15, burnTime: 4 }, // torching spends this much of a raider's powder; burns (or fuses) for this long
+  // When the magazine's fire burns down it detonates instead of quietly razing.
+  explosion: {
+    alarmSpike: 40, // an enormous, town-waking bang
+    lethal: 80, // figures this close are killed outright
+    radius: 260, // figures within this (both sides) take a morale shock
+    moraleHit: 40, // ...of this size
+    razeRadius: 130, // buildings within this are razed too
+  },
 };
 
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
