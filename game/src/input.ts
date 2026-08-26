@@ -35,13 +35,38 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     closeBuildMenu();
     const m = document.createElement("div");
     m.className = "ctx-menu";
-    m.style.left = `${px}px`;
-    m.style.top = `${py}px`;
+    // Styled inline (not just via .ctx-menu) so a created-in-JS overlay never depends on the
+    // stylesheet having loaded/refreshed — the menu is positioned and visible regardless.
+    Object.assign(m.style, {
+      position: "fixed",
+      left: `${px}px`,
+      top: `${py}px`,
+      zIndex: "30",
+      display: "flex",
+      flexDirection: "column",
+      minWidth: "96px",
+      background: "rgba(10, 26, 34, 0.96)",
+      border: "1px solid #35617a",
+      borderRadius: "6px",
+      overflow: "hidden",
+      boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)",
+    } as Partial<CSSStyleDeclaration>);
     for (const a of actions) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ctx-item";
       btn.textContent = a === "loot" ? "Loot" : "Torch";
+      Object.assign(btn.style, {
+        padding: "8px 14px",
+        textAlign: "left",
+        fontSize: "13px",
+        color: "#e8f4fb",
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+      } as Partial<CSSStyleDeclaration>);
+      btn.onmouseenter = () => (btn.style.background = "rgba(23, 65, 86, 0.5)");
+      btn.onmouseleave = () => (btn.style.background = "none");
       btn.onclick = (ev) => {
         ev.stopPropagation();
         orderBuild(app, buildingId, a);
