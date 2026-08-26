@@ -25,6 +25,7 @@ const BUILDING_LABEL: Record<string, string> = {
 };
 
 function unitColor(u: Unit): string {
+  if (u.state === "surrendered") return COLOR.surrendered; // hands up — out of the fight
   if (u.state === "routing") return COLOR.routing; // routers wash out to grey
   if (u.side === "player") return u.kind === "officer" ? COLOR.playerOfficer : COLOR.player;
   return u.kind === "officer" ? COLOR.enemyOfficer : COLOR.enemy;
@@ -207,8 +208,8 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
     ctx.fillStyle = moraleColor(u);
     ctx.fillRect(bx, byM, bw * (u.morale / 100), 3);
 
-    // stance pip below the figure (not while routing)
-    if (u.state !== "routing") {
+    // stance pip below the figure (not while routing / yielded)
+    if (u.state !== "routing" && u.state !== "surrendered") {
       ctx.fillStyle =
         u.stance === "aggressive" ? COLOR.stanceAggressive : u.stance === "holdGround" ? COLOR.stanceHold : COLOR.stanceCease;
       ctx.beginPath();
@@ -221,7 +222,7 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
   for (const load of world.raid.loads) {
     const p = worldToScreen(cam, load.x, load.y, w, h);
     const s = Math.max(5 * cam.zoom, 3);
-    ctx.fillStyle = COLOR.objective;
+    ctx.fillStyle = load.prisoner ? COLOR.prisoner : COLOR.objective;
     ctx.fillRect(p.x - s, p.y - s, s * 2, s * 2);
     ctx.strokeStyle = COLOR.outline;
     ctx.lineWidth = 1;

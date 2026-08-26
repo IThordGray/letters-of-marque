@@ -16,7 +16,7 @@ import { desc } from "./naming";
 type Arc = "front" | "flank" | "rear";
 
 function alive(u: Unit): boolean {
-  return u.state !== "down";
+  return u.state !== "down" && u.state !== "surrendered"; // a yielded figure is out of the fight (not an actor, not a target)
 }
 function foeSide(s: Side): Side {
   return s === "player" ? "enemy" : "player";

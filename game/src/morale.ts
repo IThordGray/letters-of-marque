@@ -1,6 +1,6 @@
 import type { World } from "./world";
 import type { Unit, Cause, UnitState } from "./types";
-import { MORALE, TERRAIN } from "./constants";
+import { MORALE, TERRAIN, RAID } from "./constants";
 import { signal } from "./log";
 import { clamp, dist } from "./math";
 import { desc, causePhrase } from "./naming";
@@ -38,7 +38,7 @@ function enemyNear(world: World, u: Unit): boolean {
 // makes a rout read as a cause, not a bug.
 export function stepMorale(world: World, dt: number) {
   for (const u of world.units) {
-    if (u.state === "down") continue;
+    if (u.state === "down" || u.state === "surrendered") continue; // out of the fight — no recovery
     const terr = terrainAt(world, u.x, u.y);
     const calm = world.time - u.lastHitAt > MORALE.contactCooldown && !enemyNear(world, u);
     if (calm) {
@@ -72,10 +72,28 @@ function stateFromMorale(m: number, cur: UnitState): UnitState {
 
 function transition(world: World, u: Unit, next: UnitState) {
   const prev = u.state;
+  // a breaking defender hemmed in by raiders throws down his arms rather than run and be shot
+  if (next === "routing" && u.side === "enemy" && cornered(world, u)) {
+    u.state = "surrendered";
+    signal(world, `${desc(u)} throws down his arms — he yields!`);
+    contagion(world, u, MORALE.perRout);
+    return;
+  }
   u.state = next;
   if (next === "wavering" && prev === "steady") signal(world, `${desc(u)} waver — ${causePhrase(u.lastCause)}.`);
   else if (next === "routing") {
     signal(world, `${desc(u)} break and run — ${causePhrase(u.lastCause)}!`);
     contagion(world, u, MORALE.perRout);
   } else if (next === "wavering" && prev === "routing") signal(world, `${desc(u)} rally and turn back.`);
+}
+
+// Hemmed in? Count nearby live enemies-of-u; enough of them and a dash for the edge is
+// suicide, so he gives up instead.
+function cornered(world: World, u: Unit): boolean {
+  let near = 0;
+  for (const o of world.units) {
+    if (o.side === u.side || o.state === "down" || o.state === "surrendered") continue;
+    if (dist(u.x, u.y, o.x, o.y) <= RAID.surrender.range) near++;
+  }
+  return near >= RAID.surrender.minThreat;
 }

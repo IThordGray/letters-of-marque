@@ -24,6 +24,7 @@ export interface RaidState {
   alarmHeat: number; // accumulator that drives the alarm stage (time ashore, gunfire, escaping runners)
   haul: number; // plunder banked at the boats
   loads: Load[]; // plunder loads in play (being carried / dropped on the ground)
+  prisoners: { join: number }[]; // prisoners escorted to the boats (resolved at battle's end — S7)
   result: RaidResult | null; // set once the raid ends
 }
 
@@ -43,8 +44,10 @@ export interface Load {
   x: number;
   y: number;
   value: number;
-  kind: string; // the building it came from (flavour)
+  kind: string; // the building it came from, or "prisoner"
   carrierId: number | null;
+  prisoner?: boolean; // a captured person being escorted, not goods
+  join?: number; // if a prisoner: chance (0..1) they'll join the crew at battle's end
 }
 
 // A patrol: a small band walking a fixed waypoint route while the town is dormant. Once
@@ -89,6 +92,6 @@ export function makeWorld(): World {
     navGrid: null,
     patrols: [],
     aiNextAt: 0,
-    raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], result: null },
+    raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], prisoners: [], result: null },
   };
 }

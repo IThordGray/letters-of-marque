@@ -26,7 +26,7 @@ function nearestEnemyWithin(world: World, u: Unit, range: number): Unit | null {
 // attack-move — closing to firing range and facing the foe. Pure & deterministic.
 export function stepMovement(world: World, dt: number) {
   for (const u of world.units) {
-    if (u.state === "down") continue;
+    if (u.state === "down" || u.state === "surrendered") continue; // the fallen and the yielded don't move
 
     let tx = 0;
     let ty = 0;

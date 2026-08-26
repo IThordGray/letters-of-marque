@@ -4,7 +4,7 @@
 export type Side = "player" | "enemy";
 export type UnitKind = "pirate" | "officer";
 export type WeaponType = "musket" | "pistol" | "cannon";
-export type UnitState = "steady" | "wavering" | "routing" | "down";
+export type UnitState = "steady" | "wavering" | "routing" | "surrendered" | "down";
 export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
 export type Stance = "aggressive" | "holdGround" | "ceaseFire";
 

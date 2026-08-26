@@ -151,6 +151,10 @@ export const RAID = {
     moraleHit: 40, // ...of this size
     razeRadius: 130, // buildings within this are razed too
   },
+  surrender: { range: 140, minThreat: 2 }, // a breaking defender with >= minThreat raiders this close yields instead of fleeing
+  capture: { range: 28 }, // a free raider this close to a yielded enemy takes him prisoner
+  gaolPrisoners: 2, // captives freed when the gaol is broken open
+  prisonerJoin: { town: 0.15, gaol: 0.7 }, // chance a prisoner joins the crew, by source
 };
 
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
@@ -237,4 +241,6 @@ export const COLOR = {
   buildingShadow: "rgba(0, 0, 0, 0.35)",
   buildingOutline: "#1c130b",
   wall: "#5a4632",
+  surrendered: "#c9b98f", // a yielded figure (hands up)
+  prisoner: "#c98fd0", // a prisoner load — distinct from gold plunder
 };

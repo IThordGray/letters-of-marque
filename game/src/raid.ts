@@ -21,6 +21,7 @@ export function stepRaid(world: World, dt: number) {
   if (world.raid.alarm >= 1) world.raid.alarmHeat += A.perSec * dt;
 
   lootBuildings(world, dt);
+  captureSurrendered(world);
   stepLoads(world);
   ageFires(world);
   advanceAlarm(world);
@@ -107,7 +108,9 @@ function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh
 // load the looter picks up; it only counts once banked at the boats (stepLoads).
 function lootBuildings(world: World, dt: number) {
   for (const b of world.buildings) {
-    if (b.state !== "intact" || !b.loot) continue;
+    if (b.state !== "intact") continue;
+    const isGaol = b.kind === "gaol";
+    if (!isGaol && !b.loot) continue; // nothing worth taking (and not the gaol)
     let worker: Unit | undefined;
     for (const u of world.units) {
       if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
@@ -117,16 +120,52 @@ function lootBuildings(world: World, dt: number) {
         break;
       }
     }
-    if (worker) {
-      b.lootProgress = (b.lootProgress ?? 0) + dt;
-      if (b.lootProgress >= RAID.lootTime) {
-        world.raid.loads.push({ id: world.nextId++, x: worker.x, y: worker.y, value: b.loot, kind: b.kind, carrierId: worker.id });
-        signal(world, `The ${b.kind} is plundered — ${b.loot} to carry off.`);
-        b.state = "looted";
-        b.loot = 0;
-      }
-    } else {
+    if (!worker) {
       b.lootProgress = 0;
+      continue;
+    }
+    b.lootProgress = (b.lootProgress ?? 0) + dt;
+    if (b.lootProgress < RAID.lootTime) continue;
+    if (isGaol) {
+      // break it open — freed captives become prisoner loads (likely to join), left for
+      // a raider to escort out
+      for (let k = 0; k < RAID.gaolPrisoners; k++) {
+        world.raid.loads.push({
+          id: world.nextId++,
+          x: b.x + b.w / 2 + (k - (RAID.gaolPrisoners - 1) / 2) * 24,
+          y: b.y + b.h + 22,
+          value: 0,
+          kind: "prisoner",
+          carrierId: null,
+          prisoner: true,
+          join: RAID.prisonerJoin.gaol,
+        });
+      }
+      signal(world, "The gaol is broken open — captives freed!");
+    } else {
+      const val = b.loot ?? 0;
+      world.raid.loads.push({ id: world.nextId++, x: worker.x, y: worker.y, value: val, kind: b.kind, carrierId: worker.id });
+      signal(world, `The ${b.kind} is plundered — ${val} to carry off.`);
+    }
+    b.state = "looted";
+    b.loot = 0;
+  }
+}
+
+// A yielded enemy adjacent to a free-handed raider is taken prisoner — off the field, and
+// now a prisoner load that raider must escort out (townsfolk rarely want to join — S7).
+function captureSurrendered(world: World) {
+  for (const e of world.units) {
+    if (e.side !== "enemy" || e.state !== "surrendered") continue;
+    for (const u of world.units) {
+      if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+      if (world.raid.loads.some((l) => l.carrierId === u.id)) continue; // hands full
+      if (dist(u.x, u.y, e.x, e.y) <= RAID.capture.range) {
+        e.state = "down"; // taken off the field
+        world.raid.loads.push({ id: world.nextId++, x: u.x, y: u.y, value: 0, kind: "prisoner", carrierId: u.id, prisoner: true, join: RAID.prisonerJoin.town });
+        signal(world, `${desc(e)} is taken prisoner.`);
+        break;
+      }
     }
   }
 }
@@ -143,8 +182,13 @@ function stepLoads(world: World) {
       load.x = carrier.x;
       load.y = carrier.y;
       if (ext && carrier.y >= ext.y) {
-        world.raid.haul += load.value;
-        signal(world, `Plunder aboard — +${load.value} (haul ${world.raid.haul}).`);
+        if (load.prisoner) {
+          world.raid.prisoners.push({ join: load.join ?? 0 });
+          signal(world, "A prisoner is brought aboard.");
+        } else {
+          world.raid.haul += load.value;
+          signal(world, `Plunder aboard — +${load.value} (haul ${world.raid.haul}).`);
+        }
         world.raid.loads.splice(i, 1);
       }
       continue;
