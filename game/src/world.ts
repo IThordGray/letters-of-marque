@@ -24,7 +24,9 @@ export interface RaidState {
   alarmHeat: number; // accumulator that drives the alarm stage (time ashore, gunfire, escaping runners)
   haul: number; // plunder banked at the boats
   loads: Load[]; // plunder loads in play (being carried / dropped on the ground)
-  prisoners: { join: number }[]; // prisoners escorted to the boats (resolved at battle's end — S7)
+  prisoners: { join: number }[]; // prisoners escorted to the boats (resolved at battle's end)
+  joined: number; // of those, how many joined the crew (set at battle's end)
+  ransomed: number; // ...and how many were ransomed (release is a strategic-layer choice — stubbed)
   result: RaidResult | null; // set once the raid ends
 }
 
@@ -92,6 +94,6 @@ export function makeWorld(): World {
     navGrid: null,
     patrols: [],
     aiNextAt: 0,
-    raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], prisoners: [], result: null },
+    raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], prisoners: [], joined: 0, ransomed: 0, result: null },
   };
 }

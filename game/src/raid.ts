@@ -2,6 +2,7 @@ import type { World, RaidResult } from "./world";
 import type { Unit, Building } from "./types";
 import { RAID } from "./constants";
 import { dist } from "./math";
+import { nextFloat } from "./rng";
 import { signal } from "./log";
 import { desc } from "./naming";
 import { applyMorale } from "./morale";
@@ -294,7 +295,16 @@ function checkRaidOutcome(world: World) {
 function endRaid(world: World, result: RaidResult, message: string, pDown: number, officersLost: number) {
   world.over = true;
   world.raid.result = result;
+  // resolve prisoners at battle's end: each rolls its join disposition (gaol captives are
+  // eager, townsfolk seldom); the rest are ransomed. None join mid-fight. The ransom-vs-
+  // release mercy choice is a strategic-layer decision — stubbed to ransom for now.
+  let joined = 0;
+  for (const p of world.raid.prisoners) if (nextFloat(world.rng) < p.join) joined++;
+  world.raid.joined = joined;
+  world.raid.ransomed = world.raid.prisoners.length - joined;
   const off = officersLost > 0 ? ` (incl. ${officersLost} officer${officersLost > 1 ? "s" : ""})` : "";
-  world.outcome = `${message} Haul ${world.raid.haul}, ${pDown} lost${off}.`;
-  signal(world, world.outcome);
+  let msg = `${message} Haul ${world.raid.haul}, ${pDown} lost${off}.`;
+  if (world.raid.prisoners.length > 0) msg += ` Prisoners: ${joined} joined, ${world.raid.ransomed} for ransom.`;
+  world.outcome = msg;
+  signal(world, msg);
 }
