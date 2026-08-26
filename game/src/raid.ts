@@ -62,8 +62,42 @@ export function stepRaid(world: World, dt: number) {
     }
   }
 
+  lootBuildings(world, dt);
   advanceAlarm(world);
   checkRaidOutcome(world);
+}
+
+function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh: number): number {
+  const dx = Math.max(rx - x, 0, x - (rx + rw));
+  const dy = Math.max(ry - y, 0, y - (ry + rh));
+  return Math.hypot(dx, dy);
+}
+
+// Buildings are plundered by holding a raider at them (a channel, like a seize) — it costs
+// time, so the alarm bites. S1 credits the value on loot; S2 makes it carried + banked.
+function lootBuildings(world: World, dt: number) {
+  for (const b of world.buildings) {
+    if (b.state !== "intact" || !b.loot) continue;
+    let working = false;
+    for (const u of world.units) {
+      if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+      if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
+        working = true;
+        break;
+      }
+    }
+    if (working) {
+      b.lootProgress = (b.lootProgress ?? 0) + dt;
+      if (b.lootProgress >= RAID.lootTime) {
+        world.raid.haul += b.loot;
+        signal(world, `The ${b.kind} is plundered — +${b.loot} in the haul.`);
+        b.state = "looted";
+        b.loot = 0;
+      }
+    } else {
+      b.lootProgress = 0;
+    }
+  }
 }
 
 // Plain-language stage transitions — the alarm reads as a *cause*, never a countdown.
@@ -157,6 +191,7 @@ function checkRaidOutcome(world: World) {
 function endRaid(world: World, result: RaidResult, message: string) {
   world.over = true;
   world.raid.result = result;
-  world.outcome = message;
-  signal(world, message);
+  const msg = world.raid.haul > 0 ? `${message} Haul: ${world.raid.haul}.` : message;
+  world.outcome = msg;
+  signal(world, msg);
 }

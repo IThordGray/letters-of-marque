@@ -80,5 +80,6 @@ export interface Building {
   w: number;
   h: number;
   state: BuildingState;
-  loot?: number; // reserved — value carried off when looted
+  loot?: number; // value still inside (0 once looted / destroyed)
+  lootProgress?: number; // seconds worked so far while being looted
 }

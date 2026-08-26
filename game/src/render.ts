@@ -94,6 +94,10 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
       ctx.strokeStyle = COLOR.buildingOutline;
       ctx.lineWidth = 1.5;
       ctx.strokeRect(a2.x, a2.y, bw2, bh2);
+      if (bld.state !== "intact") {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.45)"; // ransacked / destroyed reads darker
+        ctx.fillRect(a2.x, a2.y, bw2, bh2);
+      }
       const lbl = BUILDING_LABEL[bld.kind];
       if (lbl && bh2 > 16) {
         ctx.fillStyle = COLOR.text;
@@ -305,11 +309,12 @@ export function render(ctx: CanvasRenderingContext2D, app: App) {
 
   // hud line
   const speed = app.paused ? "paused" : `×${app.timeScale}`;
+  const haul = world.raid.haul > 0 ? ` · haul ${world.raid.haul}` : "";
   const outcome = world.over ? ` · ${world.outcome}` : "";
   ctx.fillStyle = COLOR.text;
   ctx.font = "14px system-ui, sans-serif";
   ctx.fillText(
-    `Land · ${standing} standing · ${app.selected.size} selected · ${app.formation} · ${speed} · ${world.time.toFixed(1)}s${outcome}`,
+    `Land · ${standing} standing · ${app.selected.size} selected · ${app.formation} · ${speed} · ${world.time.toFixed(1)}s${haul}${outcome}`,
     12,
     22,
   );

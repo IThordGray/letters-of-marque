@@ -1,4 +1,4 @@
-import type { UnitKind, WeaponType } from "./types";
+import type { UnitKind, WeaponType, BuildingKind } from "./types";
 
 // ============================================================================
 // LAND MODULE — durable build. Data-oriented: plain structs + pure systems.
@@ -142,6 +142,22 @@ export const RAID = {
   },
   musterPoint: { x: WORLD.width / 2, y: 230 }, // the landward gate / barracks the muster pours from
   reinforce: { wave2: 6, wave3: 8 }, // wave sizes (pirates; +1 officer) at Alarm / Muster
+  lootRange: 30, // a raider this close to a building can work it over
+  lootTime: 3, // seconds to plunder a building
+};
+
+// ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
+// town economy, KAN-54, later). gaol → prisoners and magazine → powder, not gold.
+export const LOOT: Record<BuildingKind, number> = {
+  church: 1200,
+  governor: 1000,
+  warehouse: 700,
+  fort: 300,
+  dwelling: 150,
+  barracks: 120,
+  gaol: 0,
+  magazine: 0,
+  wall: 0,
 };
 
 // ---- Movement --------------------------------------------------------------

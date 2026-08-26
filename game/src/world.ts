@@ -23,6 +23,7 @@ export interface RaidState {
   extraction: { y: number } | null; // a band along the near edge — the boats you landed from
   alarm: number; // 0..3 stage: Quiet / Roused / Alarm / General Muster (derived from alarmHeat, only rises)
   alarmHeat: number; // accumulator that drives the alarm stage (time ashore + seizing + escaping runners)
+  haul: number; // plunder taken (S1: credited on loot; S2+: banked at the boats)
   carrierId: number | null; // the figure carrying the seized prize (null = it's on the ground)
   result: RaidResult | null; // set once the raid ends
 }
@@ -78,6 +79,6 @@ export function makeWorld(): World {
     navGrid: null,
     patrols: [],
     aiNextAt: 0,
-    raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, carrierId: null, result: null },
+    raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, haul: 0, carrierId: null, result: null },
   };
 }

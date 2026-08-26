@@ -1,7 +1,7 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType, Stance, BuildingKind } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT } from "./constants";
 import { formationSlots } from "./formation";
 import { makeRoster } from "./roster";
 import { signal } from "./log";
@@ -193,7 +193,7 @@ function deriveTerrain(world: World) {
 function seedTown(world: World) {
   let id = 1;
   const b = (kind: BuildingKind, x: number, y: number, w: number, h: number) =>
-    world.buildings.push({ id: id++, kind, x, y, w, h, state: "intact" });
+    world.buildings.push({ id: id++, kind, x, y, w, h, state: "intact", loot: LOOT[kind] });
 
   // landward wall with a central gate (the head of the main street); barracks + a
   // guardhouse just inside it
