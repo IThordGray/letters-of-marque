@@ -10,6 +10,64 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-08-25 — The plunder layer: haul-vs-cost, destroy-by-fire, prisoners as a subsystem
+How a raid becomes open-ended piracy (shaped with the game-designer; refined by the human).
+The Strongbox spine (mark → seize/channel → carry → drop-if-carrier-falls → extract) *is* the
+plunder mechanic — generalise it, don't rebuild it.
+- **Haul = carriable loads, banked only at the boats.** Looting a building (a seize-style
+  channel — costs *time*, so the alarm bites) spawns a plunder load; it counts only when a
+  carrier reaches the beach. A laden figure **can't fire and moves slower** (one load each).
+- **The ending is a ledger, not a flag** — *haul banked vs cost paid* (men, officers, time).
+  The four grades (clean/pyrrhic/failed/disaster) keep their keys but derive from the ledger ×
+  how the band left the field. Everyone reaching the boats = cast off & tally (the ratified
+  extraction rule *is* the quit-while-ahead decision).
+- **Destroy = one path (fire, for now).** Cutthroats had a single "destroy" — we torch by
+  **spending powder** (ammo = incendiary; *loud* → alarm spike). Destroying a building **loses
+  any value still inside it** AND **damages the town economy** (a razed lumberyard = less/no
+  lumber — a hook into the parked economy KAN-54, stubbed now). No general fire-spread; the
+  **powder magazine explodes** as a set-piece.
+- **Prisoners — a subsystem, not just the gaol.** You may take prisoner **anyone whose will is
+  broken and hasn't fled**. A broken figure **flees if escape looks safe, but gives up if it'd
+  likely be shot** — a new **surrendered/yielded state** (broken-and-cornered), distinct from
+  routing. **Gaol captives are likely to want to join** the crew; **townsfolk taken prisoner
+  generally won't**. **Resolution is at the END of the battle — join / ransom / release —
+  never mid-fight.** ransom → gold, +infamy; release → renown, +fame (currency **stubbed**
+  until the strategic layer).
+- **Loot value follows building role** — seed per-kind now (church/governor rich, warehouse
+  bulky, magazine = powder, gaol = prisoners); re-sourced from KAN-54 later. Reference the
+  economy, don't design it. Keep it legible, never a spreadsheet.
+*Why:* the interesting decision is greed vs the clock (and vs mercy) — the will-spine breaks
+who's in the way, plunder-vs-cost measures the raid, and the town becomes a place you *use*.
+
+---
+
+### 2026-08-25 — Town economy: logical, place-specific production & trade (parked epic)
+Captured as an epic to build later — the economy ties into the **towns**, and production is
+**logical and place-specific**, not uniform:
+- Some buildings produce for **local consumption** → *not* tradable (a tavern baking its own bread).
+- Some produce an **exportable / tradable resource** (a logger → timber); a town with that producer
+  **sells it to visiting ships**.
+- **Not every town has every building** — what a town produces and needs depends on what it has, so
+  trade is specific to place; ships buy/sell accordingly.
+Ties to: the `Building` entity (kinds → economic roles), the **real trade-economy pillar**
+(*Port Royale* depth), the **plunder layer** (a building's loot value follows its economic role), and
+the future **building-variety** expansion (bakers / grocers / smiths / loggers / farms). Keep it
+*logical*, not a spreadsheet. Scope with the game-designer when picked up.
+
+---
+
+### 2026-08-25 — Garrison strength scales with settlement importance (a stats rule, not a mechanic)
+A logical rule for setting unit-strength sliders until faction AI exists — purely reflected in
+**unit stats (ferocity / marks / morale) and officer quality**, no new mechanics:
+- **The player's pirates are generally stronger** — they live for fighting.
+- **Small outpost garrisons (outskirts) are weaker** — little training, not on high alert, low experience.
+- **Capital / headquarters cities are stronger** — highest discipline, better troops *and* better officers.
+So an outnumbered raid on a sleepy outpost is winnable and a capital is genuinely hard — set logically by
+**settlement tier**, not by faction-AI machinery. This is the precursor the later faction-identity AI
+will replace with real behaviour; for now it just configures the strength sliders.
+
+---
+
 ### 2026-08-25 — The town raid ground: an open Caribbean port; buildings are game objects, not scenery
 The raid happens *in* a town, not on an open field — playtest showed the field fight is a
 slugfest that can't be balanced because the environment does nothing. Ratified shape (shaped

@@ -34,6 +34,77 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
   game, not just obstructions**.
 - _(Add confirmed mechanics and feel here as we go.)_
 
+## Rise of Piracy (2026, Early Access) — the closest living competitor
+Solo-dev age-of-sail sandbox: *Mount & Blade* at sea, RTS fleet command, island
+conquest by bombardment + landing party. EA since Feb 2026, ~78% positive of ~500
+reviews, ~12-month EA plan. The nearest neighbour to what we are building — which
+makes both its solved problems and its gaps unusually informative.
+
+*Sources:* official Quick Start Guide (press-kit command list + "Tips & Tactics"),
+Steam store page, top-rated Steam reviews, the dev's Steam Q&A thread, and a 43-min
+Splattercat review (2026-08-25, `youtube.com/watch?v=7No0QOJWMyQ`).
+
+### What it already solves — worth borrowing
+- **Contextual right-click, shipped and legible.** Our ratified model, in the wild:
+  RMB sea = move · RMB enemy = attack · RMB friendly = guard/follow · RMB shore =
+  set invasion landing spot. **The cursor becomes a sword over a valid attack
+  target** — the affordance that makes contextual command readable *before* the
+  click. Our decision ratifies the resolution rule but not yet the feedback that
+  tells the player which action they are about to get. Take this.
+- **Modifier-as-verb instead of a menu:** Shift+RMB = board · Ctrl+RMB = bombard
+  location · RMB-hold on a friendly = formation offset. *Tension with our spec:* we
+  ratified "2+ valid actions → context menu". Modifiers are faster but hidden, menus
+  discoverable but slower — likely both, menu for discovery and modifier as the
+  expert bypass (same shape as our `A`-key rule).
+- **Fleet will is the win condition, and it shipped.** Their own tips: *focus the
+  enemy flagship; the fleet may surrender.* Fleets strike rather than sink —
+  external confirmation of the one-spine thesis at squadron scale.
+- **Capture beats kill, economically:** *boarding and capturing is more profitable
+  than sinking — but riskier.* Second independent reference converging with
+  Homeworld's salvage corvettes (KAN-21).
+- **Blocked arcs make formation matter:** *arrange ships to bring all cannons to
+  bear; allies blocking fire will delay shots.* Formation as a live tactical
+  constraint rather than decoration — the actual reason to have formations.
+- **Two currencies, distinct sinks.** Gold (ships, cargo, upgrades) vs Renown (crew
+  quality and recruitment). Captured crew: **ransom → gold, release → renown** — a
+  greed/mercy choice expressed purely as currency. Directly relevant to our ratified
+  quarter / prisoner / loot verbs and the fame-infamy pillar.
+- **Crewing a weapon as an order.** On land, RMB a cannon = 2+ pirates crew it;
+  double-RMB drops it. Clean interaction for the raid layer — turning a town's own
+  guns on the town.
+- **Attack-move is the recommended raid order** — their tips push *Move Attack* over
+  plain move or attack. Confirms pattern (B) under "Land command & formations".
+
+### Where it fails — the anti-patterns to design against
+- **You cannot read the enemy's will.** The loudest, most repeated complaint: no
+  crew / sail / damage readout, so boarding is *"guess work"* and you cannot tell
+  when a ship is about to strike. **Fatal for a will-based game, and the single
+  biggest lesson for us** — if breaking WILL is the win condition, will must be
+  *visible*. A morale spine the player cannot read plays as randomness.
+- **Wind is absent from battle.** The reviewer narrates the exact moment it should
+  have decided the fight — wanting to force the enemy into the wind — and finds
+  nothing there. Live evidence for why our tack/irons commitment must not soften.
+- **No station-keeping.** Fleet ships always close when engaging; no distance or
+  offset order, so "hold off his quarter" is unsayable. Our group-order vocabulary
+  needs it.
+- **No battle camera follow** — constant manual repositioning (see KAN-26).
+- **Land combat is a placeholder** — *"janky"*, *"zerg mob them after bombarding"*,
+  numbers-only resolution. The reviewer never captured a port in ~4h of play.
+  **The closest competitor's weakest layer is the one we conceive from first.**
+- **Capacity derived from the cargo hold** — a sloop carries more troops than a Man
+  O' War. Don't derive fighting strength from stowage.
+- **Upgrades are numbers going up** — no equipment slots, no functional distinctness;
+  players want ships that differ in *role*, not in stat total.
+- **No enemy disengagement at map scale** — pursuers never give up, never fall
+  behind, opponent strength is random. The will-spine is missing from the strategic
+  layer, and its absence reads as an unfair sandbox.
+- **The "dry sandbox" verdict.** The review's closing critique: solid bones, but no
+  emergent narrative, no events at sea, no rivalries — **and unnamed, story-less
+  officers**, which he explicitly wishes were named characters with their own arcs.
+  *The most-wished-for missing feature in our nearest competitor is our central
+  ratified pillar* (officers as connective tissue — the person, not the hull).
+
+
 ## Genre mechanic patterns
 Catalogued per mechanic family as features reach them. Each: the pattern, where it
 shines, where it drags, and the pirate-flavour verdict.
