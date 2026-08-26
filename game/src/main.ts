@@ -16,7 +16,7 @@ import { stepPatrol } from "./patrol";
 import { stepAI } from "./ai";
 import { signal } from "./log";
 import { SIM } from "./constants";
-import { showDeployScreen } from "./deploy";
+import { makeRoster } from "./roster";
 
 // Bootstrap a battle from the chosen landing party, then run the sim loop.
 function startBattle(spec: PartySpec) {
@@ -77,5 +77,14 @@ function startBattle(spec: PartySpec) {
   });
 }
 
-// The app opens on the deploy screen; landing the party starts the battle.
-showDeployScreen(startBattle);
+// Deploy screen disabled for now (KAN-64) — start straight into a battle with a balanced
+// preset crew. Re-enable by importing showDeployScreen from "./deploy" and calling
+// showDeployScreen(startBattle) here instead.
+const roster = makeRoster();
+startBattle({
+  squads: [
+    { officer: roster.officers[0] ?? null, pirates: 6, weapon: "musket" }, // firing line
+    { officer: roster.officers[1] ?? null, pirates: 5, weapon: "pistol" }, // pistol & cutlass — shock troops
+    { officer: roster.officers[2] ?? null, pirates: 3, weapon: "musket" }, // a second musket squad
+  ],
+});
