@@ -239,10 +239,8 @@ export function populateBattle(world: World, party: PartySpec) {
   world.navGrid = buildNavGrid(world);
   spawnPlayerParty(world, party);
   spawnEnemyGarrison(world);
-  world.raid.objective = { x: WORLD.width / 2, y: 490, seized: false, seizeProgress: 0 }; // the church threshold (seized from the steps)
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
-  const churchB = world.buildings.find((b) => b.kind === "church");
-  if (churchB) churchB.loot = 0; // the church's worth is the objective/strongbox (S3 folds it into a load)
+  // the church keeps its rich seeded loot (LOOT.church) — it *is* the strong-house / big haul
 }
 
 // Default party vs garrison — kept for headless smokes and a no-deploy fallback.

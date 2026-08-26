@@ -19,13 +19,11 @@ export interface Flash {
 export type RaidResult = "clean" | "pyrrhic" | "failed" | "disaster";
 
 export interface RaidState {
-  objective: { x: number; y: number; seized: boolean; seizeProgress: number } | null;
   extraction: { y: number } | null; // a band along the near edge — the boats you landed from
-  alarm: number; // 0..3 stage: Quiet / Roused / Alarm / General Muster (derived from alarmHeat, only rises)
-  alarmHeat: number; // accumulator that drives the alarm stage (time ashore + seizing + escaping runners)
+  alarm: number; // 0..3 stage: Quiet / Roused / Alarm / General Muster (only rises)
+  alarmHeat: number; // accumulator that drives the alarm stage (time ashore, gunfire, escaping runners)
   haul: number; // plunder banked at the boats
   loads: Load[]; // plunder loads in play (being carried / dropped on the ground)
-  carrierId: number | null; // the figure carrying the seized prize (null = it's on the ground)
   result: RaidResult | null; // set once the raid ends
 }
 
@@ -91,6 +89,6 @@ export function makeWorld(): World {
     navGrid: null,
     patrols: [],
     aiNextAt: 0,
-    raid: { objective: null, extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], carrierId: null, result: null },
+    raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], result: null },
   };
 }

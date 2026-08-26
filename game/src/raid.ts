@@ -3,64 +3,20 @@ import type { Unit } from "./types";
 import { RAID } from "./constants";
 import { dist } from "./math";
 import { signal } from "./log";
-import { desc } from "./naming";
 import { spawnReinforcementWave } from "./spawn";
 
-// The raid scenario layer: the objective (seize it, then carry it), the extraction zone
-// (the boats), the alarm (the garrison rouses), and the graded outcome. "Win by breaking
-// WILL" is preserved — shaped into an objective raid: take the prize and get it to the
-// boats; you lose when your own will breaks. Pure and deterministic; run after
-// movement/morale so it reads current positions and states.
+// The raid scenario layer: plunder (loot buildings → carriable loads), the extraction zone
+// (the boats), the alarm (the garrison rouses + musters), and the graded haul-vs-cost
+// outcome. Pure and deterministic; run after movement/morale so it reads current state.
 export function stepRaid(world: World, dt: number) {
   if (world.over) return;
   const A = RAID.alarm;
 
-  // being spotted starts the clock; time ashore then creeps it up (runners/seizing spike it)
+  // being spotted starts the clock; time ashore then creeps it up (gunfire/runners spike it)
   if (world.raid.alarm === 0 && raidersSpotted(world)) {
     world.raid.alarmHeat = Math.max(world.raid.alarmHeat, A.roused);
   }
   if (world.raid.alarm >= 1) world.raid.alarmHeat += A.perSec * dt;
-
-  const obj = world.raid.objective;
-
-  // a carried prize rides with its carrier; a fallen or broken carrier drops it where he stands
-  if (obj && obj.seized && world.raid.carrierId != null) {
-    const carrier = world.units.find((u) => u.id === world.raid.carrierId);
-    if (!carrier || carrier.state === "down" || carrier.state === "routing") {
-      obj.seized = false;
-      obj.seizeProgress = 0;
-      world.raid.carrierId = null;
-      signal(world, "The strongbox is dropped — take it up again!");
-    } else {
-      obj.x = carrier.x;
-      obj.y = carrier.y;
-    }
-  }
-
-  // seize / re-take the prize when it's on the ground
-  if (obj && !obj.seized) {
-    let holder: Unit | undefined;
-    let best = RAID.seizeRange;
-    for (const u of world.units) {
-      if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
-      const d = dist(u.x, u.y, obj.x, obj.y);
-      if (d <= best) {
-        best = d;
-        holder = u;
-      }
-    }
-    if (holder) {
-      obj.seizeProgress += dt;
-      if (obj.seizeProgress >= RAID.seizeTime) {
-        obj.seized = true;
-        world.raid.carrierId = holder.id;
-        world.raid.alarmHeat += A.seizeSpike; // the theft spikes the alarm
-        signal(world, `${desc(holder)} takes the strongbox — get it to the boats!`);
-      }
-    } else {
-      obj.seizeProgress = 0; // slip off it and the work is lost
-    }
-  }
 
   lootBuildings(world, dt);
   stepLoads(world);
@@ -180,54 +136,49 @@ function raidersSpotted(world: World): boolean {
   return false;
 }
 
-// Graded outcome. The objective is the point and breaking will is the means: you win by
-// getting the carried prize to the boats (or clearing the field while you hold it); you
-// can withdraw empty-handed and survive; you lose when your band's own will breaks.
+// Graded outcome — a haul-vs-cost ledger, not a prize flag. The raid ends when the band's
+// will breaks (disaster) or the last of the living reach the boats (cast off & tally): what
+// you carried off, weighed against what it cost.
 function checkRaidOutcome(world: World) {
   if (world.over) return;
   const ext = world.raid.extraction;
-
   const living = world.units.filter((u) => u.side === "player" && u.state !== "down");
   const atBoats = (u: Unit) => !!ext && u.state !== "routing" && u.y >= ext.y;
 
-  let eFight = 0;
-  for (const u of world.units) if (u.side === "enemy" && fighting(u)) eFight++;
   let pFight = 0;
   for (const u of living) if (fighting(u) && !atBoats(u)) pFight++;
   const pDown = world.units.filter((u) => u.side === "player" && u.state === "down").length;
+  const officersLost = world.units.filter((u) => u.side === "player" && u.kind === "officer" && u.state === "down").length;
+  const total = world.units.filter((u) => u.side === "player").length;
 
-  const carrier = world.raid.carrierId != null ? world.units.find((u) => u.id === world.raid.carrierId) : undefined;
-  const held = !!carrier && carrier.state !== "down";
-
-  // success — the carrier gets the prize to the boats, or the field is cleared while held
-  if (held && (atBoats(carrier!) || eFight === 0)) {
-    const grade: RaidResult = pDown === 0 ? "clean" : "pyrrhic";
-    endRaid(
-      world,
-      grade,
-      grade === "clean"
-        ? "The prize is away and the band is clear — a clean raid."
-        : "The prize is away, but you left men in the streets — a bloody success.",
-    );
+  // the whole living band has reached the boats → cast off & tally
+  if (living.length > 0 && living.every(atBoats)) {
+    let grade: RaidResult;
+    let msg: string;
+    if (world.raid.haul <= 0) {
+      grade = "failed";
+      msg = "You pull back to the boats empty-handed — your people live to raid again.";
+    } else if (officersLost > 0 || pDown > total * 0.34) {
+      grade = "pyrrhic";
+      msg = "The plunder's aboard, but you left men in the streets — a bloody morning's work.";
+    } else {
+      grade = "clean";
+      msg = "The plunder's away and the band is clear — a clean raid.";
+    }
+    endRaid(world, grade, msg, pDown, officersLost);
     return;
   }
 
-  // failed but survived — empty-handed, but the whole living band has pulled back to the boats
-  if (!held && living.length > 0 && living.every(atBoats)) {
-    endRaid(world, "failed", "You pull back to the boats empty-handed — your people live to raid again.");
-    return;
-  }
-
-  // disaster — no one left willing to fight and the prize isn't away
+  // no one left willing to fight (and not a clean withdrawal) → the band broke
   if (pFight === 0) {
-    endRaid(world, "disaster", "Your band breaks and scatters — the raid fails.");
+    endRaid(world, "disaster", "Your band breaks and scatters — the raid fails.", pDown, officersLost);
   }
 }
 
-function endRaid(world: World, result: RaidResult, message: string) {
+function endRaid(world: World, result: RaidResult, message: string, pDown: number, officersLost: number) {
   world.over = true;
   world.raid.result = result;
-  const msg = world.raid.haul > 0 ? `${message} Haul: ${world.raid.haul}.` : message;
-  world.outcome = msg;
-  signal(world, msg);
+  const off = officersLost > 0 ? ` (incl. ${officersLost} officer${officersLost > 1 ? "s" : ""})` : "";
+  world.outcome = `${message} Haul ${world.raid.haul}, ${pDown} lost${off}.`;
+  signal(world, world.outcome);
 }

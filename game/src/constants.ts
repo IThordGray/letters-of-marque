@@ -126,9 +126,6 @@ export const DEPLOY = {
 
 // ---- Raid scenario — objective / extraction / alarm ------------------------
 export const RAID = {
-  objectiveRadius: 24, // drawn half-size of the objective marker (paces)
-  seizeRange: 46, // a player figure this close can work the objective
-  seizeTime: 2.0, // seconds held on the objective to seize it
   rouseRange: 240, // a raider this close to a dug-in defender rouses the garrison
   // The alarm is a staged clock (Quiet→Roused→Alarm→Muster) driven by heat, not a timer.
   alarm: {
@@ -150,7 +147,7 @@ export const RAID = {
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
 // town economy, KAN-54, later). gaol → prisoners and magazine → powder, not gold.
 export const LOOT: Record<BuildingKind, number> = {
-  church: 1200,
+  church: 1500, // the strong-house — the richest single haul (the old "strongbox")
   governor: 1000,
   warehouse: 700,
   fort: 300,
