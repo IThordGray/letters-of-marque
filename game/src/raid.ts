@@ -21,7 +21,7 @@ export function stepRaid(world: World, dt: number) {
   }
   if (world.raid.alarm >= 1) world.raid.alarmHeat += A.perSec * dt;
 
-  lootBuildings(world, dt);
+  stepBuildOrders(world, dt);
   captureSurrendered(world);
   stepLoads(world);
   ageFires(world);
@@ -32,25 +32,18 @@ export function stepRaid(world: World, dt: number) {
 // Torch (a verb-key order): each selected raider adjacent to an intact/looted building,
 // with powder to spare, sets it alight — spending powder (ammo = incendiary), destroying
 // whatever's still inside, and raising a loud alarm. Fire razes it after a burn time.
+// The T-key bypass: each selected raider torches the nearest building he's already adjacent
+// to (an immediate alternative to the right-click Torch order).
 export function torchOrder(world: World, ids: number[]) {
   for (const id of ids) {
     const u = world.units.find((x) => x.id === id);
     if (!u || u.side !== "player" || u.state === "down" || u.powder < RAID.torch.powderCost) continue;
-    let target: Building | undefined;
     for (const b of world.buildings) {
       if (b.state !== "intact" && b.state !== "looted") continue;
       if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
-        target = b;
+        igniteBuilding(world, u, b);
         break;
       }
-    }
-    if (target) {
-      u.powder -= RAID.torch.powderCost;
-      target.state = "burning";
-      target.burnUntil = world.time + RAID.torch.burnTime;
-      target.loot = 0; // whatever's inside is lost to the flames (and its trade to the town — KAN-54)
-      world.raid.alarmHeat += RAID.alarm.torchSpike;
-      signal(world, `The ${target.kind} is set ablaze!`);
     }
   }
 }
@@ -104,52 +97,87 @@ function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh
   return Math.hypot(dx, dy);
 }
 
-// Buildings are plundered by holding a free-handed raider at them (a channel, like a
-// seize) — it costs time, so the alarm bites. On completion the goods become a carriable
-// load the looter picks up; it only counts once banked at the boats (stepLoads).
-function lootBuildings(world: World, dt: number) {
+// Building orders (right-click Loot / Torch — KAN-65): a raider ordered to a building works
+// it once adjacent. Loot plunders it — a channel (costs time, so the alarm bites), the goods
+// becoming a carriable load the looter shoulders (banked at the boats via stepLoads); the
+// gaol breaks open into freed captives. Torch sets it alight (spending powder).
+function stepBuildOrders(world: World, dt: number) {
   for (const b of world.buildings) {
-    if (b.state !== "intact") continue;
-    const isGaol = b.kind === "gaol";
-    if (!isGaol && !b.loot) continue; // nothing worth taking (and not the gaol)
-    let worker: Unit | undefined;
-    for (const u of world.units) {
-      if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
-      if (world.raid.loads.some((l) => l.carrierId === u.id)) continue; // hands full already
-      if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
-        worker = u;
-        break;
+    // LOOT — an ordered, adjacent, free-handed raider plunders it
+    if (b.state === "intact" && (b.loot || b.kind === "gaol")) {
+      let worker: Unit | undefined;
+      for (const u of world.units) {
+        if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+        if (u.buildTargetId !== b.id || u.buildAction !== "loot") continue;
+        if (world.raid.loads.some((l) => l.carrierId === u.id)) continue; // hands full
+        if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
+          worker = u;
+          break;
+        }
+      }
+      if (worker) {
+        b.lootProgress = (b.lootProgress ?? 0) + dt;
+        if (b.lootProgress >= RAID.lootTime) {
+          if (b.kind === "gaol") {
+            for (let k = 0; k < RAID.gaolPrisoners; k++) {
+              world.raid.loads.push({
+                id: world.nextId++,
+                x: b.x + b.w / 2 + (k - (RAID.gaolPrisoners - 1) / 2) * 24,
+                y: b.y + b.h + 22,
+                value: 0,
+                kind: "prisoner",
+                carrierId: null,
+                prisoner: true,
+                join: RAID.prisonerJoin.gaol,
+              });
+            }
+            signal(world, "The gaol is broken open — captives freed!");
+          } else {
+            const val = b.loot ?? 0;
+            world.raid.loads.push({ id: world.nextId++, x: worker.x, y: worker.y, value: val, kind: b.kind, carrierId: worker.id });
+            signal(world, `The ${b.kind} is plundered — ${val} to carry off.`);
+          }
+          b.state = "looted";
+          b.loot = 0;
+          clearBuildOrders(world, b.id);
+        }
+      } else {
+        b.lootProgress = 0;
       }
     }
-    if (!worker) {
-      b.lootProgress = 0;
-      continue;
-    }
-    b.lootProgress = (b.lootProgress ?? 0) + dt;
-    if (b.lootProgress < RAID.lootTime) continue;
-    if (isGaol) {
-      // break it open — freed captives become prisoner loads (likely to join), left for
-      // a raider to escort out
-      for (let k = 0; k < RAID.gaolPrisoners; k++) {
-        world.raid.loads.push({
-          id: world.nextId++,
-          x: b.x + b.w / 2 + (k - (RAID.gaolPrisoners - 1) / 2) * 24,
-          y: b.y + b.h + 22,
-          value: 0,
-          kind: "prisoner",
-          carrierId: null,
-          prisoner: true,
-          join: RAID.prisonerJoin.gaol,
-        });
+    // TORCH — an ordered, adjacent raider with powder sets it alight
+    if (b.state === "intact" || b.state === "looted") {
+      for (const u of world.units) {
+        if (u.side !== "player" || u.state === "down" || u.state === "routing") continue;
+        if (u.buildTargetId !== b.id || u.buildAction !== "torch" || u.powder < RAID.torch.powderCost) continue;
+        if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) <= RAID.lootRange) {
+          igniteBuilding(world, u, b);
+          clearBuildOrders(world, b.id);
+          break;
+        }
       }
-      signal(world, "The gaol is broken open — captives freed!");
-    } else {
-      const val = b.loot ?? 0;
-      world.raid.loads.push({ id: world.nextId++, x: worker.x, y: worker.y, value: val, kind: b.kind, carrierId: worker.id });
-      signal(world, `The ${b.kind} is plundered — ${val} to carry off.`);
     }
-    b.state = "looted";
-    b.loot = 0;
+  }
+}
+
+// Set a building alight: spend the torcher's powder, start it burning (a fuse, for the
+// magazine), destroy its remaining value, and raise a loud alarm.
+function igniteBuilding(world: World, u: Unit, b: Building) {
+  u.powder -= RAID.torch.powderCost;
+  b.state = "burning";
+  b.burnUntil = world.time + RAID.torch.burnTime;
+  b.loot = 0;
+  world.raid.alarmHeat += RAID.alarm.torchSpike;
+  signal(world, `The ${b.kind} is set ablaze!`);
+}
+
+// Clear any raider's order that targeted this building (it's looted / alight / gone).
+function clearBuildOrders(world: World, buildingId: number) {
+  for (const u of world.units) {
+    if (u.buildTargetId === buildingId) {
+      u.buildTargetId = undefined;
+      u.buildAction = undefined;
+    }
   }
 }
 

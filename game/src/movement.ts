@@ -40,6 +40,22 @@ export function stepMovement(world: World, dt: number) {
       tx = u.x;
       ty = u.side === "player" ? WORLD.height + 60 : -60;
       moving = true;
+    } else if (u.buildTargetId != null) {
+      // a loot/torch order: close on the building, then stand at it and work (raid.ts)
+      const b = world.buildings.find((x) => x.id === u.buildTargetId);
+      const stillValid =
+        b && (u.buildAction === "torch" ? b.state === "intact" || b.state === "looted" : b.state === "intact" && (!!b.loot || b.kind === "gaol"));
+      if (!b || !stillValid) {
+        u.buildTargetId = undefined;
+        u.buildAction = undefined;
+      } else if (distToRect(u.x, u.y, b.x, b.y, b.w, b.h) > RAID.lootRange - 6) {
+        tx = b.x + b.w / 2;
+        ty = b.y + b.h / 2;
+        moving = true;
+      } else {
+        faceX = b.x + b.w / 2;
+        faceY = b.y + b.h / 2;
+      }
     } else if (u.moveTarget && !u.attackMove) {
       // plain move — obey the order, ignore the enemy
       tx = u.moveTarget.x;
@@ -121,6 +137,13 @@ export function stepMovement(world: World, dt: number) {
       }
     }
   }
+}
+
+// Distance from a point to a rectangle (0 if inside) — for "how close to the building".
+function distToRect(x: number, y: number, rx: number, ry: number, rw: number, rh: number): number {
+  const dx = Math.max(rx - x, 0, x - (rx + rw));
+  const dy = Math.max(ry - y, 0, y - (ry + rh));
+  return Math.hypot(dx, dy);
 }
 
 // Is (x, y) inside any building footprint (expanded by a small margin so figures stop

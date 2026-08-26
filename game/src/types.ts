@@ -46,6 +46,10 @@ export interface Unit {
   // navigation (KAN-52) — a cached path around buildings, recomputed when the goal moves
   path?: { x: number; y: number }[];
   pathGoal?: { x: number; y: number };
+
+  // building order (KAN-65) — go loot or torch a specific building
+  buildTargetId?: number;
+  buildAction?: "loot" | "torch";
 }
 
 export type TerrainKind = "cover" | "highGround" | "choke";

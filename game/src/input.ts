@@ -23,8 +23,39 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
+  // right-click-a-building context menu (Loot / Torch)
+  let buildMenu: HTMLElement | null = null;
+  const closeBuildMenu = () => {
+    if (buildMenu) {
+      buildMenu.remove();
+      buildMenu = null;
+    }
+  };
+  const showBuildMenu = (px: number, py: number, buildingId: number, actions: ("loot" | "torch")[]) => {
+    closeBuildMenu();
+    const m = document.createElement("div");
+    m.className = "ctx-menu";
+    m.style.left = `${px}px`;
+    m.style.top = `${py}px`;
+    for (const a of actions) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ctx-item";
+      btn.textContent = a === "loot" ? "Loot" : "Torch";
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        orderBuild(app, buildingId, a);
+        closeBuildMenu();
+      };
+      m.append(btn);
+    }
+    document.body.append(m);
+    buildMenu = m;
+  };
+
   window.addEventListener("keydown", (e) => {
     if (e.code === "Escape") {
+      closeBuildMenu();
       app.selected.clear();
       app.inspected = null;
       app.attackArmed = false;
@@ -87,6 +118,10 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
   let downY = 0;
 
   canvas.addEventListener("mousedown", (e) => {
+    if (buildMenu) {
+      closeBuildMenu(); // a click anywhere on the field dismisses the menu
+      return;
+    }
     if (e.button === 1) {
       panning = true;
       panX = e.clientX;
@@ -95,11 +130,29 @@ export function installInput(app: App, canvas: HTMLCanvasElement) {
       return;
     }
     if (e.button === 2) {
-      // right-click: contextual — live enemy = attack; else formation-move
+      // right-click: contextual — live enemy = attack; a building = loot/torch (menu if both
+      // apply); else formation-move
       const p = xy(e);
       const hit = pickUnit(app, p.x, p.y);
-      if (hit && hit.side === "enemy" && hit.state !== "down") orderAttack(app, hit.id);
-      else orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH), false);
+      if (hit && hit.side === "enemy" && hit.state !== "down") {
+        orderAttack(app, hit.id);
+        return;
+      }
+      const bld = buildingAt(app, p.x, p.y);
+      if (bld && living(app).length > 0) {
+        const actions: ("loot" | "torch")[] = [];
+        if (bld.state === "intact" && (!!bld.loot || bld.kind === "gaol")) actions.push("loot");
+        if (bld.state === "intact" || bld.state === "looted") actions.push("torch");
+        if (actions.length >= 2) {
+          showBuildMenu(e.clientX, e.clientY, bld.id, actions);
+          return;
+        }
+        if (actions.length === 1) {
+          orderBuild(app, bld.id, actions[0]);
+          return;
+        }
+      }
+      orderFormationMove(app, screenToWorld(app.camera, p.x, p.y, app.viewW, app.viewH), false);
       return;
     }
     if (e.button === 0) {
@@ -206,6 +259,29 @@ function orderAttack(app: App, targetId: number) {
     u.attackTargetId = targetId;
     u.moveTarget = null;
     u.attackMove = false;
+    u.buildTargetId = undefined;
+    u.buildAction = undefined;
+  }
+}
+
+// The building under the cursor (topmost by array order), or null.
+function buildingAt(app: App, sx: number, sy: number) {
+  const w = screenToWorld(app.camera, sx, sy, app.viewW, app.viewH);
+  for (const b of app.world.buildings) {
+    if (w.x >= b.x && w.x <= b.x + b.w && w.y >= b.y && w.y <= b.y + b.h) return b;
+  }
+  return null;
+}
+
+// Order the selection to loot or torch a building — they'll move up to it and work it.
+function orderBuild(app: App, buildingId: number, action: "loot" | "torch") {
+  for (const u of living(app)) {
+    u.buildTargetId = buildingId;
+    u.buildAction = action;
+    u.moveTarget = null;
+    u.attackTargetId = null;
+    u.attackMove = false;
+    u.path = undefined;
   }
 }
 
@@ -220,6 +296,8 @@ function orderFormationMove(app: App, wpt: { x: number; y: number }, attackMove:
     sel[i].moveTarget = { x: slots[i].x, y: slots[i].y };
     sel[i].attackTargetId = null;
     sel[i].attackMove = attackMove;
+    sel[i].buildTargetId = undefined;
+    sel[i].buildAction = undefined;
   }
 }
 
@@ -239,6 +317,8 @@ function halt(app: App) {
     u.moveTarget = null;
     u.attackTargetId = null;
     u.attackMove = false;
+    u.buildTargetId = undefined;
+    u.buildAction = undefined;
     u.stance = "holdGround";
   }
 }

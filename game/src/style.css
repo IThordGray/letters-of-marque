@@ -30,6 +30,32 @@ body {
   pointer-events: none;
 }
 
+/* right-click building context menu (Loot / Torch) */
+.ctx-menu {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 96px;
+  background: rgba(10, 26, 34, 0.96);
+  border: 1px solid #35617a;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.ctx-item {
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 13px;
+  color: #e8f4fb;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.ctx-item:hover {
+  background: rgba(23, 65, 86, 0.5);
+}
+
 .log {
   position: absolute;
   right: 10px;
