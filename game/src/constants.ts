@@ -161,9 +161,13 @@ export const RAID = {
 // A stand-in for faction AI: a tier sets absolute stat *bands* for the defenders (rank &
 // file read `troop`, their officer reads `officer`) AND the garrison's *depth* (`watch`
 // counts for the initial layout + `reinforce` wave sizes at Alarm / Muster). Morale is the
-// sharpest dial, because the spine is break-the-will: an outpost's men sit barely above the
+// sharpest dial, because the spine is break-the-will: a settlement's men sit barely above the
 // steady line (MORALE.steadyAbove 55) and crumble; a capital's sit well clear and hold.
-// Bands are starting guesses — tune by playtest.
+// Headcounts are an abstracted, compressed slice of a town's population (pop × men ×
+// combatant-fraction) — the standing watch here, the mustering militia in the reinforcement
+// waves; relative sizes follow the population logic, absolutes stay small for readability. A
+// militarised `outpost` (small but soldier-dense) is a future tier — see decisions.md
+// 2026-09-07. Bands are starting guesses — tune by playtest / the economy model (KAN-54).
 export const TIER: Record<
   SettlementTier,
   {
@@ -173,11 +177,11 @@ export const TIER: Record<
     reinforce: { wave2: number; wave3: number };
   }
 > = {
-  outpost: {
+  settlement: {
     troop: { morale: 48, ferocity: 34, marks: 30 }, // brittle, poorly drilled, off-guard
-    officer: { morale: 68, ferocity: 56, marks: 58 }, // a middling sergeant
-    watch: { plazaGuard: 4, sentryPosts: 1, patrols: 1, patrolSize: 2 }, // a thin watch
-    reinforce: { wave2: 3, wave3: 0 }, // little relief to call on
+    officer: { morale: 68, ferocity: 56, marks: 58 }, // a middling militia captain
+    watch: { plazaGuard: 4, sentryPosts: 1, patrols: 1, patrolSize: 2 }, // a thin militia watch
+    reinforce: { wave2: 3, wave3: 0 }, // few hands to call on
   },
   town: {
     troop: { morale: 60, ferocity: 42, marks: 38 }, // = the UNIT.pirate baseline

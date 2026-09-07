@@ -153,7 +153,7 @@ function spawnPatrol(world: World, route: { x: number; y: number }[], n: number,
 // The garrison, distributed like a town's watch rather than one blob: the main guard holds
 // the plaza (the prize), sentries hold the seaward approach, and patrols walk the cross-
 // streets. Both its strength (stat bands) and its depth (headcounts) scale with the town's
-// settlement tier — a sleepy outpost is a thin, brittle watch; a capital, a deep one.
+// settlement tier — a sleepy settlement is a thin, brittle watch; a capital, a deep one.
 function spawnEnemyGarrison(world: World, tier: SettlementTier) {
   const t = TIER[tier];
   spawnPlainBand(world, "enemy", 1200, 700, t.watch.plazaGuard, "musket", "holdGround", t.troop, t.officer);
@@ -259,9 +259,9 @@ function seedTown(world: World) {
 }
 
 // Build a battle: the player's composed landing party vs the town's garrison, whose strength
-// and depth follow the settlement `tier`. The current playable town defends at `outpost`
+// and depth follow the settlement `tier`. The current playable town defends at `settlement`
 // grade so the raid reads as winnable against a seasoned band (tune by playtest).
-export function populateBattle(world: World, party: PartySpec, tier: SettlementTier = "outpost") {
+export function populateBattle(world: World, party: PartySpec, tier: SettlementTier = "settlement") {
   world.tier = tier;
   seedTown(world);
   deriveTerrain(world);

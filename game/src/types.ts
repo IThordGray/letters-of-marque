@@ -8,8 +8,9 @@ export type UnitState = "steady" | "wavering" | "routing" | "surrendered" | "dow
 export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
 export type Stance = "aggressive" | "holdGround" | "ceaseFire";
 // A settlement's importance — sets how strong and deep its garrison is (a stand-in for
-// faction AI). Rises outpost → town → capital.
-export type SettlementTier = "outpost" | "town" | "capital";
+// faction AI). Rises settlement → town → capital on a single size axis. (A militarised
+// "outpost" — small but soldier-dense — is a distinct future tier; see decisions.md 2026-09-07.)
+export type SettlementTier = "settlement" | "town" | "capital";
 
 export interface Unit {
   id: number;

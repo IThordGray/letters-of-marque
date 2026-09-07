@@ -87,6 +87,29 @@ will replace with real behaviour; for now it just configures the strength slider
 
 ---
 
+### 2026-09-07 — Garrison size is population-derived; a "settlement" is not an "outpost" (framing, not a sim)
+Refines the tier headcounts so they read *remotely logical*, not arbitrary — grounded in a town's
+population. This is a **framing to think with**, ahead of the real economy/population model (KAN-54,
+which another agent is building) — so **don't simulate it here**; just let the placeholder numbers
+respect it.
+- **Headcount ≈ population × men × combatant-fraction.** A town of ~2,000 → ~50% men (~1,000) → only a
+  small combatant fraction (most hands are in **industry**), so on the order of ~100–200 potential
+  fighting men — and *not* all under arms at once.
+- **Combatant-fraction rises with militarisation, so size is not one axis.** An **industrial town** has
+  a *low* fraction off a *big* population; a **military outpost** has a *high* fraction off a *small*
+  one (it exists to garrison) — punchy for its size; a **civilian settlement** is small population *and*
+  low fraction → very few defenders. A true "outpost" therefore breaks the simple size ordering.
+- **Rename:** the weakest tier is a **`settlement`** (small, civilian, a thin militia), *not* an
+  `outpost` (which is specifically military). Tiers for now: **`settlement` < `town` < `capital`** on a
+  single size/importance axis; a militarised **`outpost`** is a distinct *future* tier, added once the
+  population model can carry the two axes.
+- **On-map counts are an abstracted, compressed slice** — an RTS can't field 200 sprites, so the
+  *standing watch* maps to the initial garrison and the *mustering militia* to the alarm reinforcement
+  waves. Relative sizes follow the population logic; absolute numbers stay small for readability.
+  Precise calculations wait for KAN-54.
+
+---
+
 ### 2026-08-25 — The town raid ground: an open Caribbean port; buildings are game objects, not scenery
 The raid happens *in* a town, not on an open field — playtest showed the field fight is a
 slugfest that can't be balanced because the environment does nothing. Ratified shape (shaped
@@ -207,6 +230,15 @@ a fresh design; do not port it blindly. The rest of the land-combat epic (KAN-12
 shipped as a faithful port of the validated model.
 *Why:* the texture layer deserves a rethink, not a port; the core will-spine is what's
 validated and worth keeping faithful.
+
+*Clarified 2026-09-07 (human):* the **implementation** was rejected, not the idea of
+thresholds. The prototype's perks were flags on a dice roll (`deadEye: marks >= 78`) —
+unearned and invisible. **Earned** thresholds remain open. The human's whole stated
+position on levelling so far is *"the more you practice, the better you get"*; nothing
+beyond that is decided. Separately, their current leaning is toward **talents** — innate
+traits rather than earned perks ("always had a good sense of direction" → navigation
+bonus) — which is **parked and explicitly not to be designed around yet**. Steer
+captured on KAN-20.
 
 ---
 
