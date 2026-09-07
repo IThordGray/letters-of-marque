@@ -66,6 +66,25 @@ So an outnumbered raid on a sleepy outpost is winnable and a capital is genuinel
 **settlement tier**, not by faction-AI machinery. This is the precursor the later faction-identity AI
 will replace with real behaviour; for now it just configures the strength sliders.
 
+**Ratified specifics (2026-09-07):**
+- **Tier drives both stats *and* size/composition.** A tier sets per-unit stat *bands* (absolute
+  profiles, not multipliers) **and** the garrison's depth — plaza-guard size, sentry posts, patrol
+  count, squad size, reinforcement-wave sizes. A sleepy outpost is *fewer, weaker* men; a capital is
+  *more, better* men with a deeper muster.
+- **Three tiers as discrete bands:** `outpost` (brittle — breaks early, poorly drilled, a middling
+  sergeant, a thin watch) · `town` (≈ today's baseline) · `capital` (disciplined — steady, breaks
+  *late*, fine officers, a deep garrison). Morale is the sharpest dial because the spine is *break
+  the will*: an outpost's men sit barely above the steady line and crumble; a capital's sit well
+  clear and hold.
+- **Player crew baseline — seasoned, not veteran.** The landing party is a *notch* above the town
+  rabble in skill (they know their way around a fight), and **notably steadier — they don't break
+  easily** (morale set well clear of the steady threshold), but they are *not* invincible. Officers
+  top out around **brigadier** quality — the rolled roster is already about right, so the player edge
+  lives mostly in steadier *pirates*, not inflated officers.
+- **The current playable town defends at `outpost` grade for now** — so the raid reads as winnable
+  against a seasoned band (it played *brutal* before). Real per-town tier assignment comes with the
+  strategic map. Concrete band numbers are starting guesses — **tune by playtest.**
+
 ---
 
 ### 2026-08-25 — The town raid ground: an open Caribbean port; buildings are game objects, not scenery

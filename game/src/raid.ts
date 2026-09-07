@@ -1,6 +1,6 @@
 import type { World, RaidResult } from "./world";
 import type { Unit, Building } from "./types";
-import { RAID } from "./constants";
+import { RAID, TIER } from "./constants";
 import { dist } from "./math";
 import { nextFloat } from "./rng";
 import { signal } from "./log";
@@ -260,8 +260,9 @@ function advanceAlarm(world: World) {
   while (world.raid.alarm < stage) {
     world.raid.alarm++;
     signal(world, ALARM_MSG[world.raid.alarm]);
-    if (world.raid.alarm === 2) spawnReinforcementWave(world, RAID.reinforce.wave2);
-    else if (world.raid.alarm === 3) spawnReinforcementWave(world, RAID.reinforce.wave3);
+    const waves = TIER[world.tier].reinforce;
+    if (world.raid.alarm === 2 && waves.wave2 > 0) spawnReinforcementWave(world, waves.wave2);
+    else if (world.raid.alarm === 3 && waves.wave3 > 0) spawnReinforcementWave(world, waves.wave3);
   }
 }
 

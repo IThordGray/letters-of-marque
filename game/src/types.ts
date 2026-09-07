@@ -7,6 +7,9 @@ export type WeaponType = "musket" | "pistol" | "cannon";
 export type UnitState = "steady" | "wavering" | "routing" | "surrendered" | "down";
 export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
 export type Stance = "aggressive" | "holdGround" | "ceaseFire";
+// A settlement's importance — sets how strong and deep its garrison is (a stand-in for
+// faction AI). Rises outpost → town → capital.
+export type SettlementTier = "outpost" | "town" | "capital";
 
 export interface Unit {
   id: number;

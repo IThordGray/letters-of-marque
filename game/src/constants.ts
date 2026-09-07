@@ -1,4 +1,4 @@
-import type { UnitKind, WeaponType, BuildingKind } from "./types";
+import type { UnitKind, WeaponType, BuildingKind, SettlementTier } from "./types";
 
 // ============================================================================
 // LAND MODULE — durable build. Data-oriented: plain structs + pure systems.
@@ -138,7 +138,7 @@ export const RAID = {
     muster: 85,
   },
   musterPoint: { x: WORLD.width / 2, y: 230 }, // the landward gate / barracks the muster pours from
-  reinforce: { wave2: 6, wave3: 8 }, // wave sizes (pirates; +1 officer) at Alarm / Muster
+  // (reinforcement-wave sizes now scale with settlement tier — see TIER below)
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
   pickupRange: 24, // a free raider this close to a dropped load takes it up
@@ -155,6 +155,42 @@ export const RAID = {
   capture: { range: 28 }, // a free raider this close to a yielded enemy takes him prisoner
   gaolPrisoners: 2, // captives freed when the gaol is broken open
   prisonerJoin: { town: 0.15, gaol: 0.7 }, // chance a prisoner joins the crew, by source
+};
+
+// ---- Settlement tier — garrison strength & depth by a town's importance (KAN-55) -------
+// A stand-in for faction AI: a tier sets absolute stat *bands* for the defenders (rank &
+// file read `troop`, their officer reads `officer`) AND the garrison's *depth* (`watch`
+// counts for the initial layout + `reinforce` wave sizes at Alarm / Muster). Morale is the
+// sharpest dial, because the spine is break-the-will: an outpost's men sit barely above the
+// steady line (MORALE.steadyAbove 55) and crumble; a capital's sit well clear and hold.
+// Bands are starting guesses — tune by playtest.
+export const TIER: Record<
+  SettlementTier,
+  {
+    troop: { morale: number; ferocity: number; marks: number };
+    officer: { morale: number; ferocity: number; marks: number };
+    watch: { plazaGuard: number; sentryPosts: number; patrols: number; patrolSize: number };
+    reinforce: { wave2: number; wave3: number };
+  }
+> = {
+  outpost: {
+    troop: { morale: 48, ferocity: 34, marks: 30 }, // brittle, poorly drilled, off-guard
+    officer: { morale: 68, ferocity: 56, marks: 58 }, // a middling sergeant
+    watch: { plazaGuard: 4, sentryPosts: 1, patrols: 1, patrolSize: 2 }, // a thin watch
+    reinforce: { wave2: 3, wave3: 0 }, // little relief to call on
+  },
+  town: {
+    troop: { morale: 60, ferocity: 42, marks: 38 }, // = the UNIT.pirate baseline
+    officer: { morale: 85, ferocity: 70, marks: 72 }, // = the UNIT.officer baseline
+    watch: { plazaGuard: 6, sentryPosts: 2, patrols: 2, patrolSize: 2 },
+    reinforce: { wave2: 6, wave3: 8 },
+  },
+  capital: {
+    troop: { morale: 78, ferocity: 52, marks: 50 }, // disciplined — steady, breaks late
+    officer: { morale: 92, ferocity: 80, marks: 82 }, // a fine commander
+    watch: { plazaGuard: 8, sentryPosts: 2, patrols: 3, patrolSize: 3 }, // a deep garrison
+    reinforce: { wave2: 8, wave3: 10 }, // a bigger muster pours in
+  },
 };
 
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the

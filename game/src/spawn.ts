@@ -1,7 +1,10 @@
 import type { World } from "./world";
-import type { Side, UnitKind, WeaponType, Stance, BuildingKind } from "./types";
+import type { Side, UnitKind, WeaponType, Stance, BuildingKind, SettlementTier } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, TIER } from "./constants";
+
+// A figure's three combat stats — the shape a settlement tier's bands come in.
+type Stats = { morale: number; ferocity: number; marks: number };
 import { formationSlots } from "./formation";
 import { makeRoster } from "./roster";
 import { signal } from "./log";
@@ -103,7 +106,9 @@ function spawnPlayerParty(world: World, party: PartySpec) {
   });
 }
 
-// A plain officer-led band (no roster / no rolled stats) — used for the enemy.
+// A plain officer-led band (no roster / no rolled stats) — used for the enemy. `troop` /
+// `officer` set the men's and their leader's stats (from a settlement tier); omitted → the
+// UNIT defaults.
 function spawnPlainBand(
   world: World,
   side: Side,
@@ -112,41 +117,58 @@ function spawnPlainBand(
   pirates: number,
   weapon?: WeaponType,
   stance?: Stance,
+  troop?: Stats,
+  officer?: Stats,
 ) {
   const slots = formationSlots(pirates + 1, cx, cy, SPAWN.spacing);
-  const officerId = spawnUnit(world, side, "officer", slots[0].x, slots[0].y, { stance });
+  const officerId = spawnUnit(world, side, "officer", slots[0].x, slots[0].y, { stance, ...officer });
   for (let i = 1; i <= pirates; i++) {
-    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon, stance });
+    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon, stance, ...troop });
   }
 }
 
 // A sentry post — a pair holding a forward corner (no officer); first to spot raiders.
-function spawnPost(world: World, x: number, y: number, n: number) {
+function spawnPost(world: World, x: number, y: number, n: number, troop?: Stats) {
   const slots = formationSlots(n, x, y, SPAWN.spacing);
   for (let i = 0; i < n; i++) {
-    spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround" });
+    spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround", ...troop });
   }
 }
 
 // A patrol — a small band that walks a fixed street route while the town is dormant.
-function spawnPatrol(world: World, route: { x: number; y: number }[], n: number) {
+function spawnPatrol(world: World, route: { x: number; y: number }[], n: number, troop?: Stats) {
   const slots = formationSlots(n, route[0].x, route[0].y, SPAWN.spacing);
   const members: number[] = [];
   for (let i = 0; i < n; i++) {
-    members.push(spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround" }));
+    members.push(
+      spawnUnit(world, "enemy", "pirate", slots[i].x, slots[i].y, { weapon: "musket", stance: "holdGround", ...troop }),
+    );
   }
   world.patrols.push({ members, route, idx: 1 });
 }
 
 // The garrison, distributed like a town's watch rather than one blob: the main guard holds
-// the plaza (the prize), sentries hold the seaward approach, and two patrols walk the
-// cross-streets. Same headcount as before (matches enemyGarrisonSize), spread in depth.
-function spawnEnemyGarrison(world: World) {
-  spawnPlainBand(world, "enemy", 1200, 700, 6, "musket", "holdGround"); // plaza guard (officer + 6)
-  spawnPost(world, 1050, 1680, 2); // sentries — seaward approach, west
-  spawnPost(world, 1350, 1680, 2); // sentries — seaward approach, east
-  spawnPatrol(world, [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], 2); // upper cross-street
-  spawnPatrol(world, [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], 2); // lower cross-street
+// the plaza (the prize), sentries hold the seaward approach, and patrols walk the cross-
+// streets. Both its strength (stat bands) and its depth (headcounts) scale with the town's
+// settlement tier — a sleepy outpost is a thin, brittle watch; a capital, a deep one.
+function spawnEnemyGarrison(world: World, tier: SettlementTier) {
+  const t = TIER[tier];
+  spawnPlainBand(world, "enemy", 1200, 700, t.watch.plazaGuard, "musket", "holdGround", t.troop, t.officer);
+  const posts = [
+    { x: 1050, y: 1680 }, // seaward approach, west
+    { x: 1350, y: 1680 }, // seaward approach, east
+  ];
+  for (let i = 0; i < t.watch.sentryPosts && i < posts.length; i++) {
+    spawnPost(world, posts[i].x, posts[i].y, 2, t.troop);
+  }
+  const routes = [
+    [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], // upper cross-street
+    [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], // lower cross-street
+    [{ x: 780, y: 1610 }, { x: 1620, y: 1610 }], // quay approach (capitals only)
+  ];
+  for (let i = 0; i < t.watch.patrols && i < routes.length; i++) {
+    spawnPatrol(world, routes[i], t.watch.patrolSize, t.troop);
+  }
 }
 
 // The garrison's strength (defenders + their officer) — surfaced so the deploy screen
@@ -156,9 +178,11 @@ export function enemyGarrisonSize(): number {
 }
 
 // A reinforcement wave that musters from the town gate when the alarm climbs. Spawns
-// aggressive (they come to hunt, not to hold); the AI directs them from there.
+// aggressive (they come to hunt, not to hold), at the defended town's tier strength; the AI
+// directs them from there.
 export function spawnReinforcementWave(world: World, pirates: number) {
-  spawnPlainBand(world, "enemy", RAID.musterPoint.x, RAID.musterPoint.y, pirates, "musket", "aggressive");
+  const t = TIER[world.tier];
+  spawnPlainBand(world, "enemy", RAID.musterPoint.x, RAID.musterPoint.y, pirates, "musket", "aggressive", t.troop, t.officer);
   signal(world, "Fresh defenders pour in from the town!");
 }
 
@@ -231,14 +255,16 @@ function seedTown(world: World) {
   b("dwelling", 1085, 1810, 200, 140);
 }
 
-// Build a battle: the player's composed landing party vs the fixed garrison, with the
-// raid objective set behind the defenders (you must drive through them to reach it).
-export function populateBattle(world: World, party: PartySpec) {
+// Build a battle: the player's composed landing party vs the town's garrison, whose strength
+// and depth follow the settlement `tier`. The current playable town defends at `outpost`
+// grade so the raid reads as winnable against a seasoned band (tune by playtest).
+export function populateBattle(world: World, party: PartySpec, tier: SettlementTier = "outpost") {
+  world.tier = tier;
   seedTown(world);
   deriveTerrain(world);
   world.navGrid = buildNavGrid(world);
   spawnPlayerParty(world, party);
-  spawnEnemyGarrison(world);
+  spawnEnemyGarrison(world, tier);
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
   // the church keeps its rich seeded loot (LOOT.church) — it *is* the strong-house / big haul
 }
