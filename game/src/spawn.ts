@@ -1,7 +1,7 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType, Stance, BuildingKind, SettlementTier } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, TIER } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, TIER, PLAYER_CREW } from "./constants";
 
 // A figure's three combat stats — the shape a settlement tier's bands come in.
 type Stats = { morale: number; ferocity: number; marks: number };
@@ -89,7 +89,10 @@ function spawnSquad(world: World, side: Side, cx: number, cy: number, sq: SquadS
     i = 1;
   }
   for (; i < slots.length; i++) {
-    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon: sq.weapon });
+    // player pirates land at the seasoned crew baseline (steadier than the rabble); enemy
+    // pirates raised this way take their tier band instead
+    const troop = side === "player" ? PLAYER_CREW.pirate : undefined;
+    spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon: sq.weapon, ...troop });
   }
 }
 

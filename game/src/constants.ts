@@ -193,6 +193,15 @@ export const TIER: Record<
   },
 };
 
+// The player's landing party — seasoned, not veteran (KAN-66). A *notch* above town-grade
+// defenders in skill (they know their way around a good fight), and notably steadier: morale
+// set well clear of the steady line (MORALE.steadyAbove 55) so the crew doesn't break easily
+// — but not invincible. Officers keep their rolled roster quality (topping out ~brigadier),
+// so the edge lives in steadier pirates, not inflated leaders.
+export const PLAYER_CREW: { pirate: { morale: number; ferocity: number; marks: number } } = {
+  pirate: { morale: 74, ferocity: 48, marks: 44 },
+};
+
 // ---- Plunder — a building's loot value follows its role (seeded; re-sourced from the
 // town economy, KAN-54, later). gaol → prisoners and magazine → powder, not gold.
 export const LOOT: Record<BuildingKind, number> = {
