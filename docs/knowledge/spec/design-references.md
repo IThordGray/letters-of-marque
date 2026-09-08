@@ -248,10 +248,79 @@ How comparable games build a settlement you break into — research inputs only.
 ### Boarding · campaign / reputation · trade
 - _(Seeded as those features arrive.)_
 
+### Character progression / skill growth
+How comparable games develop people over a career. Research inputs only.
+
+- **Use-based, classless growth (Kenshi):** no levels, no XP pool, no classes; **just
+  over 30 skills in seven groups**, each rising only from doing that thing; **NPCs
+  level by the same rules as the player**. *Shines:* identity emerges from history,
+  not a build screen; zero UI; perfect causality. *Drags:* needs ~30 skills and a
+  20-strong squad before characters actually diverge — with a handful of stats
+  everyone converges on "good at his job"; and a bare rising number gives no
+  *moment*. **ADAPT** — take "you become what you do" as the **routing rule** for XP
+  (shots → marks, blows → ferocity, held-under-pressure → nerve); keep thresholds as
+  the moment.
+- **Difficulty-scaled learning — Kenshi's "Stronger Opponent Logic":** +0.1× XP per
+  level you are *below* your opponent (max ×6.0 at 50 below); −0.04× per level above
+  (floor ×0.1 at 22.5 above), compared on the *skill actually in play*; then
+  multiplied by **(1 − level/101)²**; plus ~+0.1× per enemy outnumbering you (cap
+  ~×1.67 at 1v8). *Shines:* kills weak-target grinding outright — ambition becomes
+  the training programme. *Drags:* per-swing granularity invites rigged opponents
+  (disarm the target and its skill-in-play drops). **ADOPT — already ours.**
+  `design-doc.md` §3.3 (`E = clamp(enemy/own, 0.25, 3.0)`; `gain = share ×
+  (1-current/100)^1.5`) is the **same two-term shape, independently derived**.
+  Kenshi is convergent validation of a decade-tuned curve; the only difference is the
+  unit of award — ours is per-*engagement* and therefore unriggable.
+- **Toughness from beatings (Kenshi):** damage resistance / wound degeneration / KO
+  point (~−65% at 0 → +65% at 100), trained by damage taken relative to current
+  Toughness, with the largest single award for **getting back up out of "playing
+  dead"** — the get-up is the payday, not the beating. *Shines:* superb fiction —
+  veterans are men who broke and came back; defeat becomes progress. *Drags:* it is
+  an **attrition** stat, so over a campaign it converts a will game into an HP game;
+  and paying for damage *taken* is the documented cause of Kenshi's torture-rig
+  metagame. **ADAPT — take the shape, invert the substance:** adversity raises
+  resilience of **will**, never of meat.
+- **Permanent limb loss + prosthetics (Kenshi):** seven body parts; severance below
+  −100% causes instant blood loss plus bleeding that will not stop until bandaged or
+  a limb is plugged into the gap; four prosthetic tiers per limb with real penalties
+  (the best arm costs stealth; the cheap one costs thievery; nearly all penalise
+  swimming); upkeep via repair kits and repair beds; a share of all damage taken
+  becomes permanent max-HP loss. *Shines:* the largest generator of unwritten
+  character in the game. *Drags:* it is a **maintenance system** (§1.1 forbids the
+  category), and because prosthetics carry *bonuses*, players amputate squadmates
+  deliberately — the fiction inverts. **ADAPT, heavily trimmed** — a one-time,
+  zero-upkeep scar; always a downgrade plus a characterful edge; named officers only;
+  no prosthetic economy.
+- **Knockout-and-recovery as the default outcome (Kenshi):** vital parts below 0% →
+  unconscious, below the KO point → recovery coma; the real killers are blood loss,
+  festering wounds, and *who picks you up* (robbed / enslaved / eaten). *Shines:*
+  defeat becomes a branch, not a reload. *Drags:* it is exactly what makes deliberate
+  self-harm training safe, and therefore optimal. **REJECT for the band** — our
+  ratified permadeath is the counterweight that keeps adversity-progression
+  exploit-proof. The two rules hold each other up; softening one breaks the other.
+- **Flat squad, no officer tier (Kenshi):** every recruit mechanically equal, nothing
+  multiplies anything. **REJECT the flatness** — our two-tier model is ratified, and
+  the carry-over / presence aura / rally in `game/src/officers.ts` is precisely the
+  multiplier Kenshi lacks. **ADOPT two portable habits:** (a) **NPCs grow by the same
+  rules** — enemy officers and defected rivals develop between raids, near-zero cost,
+  and it fills the "no rivalries" gap flagged in the Rise of Piracy entry above;
+  (b) the officer screen shows **what he did**, not only what he is good at.
+- **Encumbrance / athletics as trainable body stats (Kenshi):** hauling while heavily
+  encumbered trains Strength; running trains Athletics. **REJECT** — generates
+  lap-running busywork on the attrition axis. Our laden-raider rule (can't fire, moves
+  slower) is already a *tactical* cost; don't turn it into a training track.
+- **The Kenshi anti-pattern, in one line:** *it pays for inputs, so players manufacture
+  inputs.* Its community optimum is a rigged sparring victim and deliberate
+  enslavement. Any growth rule we adopt must pay for **outcomes achieved under
+  pressure**, and must be **guessable from the fiction** — Kenshi's real optimum
+  ("keep Melee Defence low so it doesn't suppress Attack gains") is invisible in-game.
+
 ## Pirate-flavour fit — the taste test
 For **ragged, morale-driven privateer bands** (individual-figure RTS on land,
 group-command at sea):
 - **Fits:** loose formations, initiative, fear & rout, bold gambles, personality
   (named officers), plunder incentives, asymmetric raids.
 - **Jars:** rigid parade drill, perfectly uniform ranks, faceless interchangeable
-  troops, spreadsheet micromanagement on a timer.
+  troops, spreadsheet micromanagement on a timer; progression on the **attrition
+  axis**; maintenance systems bolted to characters; training regimes that reward
+  deliberate self-harm.
