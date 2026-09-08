@@ -58,6 +58,27 @@
       /* the wall's frozen circuit. GAPS ARE NORMAL — an unwalled edge is the way in. */
       .tw-wall { fill: none; stroke: #ded3b6; stroke-width: 3.2; stroke-linecap: round; }
       .tw-wall.is-ruin { stroke: #8a7f66; stroke-dasharray: 4 4; }
+      /* ---- the ground plan: roads first, buildings hung off them ---- */
+      .townplan { width: 100%; max-width: 460px; display: block; margin: 6px 0 0; background: #191510; }
+      .townplan text { text-anchor: middle; font-family: inherit; pointer-events: none; }
+      .pl-ground { fill: #2b2519; }
+      .pl-water { fill: #16344a; }
+      .pl-plaza { fill: #3a3226; stroke: #4c422f; stroke-width: 3; }
+      /* streets are DRAWN, not left over: they are the structure of the place */
+      .rd { fill: none; stroke: #574c39; stroke-linecap: round; stroke-linejoin: round; }
+      .rd.is-main { stroke: #6a5c44; }
+      .bd rect { fill: #cbbf9f; stroke: #17130d; stroke-width: 4; }
+      .bd-ridge { stroke: #17130d; stroke-width: 3; opacity: .45; }
+
+      .bd.is-house rect { fill: #a4906c; }
+      .bd.is-idle rect { fill: #7d7360; }
+      .bd.is-ruin rect { fill: #5b3f31; }
+      .bd { cursor: help; }
+      .pl-wall { fill: none; stroke: #ded3b6; stroke-width: 16; stroke-linecap: round; }
+      .fd circle { fill: #3d4a2c; opacity: .55; }
+      .fd text { font-size: 34px; fill: #b9c39a; opacity: .8; }
+      .fd.is-ruin circle { fill: #4a3327; }
+      .pl-mark { font-size: 36px; fill: #9a8f78; letter-spacing: .05em; }
       .wants li { margin: 4px 0; }
       .wants b { color: #c9a227; font-weight: normal; }
       .log li { color: #a89b82; }

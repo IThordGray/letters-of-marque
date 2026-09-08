@@ -9,6 +9,8 @@ import type { Town } from "./types";
 import { foundTown, derive, summarise, year, prosperityWord, wealthWord } from "./sim";
 import { stepTownSeason, stepTownYears, wants } from "./governor";
 import { renderHexMap, landCaption } from "./hexmap";
+import { renderPlan } from "./planview";
+import { planTown, describePlan } from "./plan";
 import { SEASONS_PER_YEAR } from "./constants";
 
 // Three towns on three different patrons' money. The land is whatever their seed
@@ -67,6 +69,9 @@ function card(t: Town, i: number): string {
         <h3>The land <span class="dim">(read-only — it explains the town)</span></h3>
         ${renderHexMap(t)}
         <p class="dim caption">${landCaption(t)}</p>
+        <h3>The ground <span class="dim">(what you would land on)</span></h3>
+        ${renderPlan(t)}
+        <p class="dim caption">${describePlan(t, planTown(t))}</p>
       </div>
       <div>
         <h3>Works</h3><ul>${ledger}</ul>${rotting}

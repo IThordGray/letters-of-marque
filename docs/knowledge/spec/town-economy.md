@@ -713,7 +713,42 @@ gives a wide industrial edge; one touching across a single hex gives a lane out 
 - **Terrain shapes defence** — a bluff gives the battery its home; a marsh landward means no
   palisade there and slow going; a reef constrains the approach, so the boats land in one place.
 
-**Stage 4 — filling.** First slice: **keep the block grid but jitter it** (offset blocks, varied
+**Stage 4 — ROADS FIRST, buildings hung off them** *(amended 2026-09-08; supersedes the jittered
+block grid)*. Stages 1–3 now output a **street graph** — nodes, polyline edges, each with a rank
+(`spine` / `lane` / `track`) and a width — and stage 4 places buildings by **frontage setback**
+along it, rotated to face their street.
+
+> **What reads as a street is not the void — it is the two facing frontage lines.** Two offset rows
+> of aligned buildings read as a street even when it doglegs; irregular gaps between jittered
+> blocks read as noise, because nothing tells the eye which gap is a thoroughfare.
+
+- **Doglegs, never curves.** One or two angular kinks per street. Cheap, reads organic from above,
+  and tactically meaningful where a smooth curve is inert — a dogleg breaks a firing lane.
+- **The plaza is an authored VOID**, oversized and sized by `core`. Nothing stands in it. Void is
+  what reads as *objective*.
+- **One loop is mandatory** — a back-lane closing a circuit. A tree-shaped network makes the raid a
+  corridor crawl the garrison holds at a single choke.
+- **A visible width hierarchy.** The spine is plainly the widest thing on the map. Without it the
+  eye cannot find the axis, and there is no approach to read.
+- **Rotation jitter stays under ~4°.** Beyond that the frontage line breaks, and the frontage line
+  is the whole illusion.
+- **`core` grade drives street width and frontage pitch.** That is the entire density model, and it
+  is how "past the one ring, growth raises density not extent" is implemented.
+- **Adjacency rule 8 (foot-connectivity from the quay) is now true by construction** and needs no
+  validator.
+- **Calibration: ~800 paces per hex** — the claimed set plus one ring then reproduces the scale of
+  the hand-authored raid map, which already plays. **Hard extent cap ~4000 paces.**
+- **`beyondThePale` works are placed by the hex→paces transform**, not by a spreading rule: a work
+  stands on its own hex, nudged townward, snapped to its region's track. Contracts 1, 3 and 9 all
+  fall out of that one transform, and it has no spatial degrees of freedom — so it can never become
+  a packing problem.
+- **One sanctioned exception to work-to-building parity:** a `dwellings` work draws as a **cluster
+  of 3–4 huts sharing one ledger line**. Ninety souls in two houses looks wrong, and the ledger
+  should stay coarse.
+
+*Superseded first-pass text:*
+
+**Stage 4 — filling (superseded).** First slice: **keep the block grid but jitter it** (offset blocks, varied
 sizes, a slight dogleg in the main street). Tail: lane subdivision. **Lock the plan format now** —
 a list of `{kind, zone, bearing-hint, footprint}` — so either filler can consume it.
 

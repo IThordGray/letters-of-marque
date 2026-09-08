@@ -160,6 +160,35 @@ export const SPRAWL: Record<string, { willSpill: boolean; densifyFirstTo: number
   pirateHaven: { willSpill: true, densifyFirstTo: 1 },
 };
 
+// ---- The ground plan -------------------------------------------------------
+// Projecting the ledger onto real earth. ROADS ARE LAID FIRST AND BUILDINGS HANG
+// OFF THEM — that is what gives distinct streets rather than gaps left between
+// blocks, and what stops the result reading as a grid.
+export const PLAN_SPACE = {
+  // Calibrated so the claimed set plus one ring reproduces the hand-authored
+  // raid map scale (~2400 paces across) — the map that already plays.
+  hexPaces: 800,
+  hexFill: 0.8, // ...and how much of it counts as "in the town" for placement
+  // A VISIBLE HIERARCHY is what lets the eye find the axis: the spine is plainly
+  // the widest thing on the map, lanes narrower, tracks narrower still.
+  widthByCore: [30, 34, 38, 42, 46],
+  spineRank: 2.6,
+  plazaRadius: [130, 155, 180, 205, 230], // an oversized VOID: nothing stands in it
+  // How often a street offers a plot, by how closely the town is built. A
+  // stone-built town packs its frontages; a scattered one straggles.
+  frontageByCore: [200, 172, 148, 126, 108],
+  lanesByCore: [2, 3, 4, 5, 5], // ...and how many streets it has struck
+  crossLanes: 2, // so the plan is a network, not a comb
+  frontageJitter: 22, // ...give or take, so no two plots are the same width
+  setback: 34, // how far a building stands back from the carriageway
+  // ~4 degrees. Beyond this the frontage line breaks, and the frontage line is
+  // what reads as a street in the first place.
+  rotJitter: 0.07,
+  gapChance: 0.2, // a yard, an alley, a burnt plot: not every frontage is built
+  hutsPerDwelling: 4, // one `dwellings` work draws as a cluster, one ledger line
+  maxExtent: 4000, // paces. The map covers the town, never the county.
+};
+
 // ---- Reading it back -------------------------------------------------------
 // The bands that turn a number into a word. No number without a sentence.
 export const PROSPERITY_BANDS: { at: number; word: string }[] = [
