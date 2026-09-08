@@ -141,7 +141,7 @@ function spread(town: Town, outsideWall: boolean): Grew | null {
   town.footprint.claimed.push(h);
   const r = regionAt(town, h);
   const over = r ? LABEL[r.terrain] : "the open ground";
-  const gone = r && capacityOf(town, r) === 0 ? ` The ${LABEL[r.terrain]} are gone.` : "";
+  const gone = r && capacityOf(town, r) === 0 ? " Nothing more will come off that ground." : "";
   return outsideWall
     ? { kind: "faubourg", hex: h, sentence: `There are houses outside the gate now, out over ${over}.${gone}` }
     : { kind: "spread", hex: h, sentence: `The town has spread out over ${over}.${gone}` };

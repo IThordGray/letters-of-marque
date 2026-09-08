@@ -320,8 +320,10 @@ function share(town: Town, r: Region): number {
   return workable ? r.hexes.length / workable : 0;
 }
 
-const shareWord = (f: number) =>
-  f >= 0.55 ? "over half the ground" : f >= 0.35 ? "a good third of it" : f >= 0.2 ? "a fair stretch" : "a strip";
+// Proportion is the whole point, so it has to be said well: the dominant region
+// leads the sentence, the rest are measured against it.
+const leadWord = (f: number) => (f >= 0.5 ? "mostly" : f >= 0.33 ? "largely" : "some");
+const shareWord = (f: number) => (f >= 0.33 ? "a good stretch" : f >= 0.18 ? "a fair stretch" : "a strip");
 
 // The land said in proportions, which is the only way proportion is visible.
 export function describeLand(town: Town): string {
@@ -332,7 +334,9 @@ export function describeLand(town: Town): string {
     .filter((r) => (seen.has(r.terrain) ? false : (seen.add(r.terrain), true)));
   if (!live.length) return "nothing but dead ground and salt water";
   const parts = live.slice(0, 3).map((r, i) =>
-    i === 0 ? `${LABEL[r.terrain]} over ${shareWord(share(town, r))}` : `${shareWord(share(town, r))} of ${LABEL[r.terrain]}`,
+    i === 0
+      ? `${leadWord(share(town, r))} ${LABEL[r.terrain]}`
+      : `${shareWord(share(town, r))} of ${LABEL[r.terrain]}`,
   );
   const dead = town.regions.filter((r) => isDead(r.terrain) && !isWater(r.terrain));
   const deadHexes = dead.reduce((s, r) => s + r.hexes.length, 0);

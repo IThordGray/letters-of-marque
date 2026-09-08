@@ -32,30 +32,32 @@
       .dim { color: #7d7464; }
       .caption { margin: 2px 0 0; font-style: italic; }
 
-      /* ---- the land map: grades and words on the face, numbers on hover ---- */
-      .landmap { width: 100%; max-width: 380px; display: block; margin: 4px 0 0 -6px; }
+      /* ---- the land map: one label per region, numbers on hover only ---- */
+      .landmap { width: 100%; max-width: 420px; display: block; margin: 6px 0 0; }
       .landmap text { text-anchor: middle; font-family: inherit; pointer-events: none; }
-      .hx-far { stroke: #14120e; stroke-width: 2; opacity: .5; }
-      .hx-face { stroke: #14120e; stroke-width: 2; }
-      .hx { cursor: help; }
-      .hx:hover .hx-face { stroke: #c9a227; }
-      .hx-name { font-size: 9px; fill: #d8cdb2; letter-spacing: .04em; }
-      .hx-grade { font-size: 9px; fill: #b9a97f; letter-spacing: .18em; }
-      /* capacity is GHOSTED until something stands on the ground... */
-      .hx-ghost { font-size: 8.5px; fill: #cfc4ac; opacity: .38; font-style: italic; }
-      /* ...and solid once it does. */
-      .hx-work { font-size: 9px; fill: #f0e7d2; }
-      .hx-dead { font-size: 12px; fill: #6c6552; }
-      .hx-ruin { font-size: 8px; fill: #a2603f; }
-      .is-dead .hx-face { opacity: .55; }
-      .hx-town .hx-core { stroke: #6b5c39; stroke-width: 1; }
-      .hx-town .hx-work { font-size: 12px; fill: #c9a227; }
-      /* the town's built-up ground biting into a hex — never a sub-hex */
-      .hx-lobe { fill: #6b5c39; opacity: .55; }
-      .hx-absorbed { fill: #6b5c39; opacity: .8; stroke: #14120e; stroke-width: 2; }
-      /* the wall's circuit. Gaps are normal — an unenclosed side is the way in. */
-      .hx-wall { stroke: #d8cdb2; stroke-width: 3.5; stroke-linecap: round; }
-      .hx-wall.is-ruin { stroke: #8a7f66; stroke-dasharray: 4 4; }
+      .rg { cursor: help; }
+      .rg-face { stroke: none; }
+      /* the region drawn as ONE shape — the union outline, not per-hex borders */
+      .rg-edge { fill: none; stroke: #14120e; stroke-width: 1.6; opacity: .8; }
+      .rg:hover .rg-edge { stroke: #c9a227; stroke-width: 2.4; opacity: 1; }
+      .rg-name { font-size: 9px; fill: #e2d8bf; letter-spacing: .05em; opacity: .92; }
+      .is-dead .rg-face { opacity: .5; }
+      .is-dead .rg-name { fill: #8b8271; }
+      .is-water .rg-name { fill: #7ea8bd; }
+      /* the best of it — why the boiling house stands there */
+      .rg-sweet { fill: #c9a227; opacity: .85; }
+      /* one mark per work, on its own hex: five mills in a line */
+      .wk { fill: #f0e7d2; opacity: .9; }
+      .wk.is-idle { fill: #8b8271; opacity: .7; }
+      .wk.is-ruin { fill: #a2603f; opacity: .7; }
+      /* the town: ONE continuous silhouette, never a cluster of hexagons */
+      .tw { cursor: help; }
+      .tw-fill { fill: #3a3122; }
+      .tw-edge { fill: none; stroke: #c9a227; stroke-width: 2; opacity: .9; }
+      .tw-name { font-size: 12px; fill: #c9a227; }
+      /* the wall's frozen circuit. GAPS ARE NORMAL — an unwalled edge is the way in. */
+      .tw-wall { fill: none; stroke: #ded3b6; stroke-width: 3.2; stroke-linecap: round; }
+      .tw-wall.is-ruin { stroke: #8a7f66; stroke-dasharray: 4 4; }
       .wants li { margin: 4px 0; }
       .wants b { color: #c9a227; font-weight: normal; }
       .log li { color: #a89b82; }
