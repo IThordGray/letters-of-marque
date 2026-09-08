@@ -7,7 +7,7 @@ import { raise, buildable, roomFor, CATALOGUE, CHOOSABLE, SUBSISTENCE, countOf, 
 import { DECAY } from "./constants";
 import type { ParcelTerrain, Town, Bearing } from "./types";
 
-const RING: Bearing[] = ["N", "NE", "E", "W", "NW", "S", "SE", "SW"];
+const RING: Bearing[] = ["N", "NE", "SE", "S", "SW", "NW"];
 
 function townOn(terrains: ParcelTerrain[], init: Partial<Town> = {}): Town {
   return makeTown({
@@ -59,7 +59,7 @@ describe("the land is the cap on what a town can become", () => {
       name: "T", seed: 1,
       parcels: [
         { terrain: "timberedHills", quality: "poor", bearing: "N" },
-        { terrain: "timberedHills", quality: "rich", bearing: "E" },
+        { terrain: "timberedHills", quality: "rich", bearing: "NE" },
       ],
     });
     const w = raise(t, "sawpit", 1640)!;

@@ -9,7 +9,7 @@ import { makeTown, stepSeason, stepYears, derive, prosperityTarget, carryingCapa
 import { raise } from "./works";
 import type { ParcelTerrain, Town, Bearing } from "./types";
 
-const RING: Bearing[] = ["N", "NE", "E", "W", "NW", "S", "SE", "SW"];
+const RING: Bearing[] = ["N", "NE", "SE", "S", "SW", "NW"];
 
 // A town on land we choose, so a test says what it means. Quality is fair unless
 // stated, so nothing here depends on the founding roll.

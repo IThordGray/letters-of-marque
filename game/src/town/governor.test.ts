@@ -8,7 +8,7 @@ import { wants, scoreWork, reasonFrom, governorTurn, stepTownYears } from "./gov
 import { PLAN } from "./constants";
 import type { ParcelTerrain, Town, Bearing, Archetype } from "./types";
 
-const RING: Bearing[] = ["N", "NE", "E", "W", "NW", "S", "SE", "SW"];
+const RING: Bearing[] = ["N", "NE", "SE", "S", "SW", "NW"];
 
 function townOn(terrains: ParcelTerrain[], init: Partial<Town> = {}): Town {
   return makeTown({

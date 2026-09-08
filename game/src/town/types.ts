@@ -21,17 +21,30 @@ export interface Patron {
 }
 
 // ---- The land ring ---------------------------------------------------------
-// 6-9 parcels around the town site. Read-only forever: an autobiography that
-// explains the town, never an input device. KAN-69 adds the biased founding roll.
+// EXACTLY SIX parcels around the town site, drawn as the inner ring of a hex
+// flower (centre = the town itself, outer 12 = undrawn hinterland). One hex =
+// one parcel, never subdivided — that is the anti-dilution rule.
 export type ParcelTerrain =
+  // productive land
   | "timberedHills"
   | "caneFlats"
   | "provisionGrounds"
+  | "bluff"
+  // productive water
   | "reef"
   | "roadstead"
-  | "bluff";
+  // DEAD GROUND — drawn, terrain-typed, yielding nothing. This is where the
+  // variety went when the parcel count was fixed at six: a town with three dead
+  // hexes has a VISIBLE ceiling ("poor ground on three sides") where a parcel
+  // count was invisible. `marsh` pays twice — dead, and a defensive gift.
+  | "marsh"
+  | "scrub"
+  | "openSea";
 export type ParcelQuality = "poor" | "fair" | "rich";
-export type Bearing = "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW";
+// Six flat-top hex directions. Dropping E and W but KEEPING N and S is what
+// preserves the ratified "the sea lies south" invariant — pointy-top hexes would
+// have broken it.
+export type Bearing = "N" | "NE" | "SE" | "S" | "SW" | "NW";
 
 export interface Parcel {
   terrain: ParcelTerrain;

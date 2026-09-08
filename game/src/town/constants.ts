@@ -11,8 +11,7 @@ export const SEASONS_PER_YEAR = 4;
 // two supporting, the rest filler. Rolling uniformly makes every town mediocre at
 // everything — the quality tables below are what keep towns distinguishable.
 export const LAND = {
-  min: 6,
-  max: 8, // eight points of the compass, and no two parcels share one
+  ring: 6, // one hex = one parcel; six flat-top directions, so six parcels
   secondSupportChance: 0.5,
   support: { rich: 0.25, fair: 0.5, poor: 0.25 },
   filler: { rich: 0.05, fair: 0.35, poor: 0.6 },

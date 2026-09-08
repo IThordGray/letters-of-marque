@@ -37,7 +37,8 @@ export interface Want {
 
 // ---- The clauses each term can write ---------------------------------------
 
-const LAND_CLAUSE: Record<ParcelTerrain, string> = {
+// Only productive terrain can be a work's parcel, so dead ground needs no clause.
+const LAND_CLAUSE: Partial<Record<ParcelTerrain, string>> = {
   timberedHills: "the hills are timbered",
   caneFlats: "the flats take cane well",
   provisionGrounds: "there is good ground to grow on",
@@ -102,7 +103,7 @@ export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): T
       terms.push({
         key: "land",
         weight: PLAN.affinity[quality] * PLAN.weights.land,
-        clause: LAND_CLAUSE[def.needsParcel],
+        clause: LAND_CLAUSE[def.needsParcel] ?? "the land will bear it",
       });
     }
   }
