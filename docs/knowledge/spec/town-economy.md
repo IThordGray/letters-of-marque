@@ -87,93 +87,171 @@ as a spreadsheet rather than a place.
 
 ---
 
-## 2. Parcels — the land gives a town its identity
+## 2. The land — regions, and what they will bear
 
-**Exactly 6 parcels in a hex ring around the town site** *(amended 2026-09-08 — was 6–9)*. Not a
-grid; not a tag list. Each parcel:
+*Rewritten 2026-09-08 (third). Supersedes the six-parcel ring. Authority:
+[`../decisions.md`](../decisions.md), top entry.*
 
-| Property | Values |
+> **A town is what most of its ground is for.**
+
+### 2.1 Why regions and not parcels
+
+Dilution — every town coming out mediocre at everything — is caused by **independent per-tile
+sampling**, not by tile count: twenty tiles rolled independently converge on the same average.
+**Clustering breaks the independence.** Draw four regions, paint them across two dozen hexes: few
+draws, high variance, high resolution. A richer picture from *fewer* decisions.
+
+The rule that replaces "one hex = one parcel, never subdivided":
+
+> **A hex must carry information no other hex carries, or belong to a region whose size and shape
+> mean something.**
+
+### 2.2 The shape of the land
+
+- **~24 land hexes**, grown outward from the town site with a cleanup pass (fill single-hex holes,
+  trim one-connected spurs), so the outline is **irregular — a coast, not a flower**.
+- **Only water that touches land is drawn at all.** No wasted ring. The viewBox is computed from
+  the actual bounds, so the map fills its panel whatever shape it came out.
+- **1–3 detached offshore hexes** — a cay, a reef, an islet. Cheap, and they do a great deal for
+  "this is a real stretch of coast". An offshore hex is permanently `far` (§2.6).
+- **Guarantee: at least one water hex adjacent to the town's centre, in the southern arc.** That is
+  the quay and the landing — see §2.7.
+
+### 2.3 Regions
+
+**The region is the unit.** 3–5 live regions plus 1–3 of dead ground, each a contiguous set of
+hexes, grown from the existing biased roll and the existing `SUPPORTING` adjacency table.
+
+Sizes come from a **budgeted, skewed** draw — never uniform:
+
+| Role | Hexes |
 |---|---|
-| `terrain` | one of the kinds below |
-| `quality` | `poor` · `fair` · `rich` |
-| `bearing` | one of six flat-top hex directions: **N · NE · SE · S · SW · NW** |
+| **Dominant** | 5–9 — roughly a third of the workable land |
+| **Supporting** (1–2) | 3–5 |
+| **Minor** (0–2) | 1–2 — a bluff, a salt pan, a cay |
+| **Dead** | 2–6 across marsh · scrub · open water |
 
-**`bearing` is the load-bearing field.** It is what turns an economic fact into a place on the
-raid map (§7). Without it a parcel is just a number.
+**Area is capacity.** Five timber hexes means room for five sawpits, and each stands on its own
+named hex.
 
-### The hex ring — draw 37, simulate 7
+### 2.4 The four rules that protect identity (R1–R4)
 
-The land is shown as a hex flower, and **one hex = one parcel, never subdivided**. That rule is
-the anti-dilution guarantee: the old objection to a Civ grid ("many tiles average out") is a
-property of *grain*, not of hexes.
+> **R1 — the land is a partition, not a menu.** Every land hex belongs to exactly one region. A hex
+> given to timber is a hex not given to cane. Identity is proportion, and **proportion is
+> zero-sum** — this is what stops "a town has access to several resources" becoming "access to all
+> of them".
+>
+> **R2 — one hex = one work's ground.** A hex is never a fraction of anything; it is a whole
+> decision. (The direct successor to the struck rule, in a better place.)
+>
+> **R3 — the roll is biased in AREA, not only in kind.** *This is where dilution now lives.*
+> Uniform region sizes rebuild the mush at a larger scale.
+>
+> **R4 — one label per region, never per hex.** A hex is a unit of area, not of announcement. This
+> is the single biggest anti-quilt measure.
 
-| Ring | What it is |
-|---|---|
-| **Centre (1)** | **The town itself** — the built-up area. Load-bearing: one centre hex = one raid map (§7.5). |
-| **Inner (6)** | **The parcel ring.** Each hex is one `Parcel`. This is the whole simulated economy. |
-| **Outer (30)** | **Hinterland** *(radius 3, amended 2026-09-08 — was 12 at radius 2)* — drawn, `sea \| land` only, no data. Smaller hexes and more of them: the map reads as *country*, and it holds the deferred tail (roads, neighbours, annexation). |
+**Identity comes from three sources where it came from one:** **proportion** (new, and the
+strongest) · the **dominant region** (what the place is *for*) · **shape and adjacency** (which the
+raid map cashes in). The prose must speak in proportions or none of it is visible: not *"cane flats
+to the south-east"* but *"cane over half the ground, a strip of provision land behind it, and
+nothing else worth having."*
 
-**Flat-top hexes, deliberately:** their six directions drop E and W but **keep N and S**, so the
-ratified "the sea lies south" invariant survives. Pointy-top would have broken it.
+### 2.5 Suitability — terrain BIASES a crop, it does not DETERMINE it
 
-### Dead hexes are where the variety went
+*Ratified by the human:* **"A field might have a good bonus to cotton. You might plant barley on
+it, which works — but cotton would have been ideal. I cannot plant cotton on bedrock."**
 
-Fixing the count at 6 removes a source of variation, and it is replaced by a better one:
-**`marsh` · `scrub` · `openSea` are drawn, terrain-typed, and yield nothing.** A town with three
-dead hexes has a **visible** ceiling — *"poor ground on three sides"* — where a parcel count was
-invisible. `marsh` pays twice: economically dead, and a defensive gift (no palisade needed that
-side, slow going for a raider).
+**The catalogue splits in two, and only one half is graded:**
 
-### The six kinds (first slice)
-
-| Parcel | Gives | Also |
+| Half | Works | Gate |
 |---|---|---|
-| **Timbered hills** | timber | high ground |
-| **Cane flats** | sugar → rum | labour-hungry, hot money |
-| **Provision grounds** | food | the labour ceiling |
-| **Reef & fishing banks** | food (small, cheap, always) | the subsistence floor |
-| **Sheltered roadstead** | trade access | careenage, shipways, quay |
-| **Bluff / headland** | — | the battery's home; commands the harbour |
+| **Crops & extraction** | cotton walk · grain fields · cane field · provision grounds · sawpit · quarry · salt works · fishing shacks | **graded suitability** |
+| **Sited works** | shipway · careenage · quay · warehouse · customs house · battery | **hard ground requirement** — you cannot half-build a harbour on a hill |
 
-Plus the three **dead** kinds above — `marsh` (pulled forward 2026-09-08), `scrub`, `openSea`.
+- **`region.bears: Partial<Record<Produce, Suit>>`**, where `Suit = ideal | fair | poor` and
+  **absent = will not bear.** Keyed on what a work **produces**, not on its kind, so adding a work
+  needs no new column.
+- **Every grade owns a clause:** *ideal* — "this ground was made for cotton" · *fair* — "it will
+  take barley well enough" · *poor* — "it grudges a crop; a third of what the cotton would pay" ·
+  *absent* — **"you cannot plant cotton on bedrock."**
+- **Suitability is ROLLED, not fixed per terrain.** The terrain sets the shortlist and the odds;
+  the roll sets *this town's* profile. Tilled ground usually favours cotton, but sometimes this
+  town's tilled ground favours grain instead.
+- **`ParcelQuality` is STRUCK.** Area is *how much*; suitability is *how well, and for what*;
+  quality was the second with the meaning removed. It could write no clause suitability cannot
+  write better, and two dials for one feeling is a tuning trap.
+- **Suitability sits on the REGION**, not the hex — per-hex ratings are the quilt R4 forbids, and
+  they reopen "which hex gets the cotton walk?" as a solvable surface. **One exception: each region
+  carries one "best of it" hex**, a single flagged sweet spot one grade better. One boolean, and it
+  is why the boiling house stands where it does.
+- **The partition survives because it is over GROUND, not produce.** Six tilled hexes are six hexes
+  of tilled ground whichever crop stands on them. Adaptability changes what a region **earns**; it
+  never changes how much ground a town **has**.
 
-*Deferred:* tobacco slopes · salt pans · quarry & lime.
+**The climate seam — named, and deliberately not designed.** `region.bears` is resolved **once at
+founding by a profile supplier**, and nothing downstream ever asks where it came from. First slice:
+a hand-authored terrain table plus a roll. Later: `climate(latitude, rainfall, elevation) × terrain`
+fills the same field. **The seam is that single function**; no other code changes when climate
+arrives.
 
-### The founding roll is BIASED, not uniform
+### 2.6 Reach — ground that is a little out of the way
 
-Draw **one dominant vocation parcel at `rich`**, one or two supporting, the rest filler or `poor`.
-Uniform random produces towns that are all mediocre at everything — the difference between "towns
-with slightly different numbers" and "towns you can describe in a sentence".
+**`reach: 'at hand' | 'far'`**, derived: a region is `far` if it does not touch the town's claimed
+hexes — over a ridge, across a creek, on a cay. Its works **cost more hands** (men must walk) and
+are **dropped first when hands are short**, which the shipped labour sort already does for free. On
+the raid map its works stand **away from the muster** — an isolated mill you can take unopposed, or
+a cay you can stage from before you touch the town.
 
-**Acceptance:** three towns rolled from these rules must each be describable in one distinguishing
-sentence, e.g.
-- *Cane and rum on the flats, no harbour to speak of* — fat, soft, huge haul, thin militia.
-- *Timber and shipways under a bluff battery, poor land, feeds itself off the reef* — poor, hard,
-  and you'd rather **take** the shipways than burn them.
-- *Salt and fish, three hundred souls, a crown battery and nothing worth stealing* — a hard,
-  worthless target. **Some towns should not be worth raiding.**
+> *"There is fine timber over the ridge; nothing much has ever come out of it."*
 
-### Parcel scarcity IS the growth cap
+A town whose best land is `far` never realises its promise, and that is a distinct kind of place.
+*Deferred:* an access work (a causeway, a mule track) promoting `far` → `at hand`. An offshore cay
+is permanently `far`.
 
-Once the timbered hills carry their sawpits, more lumber money buys no more lumber. **Cap and
-flavour are the same mechanism** — no arbitrary limits are needed.
+### 2.7 The sea still lies south
 
-### Who may write to the land — three states
+The invariant is about **readability, not geography**, and it survives an irregular coast:
 
-*Amended 2026-09-08. The original rule reserved the right to reopen this ("possibly steerable
-later… not without explicitly reopening the decision"); it is hereby reopened.*
+> **The open water always lies in the southern arc, and the raid map's landing edge is always the
+> near edge. The coastline is irregular; which way it faces is not.**
+
+A bay may bite north into the land; a headland may jut south; the shore may run diagonally.
+
+### 2.8 Who may write to the land — three states
 
 | State | When | What you may do |
 |---|---|---|
-| **Read-only** | a foreign town you have bought no one in | Nothing — and you cannot even *see* the ring until you have paid a clerk (§6). Prose only. |
-| **Steerable** | your own governor, or a bought arrangement | Lean the town **thematically** — one focus, and optionally one named production line (§5.8). Never a hex. |
-| **Grantable** | a haven **you own** | Additionally: **grant the ground** — say what a hex is *for*, once (§7.6). |
+| **Read-only** | a foreign town you have bought no one in | Nothing — and you cannot see the land at all until you have paid a clerk (§6). Prose only. |
+| **Steerable** | your own governor, or a bought arrangement | Lean the town **thematically** — one focus, optionally one named production line (§5.8). Never a hex. |
+| **Grantable** | a haven **you own** | Additionally: **grant a region** to a vocation its ground will bear (§7.6). |
 
-**Still forbidden everywhere:** tile improvement, worker allocation, re-founding, and choosing
-where a building stands. **You may choose what a piece of land is FOR; never where a building
-STANDS.**
+**Still forbidden everywhere:** worker allocation · re-founding · choosing where a building stands ·
+and the new line to defend — **the player never chooses which hex the town claims next.**
 
-## 2.5 The footprint — the ring is fixed, the town spills over it
+### 2.9 Acceptance tests for the land
+
+1. In 20 rolled towns, the **dominant region holds at least a third of the workable land in at
+   least 15**. *(Guards the uniform-region failure — the one that would silently rebuild the mush.)*
+2. **No town's land bears more than five live terrain kinds.** *(Guards "access to everything".)*
+3. Every land hex belongs to exactly one region; every region is contiguous. *(The partition.)*
+4. Every town has at least one water hex adjacent to its centre, in the southern arc.
+5. Two towns with the same terrain kinds but **different proportions produce different sentences**.
+6. A town grown a century has claimed hexes, and the **sum of its regions' capacity has fallen**.
+   *(Growth eats its own cause.)*
+7. Same seed → same land. *(Reproducibility, required of every module.)*
+8. **No drawn hex is neither land, town, nor coast-adjacent water.** *(No wasted ring.)*
+9. A town asked for a crop its ground merely **grudges** raises it, earns visibly less, and says so
+   in one clause on the wants-list — **no silent underperformance**.
+
+### 2.10 A discipline rule that binds every consumer of this model
+
+> **Never store a bearing as the spatial fact; derive it. Axial is the truth.**
+
+`Bearing` survives as prose and a coarse index — the direction of a region's centroid — so the
+growth ordering, the stage-3 skew and every sentence keep reading it. But the spatial truth is the
+region's hex set and the work's own hex.
+
+## 2.11 The footprint — the land is fixed, the town spreads over it
 
 *Added 2026-09-08.*
 
@@ -188,11 +266,16 @@ founding" survives verbatim).
 | Field | Values |
 |---|---|
 | `core` | `scattered · settled · close-built · packed · stone-built` |
-| `spill` (per bearing) | `clear · skirts · suburb · absorbed` |
+| `claimed` | the set of hexes the town has built over |
 
-~30 footprint states, and **no new simulated entities**. Encroachment draws as a **lobe biting
-into the inner edge of a ring hex** — never a sub-hex, never a hexagon. *A hex is one parcel; the
-town's built-up ground may lie over part of a parcel without dividing it into two.*
+*Amended 2026-09-08 (third): the four-level `spill` ladder is **struck**. The town takes **whole
+hexes**, which removes a concept rather than adding one, and makes "growth eats its own cause"
+literal and countable — claim a cane hex and the cane region is one hex smaller, one cane field
+idle. You can see which quarter the town ate.*
+
+**The town is drawn as ONE CONTINUOUS SILHOUETTE**, never a cluster of outlined hexagons. That is
+the surviving spirit of the struck lobe rule, and it is what keeps *no hex is ever visible in a
+raid* honest at the finer grain.
 
 > **Rejected: the tract model.** Grouping many small hexes into ~6 economic tracts buys no
 > information (identical sub-hexes say what one hex says) and reopens an in-tract placement
@@ -204,7 +287,9 @@ Every work has a `zone`; everything not `beyondThePale` stands **inside** the to
 already auto-raises one per 40 souls — so population drives the pressure through machinery that
 exists. **Crowding = in-town works ÷ room.**
 
-Relief runs in strict order, and step 1 before step 2 **is** "builds inwards-out":
+Relief runs in strict order, and step 1 before step 2 **is** "builds inwards-out". The tie-break
+on which hex to take is **the candidate with the most already-claimed neighbours**, which produces
+lobes far more reliably on a hex field than it did on six bearings:
 
 | # | Relief | Cost | The clause |
 |---|---|---|---|
@@ -225,19 +310,23 @@ acre; a town ringed by rich cane must eat its cane to grow.
 **It grows lobes, not rings**, because the order is strongly ordered, dead ground breaks the
 symmetry, and a wall holds one side rigid while the other sprawls.
 
-### Absorbed ground is permanent
+### Claimed ground is permanent
 
-Build over the cane and the cane is gone: an `absorbed` bearing is removed from `roomFor` and its
-works idle. **`skirts` and `suburb` are drawn and read but not simulated** — only `absorbed`
-touches the ledger, which keeps the change a legible event rather than a numeric bleed. The one
-exception: a town that reaches `Abandoned` and is later re-founded rolls its footprint back to
-nothing and keeps its parcels.
+Build over the cane and the cane is gone: a claimed hex leaves its region's capacity and any work
+standing on it idles. Claiming is **binary** — every claim costs capacity the moment it happens,
+which is the correct fiction and a legible event rather than a numeric bleed. Over a century a
+town claims perhaps a quarter to a third of its workable ground. The one exception: a town that
+reaches `Abandoned` and is later re-founded rolls its footprint back to nothing and keeps its
+land.
 
 **The footprint never retreats.** Collapse leaves derelict ground, then ruins.
 
 ### Walls shape growth; they do not stop it
 
-The wall is the existing `palisade` work plus a `circuit: Bearing[]` recorded when raised.
+The wall is the existing `palisade` work plus a **circuit frozen at the moment it was raised** —
+the boundary edges of the claimed set as it then stood, **never re-extended as the town grows**.
+That is Havana 1671–1740 and Getsemaní exactly, and it makes fidelity contracts 7 and 8
+mechanically trivial: **a claimed hex outside the frozen circuit *is* the faubourg.**
 **Built segment by segment, landward first — an unfinished circuit is normal**, not exceptional.
 **No build timers; expense is the pacing** (§1.1). Nobody new decides: the five-term auction
 already produces this from `fear` + the patron's agenda.
@@ -283,9 +372,20 @@ placement, a footprint, `since` (year), and a condition on the devolution ladder
 - **Capital works** — shipways, boiling house, stone battery, warehouse, customs house. Need
   **money or a patron**. These are what investment unlocks.
 
-### Scale
+### Scale, and why it may grow
 
-~12 **choosable** works (what the governor picks between) + ~6 **automatic** civic/defensive ones.
+~16 **choosable** works (*was ~12; widened 2026-09-08 for the new terrains*) + ~6 **automatic**
+civic/defensive ones.
+
+> **The catalogue may grow freely because THE LAND IS THE FILTER.** A town with cane, fields and a
+> roadstead offers its governor a shortlist of five or six works whatever the catalogue's size, so
+> the five-term auction never gets noisier.
+
+**Two gates, not one** (§2.5): **crops and extraction** are gated by graded suitability — a work is
+offered if its `produces` appears in `region.bears` at any grade. **Sited works** keep a hard ground
+requirement. Mining and smithing stay **simplified** — a quarry region and a work that stands on
+it, never an ore → bloomery → smithy chain. Commodity identity, prices and shipping belong wholly
+to the trade epic.
 
 ### Exactly two dependency edges in the first slice
 
@@ -427,8 +527,19 @@ clause:
 
 **Three guards keep a steer from becoming a command:**
 1. **You bias a category** — never a work, never a hex.
-2. **The land still refuses.** No bluff, no battery: you get a palisade and a barracks, which is a
-   *worse* defence. The same lever in two towns gives two different towns.
+2. **The land answers in three registers** *(amended 2026-09-08 — was a flat refusal)*:
+
+   | Register | Clause | What the steer does |
+   |---|---|---|
+   | **Refuses** | *"there is no ground for cane here"* | flat no |
+   | **Grudges** | *"they can grow it; it pays a third of what the cotton would"* | **lands, and is visibly a bad idea** |
+   | **Bears** | *"the ground was made for it"* | pays |
+
+   The middle register is the upgrade: a steer can now **land badly**, which is more interesting
+   than a refusal and more legible than silent underperformance — and it satisfies the requirement
+   that a steer must be able to **visibly lose**. **The grudge clause is published on the
+   wants-list *before* the work is raised**, so there is never a silent bad bargain. And the land
+   still refuses outright where it must: no bluff, no battery.
 3. **The steer can be outvoted.** Agenda weight is 0.9 of ~5; a fresh sacking doubles `fear` and
    puts guns up whatever you asked for. A steer that can visibly lose is not a command.
 
@@ -506,7 +617,7 @@ becoming a universal "buy anything" button.
 | Rung | Who | What the coin reaches |
 |---|---|---|
 | 1 | **A clerk / harbourmaster** | **Information.** The town's ledger, its wants-list, its true garrison — **and the right to see its hex map at all** (ratified: an unbought town shows prose only). |
-| 2 | **The contador / factor** | **A production line**, named, for a term. *"There'll be rum out of here by the time you're back."* |
+| 2 | **The contador / factor** | **A production line**, named, for a term. *"There'll be rum out of here by the time you're back."* **Gated at the refusal floor only** *(2026-09-08)*: buying grain on cotton ground succeeds and **pays badly** — the poor return is the discipline, not a second gate. Coin can never lift an absent entry, nor a sited work's hard ground requirement. |
 | 3 | **The alcalde / captain of the watch** | **Neglect — the guns focus run DOWNWARD.** The battery goes unmaintained; the watch is thin on a night you name. *You break a town before you land on it.* |
 | 4 | **The governor himself** | A **licence** (trade here, careen here) or **standing patronage** (you as a declared non-owner patron — the `owns: false` hook). **Relationship only; coin alone is refused, insultingly.** |
 
@@ -571,7 +682,12 @@ placement is a lookup, not a solve.
 | **Outworks** | battery on high ground, palisade + gate landward, watchtower |
 | **Beyond the pale** | the productive parcels themselves — sawpits, cane fields, boiling house, salt pans, provision grounds |
 
-**Stage 3 — parcel bearings skew everything.**
+**Stage 2 note (amended 2026-09-08 third):** the zone bands must be laid along the **actual claimed
+silhouette**, not a circle. Contract 4 promised this once the footprint could grow; it is now due.
+
+**Stage 3 — parcel bearings skew everything.** *(Sharper now: it keys on a region's **edge
+adjacency** to the town rather than a coarse bearing. A region touching the town across two hexes
+gives a wide industrial edge; one touching across a single hex gives a lane out to it.)*
 - **Industry sits on the town edge facing its parcel** — sawpits on the timber side, the boiling
   house on the cane side. Between the town and its land, which is how real towns work and reads
   instantly.
@@ -640,11 +756,12 @@ approach cost).
 | 1 | **Bearing.** Timbered hills to the north on the map → sawpits at the north edge on the ground, and the ground rises that way. |
 | 2 | **Sea-arc.** Which ring hexes are water decides which edge you land on and how wide the waterfront is. |
 | 3 | **Count.** *"Sawpits ×3"* on the hex means **three sawpits** on the ground — not "some industry". **Promoted to a REQUIREMENT, 2026-09-08 — see below.** |
-| 4 | **Size.** *(amended 2026-09-08)* The raid map's extent is a function of the **footprint**: `core` sets the town's depth, and each spilled bearing adds a quarter **on that bearing's edge**. Population is an input to the footprint, never to the map directly. |
+| 4 | **Size.** *(amended twice, 2026-09-08)* The raid map's extent is a function of the **claimed hex set**: `core` sets the town's depth, and each claimed hex adds a quarter where that hex lies. Population is an input to the footprint, never to the map directly. **Guard: the map covers the claimed set plus one ring of adjacent land, never the whole county** — beyond that ring, growth raises *density*, not extent, or a century-old port becomes an unplayable march. |
 | 5 | **Scar.** A ruin on the hex is a burnt shell on the ground. |
 | 6 | **Skirts.** *(new)* A bearing with a suburb has buildings **outside the town proper on that edge** — approach cover, or a landing you can make among houses. A compact town has open glacis on every side. |
-| 7 | **Trace.** *(new)* The wall's `circuit` is exactly the bearings that carry a wall on the ground. **An unenclosed bearing has no wall — that is the way in.** A `ruin` wall draws as a broken line *through* the built-up area, not at its edge. |
-| 8 | **Faubourg.** *(new)* A quarter grown outside the circuit puts the wall **between the core and the suburb**, so it runs through the middle of the raid map. |
+| 7 | **Trace.** The wall's frozen circuit is exactly the edges that carry a wall on the ground. **An unwalled edge is the way in.** A `ruin` wall draws as a broken line *through* the built-up area, not at its edge. |
+| 8 | **Faubourg.** Because the circuit is frozen at the moment it was raised, **a claimed hex outside it simply IS the suburb** — the wall runs through the middle of the raid map with no extra machinery. |
+| 9 | **Spread.** *(new, 2026-09-08 third)* A region's works stand **along its own ground**, not piled on a point: five sawpits in a line down the north woodline, one per hex. This is the human's work-visibility requirement at scale. |
 
 ### Work visibility — a requirement, not a contract
 
@@ -676,7 +793,11 @@ ground, the projection works.
 
 > **You don't place buildings. You choose what a piece of ground is *for* — once per hex.**
 
-Each of the 6 ring hexes may be **granted** to a vocation the land can bear: *"the north hills —
+*Amended 2026-09-08 (third): grants are **per REGION**, 3–6 of them, not per hex — which makes them
+even more clearly a landlord's decision and less like placement. The shortlist a region offers is
+graded: an absent produce is refused outright, a grudged one is offered with its clause attached.*
+
+Each **region** may be **granted** to a vocation its ground will bear: *"the north hills —
 timber." "The bluff — the guns." "The cove — careenage and shipways."* Ungranted hexes the governor
 uses as he sees fit. Historically exact: colonial governors issued land patents.
 
@@ -794,6 +915,36 @@ a faubourg · neglect-rot of an outgrown wall · densification costing wealth at
 outlying quarters on the far ring (Otrobanda) · the raid-map contracts actually honoured (blocked
 on the generator existing) · footprint as a `SettlementTier` input · raising the population ceiling
 (blocked on the trade epic) · quarter names by nation (*arrabal* / *the liberties* / *extramuros*).
+
+### The land rework (2026-09-08, third) — four stories
+
+**Board:** land generator = **KAN-84** · suitability = **KAN-85** · footprint on hexes =
+**KAN-86** · the renderer = **KAN-87**. Dependency order is KAN-84 → 85 → 86 → 87, with the new
+sections on **KAN-81** (per-region grants) and **KAN-72** (the three registers) landing after
+KAN-85. These four **supersede parts of KAN-79 / 80 / 82 / 83**, which stay closed.
+
+1. **The land generator.** Coast growth and cleanup; region seeding and growing from the existing
+   biased roll and `SUPPORTING`; budgeted skewed sizes; area as capacity; derived bearings; the
+   `reach` flag. Acceptance: §2.9.
+2. **Suitability.** `region.bears`; the crops/sited split of the catalogue; `ParcelQuality` struck;
+   the rolled profile; the sweet-spot hex; the three registers wired into the steer's clause.
+3. **The footprint on hexes.** `claimed` replaces `spill`; the frozen wall circuit; the
+   most-claimed-neighbours tie-break; capacity falling as the town eats its ground.
+4. **The renderer.** Irregular map, computed viewBox, region union outlines with **one label at the
+   centroid**, the town's single silhouette, the wall trace with its gaps, the sweet-spot glyph, a
+   caption that speaks in proportions. Also fixes two live bugs: ghost labels bleeding across hex
+   boundaries, and the centre label truncating — both from text sized for 40px hexes on a 26px map.
+
+**What it costs:** a rewrite of the land roll (~100 lines), ~60% of the footprint module, most of
+the renderer's layout, and ~15–25 test edits that are **nearly all count-pinning**. Striking
+`quality` makes it **net negative lines**. The ledger, the five-term auction, `sim.ts` and every
+design-claim test are untouched — and per the testing rules, **if a behaviour test breaks that is a
+real regression and a stop-and-think, not a number to update.**
+
+*Deferred tail:* access works promoting `far` → `at hand` · the cay as a careening site ·
+monoculture consuming neighbouring regions (Barbados) · a goods/commodity model (trade epic) ·
+neighbours and annexation of unclaimed hinterland · noise-field terrain if region-growing reads too
+tessellated · roads · `stone → lime` as a third edge with wall grades.
 
 ### Migration — what changes, what survives
 
