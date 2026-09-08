@@ -100,8 +100,11 @@ export function regionSummary(town: Town, r: Region): RegionSummary {
 
 const SUIT_WORD: Record<Suit, string> = { ideal: "made for", fair: "takes, well enough,", poor: "grudges" };
 
-// The region as a whole, for the town card. The MAP inspects per hex (above).
-export function hoverFor(town: Town, r: Region): string {
+// The region is what you inspect: a stretch of ground read as one thing. The
+// hexes underneath are still the unit of capacity and of the ledger — build over
+// one of three field hexes and production drops to two — but the player reads the
+// ground as a place, not as a grid of cells.
+function hoverFor(town: Town, r: Region): string {
   const s = regionSummary(town, r);
   const lines = [
     `${LABEL[r.terrain]} to the ${compass(r.bearing)} — ${s.hexes} hex${s.hexes > 1 ? "es" : ""}${
@@ -129,51 +132,8 @@ export function hoverFor(town: Town, r: Region): string {
   return lines.join("\n");
 }
 
-// What ONE HEX is, said on its own. The region is a visual grouping and a unit of
-// capacity; THE HEX REMAINS THE UNIT OF GROUND. Three hexes of tilled land are
-// three separate pieces of ground that happen to be alike — build over one and
-// the other two carry on.
-function hoverForHex(town: Town, r: Region, h: Axial): string {
-  const idx = town.regions.indexOf(r);
-  const here = town.works.filter((w) => w.region === idx && w.hex && key(w.hex) === key(h));
-  const claimed = isClaimed(town, h);
-  const kin = r.hexes.length;
-  const lines = [
-    `${LABEL[r.terrain]}, ${compass(r.bearing)}${kin > 1 ? ` — one of ${kin} such hexes here` : ""}.`,
-  ];
-  if (claimed) {
-    lines.push("The town has built over this ground. Nothing more will come off it.");
-    return lines.join("\n");
-  }
-  if (isDead(r.terrain)) {
-    lines.push("Nothing will grow here, and nothing can be built on it.");
-    if (r.terrain === "marsh") lines.push("Slow going for anyone coming that way.");
-    return lines.join("\n");
-  }
-  const bears = Object.entries(r.bears) as [Produce, Suit][];
-  if (bears.length) lines.push(bears.map(([p, g]) => `${SUIT_WORD[g]} ${p}`).join("; ") + ".");
-  if (here.length) {
-    lines.push(here.map((w) => `${w.name} (${w.condition})`).join(", "));
-    const e: string[] = [];
-    const live = here.filter((w) => w.condition === "working");
-    const trade = live.reduce((n, w) => n + w.trade, 0);
-    const food = live.reduce((n, w) => n + w.food, 0);
-    const def = live.reduce((n, w) => n + w.defence, 0);
-    if (trade) e.push(`${Math.round(trade)} coin a season`);
-    if (food) e.push(`feeds ${Math.round(food)}`);
-    if (def) e.push(`${Math.round(def)} toward the defence`);
-    if (e.length) lines.push(`Off this hex: ${e.join(", ")}.`);
-  } else {
-    const could = worksForRegion(town, r).map((k) => CATALOGUE[k].label);
-    lines.push(could.length ? `Open ground — it would carry ${could.join(" or ")}.` : "Open ground.");
-  }
-  if (r.sweetSpot && key(r.sweetSpot) === key(h)) lines.push("The best of it.");
-  const s = regionSummary(town, r);
-  if (kin > 1) lines.push(`Of these ${kin}, ${s.free} still open.`);
-  return lines.join("\n");
-}
-
-// One hex, independently inspectable. The region draws around it.
+// One hex of a region: its fill, its works, and the sweet spot if it is here.
+// Drawn per hex; READ as part of its region.
 function hexCell(town: Town, r: Region, h: Axial): string {
   const c = toPixel(h, SIZE);
   const idx = town.regions.indexOf(r);
@@ -188,7 +148,7 @@ function hexCell(town: Town, r: Region, h: Axial): string {
     r.sweetSpot && !isDead(r.terrain) && key(r.sweetSpot) === key(h)
       ? `<circle class="rg-sweet" cx="${c.x.toFixed(1)}" cy="${(c.y - 7).toFixed(1)}" r="2.4" />`
       : "";
-  return `<g class="hx"><title>${esc(hoverForHex(town, r, h))}</title>` +
+  return `<g class="hx">` +
     `<path d="${hexPath(c, SIZE)}" fill="${FILL[r.terrain]}" class="rg-face" />${sweet}${marks}</g>`;
 }
 
@@ -208,6 +168,7 @@ function regionGroup(town: Town, r: Region): string {
   // would only sit under the silhouette.
   const named = free.length > 0 && (!isWater(r.terrain) || r.hexes.length > 2);
   return `<g class="rg ${isDead(r.terrain) ? "is-dead" : ""} ${isWater(r.terrain) ? "is-water" : ""}">
+    <title>${esc(hoverFor(town, r))}</title>
     ${r.hexes.map((h) => hexCell(town, r, h)).join("")}
     <path d="${outline(r.hexes, SIZE)}" class="rg-edge" />
     ${named ? `<text class="rg-name" x="${at.x.toFixed(1)}" y="${(at.y + 3).toFixed(1)}">${esc(SHORT[r.terrain])}</text>` : ""}
