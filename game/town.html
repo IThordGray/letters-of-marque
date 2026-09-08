@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Letters of Marque — Towns</title>
+    <style>
+      /* Programmer art. The prose town card is KAN-75; this is a read-out. */
+      body { margin: 0; padding: 24px; background: #14120e; color: #e8e0d0;
+             font: 14px/1.5 ui-monospace, Consolas, monospace; }
+      h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: .08em; text-transform: uppercase; }
+      .sub { margin: 0 0 18px; color: #8c8272; }
+      .clock { color: #c9a227; margin: 0 0 18px; }
+      button { font: inherit; background: #2a251c; color: #e8e0d0; border: 1px solid #4a4335;
+               padding: 6px 14px; margin-right: 8px; cursor: pointer; }
+      button:hover { background: #3a3226; }
+      .town { border: 1px solid #3a3226; padding: 14px 18px; margin: 18px 0; }
+      .town h2 { font-size: 15px; margin: 0 0 8px; color: #c9a227; }
+      .town h2 small { color: #8c8272; font-weight: normal; font-size: 12px; }
+      .line { color: #cfc4ac; margin: 0 0 14px; font-style: italic; }
+      table { border-collapse: collapse; }
+      th { text-align: left; color: #8c8272; font-weight: normal; padding: 1px 18px 1px 0; vertical-align: top; }
+      td { padding: 1px 0; }
+      th.sep, td.sep { padding-top: 8px; }
+      .cols { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 1.3fr); gap: 26px; }
+      @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+      h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
+           color: #8c8272; margin: 14px 0 4px; font-weight: normal; }
+      h3 .dim { text-transform: none; letter-spacing: 0; }
+      ul { margin: 0; padding-left: 18px; }
+      li { margin: 1px 0; }
+      .dim { color: #7d7464; }
+      .wants li { margin: 4px 0; }
+      .wants b { color: #c9a227; font-weight: normal; }
+      .log li { color: #a89b82; }
+    </style>
+  </head>
+  <body>
+    <h1>Letters of Marque — living towns</h1>
+    <p class="sub">
+      KAN-68 the entity &amp; season tick · KAN-69 the founding roll · KAN-70 the works ledger ·
+      KAN-71 the governor's plan. The ledger is the simulation; the map is a projection of it.
+      Three stored numbers — population, wealth, prosperity — everything else derived.
+      Nobody here is taking orders from you.
+    </p>
+    <p>
+      <button id="season">Advance a season</button>
+      <button id="year">Advance a year</button>
+      <button id="twenty">Run 20 years</button>
+      <button id="reset">Reset</button>
+    </p>
+    <div id="app"></div>
+    <script type="module" src="/src/town/main.ts"></script>
+  </body>
+</html>

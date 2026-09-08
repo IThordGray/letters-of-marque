@@ -35,6 +35,9 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
   they're headless-testable; the DOM/canvas layer only runs in a browser.
 - **Verified with Vitest** — `npm test`. Pure systems are pinned by a real suite that
   is kept, not a throwaway smoke. Rules and rationale: [testing.md](testing.md).
+- **Two entry points.** `index.html` → the land raid; `town.html` → the standalone
+  **town module** (`src/town/`), the living-town economy built as its own startup file
+  and deliberately not wired into the raid yet (epic KAN-67).
 
 ## Deliberate non-choices
 - **Durable stack = TypeScript + Vite** (decided 2026-08-17). The earlier C#/.NET +
