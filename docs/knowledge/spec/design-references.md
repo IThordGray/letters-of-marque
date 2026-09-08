@@ -12,6 +12,15 @@ manager records them. The canonical design is still [`../../design-doc.md`](../.
 > mechanics to pirate/privateer flavour; we never clone a title or anchor the game to
 > one. (Borrow a formation-shaping *interaction* — don't import parade-ground drill.)
 
+> **On history — PERIOD IS FLAVOUR, NOT A CONSTRAINT** (ratified by the human,
+> 2026-09-08). *"A lot of these games run across several eras. I don't want to make a
+> super historically correct game. Period is more the flavour."* Keep bringing the
+> history — it has repeatedly produced the best material in this design (Getsemaní
+> enclosed in the 1630s, Havana's seventy-year circuit, Port Royal unwalled and rich).
+> But **never rule a mechanic out on dates alone.** If coffee is fun, coffee is in;
+> note the date as texture and move on. Historical research is a source of ideas and
+> detail, never a veto.
+
 ## Cutthroats: Terror on the High Seas (1999) — the lineage
 Spiritual ancestor: an age-of-sail **privateer career** — build a reputation, take
 ships and towns, run a crew and a base, weigh plunder against commerce.
