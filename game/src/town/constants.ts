@@ -6,23 +6,40 @@
 
 export const SEASONS_PER_YEAR = 4;
 
-// ---- The land ring ---------------------------------------------------------
-// The founding roll is BIASED on purpose: one dominant vocation at `rich`, one or
-// two supporting, the rest filler. Rolling uniformly makes every town mediocre at
-// everything — the quality tables below are what keep towns distinguishable.
+// ---- The land --------------------------------------------------------------
+// An irregular coast of regions. Dilution comes from INDEPENDENT PER-TILE
+// SAMPLING, not tile count — so what matters here is that region SIZES are
+// budgeted and skewed. Uniform sizes would rebuild the mush at a larger scale.
 export const LAND = {
-  ring: 6, // one hex = one parcel; six flat-top directions, so six parcels
-  secondSupportChance: 0.5,
-  support: { rich: 0.25, fair: 0.5, poor: 0.25 },
-  filler: { rich: 0.05, fair: 0.35, poor: 0.6 },
+  radius: 4, // how far out the generator may consider ground
+  hexes: 24, // target land hexes
+  coast: 0.6, // how far south the shore reaches, before jitter
+  coastJitter: 2.2, // ...and how much it wanders, which is what makes it a coast
+  compactness: 0.55, // how strongly the land clings to the town rather than straggling
+  cays: 2, // up to this many detached offshore hexes
+
+  // Budgeted, skewed region sizes. THE DOMINANT MUST DOMINATE.
+  dominant: { lo: 6, hi: 9 },
+  support: { lo: 3, hi: 5 },
+  minor: { lo: 3, hi: 6 }, // filler regions are stretches, not slivers
+  deadShare: 0.55, // share of filler regions that are worth nothing
+
+  upsetChance: 0.3, // odds this town's ground favours its second crop over its first
+  atHandWithin: 2, // a region further out than this is `far`: costlier to man, first to idle
+  harbourChance: 0.7, // not every town has sheltered water
+  reefShare: 0.25, // ...and some of the coast is worth fishing
 };
 
 // ---- Works -----------------------------------------------------------------
-// Good land is simply worth more — this is how a rich parcel becomes a rich town.
-export const QUALITY_YIELD = { poor: 0.6, fair: 1, rich: 1.5 };
+// Ground that suits a crop is worth more of it. This replaces the struck
+// `quality` axis: area is HOW MUCH, suitability is HOW WELL AND FOR WHAT.
+export const SUIT_YIELD = { poor: 0.35, fair: 0.7, ideal: 1.3 };
 
 export const WORKS = {
-  labourShare: 0.55, // share of souls who are working hands (the rest are children, old, idle)
+  labourShare: 0.55,
+  sweetSpotBonus: 1.25, // the best of the cane — why the boiling house stands there
+  farPenalty: 0.85, // ground over the ridge yields a little less...
+  farHands: 1.35, // ...and costs more men, because they must walk to it // share of souls who are working hands (the rest are children, old, idle)
   // Population at which each self-raising subsistence work appears. Absent = 0.
   subsistenceAt: {
     dwellings: 0,
@@ -109,7 +126,7 @@ export const PLAN = {
     fear: 1.3, // "since the burning, the town wants guns"
     agenda: 0.9, // "the crown wants this place held"
   },
-  affinity: { poor: 0.25, fair: 0.6, rich: 1.0 }, // how much good land argues for a work
+  affinity: { poor: 0.2, fair: 0.6, ideal: 1.0 }, // how strongly the ground argues for a work
   wantSecurity: 45, // the security a town would like to have before it relaxes
   starvedBonus: 1.0, // a downstream work standing idle for want of this one
   tradeScale: 34, // normalises a work's earnings into roughly 0..1
@@ -128,7 +145,7 @@ export const PLAN = {
 // needs bought grain from the deferred trade layer. Re-tune when that lands.
 export const FOOTPRINT = {
   coreRoom: [4, 6, 9, 13, 18], // scattered · settled · close-built · packed · stone-built
-  quarterRoom: [0, 2, 4, 7], // clear · skirts · suburb · absorbed
+  roomPerClaim: 3, // ...plus this much for every hex the town has built over
   // What it costs to rise FROM each grade. Building closer is free; stone and
   // storeys are not — which is why a poor town sprawls and a funded one holds.
   densifyCost: [0, 0, 900, 2200, Infinity],

@@ -6,7 +6,7 @@
 
 import type { Town, Derived, Patron } from "./types";
 import { makeRng } from "../rng";
-import { rollParcels, describeLand } from "./parcels";
+import { rollLand, describeLand } from "./land";
 import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, SEASONS_PER_YEAR, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
@@ -118,7 +118,9 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     population: 80,
     wealth: WEALTH.start,
     prosperity: PROSPERITY.start,
-    parcels: [],
+    land: [],
+    water: [],
+    regions: [],
     works: [],
     footprint: makeFootprint(),
     governor: "",
@@ -134,7 +136,10 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
 // keeping the struct free of engine state keeps it plain data.
 export function foundTown(init: Partial<Town> & { name: string; seed: number }): Town {
   const town = makeTown(init);
-  town.parcels = rollParcels(makeRng(init.seed));
+  const rolled = rollLand(makeRng(init.seed));
+  town.land = rolled.land;
+  town.water = rolled.water;
+  town.regions = rolled.regions;
   return town;
 }
 
@@ -157,7 +162,7 @@ export function summarise(town: Town): string {
   const makes = earners.length
     ? `Works ${[...new Set(earners.map((w) => w.name))].join(", ")}`
     : "Makes nothing anyone would buy";
-  const land = town.parcels.length ? ` Set among ${describeLand(town.parcels)}.` : "";
+  const land = town.regions.length ? ` Set among ${describeLand(town)}.` : "";
   return (
     `${town.name}, ${year(town)} — a town of ${Math.round(town.population)} souls, ${prosperityWord(town)}.` +
     `${land} ${cap(wealthWord(town))}. ${makes}. ` +

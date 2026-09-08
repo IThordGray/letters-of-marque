@@ -43,12 +43,9 @@ export function ring(n: number): Axial[] {
   return out;
 }
 
-// The hinterland: everything beyond the parcel ring, out to the drawn edge.
-// Drawn so the map reads as country — there is a lot of land — and carrying no
-// data yet beyond sea-or-shore.
-export const HINTERLAND_RADIUS = 3;
-export const outerRing = (): Axial[] =>
-  Array.from({ length: HINTERLAND_RADIUS - 1 }, (_, i) => ring(i + 2)).flat();
+// Everything within n of the centre, centre included.
+export const disc = (n: number): Axial[] =>
+  [CENTRE, ...Array.from({ length: n }, (_, i) => ring(i + 1)).flat()];
 
 export function distance(a: Axial, b: Axial): number {
   const dq = a.q - b.q;
@@ -88,4 +85,50 @@ export function sharedEdge(centre: { x: number; y: number }, size: number, b: Be
 // A point between a ring hex and the town, where the built-up ground bites in.
 export function towardCentre(from: { x: number; y: number }, t: number): { x: number; y: number } {
   return { x: from.x * (1 - t), y: from.y * (1 - t) };
+}
+
+// ---- Working with sets of hexes --------------------------------------------
+
+export const key = (a: Axial) => `${a.q},${a.r}`;
+
+export const neighbours = (a: Axial): Axial[] =>
+  BEARING_ORDER.map((b) => ({ q: a.q + axialOf(b).q, r: a.r + axialOf(b).r }));
+
+// How far south a hex lies. The sea is south, so this is the coast's axis — the
+// coastline is irregular, but which way it faces is not (spec §2.7).
+export const southness = (a: Axial) => a.r + a.q / 2;
+
+// The compass direction of a hex from the town, for prose and the placement
+// skew. DERIVED — never stored as the spatial fact (spec §2.10).
+export function bearingOf(a: Axial): Bearing {
+  let best: Bearing = "N";
+  let bestDot = -Infinity;
+  const len = Math.hypot(toPixel(a, 1).x, toPixel(a, 1).y) || 1;
+  const p = toPixel(a, 1);
+  for (const b of BEARING_ORDER) {
+    const d = toPixel(axialOf(b), 1);
+    const dl = Math.hypot(d.x, d.y) || 1;
+    const dot = (p.x * d.x + p.y * d.y) / (len * dl);
+    if (dot > bestDot) { bestDot = dot; best = b; }
+  }
+  return best;
+}
+
+// The centroid of a set of hexes, in axial space.
+export function centroid(cells: Axial[]): Axial {
+  if (!cells.length) return CENTRE;
+  const q = cells.reduce((s, c) => s + c.q, 0) / cells.length;
+  const r = cells.reduce((s, c) => s + c.r, 0) / cells.length;
+  return { q, r };
+}
+
+// Pixel bounds of a set of hexes, so the map can size itself to the land it has
+// rather than to a fixed ring.
+export function bounds(cells: Axial[], size: number) {
+  const pts = cells.map((c) => toPixel(c, size));
+  const pad = size * 1.15;
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+  const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
+  const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad;
+  return { minX, minY, w: maxX - minX, h: maxY - minY };
 }

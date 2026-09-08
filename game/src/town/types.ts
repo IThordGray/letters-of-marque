@@ -1,3 +1,5 @@
+import type { Axial } from "./hex";
+
 // Entity data for the TOWN module — a settlement that grows, specialises and decays
 // on its own. Plain data only; behaviour lives in pure systems (sim.ts), never on the
 // struct. See docs/knowledge/spec/town-economy.md.
@@ -20,36 +22,57 @@ export interface Patron {
   owns: boolean;
 }
 
-// ---- The land ring ---------------------------------------------------------
-// EXACTLY SIX parcels around the town site, drawn as the inner ring of a hex
-// flower (centre = the town itself, outer 12 = undrawn hinterland). One hex =
-// one parcel, never subdivided — that is the anti-dilution rule.
-export type ParcelTerrain =
+// ---- The land --------------------------------------------------------------
+// A town's ground is an IRREGULAR COAST of ~24 hexes, divided into a handful of
+// contiguous REGIONS. The region is the unit; a hex is a unit of area, never of
+// announcement. See docs/knowledge/spec/town-economy.md §2.
+//
+// Identity is PROPORTION, and proportion is zero-sum: a hex given to timber is a
+// hex not given to cane. That is what stops "a town has access to several
+// resources" becoming "access to all of them".
+
+export type TerrainKind =
   // productive land
   | "timberedHills"
   | "caneFlats"
-  | "provisionGrounds"
+  | "tilledGround"
+  | "cottonGround"
+  | "rockyGround"
+  | "saltPans"
   | "bluff"
   // productive water
   | "reef"
   | "roadstead"
-  // DEAD GROUND — drawn, terrain-typed, yielding nothing. This is where the
-  // variety went when the parcel count was fixed at six: a town with three dead
-  // hexes has a VISIBLE ceiling ("poor ground on three sides") where a parcel
-  // count was invisible. `marsh` pays twice — dead, and a defensive gift.
+  // DEAD GROUND — drawn and named, yielding nothing. It is the town's release
+  // valve as well as its ceiling: a town sprawls over its scrub and keeps every
+  // good acre. `marsh` pays twice — dead, and slow going for a raider.
   | "marsh"
   | "scrub"
   | "openSea";
-export type ParcelQuality = "poor" | "fair" | "rich";
-// Six flat-top hex directions. Dropping E and W but KEEPING N and S is what
-// preserves the ratified "the sea lies south" invariant — pointy-top hexes would
-// have broken it.
+
+// What comes off the ground. Suitability is keyed on PRODUCE, not on work kind,
+// so adding a work needs no new column.
+export type Produce = "cane" | "grain" | "cotton" | "food" | "timber" | "stone" | "salt" | "fish";
+
+// Terrain BIASES a crop; it does not determine it. Absent from `bears` = will not
+// bear at all: "you cannot plant cotton on bedrock."
+export type Suit = "ideal" | "fair" | "poor";
+
+// Six flat-top hex directions. Kept as PROSE and a coarse index only — derived
+// from a region's centroid. Discipline rule: never store a bearing as the spatial
+// fact; axial is the truth (spec §2.10).
 export type Bearing = "N" | "NE" | "SE" | "S" | "SW" | "NW";
 
-export interface Parcel {
-  terrain: ParcelTerrain;
-  quality: ParcelQuality;
-  bearing: Bearing; // the load-bearing field: it turns an economic fact into a PLACE
+export interface Region {
+  id: number;
+  terrain: TerrainKind;
+  hexes: Axial[]; // contiguous. AREA IS CAPACITY.
+  // What this ground will bear, and how well. Filled ONCE at founding by the
+  // profile supplier — the seam a climate system later replaces (spec §2.5).
+  bears: Partial<Record<Produce, Suit>>;
+  sweetSpot: Axial | null; // the best of it, one grade better — why the boiling house stands there
+  reach: "atHand" | "far"; // `far` if it does not touch the town: costlier to man, first to idle
+  bearing: Bearing; // derived from the centroid — for prose and the placement skew
 }
 
 // ---- The works ledger ------------------------------------------------------
@@ -96,7 +119,8 @@ export interface Work {
   id: number;
   kind: WorkKind;
   name: string; // how it reads in a sentence — "the sawpits above the creek"
-  parcel: number | null; // index into town.parcels, or null for a civic work
+  region: number | null; // index into town.regions, or null for a civic work
+  hex: Axial | null; // the ground it actually stands on — five mills in a line, not five on a point
   since: number; // year it started working, for the chronicle
   condition: WorkCondition;
   idleSince: number | null; // season it stopped working, for the devolution ladder
@@ -109,10 +133,11 @@ export interface Work {
   serves: Need | null; // the want it answers
   servesFor: number; // ...for how many souls
 
-  // Defensive works only: the bearings this wall actually encloses. Built segment
-  // by segment, so an UNFINISHED CIRCUIT IS NORMAL — and an unenclosed bearing is
-  // the way in.
-  circuit?: Bearing[];
+  // Defensive works only: the boundary of the claimed set FROZEN at the moment
+  // this wall was raised, and never re-extended as the town grows. So a hex
+  // claimed later, outside it, simply IS the faubourg. An unwalled edge is the
+  // way in — an unfinished circuit is normal.
+  circuit?: Axial[];
 }
 
 // ---- The footprint ---------------------------------------------------------
@@ -123,14 +148,9 @@ export interface Work {
 // How closely the built-up core is packed. Rising a grade is "building inwards".
 export type CoreGrade = 0 | 1 | 2 | 3 | 4; // scattered · settled · close-built · packed · stone-built
 
-// How far the town has spread onto one bearing. `absorbed` is the only level the
-// LEDGER sees — skirts and suburb are drawn and read but not simulated, which
-// keeps encroachment a legible event rather than a numeric bleed.
-export type SpillLevel = 0 | 1 | 2 | 3; // clear · skirts · suburb · absorbed
-
 export interface Footprint {
   core: CoreGrade;
-  spill: Record<Bearing, SpillLevel>;
+  claimed: Axial[]; // the hexes the town has built over. Binary: claiming costs capacity at once.
 }
 
 // ---- The town --------------------------------------------------------------
@@ -150,13 +170,15 @@ export interface Town {
   wealth: number; // coin on hand: what construction spends and what a raider steals
   prosperity: number; // 0..100 LAGGING condition — the slow verdict on the place
 
-  parcels: Parcel[];
+  land: Axial[]; // every hex of the town's ground, an irregular coast
+  water: Axial[]; // only the water that touches it — no wasted ring
+  regions: Region[];
   works: Work[];
   footprint: Footprint; // the built-up ground — see §2.5
   // Haven-only, ratified 2026-09-08 (the human overruling the recommendation):
   // ground the owner has opened for the town to spread into. One grant per hex,
   // ever; it directs where the town MAY spread, never where a building stands.
-  grantedToTown?: Bearing[];
+  grantedToTown?: number[]; // region ids
   governor: string; // who runs the place. KAN-73 gives him competence and temperament.
 
   grant: number; // standing coin per season from the patron (KAN-72 makes this archetypal)
