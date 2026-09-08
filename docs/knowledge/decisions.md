@@ -10,6 +10,139 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-08 (second) — The town footprint: the ring is fixed, the town spills over it
+A town's built-up area becomes a growing thing, so a hamlet of forty and a port of nine hundred no
+longer occupy identical ground (shaped with the game-designer; four calls answered by the human,
+one of them an overrule). The load-bearing sentence:
+
+> **The land a town works is fixed at founding. What grows is how much of it the town has built over.**
+
+- **Two grains, separated.** *Economic* grain stays coarse — **six parcels, one per bearing,
+  unchanged**. *Spatial* grain goes fine **on the footprint, not on the land**: a `core` density
+  (`scattered · settled · close-built · packed · stone-built`) × a `spill` level per bearing
+  (`clear · skirts · suburb · absorbed`). That is ~30 footprint states between hamlet and
+  metropolis, at the cost of zero new simulated entities.
+- **The tract model was considered and REJECTED.** Grouping many small hexes into ~6 economic
+  tracts (the manager's proposal) buys **no information** — identical sub-hexes say what one hex
+  says, for eight times the pixels — and **reopens an in-tract placement problem** the do-not-build
+  list bans by name ("which sub-hex does the sawpit stand on?"). Answer it and there is adjacency to
+  farm; refuse and the sub-hexes are decoration sold as resolution.
+- **Encroachment draws as a LOBE biting into the inner edge of a ring hex** — never a sub-hex,
+  never a hexagon. The hex is not divided; part of it is built over.
+- **The footprint lives on the `Town`, not the `Parcel`** — the same precedent that let
+  grant-the-ground coexist with "parcels are immutable after founding". That rule survives verbatim.
+- **Pressure is room, measured in works.** Every work has a `zone`; everything not `beyondThePale`
+  stands *inside* the town. `dwellings` already auto-raises one per 40 souls, so population drives
+  the pressure through machinery that already exists. **Crowding = in-town works ÷ room.**
+- **Relief in strict order — and step 1 before step 2 IS "builds inwards-out":**
+  **densify** (free at low grades; costs wealth for stone and storeys) → **spill one step on the
+  best unenclosed bearing** (free, but it eats that hex's capacity) → **spill OUTSIDE the wall**
+  (a faubourg; free and undefended) → **nothing** (the `shelter` need goes unmet and prosperity
+  sags — *"there is nowhere for this place to go"*).
+- **The growth-preference order, each owning a clause:** dead **scrub** first (*"they have built
+  out over the dry scrub"*) → **the water** → **its own industry's bearing** (the ratified stage-3
+  skew) → **provision grounds / cane**, reluctantly (*"they have built over the northern fields"*)
+  → **the bluff** last (a shanty on the hill) → **never marsh, never open sea**. So **dead ground
+  now pays a third time**: the economic ceiling, the defensive gift, and now the release valve. A
+  town with scrub to the north sprawls north for a century and keeps every good acre; a town ringed
+  by rich cane must eat its cane to grow. The founding roll pays twice from one draw.
+- **What stops it looking like a blob:** the preference order is strongly ordered (towns grow
+  *lobes*, not rings) · dead ground and marsh break the symmetry · the wall holds one side rigid
+  while the other sprawls. Adopt Frostpunk's radial *legibility*, reject its radial *uniformity*.
+- **WALLS DO NOT STOP GROWTH. THEY SHAPE IT.** What stops growth is the ground and the archetype's
+  purpose. A wall that hard-caps freezes a town forever; a wall that *deforms* growth yields
+  suburbs outside the gate, an unfinished segment and an old trace through the middle of town —
+  four different raids from one variable. The wall is the existing `palisade` work plus a
+  `circuit: Bearing[]` recorded when raised; **built segment by segment, landward first, and an
+  unfinished circuit is NORMAL**. **No build timers — expense is the pacing** (§1.1).
+- **A wall is never demolished by decision.** Outgrown and unthreatened → unmaintained → idle →
+  decayed → **ruin**, on the devolution ladder that already exists. A ruined trace running through
+  built-up ground is a first-class raid feature.
+- **The footprint never retreats.** Collapse leaves derelict ground, then ruins — free
+  reinforcement of the golden-goose rule, and it is what gives sprawl teeth.
+- **Four limits, and none of them is a number:** **food** (you cannot house more mouths than the
+  land feeds) · **ground** (marsh and open sea refuse houses; a town ringed by mangrove can only
+  densify) · **stone** (densifying above `close-built` costs wealth and has a ceiling grade) ·
+  **purpose** (an outpost does not want to grow). Headline: **growth eats its own cause** — every
+  quarter the town takes is capacity it loses.
+- **Archetypes must read at a glance.** **Colony** sprawls eagerly and outgrows its wall. **Royal
+  outpost** keeps *the same outline for a century and only darkens* — **its boundary is the
+  stipend, not the wall** — and if the crown pulls the money it shrinks, rots its wall, and *only
+  then* sprawls: a fishing village living in a ruined fort, generated by two existing systems
+  shaking hands. **Pirate haven** sprawls raggedly, worst ground first, and never completes a
+  circuit.
+- **Zero new player verbs from the growth model itself.** The five-term auction handles walls
+  unchanged; the town must **never** notify you that it has outgrown its wall.
+
+**The human's four calls (2026-09-08):**
+- **The footprint model, and draw 37 hexes** (radius 3 at ~26px, was 19 at 40px). The literal ask —
+  "smaller tiles, more of them" — is honoured on the *drawing*, while the parcel ring stays six.
+- **Absorbed ground is permanent** — build over the cane and the cane is gone. The one exception:
+  a town reaching the ratified `Abandoned` end-state and later re-founded rolls its footprint back
+  to nothing and keeps its parcels.
+- **OVERRULE — a haven owner MAY grant a hex "to the town".** The designer (and the manager)
+  recommended refusing this as the thin end of zoning; the human ratified it. It is defensible on
+  the same ground as every other grant: **you are still answering *what is this land for*, once,
+  irreversibly, from a shortlist the terrain allows.** Zoning would be repaintable districts; a
+  one-time irreversible grant has no solution space. **Guards:** haven-you-own only · one grant per
+  hex, ever · irreversible without razing what stands · and **it directs where the town may spread,
+  never where a building stands** — the sim still places every work.
+- **Cutthroats heritage — CONFIRMED: bigger towns carried more wealth but did NOT expand.** So
+  footprint growth is **our addition, not inherited**, and is logged as such (unlike town
+  persistence, which was restoration).
+
+**A hard requirement the human stated with this call — WORK VISIBILITY:**
+> *"I do however want the town to physically grow. If a new lumber mill is built and I land there
+> with my units, I want to see the lumber mill."*
+
+**Every work in the ledger is a building on the ground.** This is fidelity contract 3 (Count)
+promoted from a contract to a **requirement**: the projection may never abstract works into
+"some industry". Build a sawpit in 1663 and the raid map of 1664 has a sawpit standing on that
+bearing. This is the sharpest statement yet of *the ledger is the simulation, the map is a
+projection* — and it is the reason the ledger stays at work granularity rather than collapsing
+into a development number.
+
+**Amendments to ratified text:**
+- **"Draw 19, simulate 7" → "draw 37 (radius 3), simulate 7."** Drawing only; the simulated set is
+  byte-identical.
+- **"The centre hex IS the town; one centre hex = one raid map"** → **"The town's FOOTPRINT is the
+  raid map. The footprint begins as the centre hex and grows over the ring."** One raid map per
+  town survives; coextension with the centre hex does not.
+- **Fidelity contract 4 (Size)** rewritten to key on the footprint rather than the centre glyph's
+  density, and **three new contracts: 6 Skirts** (a suburb means buildings outside the town proper
+  on that edge — approach cover) · **7 Trace** (the wall's `circuit` is exactly the bearings that
+  carry a wall; an unenclosed bearing is the way in; a `ruin` wall draws *through* the built-up
+  area) · **8 Faubourg** (a quarter outside the circuit puts the wall between core and suburb, so
+  it runs through the middle of the map).
+- **"Parcel scarcity IS the growth cap" EXTENDED** — parcel scarcity caps *works*, the ground caps
+  *the town*, and the two compete for the same land.
+- **Clarifying clause on "one hex = one parcel"** — *"a hex is one parcel; the town's built-up
+  ground may lie over part of a parcel without dividing it into two."*
+- **Scope guard:** do **not** add a third dependency edge for walls — wall grade upgrades the
+  single wall work in place.
+
+**Held verbatim:** exactly 6 parcels · parcels immutable after founding · **no hex is ever visible
+in a raid** · no player building placement · ~5 surfaced numbers · no scheduled prompt · **no
+worker or job assignment, ever** (the footprint biases what is *built*; `allocateLabour` stays
+autonomous) · §1.1 · the four-stage grammar and its eight adjacency rules — **rule 7, "a full zone
+grows outward", anticipated this whole feature and is now cashed in.**
+
+**Known risk, recorded:** the footprint is gated on population being able to grow, and the shipped
+food model caps a colony near **~450 souls** (bought grain is deliberately in the deferred trade
+tail). Calibrate the room and spill thresholds to the band the sim *actually* produces, and re-tune
+when the trade layer lands. **Do not pull grain-buying forward to make this work.**
+
+*Why:* the strategic map has to predict the ground you fight on, and it currently predicts one
+constant-sized ground for every town in the Caribbean. Making the footprint grow costs one struct
+and one renderer, turns four existing systems (dead ground, the devolution ladder, the stipend, the
+golden goose) into a hundred-year story, and hands the raid layer four genuinely different tactical
+propositions from one variable. Comparables and the colonial Caribbean urban history that backs it
+(Getsemaní, Havana's 1671–1740 circuit, Otrobanda, unwalled Port Royal) are in
+[spec/design-references.md](spec/design-references.md); the model is in
+[spec/town-economy.md](spec/town-economy.md) §2.5.
+
+---
+
 ### 2026-09-08 — The land map: the hex ring is the wants-list drawn on the ground
 A hex-tile view of a town's land, a way to lean a town's development, and the first real
 placement verb — in your own haven only (shaped with the game-designer; four calls answered by

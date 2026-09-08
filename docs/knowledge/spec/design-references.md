@@ -39,6 +39,11 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
   (`town-economy.md`) is therefore **restoring a lineage feature, not inventing one** — and
   *Pirates!* reached much the same feeling with about three numbers, which is the argument for
   keeping our first slice small.
+- Towns grew in **wealth but not in extent** — a richer town carried more to steal, but the place
+  you landed on did not get physically bigger. **[confirmed 2026-09-08]** So the growing **town
+  footprint** (`town-economy.md` §2.5) is **our addition, not inherited** — unlike town persistence
+  above, which was restoration. The human's requirement that motivates it: *"if a new lumber mill
+  is built and I land there with my units, I want to see the lumber mill."*
 - _(Add confirmed mechanics and feel here as we go.)_
 
 ## Rise of Piracy (2026, Early Access) — the closest living competitor
@@ -505,6 +510,61 @@ grammar without inheriting the Civ optimisation puzzle.
 - **Town size you can knock down (Sid Meier's Pirates!):** still the calibration point, in a new
   form — *if the hex map isn't more legible than Pirates!' single town-size number, it isn't
   earning its pixels.*
+
+### Town footprint growth & walls
+How comparable games grow a settlement's physical extent over time, and what walls do to it.
+Ratified model: [`town-economy.md`](town-economy.md) §2.5 and `../decisions.md` (2026-09-08, second).
+
+- **Housing evolution in place (Caesar III / Pharaoh):** a house upgrades tier without moving, so
+  population grows with zero footprint change; evolution and devolution are symmetric. *Drags:* the
+  mechanism exists to make placement the game, and a city that never sprawls tells the strategic
+  map nothing. **ADAPT** — densification is half our model, and it is the half a *bounded* town
+  uses. **REJECT** desirability radii (already banned).
+- **Dense blocks by tier (Anno):** needs-met raises density on the same ground. **ADAPT** — needs
+  gate a core density grade; **REJECT** the tier ladder as serviced content.
+- **Tile acquisition over time (Civilization):** borders pop outward one tile at a time,
+  nearest-and-best first — "the city claims more ground as it ages" is exactly the hundred-year
+  read, and the acquisition order is a legible preference function. *Drags:* acquired tiles become
+  more *workable* tiles, which is dilution. **ADAPT the acquisition order** as our growth-preference
+  order; **REJECT** growing the worked-land count — six parcels, forever.
+- **Settlement tier changes the assault map (Medieval II: Total War):** wall grade
+  (palisade → wooden → stone) is a building with a direct consequence on the battle map. *Drags:* a
+  discrete **template swap**, so every city of a tier assaults identically — and walls are a
+  *prerequisite* for the next settlement level, making fortification a growth tax. **ADOPT**
+  wall-as-a-work-with-battle-map-consequence; **REJECT the template swap**, and **REJECT the
+  inversion** — ours is the opposite: **walls shape growth, they do not gate it**.
+- **Walls you extend by hand (Stronghold / Kingdoms and Castles):** Stronghold's split is the
+  instructive part — *the walls enclose the citadel and the granary; the economy lives outside*,
+  which is a Caribbean presidio exactly. *Drags:* the outgrow-and-redraw cycle is pure chore, and it
+  is placement. **ADAPT** citadel-inside / economy-outside as the default colonial shape; **REJECT**
+  player wall-drawing outright.
+- **Radial rings (Frostpunk):** centre-plus-ring reads instantly. *Drags:* perfectly radial growth
+  is a **blob**. **ADOPT the radial legibility; REJECT the radial uniformity** — dead ground and
+  walls must break the symmetry.
+- **Self-organising villages (Banished / Ostriv):** organic road-following sprawl is the visual
+  target for an unwalled colony. **Nothing new to adopt** — but note that **neither has a boundary
+  mechanic, which is why neither produces a memorable town *shape*.** That absence is the argument
+  for walls.
+- **Two new anti-patterns worth naming:** **all-or-nothing walls throw away the best raid geometry**
+  (a *partial* trace is what makes ours interesting), and **a settlement sim without a boundary
+  produces no shape worth recognising.**
+
+### Colonial Caribbean urban history — real-world input
+Unusually generous, and it costs nothing to be exact here. This is where the walls model comes from.
+
+- **Cartagena de Indias.** Getsemaní was an *arrabal* — a settlement deliberately left outside
+  Antonelli's 1595 fortification plan. It populated anyway, and in the **1630s** Governor Francisco
+  de Murga built bulwarks around it. **The suburb was taken inside the wall.**
+- **Havana.** Walls begun **1671**, the bay-facing side unfinished until **1740** — a seventy-year
+  circuit. *Extramuros* barrios (Jesús María, San Lázaro, Los Sitios, Pueblo Nuevo) grew outside,
+  and governors feared a raid **precisely because so many lived beyond the wall**. Demolished
+  **1863–1880** once raids ceased. Both the faubourg and the outgrown wall, documented.
+- **Willemstad.** Punda was the only walled part; it grew so crowded that in **1707** residents
+  built across St Anna Bay — **Otrobanda, "the other side."** When a town cannot spill, it jumps.
+- **Port Royal.** Unwalled, forts only; ~6,500 souls, and it had **expanded onto the sandbanks**.
+  An unwalled town takes even worthless ground — and it was the richest port in the Caribbean.
+- **Panamá.** Sacked by Morgan **1671**, refounded on a new site **1673 — behind walls.** Our
+  ratified raze → refounding rule has a precedent, and it argues a refounded town returns walled.
 
 ## Pirate-flavour fit — the taste test
 For **ragged, morale-driven privateer bands** (individual-figure RTS on land,

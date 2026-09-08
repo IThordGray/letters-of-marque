@@ -173,6 +173,102 @@ later… not without explicitly reopening the decision"); it is hereby reopened.
 where a building stands. **You may choose what a piece of land is FOR; never where a building
 STANDS.**
 
+## 2.5 The footprint — the ring is fixed, the town spills over it
+
+*Added 2026-09-08.*
+
+> **The land a town works is fixed at founding. What grows is how much of it the town has built
+> over.**
+
+A hamlet of forty and a port of nine hundred must not occupy identical ground. The **economic**
+grain stays coarse — six parcels, unchanged — while the **spatial** grain goes fine on the
+**footprint**, which lives on the `Town`, never on the `Parcel` (so "parcels are immutable after
+founding" survives verbatim).
+
+| Field | Values |
+|---|---|
+| `core` | `scattered · settled · close-built · packed · stone-built` |
+| `spill` (per bearing) | `clear · skirts · suburb · absorbed` |
+
+~30 footprint states, and **no new simulated entities**. Encroachment draws as a **lobe biting
+into the inner edge of a ring hex** — never a sub-hex, never a hexagon. *A hex is one parcel; the
+town's built-up ground may lie over part of a parcel without dividing it into two.*
+
+> **Rejected: the tract model.** Grouping many small hexes into ~6 economic tracts buys no
+> information (identical sub-hexes say what one hex says) and reopens an in-tract placement
+> question the do-not-build list bans. Recorded so it is not re-proposed.
+
+### The pressure, and the relief
+
+Every work has a `zone`; everything not `beyondThePale` stands **inside** the town, and `dwellings`
+already auto-raises one per 40 souls — so population drives the pressure through machinery that
+exists. **Crowding = in-town works ÷ room.**
+
+Relief runs in strict order, and step 1 before step 2 **is** "builds inwards-out":
+
+| # | Relief | Cost | The clause |
+|---|---|---|---|
+| 1 | **Densify** — the core rises a grade | free at low grades; **wealth** for stone and storeys | *"they build close now, and in stone"* |
+| 2 | **Spill** one step on the best unenclosed bearing | free, but **it eats that hex's capacity** | *"the town has spread up toward the sawpits"* |
+| 3 | **Spill outside the wall** — a faubourg | free, and **undefended** | *"there are houses outside the gate now"* |
+| 4 | **Nothing** | the `shelter` need goes unmet, prosperity sags | *"there is nowhere for this place to go"* |
+
+### Which way it grows
+
+Dead **scrub** first · **the water** · **its own industry's bearing** · **provision grounds / cane**
+reluctantly · **the bluff** last · **never marsh, never open sea**.
+
+**Dead ground now pays a third time** — the economic ceiling, the defensive gift, and now the
+release valve. A town with scrub to the north sprawls north for a century and keeps every good
+acre; a town ringed by rich cane must eat its cane to grow.
+
+**It grows lobes, not rings**, because the order is strongly ordered, dead ground breaks the
+symmetry, and a wall holds one side rigid while the other sprawls.
+
+### Absorbed ground is permanent
+
+Build over the cane and the cane is gone: an `absorbed` bearing is removed from `roomFor` and its
+works idle. **`skirts` and `suburb` are drawn and read but not simulated** — only `absorbed`
+touches the ledger, which keeps the change a legible event rather than a numeric bleed. The one
+exception: a town that reaches `Abandoned` and is later re-founded rolls its footprint back to
+nothing and keeps its parcels.
+
+**The footprint never retreats.** Collapse leaves derelict ground, then ruins.
+
+### Walls shape growth; they do not stop it
+
+The wall is the existing `palisade` work plus a `circuit: Bearing[]` recorded when raised.
+**Built segment by segment, landward first — an unfinished circuit is normal**, not exceptional.
+**No build timers; expense is the pacing** (§1.1). Nobody new decides: the five-term auction
+already produces this from `fear` + the patron's agenda.
+
+**A wall is never demolished by decision.** Outgrown and unthreatened, it goes unmaintained → idle
+→ decayed → **ruin** on the existing ladder, and a ruined trace running through built-up ground is
+a first-class raid feature.
+
+### The four limits — none of them a number
+
+**Food** (you cannot house more mouths than the land feeds) · **ground** (marsh and open sea refuse
+houses) · **stone** (densifying above `close-built` costs wealth and has a ceiling) · **purpose**
+(an outpost does not want to grow).
+
+> **Growth eats its own cause.** Every quarter the town takes is capacity it loses.
+
+### It must read at a glance
+
+| | Colony | Royal outpost | Pirate haven |
+|---|---|---|---|
+| Sprawl | **eager** | **refuses** — its boundary is the *stipend*, not the wall | **ragged**, worst ground first |
+| Wall | rarely, late, outgrown | **always, first, stone, maintained** | palisade and battery; never a circuit |
+| At a century | a fat irregular lobe with an old wall stub inside it | **the same outline as year 25, only darker** | a big untidy smear, no circuit |
+
+An outpost whose stipend is pulled shrinks, rots its wall, and *only then* sprawls — a fishing
+village living in a ruined fort.
+
+**Known risk:** the footprint is gated on population being able to grow, and the current food model
+caps a colony near **~450 souls**. Calibrate thresholds to that band; **do not** pull grain-buying
+forward from the trade tail to make this work.
+
 ---
 
 ## 3. Works — the ledger
@@ -543,9 +639,31 @@ approach cost).
 |---|---|
 | 1 | **Bearing.** Timbered hills to the north on the map → sawpits at the north edge on the ground, and the ground rises that way. |
 | 2 | **Sea-arc.** Which ring hexes are water decides which edge you land on and how wide the waterfront is. |
-| 3 | **Count.** *"Sawpits ×3"* on the hex means **three sawpits** on the ground — not "some industry". |
-| 4 | **Size.** The centre glyph's density matches the raid map's extent. |
+| 3 | **Count.** *"Sawpits ×3"* on the hex means **three sawpits** on the ground — not "some industry". **Promoted to a REQUIREMENT, 2026-09-08 — see below.** |
+| 4 | **Size.** *(amended 2026-09-08)* The raid map's extent is a function of the **footprint**: `core` sets the town's depth, and each spilled bearing adds a quarter **on that bearing's edge**. Population is an input to the footprint, never to the map directly. |
 | 5 | **Scar.** A ruin on the hex is a burnt shell on the ground. |
+| 6 | **Skirts.** *(new)* A bearing with a suburb has buildings **outside the town proper on that edge** — approach cover, or a landing you can make among houses. A compact town has open glacis on every side. |
+| 7 | **Trace.** *(new)* The wall's `circuit` is exactly the bearings that carry a wall on the ground. **An unenclosed bearing has no wall — that is the way in.** A `ruin` wall draws as a broken line *through* the built-up area, not at its edge. |
+| 8 | **Faubourg.** *(new)* A quarter grown outside the circuit puts the wall **between the core and the suburb**, so it runs through the middle of the raid map. |
+
+### Work visibility — a requirement, not a contract
+
+**Ratified by the human, 2026-09-08:**
+
+> *"I do however want the town to physically grow. If a new lumber mill is built and I land there
+> with my units, I want to see the lumber mill."*
+
+**Every work in the ledger is a building on the ground.** The projection may never abstract works
+into "some industry": raise a sawpit in 1663 and the raid map of 1664 has a sawpit standing on that
+bearing. This is the sharpest form of *the ledger is the simulation, the map is a projection* — and
+it is the reason the ledger stays at **work** granularity instead of collapsing into a development
+number.
+
+**Four tactical propositions from one variable:** a compact walled presidio (open ground on every
+approach, one gate, a killing zone) · an outgrown walled port (suburbs give cover to the wall, and
+a segment they never finished) · a sprawling unwalled colony (no chokepoint anywhere; the
+*distance* is the defence) · an old trace through the middle (take the faubourg free, then face the
+gate — a two-stage raid the generator gets for nothing).
 
 **The test that matters:** *a player can name the town's approach from the hex map before he
 lands.* — "Marsh to the west, so no palisade that side and slow going; bluff north-east with the
@@ -573,6 +691,18 @@ uses as he sees fit. Historically exact: colonial governors issued land patents.
   place from fiddling with a menu.
 - **Grants live on the `Town`, not the `Parcel`** — so "parcels are immutable after founding"
   survives verbatim.
+
+**A seventh grant: "to the town."** *(Ratified by the human 2026-09-08, overruling both the
+game-designer and the manager, who recommended refusing it as the thin end of zoning.)* In a haven
+you own you may grant a hex **to the town** — opening that ground for the footprint to spread into
+(§2.5). It is defensible on the same ground as every other grant: **you are still answering *what
+is this land for*, once, irreversibly, from a shortlist the terrain allows.** Zoning would be
+repaintable districts; a one-time irreversible grant has no solution space.
+
+**Guards, which are what keep it safe:** haven-you-own only · one grant per hex, ever ·
+irreversible without razing what stands · never on marsh or open sea · and **it directs where the
+town may spread, never where a building stands** — the sim still places every work, and
+`allocateLabour` stays wholly autonomous.
 
 *Deferred:* one or two **"the captain's own"** works — a careenage, a strong-house, a gallows, a
 chapel to nobody. Not economic; they are the haven's **face**, they change the raid map's centre
@@ -645,6 +775,23 @@ stories but the board carries three new keys.
    biases `parcelFor()` and the agenda term.
 
 No raid wiring, no new economy, one new renderer.
+
+### The footprint slice (2026-09-08, second) — two stories
+
+1. **The footprint (sim).** The `footprint` struct on `Town`; room per core grade and per quarter;
+   the crowding measure; the four-step relief order; the growth-preference order with its clauses;
+   `absorbed` removing a parcel from `roomFor` and idling its works; the wall as a blocking
+   `circuit` on the `palisade` work; the faubourg. One new pure module, one new call site.
+2. **The footprint (render).** The centre glyph driven by `core` rather than population;
+   encroachment lobes on the inner edge of ring hexes; the wall trace as arcs on enclosed bearings,
+   broken where the circuit is unfinished; one caption sentence. Draw radius 3 (37 hexes at ~26px).
+   Renderer only.
+
+*Deferred tail:* wall **grades** (palisade → stone → bastions) and circuit **extension** to enclose
+a faubourg · neglect-rot of an outgrown wall · densification costing wealth at the high grades ·
+outlying quarters on the far ring (Otrobanda) · the raid-map contracts actually honoured (blocked
+on the generator existing) · footprint as a `SettlementTier` input · raising the population ceiling
+(blocked on the trade epic) · quarter names by nation (*arrabal* / *the liberties* / *extramuros*).
 
 ### Migration — what changes, what survives
 
