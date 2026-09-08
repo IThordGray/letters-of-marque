@@ -778,6 +778,8 @@ No raid wiring, no new economy, one new renderer.
 
 ### The footprint slice (2026-09-08, second) — two stories
 
+**Board:** footprint sim = **KAN-82** · footprint render = **KAN-83**.
+
 1. **The footprint (sim).** The `footprint` struct on `Town`; room per core grade and per quarter;
    the crowding measure; the four-step relief order; the growth-preference order with its clauses;
    `absorbed` removing a parcel from `roomFor` and idling its works; the wall as a blocking

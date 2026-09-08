@@ -121,6 +121,28 @@ export const PLAN = {
   threatMemory: 40, // seasons a sacking stays fresh in the town's mind
 };
 
+// ---- The footprint ---------------------------------------------------------
+// Room is measured in WORKS, not acres: everything that is not `beyondThePale`
+// stands inside the town. Calibrated to the population band the sim actually
+// produces (~80-450 souls) — NOT to the 900-soul port in the spec's prose, which
+// needs bought grain from the deferred trade layer. Re-tune when that lands.
+export const FOOTPRINT = {
+  coreRoom: [4, 6, 9, 13, 18], // scattered · settled · close-built · packed · stone-built
+  quarterRoom: [0, 2, 4, 7], // clear · skirts · suburb · absorbed
+  // What it costs to rise FROM each grade. Building closer is free; stone and
+  // storeys are not — which is why a poor town sprawls and a funded one holds.
+  densifyCost: [0, 0, 900, 2200, Infinity],
+  crowdedAt: 0.95,
+};
+
+// Temperament, and it is the whole archetype read. A colony would rather spread
+// than pay for stone; a presidio would rather pay; a haven spreads at once.
+export const SPRAWL: Record<string, { willSpill: boolean; densifyFirstTo: number }> = {
+  colony: { willSpill: true, densifyFirstTo: 2 },
+  royalOutpost: { willSpill: false, densifyFirstTo: 4 }, // its boundary is the stipend, not the wall
+  pirateHaven: { willSpill: true, densifyFirstTo: 1 },
+};
+
 // ---- Reading it back -------------------------------------------------------
 // The bands that turn a number into a word. No number without a sentence.
 export const PROSPERITY_BANDS: { at: number; word: string }[] = [

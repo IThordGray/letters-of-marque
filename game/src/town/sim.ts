@@ -8,6 +8,7 @@ import type { Town, Derived, Patron } from "./types";
 import { makeRng } from "../rng";
 import { rollParcels, describeLand } from "./parcels";
 import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
+import { makeFootprint } from "./footprint";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, SEASONS_PER_YEAR, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -119,6 +120,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     prosperity: PROSPERITY.start,
     parcels: [],
     works: [],
+    footprint: makeFootprint(),
     governor: "",
     grant: 0,
     nextWorkId: 1,

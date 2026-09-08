@@ -108,6 +108,29 @@ export interface Work {
   hands: number; // population it needs to man
   serves: Need | null; // the want it answers
   servesFor: number; // ...for how many souls
+
+  // Defensive works only: the bearings this wall actually encloses. Built segment
+  // by segment, so an UNFINISHED CIRCUIT IS NORMAL — and an unenclosed bearing is
+  // the way in.
+  circuit?: Bearing[];
+}
+
+// ---- The footprint ---------------------------------------------------------
+// The land a town works is fixed at founding; what grows is HOW MUCH OF IT THE
+// TOWN HAS BUILT OVER. This lives on the Town, never on the Parcel, so "parcels
+// are immutable after founding" survives verbatim.
+
+// How closely the built-up core is packed. Rising a grade is "building inwards".
+export type CoreGrade = 0 | 1 | 2 | 3 | 4; // scattered · settled · close-built · packed · stone-built
+
+// How far the town has spread onto one bearing. `absorbed` is the only level the
+// LEDGER sees — skirts and suburb are drawn and read but not simulated, which
+// keeps encroachment a legible event rather than a numeric bleed.
+export type SpillLevel = 0 | 1 | 2 | 3; // clear · skirts · suburb · absorbed
+
+export interface Footprint {
+  core: CoreGrade;
+  spill: Record<Bearing, SpillLevel>;
 }
 
 // ---- The town --------------------------------------------------------------
@@ -129,6 +152,11 @@ export interface Town {
 
   parcels: Parcel[];
   works: Work[];
+  footprint: Footprint; // the built-up ground — see §2.5
+  // Haven-only, ratified 2026-09-08 (the human overruling the recommendation):
+  // ground the owner has opened for the town to spread into. One grant per hex,
+  // ever; it directs where the town MAY spread, never where a building stands.
+  grantedToTown?: Bearing[];
   governor: string; // who runs the place. KAN-73 gives him competence and temperament.
 
   grant: number; // standing coin per season from the patron (KAN-72 makes this archetypal)

@@ -98,11 +98,11 @@ function render() {
 
 function advance(seasons: number) {
   towns.forEach((t, i) => {
-    if (seasons === 1) {
-      const b = stepTownSeason(t);
-      if (b) journal[i].push(`${b.year} — ${b.sentence}`);
-    } else {
-      for (const b of stepTownYears(t, seasons / SEASONS_PER_YEAR)) journal[i].push(`${b.year} — ${b.sentence}`);
+    const seasonsRun = seasons === 1 ? [stepTownSeason(t)] : stepTownYears(t, seasons / SEASONS_PER_YEAR);
+    for (const s of seasonsRun) {
+      if (s.built) journal[i].push(`${s.year} — ${s.built.sentence}`);
+      // Stalling is a standing condition, not news — don't repeat it every season.
+      if (s.grew && s.grew.kind !== "stalled") journal[i].push(`${s.year} — ${s.grew.sentence}`);
     }
   });
   render();

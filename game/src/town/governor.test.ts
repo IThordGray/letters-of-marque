@@ -179,7 +179,7 @@ describe("a town becomes what its patron wants of it", () => {
 
   it("actually develops over decades rather than settling into nothing", () => {
     const t = townOn(land, { archetype: "colony", grant: 20, population: 200 });
-    const built = stepTownYears(t, 60);
+    const built = stepTownYears(t, 60).filter((s) => s.built);
     expect(built.length).toBeGreaterThan(2);
     expect(t.works.filter((w) => CATALOGUE[w.kind].cls === "capital").length).toBeGreaterThan(2);
   });

@@ -88,8 +88,10 @@ export const countOf = (t: Town, kind: WorkKind) => t.works.filter((w) => w.kind
 // is the number of matching parcels — PARCEL SCARCITY IS THE CAP.
 export function roomFor(town: Town, kind: WorkKind): number {
   const def = CATALOGUE[kind];
+  // Ground the town has built over entirely carries nothing — the one place the
+  // footprint writes into the ledger. Growth eats its own cause.
   const ceiling = def.needsParcel
-    ? town.parcels.filter((p) => p.terrain === def.needsParcel).length
+    ? town.parcels.filter((p) => p.terrain === def.needsParcel && town.footprint.spill[p.bearing] < 3).length
     : def.max;
   return Math.max(0, Math.min(ceiling, def.max) - countOf(town, kind));
 }
@@ -125,8 +127,13 @@ export function raise(town: Town, kind: WorkKind, year: number): Work | null {
   const parcel = parcelFor(town, kind);
   if (def.needsParcel && parcel === null) return null;
   const q = parcel !== null ? QUALITY_YIELD[town.parcels[parcel].quality] : 1;
+  // A wall goes up landward first, and the seaward side is normally never closed
+  // — an unfinished circuit is the rule, not the exception, and an unenclosed
+  // bearing is the way in.
+  const circuit = def.defence > 0 && kind === "palisade" ? (["N", "NE", "NW"] as Work["circuit"]) : undefined;
   const work: Work = {
     id: town.nextWorkId++,
+    circuit,
     kind,
     name: def.label,
     parcel,
@@ -179,7 +186,9 @@ function allocateLabour(town: Town): void {
   for (const w of live) {
     const req = CATALOGUE[w.kind].requires;
     const supplied = !req || working(town, req); // "the shipways stand idle for want of planks"
-    if (hands >= w.hands && supplied) {
+    // Ground the town has built over entirely carries nothing any more.
+    const buried = w.parcel !== null && town.footprint.spill[town.parcels[w.parcel].bearing] >= 3;
+    if (hands >= w.hands && supplied && !buried) {
       hands -= w.hands;
       if (w.condition === "idle") w.condition = "working";
       w.idleSince = null;

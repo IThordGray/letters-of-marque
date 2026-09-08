@@ -14,6 +14,7 @@ import { CATALOGUE, CHOOSABLE, buildable, raise, parcelFor, starvedFor } from ".
 import { compass } from "./parcels";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
+import { stepFootprint, type Grew } from "./footprint";
 
 export type TermKey = "land" | "need" | "market" | "fear" | "agenda";
 
@@ -237,16 +238,27 @@ export function describeBuild(town: Town, want: Want): string {
 // lives here rather than in sim.ts so the dependency stays one-way (governor
 // knows about the sim; the sim knows nothing about governors).
 
-export function stepTownSeason(town: Town): Built | null {
-  stepSeason(town);
-  return governorTurn(town, year(town));
+// What a season came to. Growth is never a prompt — the town does not tell you it
+// has outgrown its wall (§1.1); this is only what a harness may report if asked.
+export interface Season {
+  year: number;
+  built: Built | null;
+  grew: Grew | null;
 }
 
-export function stepTownYears(town: Town, years: number): Built[] {
-  const built: Built[] = [];
+export function stepTownSeason(town: Town): Season {
+  stepSeason(town);
+  // The town spreads on its own, whatever the governor is minded to build. It is
+  // pressure relieved, not a decision taken — so it is not part of the auction.
+  const grew = stepFootprint(town);
+  return { year: year(town), built: governorTurn(town, year(town)), grew };
+}
+
+export function stepTownYears(town: Town, years: number): Season[] {
+  const out: Season[] = [];
   for (let i = 0; i < years * SEASONS_PER_YEAR; i++) {
-    const b = stepTownSeason(town);
-    if (b) built.push(b);
+    const s = stepTownSeason(town);
+    if (s.built || s.grew) out.push(s);
   }
-  return built;
+  return out;
 }
