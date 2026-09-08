@@ -77,6 +77,29 @@ Sim systems are deterministic by construction — a seeded PRNG in world state
 same seed and same steps produce the same result. It is one assertion and it catches an entire
 class of bug that is otherwise miserable to chase.
 
+## Parked: the town module (2026-09-08)
+
+**`game/src/town/` is exempt from everything below, temporarily**, by the human's explicit call:
+
+> *"For the town, ignore the tests — until we've locked down what the town should do."*
+
+The land model has been reshaped three times in two days (parcels → hex ring → regions), and each
+reshape churned the suite harder than it churned the code. Pinning behaviour to a design still
+being argued costs more than it catches.
+
+**What this means in practice:** no new tests in `src/town/` while the model moves, and the
+existing suite was removed rather than left red — a red suite teaches people to ignore red. Git has
+it: `git show <commit>^:game/src/town/sim.test.ts` and friends.
+
+**What it does NOT mean:** the convention is unchanged everywhere else, and this is not a licence
+to ship the town module untested for good. **The suite comes back when the design locks**, and the
+tests worth rewriting first are the design-claim ones that were already true and would still be
+true — the hamlet floor, the shipways idle for want of planks, a governor who will not raise what
+nobody can man, and a reproducibility test per module.
+
+Verification while parked is by **headless inspection** — run the sim forward and read the output —
+which is how every design problem in this module has actually been found.
+
 ## When a test is required
 
 - **Every story with acceptance criteria** turns those criteria into tests — that is what "done"
