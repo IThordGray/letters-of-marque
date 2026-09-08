@@ -10,6 +10,138 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-08 — The land map: the hex ring is the wants-list drawn on the ground
+A hex-tile view of a town's land, a way to lean a town's development, and the first real
+placement verb — in your own haven only (shaped with the game-designer; four calls answered by
+the human). The whole evolution hangs on one sentence:
+
+> **The hex map is the wants-list drawn on the ground.**
+
+Nothing new is simulated. `wants()` already returns `{label, reason, where}` with `where` a
+bearing; the hex map is that list with `where` made literal. **One new renderer, no second
+economy.**
+
+- **One hex = one parcel. The map RENDERS the ring at the same grain; it never subdivides it.**
+  This is the anti-dilution guarantee. It also settles the earlier objection to a Civ grid, which
+  was **half right**: "many tiles average out" is real but is a property of *grain*, not hexes —
+  our biased founding roll already defeats it. The other half conflated *a map* with a **writable**
+  map. Civ VI district adjacency is a solved puzzle *because you place districts*; Victoria 3 has a
+  far richer state map, no placement, and its map is a readout. **A map the player cannot write to
+  is a diagram.**
+- **Draw 19, simulate 7.** The **centre hex is the town itself** (load-bearing: one centre hex =
+  one raid map). The **inner ring of 6 is the parcel ring**, unchanged in meaning. The **outer 12
+  are hinterland** — drawn, no data beyond `sea | land`, there to make the map read as *country*
+  and to hold the deferred tail (roads, neighbours, annexation, where reinforcements come from).
+- **A hex has no output. It has CAPACITY.** Output belongs to works: a hex's contribution is
+  exactly the sum of the works standing on it, computed nowhere else. Any number written on a hex
+  that is not that sum is the second economy, and is forbidden.
+- **Bearings 8 → 6, and parcels fix at exactly 6.** Flat-top hexes give N · NE · SE · S · SW · NW —
+  dropping E and W while **keeping N and S, so the ratified "the sea lies south" invariant
+  survives** (pointy-top would have broken it). The variety the old 6–9 count supplied now comes
+  from **dead hexes** — `marsh`, `scrub`, `openSea`: drawn, terrain-typed, yielding nothing. This is
+  an upgrade, not a compromise: a town with three dead hexes has a **visible** ceiling ("poor ground
+  on three sides") where a parcel count was invisible. `marsh` pays twice — economically dead,
+  defensively a gift (no palisade that side, slow going for a raider).
+- **Governing principle: thematic steer everywhere; spatial steer only where you own the ground.**
+  Leaning a town is a *thematic* choice (guns / coin / hands) that **renders as a spatial growth
+  front for free**, because every work already sits on a parcel with a bearing. The player never
+  points at a hex in a town he does not own, yet the town visibly grows a direction.
+- **The lever set is guns · coin · hands, because they are the three yield columns on a `WorkDef`**
+  (`trade` · `food`/`serves` · `defence`). `hands` on a work is the **cost**, not a lever; a fourth
+  lever would require inventing a fourth thing a work can produce. That is a structural bound, not
+  a taste call.
+- **Production focus names a PRODUCTION LINE by its output** — *the cane · the timber · the wharf ·
+  the fields* — never a building, one at a time. **The land refuses what it cannot bear** ("there is
+  no ground for cane here"), which is what keeps focus from degenerating into a build menu.
+- **Steer and bribery live INSIDE the existing agenda term. Still five terms**; the louder voice
+  writes the clause (*"you have asked for guns above all"* · *"the Company wants a return on this
+  place"* — an owner outvoting you is legible failure — · *"the contador has been paid to see rum
+  out of here"*). Three guards keep a steer from being a command: you bias a **category**, never a
+  work or a hex; **the land still refuses**; and the steer **can be outvoted** (a fresh sacking puts
+  guns up whatever you asked for). The labour gate still bites on top.
+- **Bribery: you buy a NAMED MAN, not an outcome.** Four rungs — **clerk/harbourmaster**
+  (information) · **contador/factor** (a production line, for a term) · **alcalde/captain of the
+  watch** (the guns lever run **downward**) · **the governor himself** (licence or standing
+  patronage — **relationship only; coin alone is refused, insultingly**). It lapses on the
+  **official's tenure** (men rotate, die, are promoted) and **suspicion** climbs per town; **one
+  standing arrangement per town**. *Coin buys breadth; relationship buys depth.* **Arrangements
+  lapse SILENTLY** — discovered on inspection or when word reaches you, **never a notification**
+  (a bribe with an expiry wants to become a scheduled prompt, and §1.1 forbids exactly that).
+  It can go wrong in ways beyond losing the coin: he takes it and does nothing; he is discovered
+  (standing falls, the `order` need spikes, **and the governor raises the guard on his own — a
+  failed bribe makes the target harder**); later, he informs on you, or a rival outbids you.
+- **Hexes → the ground: the CENTRE HEX IS THE TOWN**, and the ratified four-stage grammar is what
+  happens inside it; the ring hexes become the raid map's **edges**. **No hex is ever visible in a
+  raid** — hexes are units of land tenure, not blocks (Endless Legend's hex-quilt cities, inverted).
+  **The hex map is UPSTREAM of the generator, never downstream:** every raid-map fact must be
+  inferable from the hex map, and no hex may be inferred from the ground. The generator gains
+  nothing new — it already takes which bearings are water, which bearing each work sits on, and
+  which ground is slow. **Five fidelity contracts:** bearing · sea-arc · **count** (*"sawpits ×3"*
+  means three sawpits on the ground) · size · scar. The acceptance test: **a player can name the
+  town's approach from the hex map before he lands**, and find it true.
+
+**The human's four calls (2026-09-08):**
+- **ONE FOCUS, not three levers.** A town is leaned one way at a time — *guns* **or** *coin* **or**
+  *hands* — not an ordered list and not three sliders. (The designer proposed a priority order; the
+  human chose the sharper form. Simplest to read, simplest to explain, and it cannot be gamed by
+  maxing.) The **investment slider (how much) stays separate and unchanged**; the focus is *which
+  way*. So the whole management surface for a town is **two standing commitments**, plus an optional
+  named production line.
+- **GRANT THE GROUND is ratified.** In a haven you own, each of the 6 ring hexes may be granted
+  **once** to a vocation the land can bear ("the north hills — timber"); **irreversible without
+  razing what stands on it**. The governor still chooses the actual works, still writes his reasons,
+  still refuses for want of hands. Grants live on the `Town`, not the `Parcel`, so **"parcels are
+  immutable after founding" survives verbatim**.
+- **The guns lever RUNS DOWNWARD.** You may pay an alcalde for neglect — the battery unmaintained,
+  the watch thin on a night you name. This wires the economy straight into the raid layer and is
+  squarely on the will-spine: **you break a town before you land on it.**
+- **Seeing a foreign town's land is PAID FOR.** An unbought town shows prose only; buying the clerk
+  reveals its hex map and ledger. Kills omniscience about another crown's colony and makes the UI
+  itself a reward rather than a given. *(The standalone harness needs a dev toggle so the map stays
+  demoable before a conversation layer exists.)*
+
+**Amendments to ratified text — write these explicitly:**
+- Parcels **6–9 → exactly 6**, on a flat-top hex ring, plus a 12-hex hinterland ring; variety from
+  **dead hexes**, not from count.
+- `Bearing` **8 → 6** (N · NE · SE · S · SW · NW). The sea-is-south invariant survives.
+- **The read-only parcel map is HEREBY REOPENED**, per the clause that reserved it ("possibly
+  steerable later… not without explicitly reopening the decision"). Three states: **read-only**
+  (foreign, unbought) · **steerable** (a bought arrangement, or your own governor) · **grantable**
+  (a haven you own).
+- **"Model the hook, don't ship the verb"** for investing in a town you don't control → the verb's
+  shape is now designed; the **model** ships and the four-rung ladder is deferred until there is a
+  conversation layer, fame, and officer relationships. **"Through a conversation with a governor,
+  not a menu" STANDS VERBATIM.**
+- §7.1's **four development slots → one focus** (guns/coin/hands) + an optional named line. The four
+  survive as *examples of what each focus produces in a haven*. The sentence "a few set-and-forget
+  slots, never a city builder" is unchanged and, with one focus, **more** true.
+- Do-not-build **"an optimal layout to discover"** → narrowed. New test: **you may choose what a
+  piece of land is FOR; you may never choose where a building STANDS.** The plan-archetype
+  prohibition is **kept verbatim**. Safe because a grant has no spatial degrees of freedom — the hex
+  is where the hex is, terrain decides the shortlist, there is nothing to pack and no adjacency to
+  farm. It adds **choice** without adding **solution space**.
+- Do-not-build **"~5 surfaced values per town"** → **"~5 surfaced NUMBERS per town; the land and the
+  ledger are DRAWN, not counted."** Hexes show grades and words on the face; a number appears only
+  on hover, and only with its sentence.
+- **`marsh`/`mangrove` pulled forward** from the deferred parcel list — the hex map needs dead
+  ground, and marsh does defensive work too.
+
+**Explicitly HELD, unamended:** no player building placement (a grant is not placement) · **no
+worker or job assignment, ever** — the levers bias what is *built*; `allocateLabour` stays fully
+autonomous, and this is the Civ trap · no scheduled prompt · no numbers-only town screen · §1.1 ·
+the four-stage placement grammar and its eight adjacency rules (extended, not changed) · the
+five-term auction and "no term without a clause" · the derived-`SettlementTier` deferral.
+
+*Why:* the land is the town's character sheet, so the player should be able to *see* it — and a map
+he cannot write to costs nothing in optimisation pressure while paying for itself in legibility.
+Victoria 3 is the closest living model to ours and its documented failure is **opacity** (players
+cannot tell why autonomous investors built what they built); our "no term without a clause" rule is
+precisely that fix and is our biggest edge over the nearest existing thing. Full spec:
+[spec/town-economy.md](spec/town-economy.md); comparables in
+[spec/design-references.md](spec/design-references.md).
+
+---
+
 ### 2026-09-07 — The durable build gets a real test suite (Vitest); prototypes keep throwaway smokes
 `coding-rules.md` was scoped to the **prototypes** only, so `game/` had no testing convention —
 a gap found while building KAN-68. Settled: the durable build's **pure systems are pinned by a

@@ -428,6 +428,84 @@ becoming a city builder*, since the player never places a building.
   service radii, desirability grids, job assignment, goods inventories. What survives the removal
   is the ledger, the agenda, and the reason-string.
 
+### The land map (hex UI) & steering a town
+How comparable games show a settlement's land, let the player lean it, and (rarely) make the
+strategic view predict the ground you fight on. Research inputs only; ratified model in
+[`town-economy.md`](town-economy.md) §2/§5.8/§7.5/§7.6 and `../decisions.md` (2026-09-08).
+
+**The anti-pattern, in one line:** *every one of these games makes the map **writable**, and the
+writing is the game.* We make the map **readable**, and the ground **grantable** — one write per
+hex, once, only where you own it. That single distinction is what lets us take the Civ visual
+grammar without inheriting the Civ optimisation puzzle.
+
+- **Tile ring + biased starts (Civilization IV–VI):** identity is geographic and self-explaining;
+  improved-vs-unimproved is exactly the readout we want. *Drags:* many small yields average into
+  mush; the food/prod/gold triple is a spreadsheet. **ADAPT the tile grammar** (icon · grade ·
+  potential ghosted, actual solid); **REJECT** the yield triple and workable-tile allocation.
+- **District adjacency bonuses (Civ VI):** placement becomes meaningful and the city visibly grows
+  on the map. *Drags:* it is a **solved** puzzle — the community publishes optimum cheat-sheets.
+  **REJECT the mechanic; ADOPT the visual promise.** Adjacency is the precise thing our
+  do-not-build list bans.
+- **Town specialisations (Civ VII):** a town picks a *focus*; there is no production queue.
+  Mainstream, recent validation that a settlement steered by a chosen focus is legible and fun.
+  *Drags:* the focus list grew long, and gold-buying flattens towns into each other. **ADOPT the
+  shape** (a focus, not a queue); **REJECT the long list** — one focus, and *the land refusing* is
+  what keeps two towns different.
+- **Urban tiles vs rural specialists (Old World):** cleanly separates *the town* from *the land* —
+  our centre-hex/ring split, independently arrived at. *Drags:* still per-tile management, and the
+  urban-tile cap is a housing treadmill. **ADAPT the urban/rural split; REJECT** the management.
+- **Districts on hexes (Endless Legend):** **the strategic map *is* the city** — the closest
+  existing answer to "the hex layout predicts the ground." *Drags:* level-2 adjacency turns it into
+  shape-packing, and cities read as **hex quilts**. **ADAPT the promise; REJECT hex-shaped towns** —
+  hence our absolute rule that *no hex is ever visible in a raid*.
+- **States with building levels + an investment pool (Victoria 3):** the closest living model to
+  ours — buildings have **levels, not positions**; you fund, they choose; and 1.7 *removed*
+  player-directed private investment. *Drags:* production methods per building are the audited
+  table §1.1 forbids, and autonomous investment is widely criticised as **opaque** — *"why did they
+  build that?"* **ADOPT** the fund-vs-choose split and the 1.7 lesson; **REJECT** production
+  methods. **Note the opacity failure: our "no term without a clause" rule is precisely that fix,
+  and it is our single biggest edge over the nearest existing model.**
+- **Foreign investment rights (Victoria 3, Sphere of Influence):** a **gate negotiated before money
+  can move**. **ADAPT the gate** — an arrangement with a named man precedes any coin; **REJECT** the
+  treaty menu.
+- **Hooks (Crusader Kings 3):** leverage held **over a named person**, typed weak/strong, and spent;
+  a steward assigned to develop a county. **ADOPT** weak/strong as one-off vs standing arrangement,
+  and *"you hold it over a man, not a place"*; **REJECT** hook-as-accumulated-currency.
+- **Development clicking (Europa Universalis IV):** one cheap legible verb. *Drags:* it is a
+  **click-to-increment button** — the purest audited-spreadsheet form. **REJECT outright.** Useful
+  as the anti-pattern that names why our steer is a *lean*, never an increment.
+- **Province slots (Total War):** already adopted for the works ledger. **New note:** its
+  buildings are **placeless** — the campaign map tells you nothing about the battle map. *That
+  placelessness is exactly the gap our hex map closes.*
+- **Planet districts capped by deposits (Stellaris):** capacity comes from the land — our
+  parcel-scarcity rule. *Drags:* degenerates into "fill every slot". **ADOPT capacity-from-the-land;
+  REJECT slot-filling** — the labour ceiling is the only thing stopping max-everything, so it must
+  stay sharp.
+- **Burgage plots (Manor Lords):** draw a coarse boundary, families fill it organically — **the
+  closest thing to "an abstract plan becomes a real town."** *Drags:* still a placement cursor, and
+  a road-first meta shows an optimal layout does emerge. **ADOPT the coarse-decision / fine-result
+  principle as the model for grant-the-ground; REJECT the cursor.**
+- **Edicts (Tropico):** a named, costed, one-off political act with a downside, from a short list.
+  **ADAPT as the shape of a bribe**; **REJECT** per-building budget sliders (already recorded).
+- **Town council standing (Patrician III/IV):** you rise in a foreign town by **doing what it
+  needs** — a relationship ladder that isn't purchase. *Drags:* becomes a chore of timed requests.
+  **ADAPT per-town standing as the non-coin route to the same levers; REJECT** timed requests.
+- **Building in towns you don't own (Port Royale):** the canonical fiction for our verb. *Drags:*
+  it is **unconditioned** — anyone with money builds anywhere. **That is precisely the "buy
+  anything" button to avoid;** our fix is the four-rung official ladder. **ADAPT the fiction,
+  REJECT the unconditioned form.**
+- **Fortification changes the siege map (Songs of Conquest):** *what you built is what gets
+  assaulted* — validates our fidelity contracts. *Drags:* it is a **template swap** on a hex
+  battlefield, not a projection. **ADOPT the principle; REJECT the execution** — our four-stage
+  grammar is the deeper version.
+- **Radial town around a central generator (Frostpunk):** **centre + ring reads instantly** and is
+  diegetically justified — the strongest argument for a flower over a square grid. *Drags:* it is
+  placement, and heat-zone optimisation is a real puzzle. **ADOPT the radial legibility; REJECT the
+  placement puzzle.**
+- **Town size you can knock down (Sid Meier's Pirates!):** still the calibration point, in a new
+  form — *if the hex map isn't more legible than Pirates!' single town-size number, it isn't
+  earning its pixels.*
+
 ## Pirate-flavour fit — the taste test
 For **ragged, morale-driven privateer bands** (individual-figure RTS on land,
 group-command at sea):

@@ -89,16 +89,40 @@ as a spreadsheet rather than a place.
 
 ## 2. Parcels — the land gives a town its identity
 
-**6–9 named parcels in a ring around the town site.** Not a grid; not a tag list. Each parcel:
+**Exactly 6 parcels in a hex ring around the town site** *(amended 2026-09-08 — was 6–9)*. Not a
+grid; not a tag list. Each parcel:
 
 | Property | Values |
 |---|---|
 | `terrain` | one of the kinds below |
 | `quality` | `poor` · `fair` · `rich` |
-| `bearing` | the compass direction it lies from the town |
+| `bearing` | one of six flat-top hex directions: **N · NE · SE · S · SW · NW** |
 
 **`bearing` is the load-bearing field.** It is what turns an economic fact into a place on the
 raid map (§7). Without it a parcel is just a number.
+
+### The hex ring — draw 19, simulate 7
+
+The land is shown as a hex flower, and **one hex = one parcel, never subdivided**. That rule is
+the anti-dilution guarantee: the old objection to a Civ grid ("many tiles average out") is a
+property of *grain*, not of hexes.
+
+| Ring | What it is |
+|---|---|
+| **Centre (1)** | **The town itself** — the built-up area. Load-bearing: one centre hex = one raid map (§7.5). |
+| **Inner (6)** | **The parcel ring.** Each hex is one `Parcel`. This is the whole simulated economy. |
+| **Outer (12)** | **Hinterland** — drawn, `sea \| land` only, no data. It makes the map read as *country* and holds the deferred tail (roads, neighbours, annexation). |
+
+**Flat-top hexes, deliberately:** their six directions drop E and W but **keep N and S**, so the
+ratified "the sea lies south" invariant survives. Pointy-top would have broken it.
+
+### Dead hexes are where the variety went
+
+Fixing the count at 6 removes a source of variation, and it is replaced by a better one:
+**`marsh` · `scrub` · `openSea` are drawn, terrain-typed, and yield nothing.** A town with three
+dead hexes has a **visible** ceiling — *"poor ground on three sides"* — where a parcel count was
+invisible. `marsh` pays twice: economically dead, and a defensive gift (no palisade needed that
+side, slow going for a raider).
 
 ### The six kinds (first slice)
 
@@ -111,8 +135,9 @@ raid map (§7). Without it a parcel is just a number.
 | **Sheltered roadstead** | trade access | careenage, shipways, quay |
 | **Bluff / headland** | — | the battery's home; commands the harbour |
 
-*Deferred:* tobacco slopes · salt pans · quarry & lime · marsh/mangrove (a **defensive** asset —
-no palisade needed on that side, slow going for a raider).
+Plus the three **dead** kinds above — `marsh` (pulled forward 2026-09-08), `scrub`, `openSea`.
+
+*Deferred:* tobacco slopes · salt pans · quarry & lime.
 
 ### The founding roll is BIASED, not uniform
 
@@ -133,14 +158,22 @@ sentence, e.g.
 Once the timbered hills carry their sawpits, more lumber money buys no more lumber. **Cap and
 flavour are the same mechanism** — no arbitrary limits are needed.
 
-### The parcel map is READ-ONLY
+### Who may write to the land — three states
 
-An autobiography that explains the town, never an input device. No tile improvement, no worker
-allocation, no re-founding. *Possibly* steerable later by a governor-directed nudge — not now,
-and not without explicitly reopening the decision.
+*Amended 2026-09-08. The original rule reserved the right to reopen this ("possibly steerable
+later… not without explicitly reopening the decision"); it is hereby reopened.*
+
+| State | When | What you may do |
+|---|---|---|
+| **Read-only** | a foreign town you have bought no one in | Nothing — and you cannot even *see* the ring until you have paid a clerk (§6). Prose only. |
+| **Steerable** | your own governor, or a bought arrangement | Lean the town **thematically** — one focus, and optionally one named production line (§5.8). Never a hex. |
+| **Grantable** | a haven **you own** | Additionally: **grant the ground** — say what a hex is *for*, once (§7.6). |
+
+**Still forbidden everywhere:** tile improvement, worker allocation, re-founding, and choosing
+where a building stands. **You may choose what a piece of land is FOR; never where a building
+STANDS.**
 
 ---
-
 
 ## 3. Works — the ledger
 
@@ -255,6 +288,56 @@ loyalty-vs-competence trade-off made visible instead of asserted.
 haven you own. You set a standing goal; the governor plans within it. The ratified rule and this
 system are the same rule.
 
+*Amended 2026-09-08:* those four are superseded as the player-facing form by **one focus** (§5.8).
+They survive as *examples of what each focus produces in a haven* — which is what they were always
+good at. "A few set-and-forget slots, never a city builder" is unchanged and, with one focus,
+**more** true.
+
+### 5.8 The steer — one focus, and optionally one line
+
+**Governing principle: thematic steer everywhere; spatial steer only where you own the ground.**
+
+A town is leaned **one way at a time** — ***guns*** or ***coin*** or ***hands*** *(ratified by the
+human 2026-09-08; a priority order and three sliders were both considered and rejected as more
+surface for less clarity)*. The focus is *which way*; the **investment slider (§6) is *how much***.
+Those two standing commitments are the entire management surface for a town.
+
+| Focus | Biases works with | Gets you | Costs you |
+|---|---|---|---|
+| **Guns** | `defence > 0` | a **harder** town — security → tier → a deeper garrison | pure sink, no yield, eats hands |
+| **Coin** | `trade > 0` | a **richer** town — wealth piles up, a fatter haul | nothing defends it |
+| **Hands** | `food > 0` or `serves ≠ null` | a **bigger** town — more souls, more labour, a bigger raid map | eats the labour industry wants; a fat soft target |
+
+**Why exactly these three:** they are the three yield columns on a work (`defence` · `trade` ·
+`food`/`serves`). A work's `hands` is its **cost**, not a fourth lever. That is a structural bound,
+not a taste call — a fourth focus would need a fourth thing a work can produce.
+
+**Optionally, one named production line** — *the cane · the timber · the wharf · the fields* —
+named by its **output**, never by a building, one at a time. Naming a second replaces the first.
+**The land refuses what it cannot bear**: ask a town with no cane flats for rum and you get
+*"there is no ground for cane here."*
+
+**It renders as a spatial growth front for free.** Every work sits on a parcel with a bearing, so
+leaning toward guns puts the battery on the NW bluff and leaning toward coin marches sawpits up
+the northern creek. The player never points at a hex in a town he does not own, yet the town
+visibly grows a direction.
+
+**Where it lives:** inside the **existing agenda term** — `AGENDA[archetype]` is the base and the
+steer is a second voice in the same term. **Still five terms**, and the louder voice writes the
+clause:
+- *"you have asked for guns above all"*
+- *"the Company wants a return on this place"* — the owner outvoting you, which is legible failure
+- *"the contador has been paid to see rum out of here"* (§6)
+
+**Three guards keep a steer from becoming a command:**
+1. **You bias a category** — never a work, never a hex.
+2. **The land still refuses.** No bluff, no battery: you get a palisade and a barracks, which is a
+   *worse* defence. The same lever in two towns gives two different towns.
+3. **The steer can be outvoted.** Agenda weight is 0.9 of ~5; a fresh sacking doubles `fear` and
+   puts guns up whatever you asked for. A steer that can visibly lose is not a command.
+
+...and the labour gate (§5.6) still bites on top: *"you want shipways; there is money and no men."*
+
 ### 5.6 He will not raise what nobody can work
 
 **The labour ceiling gates the plan, not just production.** A work the town has no spare hands
@@ -315,14 +398,56 @@ must **never** prompt you to revisit it. Effects, in order of interest:
 4. **The read-out is a paragraph, not a curve:** *"at 200/season this becomes a fishing village
    with a battery; at 2000/season, a shipbuilding haven of 900 souls in twenty years."*
 
-### Investing in a town you do NOT control
+### Investing in — and buying — a town you do NOT control
 
-The `patron` field must support a **non-owner** patron so the model can express it. **No
-player-facing verb in the first slice.** When it arrives it should come **through a conversation
-with a governor**, not a menu.
+*Shaped 2026-09-08. The rule "**through a conversation with a governor, not a menu**" stands
+verbatim; what follows is the shape that conversation takes. Only the **model** ships in the first
+slice — the ladder waits for a conversation layer, fame, and officer relationships.*
+
+**You buy a named man, not an outcome.** That is the whole design, and it is what stops this
+becoming a universal "buy anything" button.
+
+| Rung | Who | What the coin reaches |
+|---|---|---|
+| 1 | **A clerk / harbourmaster** | **Information.** The town's ledger, its wants-list, its true garrison — **and the right to see its hex map at all** (ratified: an unbought town shows prose only). |
+| 2 | **The contador / factor** | **A production line**, named, for a term. *"There'll be rum out of here by the time you're back."* |
+| 3 | **The alcalde / captain of the watch** | **Neglect — the guns focus run DOWNWARD.** The battery goes unmaintained; the watch is thin on a night you name. *You break a town before you land on it.* |
+| 4 | **The governor himself** | A **licence** (trade here, careen here) or **standing patronage** (you as a declared non-owner patron — the `owns: false` hook). **Relationship only; coin alone is refused, insultingly.** |
+
+**Coin buys breadth; relationship buys depth.** You can buy a clerk in every port; only a few men
+will ever owe you a favour. That is the honest form of "it still plays off the relationship the
+governor has with you."
+
+**Two diegetic clocks, no calendar.** An arrangement lapses on the **official's tenure** — men
+rotate, die, get promoted — and **suspicion** climbs per town with use. **One standing arrangement
+per town**; a second replaces the first.
+
+**It lapses SILENTLY.** You find out when you next look, or when word reaches you (§5.7). **Never a
+notification** — a bribe with an expiry wants to become a scheduled prompt, and §1.1 forbids
+exactly that category.
+
+**What can go wrong is more than losing the money:** he takes the coin and does nothing (you learn
+seasons later — so *his character matters*) · he is **discovered**, your standing with that crown
+falls, the town's `order` need spikes, **and the governor raises the guard on his own** — a failed
+bribe makes the target *harder* · later: he informs on you, or a rival quietly outbids you.
+
+**Five things that stop it being "buy anything":** you buy a person, and no official sells above
+his station — **the ladder is the gate** · **the land still refuses** (parcel gate sits above the
+coin gate) · one arrangement per town · coin is the gate but **relationship is the ceiling** ·
+suspicion climbs and eventually shuts the town.
+
+### Your own governor, by contrast
+
+| | Your haven | A foreign town |
+|---|---|---|
+| **How** | You set the focus directly; he is your officer. | One rung, one term, one named man, at risk. |
+| **Cost** | Free | Coin + suspicion + standing |
+| **Friction** | **Loyalty.** An ambitious governor under-serves a focus he disagrees with, and §7.1's defection pressure is the real bill. He talks back — *"you want guns; I'd rather have the warehouse"* — which is characterisation, not a gate. | Discovery, tenure, being cheated |
+| **Spatial steer** | **Yes** — grant the ground (§7.6) | **Never** |
+
+**In one line: ownership is the difference between giving an order and buying a favour.**
 
 ---
-
 
 ## 7. Projecting the ledger onto a raid map
 
@@ -388,6 +513,71 @@ so the next raid is visibly a burnt town, and **your own arson gives you cover n
 
 ---
 
+### 7.5 The land map ↔ the raid map
+
+*Added 2026-09-08. The four-stage grammar above is unchanged; this says how it meets the hexes.*
+
+> **The centre hex IS the town. The four-stage grammar is what happens inside it. The ring hexes
+> are the land, and they become the raid map's edges.**
+
+The ledger already splits this way: `sawpit`, `caneField`, `boilingHouse`, `provisionGround` sit
+`beyondThePale`; `shipway`, `warehouse`, `customsHouse` sit `waterfront`; `battery`/`palisade` sit
+`outworks`; everything else is in the town. **Parcel-works are on the ring; civic works are in the
+centre.** The split we need is already there.
+
+**Two rules, both absolute:**
+1. **No hex is ever visible in a raid.** Hexes are units of land tenure, not blocks. (This is
+   Endless Legend's failure inverted — its districts *are* hexes on the world map, so its cities
+   read as hex quilts. Ours never draws one on the ground.)
+2. **The hex map is UPSTREAM of the generator, never downstream.** Every raid-map fact must be
+   inferable from the hex map; no hex may be inferred from the raid map.
+
+**The generator gains nothing new.** The hex ring supplies exactly three inputs it already takes:
+which bearings are water (→ where the waterfront is and how wide), which bearing each work's
+parcel is on (→ the stage-3 skew), and which ground is impassable or slow (→ palisade gaps and
+approach cost).
+
+**The five fidelity contracts** — write these as acceptance tests:
+
+| # | Contract |
+|---|---|
+| 1 | **Bearing.** Timbered hills to the north on the map → sawpits at the north edge on the ground, and the ground rises that way. |
+| 2 | **Sea-arc.** Which ring hexes are water decides which edge you land on and how wide the waterfront is. |
+| 3 | **Count.** *"Sawpits ×3"* on the hex means **three sawpits** on the ground — not "some industry". |
+| 4 | **Size.** The centre glyph's density matches the raid map's extent. |
+| 5 | **Scar.** A ruin on the hex is a burnt shell on the ground. |
+
+**The test that matters:** *a player can name the town's approach from the hex map before he
+lands.* — "Marsh to the west, so no palisade that side and slow going; bluff north-east with the
+battery on it; land on the south beach." If he can say that from the map and find it true on the
+ground, the projection works.
+
+### 7.6 Grant the ground — the one placement verb
+
+*Ratified by the human 2026-09-08. **Haven you own only.***
+
+> **You don't place buildings. You choose what a piece of ground is *for* — once per hex.**
+
+Each of the 6 ring hexes may be **granted** to a vocation the land can bear: *"the north hills —
+timber." "The bluff — the guns." "The cove — careenage and shipways."* Ungranted hexes the governor
+uses as he sees fit. Historically exact: colonial governors issued land patents.
+
+- **Six decisions in the life of a town**, not a recurring one. Inside §1.1.
+- **It is not placement.** You pick a purpose for land — a landlord's decision, not an architect's.
+  The governor still chooses the works, still writes his reasons, still refuses for want of hands.
+- **It cannot be solved into an optimal layout.** A grant has **no spatial degrees of freedom**:
+  the hex is where the hex is, terrain decides the shortlist, there is nothing to pack and no
+  adjacency to farm. It adds **choice** without adding **solution space** — which is why the
+  do-not-build item it amends stays safe.
+- **A grant is irreversible without burning what stands on it.** That is what separates shaping a
+  place from fiddling with a menu.
+- **Grants live on the `Town`, not the `Parcel`** — so "parcels are immutable after founding"
+  survives verbatim.
+
+*Deferred:* one or two **"the captain's own"** works — a careenage, a strong-house, a gallows, a
+chapel to nobody. Not economic; they are the haven's **face**, they change the raid map's centre
+visibly, and they swing fame/infamy or the crew pool. They only pay off once fame exists.
+
 ## 8. Population composition — enslaved and bonded labour
 
 **Ratified 2026-09-07 (the human's explicit call): represented, honestly and minimally.**
@@ -426,9 +616,55 @@ Spec-level requirements on the existing land module — *what* must connect, not
 
 ---
 
-## 11. First slice vs. deferred tail
+## 11. Slices
 
-### First slice — standalone module, own startup file, no player UI but the slider
+### Shipped (KAN-68 → KAN-71)
+
+The entity and season tick · the biased founding roll · the works ledger (12 choosable + 6
+subsistence, two dependency edges, the devolution ladder, labour allocation) · the five-term
+auction with clause assembly, the published wants-list and the affordable/manned gates.
+
+### The land-map slice (2026-09-08) — four stories, all inside the standalone module
+
+**Board:** hex frame = **KAN-79** · land map = **KAN-80** · grant the ground = **KAN-81** · the
+steer = folded into **KAN-72** (not its own ticket — the ratified text ships it with the investment
+slider as one standing-commitment panel, and one ticket = one commit). So this list numbers four
+stories but the board carries three new keys.
+
+1. **The hex frame (migration).** Six flat-top bearings; parcels roll onto a 7-hex flower;
+   `marsh` / `scrub` / `openSea` as drawn-but-dead hexes; the outer 12 as undifferentiated
+   hinterland. Retune the growth ceilings, since `roomFor()` now sees fewer parcels.
+2. **The land map (render).** The flower: terrain, grade, works standing on it, room left, ruins.
+   Capacity **ghosted** on an unworked hex, **solid** once worked. **Replaces** the parcel bullet
+   list in the town card — net-zero UI. Numbers on hover only, always with their sentence.
+3. **The steer.** One focus (guns / coin / hands) + an optional named line, folded into the agenda
+   term with its own clause; the wants-list visibly reorders and the map leans. **Ships together
+   with the investment slider (KAN-72)** as one standing-commitment panel — *how much* and *which
+   way*.
+4. **Grant the ground.** Haven only; 6 one-time grants; irreversible without razing; a granted hex
+   biases `parcelFor()` and the agenda term.
+
+No raid wiring, no new economy, one new renderer.
+
+### Migration — what changes, what survives
+
+**Survives untouched:** the whole ledger and sim — `works.ts` (`CATALOGUE`, `raise`, `roomFor`,
+`buildable`, `stepWorks`, `allocateLabour`, `devolve`, `unmetNeeds`, `starvedFor`), `sim.ts`
+entirely, and `governor.ts`'s five terms, `reasonFrom`, `wants()` and `governorTurn()` with the
+`settleFor` hold-out and both gates. Determinism and the seed model are unaffected.
+
+**Changes:** `Bearing` drops `E`/`W` · `ParcelTerrain` gains the three dead kinds · `Town` gains
+`focus`, `line`, `grants` (haven only) and `interests` (the bribery hook) · `parcels.ts`
+`SEAWARD`/`LANDWARD` become 3/3 and `bearings()` becomes a straight six-way assignment (simpler
+than today) · `LAND.min/max` → 6 · `governor.ts`'s agenda term becomes a two-voice blend (~6 lines)
+· **new, small and pure:** a `Bearing → axial hex coord` function and a hex renderer, neither
+touching the sim.
+
+**Expect `parcels.test.ts` ring-size assertions to move.** Per the testing rules, direction-and-
+relationship assertions should survive the retune untouched — if a test breaks on a *count*, that
+is rule 2 telling us a constant got pinned.
+
+### The original first slice — for the record
 
 Three stored variables + derived yield/security/needs · the works ledger (~12 choosable, ~6
 automatic, two dependency edges) · 6 parcel kinds with the biased founding roll · 3 archetypes ·
