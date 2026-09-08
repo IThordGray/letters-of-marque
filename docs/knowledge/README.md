@@ -29,6 +29,7 @@ Knowledge about **what the game should do** is kept separate from **how it's bui
 | [`../PROTOTYPE.md`](../PROTOTYPE.md) · [`../PROTOTYPE-LAND.md`](../PROTOTYPE-LAND.md) | WHAT | Prototype scope / briefs (naval · land). |
 | [spec/](spec/README.md) | WHAT | Behaviour, rules, requirements, data-to-persist, algorithm specs. |
 | [spec/design-references.md](spec/design-references.md) | WHAT | Cutthroats heritage, comparable-game mechanic patterns, pirate-flavour fit. |
+| [spec/town-economy.md](spec/town-economy.md) | WHAT | Living towns — the works ledger, parcels, the governor's plan, archetypes, map projection. |
 | [process/workflow.md](process/workflow.md) | process | Tickets & commits (Jira, 1 ticket = 1 commit, `ai` label). |
 | [implementation/solution-architecture.md](implementation/solution-architecture.md) | HOW | Stack, repo layout, run commands, non-choices. |
 | [implementation/coding-rules.md](implementation/coding-rules.md) | HOW | How prototype code is written & verified. |

@@ -10,6 +10,114 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-07 — Living towns: the ledger is the simulation, the map is a projection
+The parked town-economy epic (KAN-54) wakes up and widens — a town becomes an **entity with a
+life of its own** that the player acts upon but never operates (shaped with the game-designer;
+the four open calls answered by the human). **Board: epic KAN-67, first-slice stories
+KAN-68 → KAN-77.** KAN-54 is **not** superseded — it keeps the **trade half** (routes, living
+prices, ships buying and selling against what a town makes and needs) and is **blocked by
+ordering**, not merely parked: the ledger must exist before prices can move against it. Its
+**production half** (economic roles, local-consumption vs exportable, not every town has every
+building) is absorbed by KAN-70. The load-bearing split:
+- **The ledger is the simulation; the raid map is a projection of it.** A town simulates at
+  *province-abstraction* resolution — three stored numbers plus a list of named **works**
+  (*a sawpit, above the creek, working since '54*). **Buildings are not simulated; works are.**
+  The raid map is a deterministic function of `(town seed + parcels + works ledger + damage)`.
+  **No walkers, no in-town logistics, no per-building worker sim.** Rejected: a bare CK-style
+  development *number* — you cannot burn a development point, and our plunder layer is
+  building-level.
+- **Three stored variables — population · wealth · prosperity.** Population = souls (the hands
+  that man works and the mouths that eat). Wealth = coin on hand (what construction spends and
+  what you steal). Prosperity = a lagging 0–100 **condition**. **Yield, security and needs are
+  derived every tick, never stored.** Prosperity is stored for exactly one reason: **it must
+  lag** — torch a warehouse and yield drops this instant, but the town's standing should sag
+  over *seasons*, or it whipsaws and reads as a spreadsheet instead of a place.
+  **Rule: no number without a sentence about a place.**
+- **Loot and raze do different things** (or pillage-vs-raze is only flavour). Loot takes
+  **wealth**; the work survives; recovery is seasons. Raze **removes the ledger line**; recovery
+  is years, or never. Razing *defence* works lowers the garrison tier. So **raiding the same town
+  twice makes it poorer *and* easier** — until it is worthless; occupying it compounds instead.
+  **Pillage / raze / occupy becomes an economic argument, not a menu.** This is the ratified
+  plunder hook ("a razed lumberyard = less/no lumber") finally paying off.
+- **Four floors against the death spiral:** the **hamlet floor** (subsistence works — dwellings,
+  fishing shacks, garden plots — cost no wealth, so a sacked town always crawls back), the
+  **patron backstop**, **bounded flight** (population outflow capped per event, some refugees
+  return), and **Abandoned** as a rare, *deliberate* end-state (patroned towns re-found instead,
+  so the map never bleeds out by accident).
+- **Identity comes from a read-only parcel ring** — 6–9 parcels `{terrain, quality, bearing}`,
+  drawn on a **biased founding roll** (one dominant vocation + one or two supporting, never
+  uniform random — uniform makes every town mediocre at everything). **Parcel scarcity is the
+  primary growth cap: cap and flavour are the same mechanism**, so no arbitrary limits are
+  needed. The **bearing** is the load-bearing field — it turns an economic fact into a *place*
+  (industry sits on the town edge facing its parcel; the town elongates toward its industry).
+- **The governor's plan is a five-term auction with a published three-deep wants-list.** The
+  terms: *the land calls for it · the town wants it · the market wants it · fear · the patron's
+  agenda*. **Wealth is the budget gate, not a scoring term** (the score decides what the town
+  *wants*; wealth decides what it can *start*). **Rule: no term without a clause** — the
+  one-line reason is assembled from the top two contributing terms, so **the explanation *is*
+  the score**, not a rationalisation of it. The sim is **inspectable without being controllable**.
+- **§7.1's four development slots are the patron's-agenda weight for a haven you own — not a
+  build queue.** You set a standing goal; the governor plans within it. Same ratified rule,
+  said twice.
+- **The development plan is characterisation.** An officer-governor's competence and temperament
+  shift the weights — a Master Gunner raises batteries; *"Roche is building himself a fine
+  warehouse and no guns at all"* tells you who he is **before** he betrays you. §7.1's
+  loyalty-vs-competence trade-off made *visible* instead of asserted, at no cost.
+- **Three archetypes:** **colony** (self-funded off its own yield + a small charter grant;
+  revenue first, defence last — which is *why* it is the raidable one) · **royal outpost** (a
+  fixed crown stipend, economically stunted because it needn't earn → **hard to crack, poor to
+  loot**, a target worth declining; the stipend rises under threat and lapses when the crown is
+  broke — and **sack it enough and the crown decides it isn't worth the blood and pulls the
+  money: the will-spine at map scale**) · **pirate haven** (your investment, no charter, no
+  stipend, **no crown relief** — high ceiling, no safety net; it turns plunder into compounding
+  capital, fences what nobody else will buy, builds and careens your ships, and recruits).
+- **The investment slider is a standing commitment**, never a serviced dial — and its chief
+  effect is that it **unlocks whole categories of work** (sheds and fishing shacks vs a stone
+  battery or a shipway), so it changes **what the town becomes**, not merely how fast. It is
+  bounded by a diegetic labour ceiling (*"there is money and no men"*). **Flagged, not bent:**
+  this is the one place the feature touches §1.1 — the town must **never** prompt you to revisit
+  it. If playtest demands more agency, the pillar-safe upgrade is the §7.1 standing goal acting
+  as agenda weight, **not** a build veto.
+- **The town chronicle** — one clause appended per notable event, *including your raids*
+  (*"founded on salt in '41 · burned by the Dutch in '58 · rebuilt on timber"*) — is the
+  legibility device and the emotional payoff.
+
+**The human's four calls (2026-09-07):**
+- **The parcel map is read-only for now** — an autobiography that *explains* the town, never an
+  input device. *Possibly* steerable later (a governor-directed nudge, e.g. "work the cane before
+  the timber"); until that is explicitly reopened, the no-city-builder guardrail holds absolutely.
+- **Investing in a town you don't control: model the hook, don't ship the verb.** The funding
+  model must support a non-owner patron; **no player-facing verb in the first slice.** When it
+  does arrive it should come **through a conversation with a governor**, not a menu.
+- **Enslaved / bonded labour is represented — honestly and minimally.** A plantation town's
+  population line says plainly what it is, and **freeing them is a raid outcome with a fame
+  consequence** (squarely in the pirate lineage). **Never** a manageable resource; **never** a
+  tradable commodity in any UI. Decided explicitly rather than allowed to arrive by default.
+- **Cutthroats heritage — CONFIRMED: OG towns had persistent size/wealth and changed when
+  sacked.** So town persistence is **inherited, not invented**. The gap we are closing is that we
+  had inherited the *interaction* (burn a specific building) without ever inheriting its
+  *consequence*.
+
+**Do NOT build** — the anti-city-builder guardrail, in full: player building placement (no build
+menu, no ghost cursor, no zoning) · worker or job assignment, ever · a per-building inspection UI
+· walkers, service radii, or a desirability grid · a happiness meter to service · an in-town goods
+inventory (flows + one wealth stock; the raid haul is the sole spec'd exception) · any scheduled
+prompt · an optimal layout to discover — including smuggled back in as "choose the town's plan" ·
+a numbers-only town screen · more than ~5 surfaced values per town (population, wealth,
+prosperity, security, works; everything else is prose) · a commodity price table for the player to
+arbitrage · full-fidelity simulation of untouched towns (they run a cheap approximation).
+
+*Why:* this is the consequence the plunder layer was stubbed against and the substrate §7.3's
+trade layer plugs into — and it makes the pirate verbs **economic**: a town you can impoverish, a
+town worth declining, a town worth holding. Simulating a *ledger* and projecting a *map* buys a
+living world at province-sim cost while keeping every building burnable, and — since the player
+never places anything — placement can stay a cheap grammar rather than a solved puzzle. Full
+spec: [spec/town-economy.md](spec/town-economy.md); comparables (Civ · Total War · CK3 · Port
+Royale · Anno · Caesar · Manor Lords · Tropico · Banished · Dwarf Fortress · Pirates!) in
+[spec/design-references.md](spec/design-references.md).
+
+---
+
 ### 2026-08-25 — The plunder layer: haul-vs-cost, destroy-by-fire, prisoners as a subsystem
 How a raid becomes open-ended piracy (shaped with the game-designer; refined by the human).
 The Strongbox spine (mark → seize/channel → carry → drop-if-carrier-falls → extract) *is* the

@@ -32,6 +32,13 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
   interactivity (loot / raze / torch-by-powder) but fold the loot-vs-gold split into one
   legible **haul**, typed by building. The human's steer: the town must **feel part of the
   game, not just obstructions**.
+- Towns had **persistent size and wealth that changed when you sacked them** — a raid left a mark
+  on the town for the rest of the campaign; towns did not reset. **[confirmed 2026-09-07]** This
+  matters more than it looks: we had already inherited the *interaction* (loot / raze / fire a
+  specific building) **without** ever inheriting its *consequence*. The living-town economy
+  (`town-economy.md`) is therefore **restoring a lineage feature, not inventing one** — and
+  *Pirates!* reached much the same feeling with about three numbers, which is the argument for
+  keeping our first slice small.
 - _(Add confirmed mechanics and feel here as we go.)_
 
 ## Rise of Piracy (2026, Early Access) — the closest living competitor
@@ -236,6 +243,24 @@ How comparable games build a settlement you break into — research inputs only.
   **loot / production source**, tying the town to the plunder layer and the *real* trade economy
   (Port-Royale depth). Layout is hand-authored for now; terrain-driven placement comes later. The
   current small colonial grid is a deliberate first pass, fine for the mechanics exercise.
+- **CASHED IN (2026-09-07) — the four-stage placement grammar.** "Forward — a living town" is now
+  spec'd in [`town-economy.md`](town-economy.md) §7. A generated port is **not** a general
+  procedural city (L-system / Voronoi road generators make plausible cities and *unreadable
+  tactical maps* — readability beats authenticity here). Instead: **(1) an authored spine** —
+  water → quay → main street → plaza → landward approach, invariant in every port, which *is* the
+  readability guarantee; **(2) zone bands** along it (waterfront · lower town · plaza · back town ·
+  outworks · beyond the pale), so placement is a lookup rather than a solve; **(3) parcel bearings
+  skew it** — industry sits on the town edge *facing the land that justifies it*, and the town
+  elongates toward its industry, so a timber town stretches up the creek and a cane town sprawls
+  along the flats; **(4) jittered grid fill** now, lane subdivision later — with the plan format
+  (`{kind, zone, bearing-hint, footprint}`) locked so either filler consumes it.
+  Eight rules keep it readable: the spine is sacred · rank toward the plaza (which hands the raid a
+  richer-and-harder gradient for free) · dangerous things away from people (the magazine gets room
+  for its set-piece) · defence looks outward (barracks between plaza and gate, so the muster comes
+  *down* at you) · trade looks at the water · what stinks or burns goes outside · a full zone grows
+  outward (so the difficulty curve generates itself) · validate foot-connectivity from the quay.
+  The map is a **pure function of (seed, parcels, works, damage)**, so **razed works come back as
+  ruins, not empty grass** — your own arson becomes your cover next time.
 
 ### Garrison distribution / patrols
 - **Sentries at posts** (first contact — spotting you is the rouse), **patrols on waypoint routes**
@@ -314,6 +339,94 @@ How comparable games develop people over a career. Research inputs only.
   enslavement. Any growth rule we adopt must pay for **outcomes achieved under
   pressure**, and must be **guessable from the fiction** — Kenshi's real optimum
   ("keep Melee Defence low so it doesn't suppress Attack gains") is invisible in-game.
+
+### Town economy & settlement simulation
+How comparable games make a settlement grow, specialise and decay on its own. Research inputs
+only — the ratified model is in [`town-economy.md`](town-economy.md) and `../decisions.md`
+(2026-09-07). The governing question was *how much simulation buys a living town without
+becoming a city builder*, since the player never places a building.
+
+- **Tile-ring city identity (Civilization):** a ring of typed tiles with yields decides what a
+  city is good at; **hand-tuned start biases** guarantee signature terrain. *Shines:* identity is
+  *geographic* and self-explaining; the biased founding roll is what defeats random mush.
+  *Drags:* 20+ tiles makes every city mediocre at everything, and the tile ring is an optimisation
+  surface that demands a map UI. **ADAPT** — take terrain-decides-identity and **especially the
+  biased founding roll**; reject workable-tile allocation and the food/prod/gold triple. Ours:
+  6–9 parcels, one good each, **read-only**.
+- **Province slots + faction agenda (Total War):** settlements have N slots unlocked by level; the
+  AI fills them by **faction agenda + province specialisation**; growth is a number. *Shines:*
+  precisely "development is a chosen *list of works*, not a placed city"; agenda-driven picks are
+  legible; slot scarcity forces identity. *Drags:* slots are **placeless** — buildings exist
+  nowhere — and player-filled chains become a min-max puzzle. **ADOPT the core** (works ledger +
+  budget gate + agenda-weighted autonomous choice); **ADAPT** by giving every work a *place*;
+  **REJECT** the player filling slots.
+- **County development + assigned steward (Crusader Kings 3):** development 0–100, raised by
+  buildings, innovations, a **steward assigned to "develop county"**, and **diffusion from
+  developed neighbours**. *Shines:* the cheapest possible model; "assign a character to improve a
+  place" *is* our governor; neighbour diffusion creates rich and poor coasts for free. *Drags:* a
+  bare number produces no place — **you cannot burn a development point**, which is fatal for a
+  building-level plunder layer. **ADAPT** — keep the character-improves-a-place shape, resolve
+  "development" into **named works**, and **adopt neighbour diffusion outright** later (a burned
+  town dragging its whole coast down is a superb regional consequence for the raze verb).
+- **Living markets + build-in-a-town-you-don't-own (Port Royale — the design-doc's named depth
+  target, §7.3):** town build slots for production; population grows with jobs + housing; caps
+  unlocked by churches; **you can build businesses in towns you don't control**. *Shines:* towns
+  visibly differ by what they make; place-specific production; investing in *someone else's* town
+  is a real verb. *Drags:* documented player complaint that satisfaction and population growth are
+  opaque and fiddly; in-town placement is a chore. **ADAPT** — take **invest-in-a-town-you-don't-
+  own** (the canonical fiction for our slider; modelled now, **verb deferred** to a governor
+  conversation) and place-specific production; **REJECT** satisfaction management, the housing-cap
+  ladder, and player placement.
+- **Needs chains (Anno):** residents tier up when needs are met, unlocking new needs and
+  workforce. *Shines:* a crisp causal chain, and **unmet need is a perfect reason-string** for an
+  autonomous governor. *Drags:* the full chain is a logistics puzzle, the tier ladder a treadmill,
+  and consumption bookkeeping is spreadsheet-shaped. **ADAPT** — unmet need as **one scoring term
+  and one clause**, ~5 needs, never a bar the player tends.
+- **Walkers, desirability, housing evolution (Caesar III / Pharaoh):** walkers from service
+  buildings service houses within a short radius of a random path; **desirability** radiates and
+  decays with distance; houses **evolve and devolve**. *Shines:* the **devolution ladder** is the
+  model for graceful decay — a town reverts a grade at a time rather than dying — and "nasty
+  things repel, fine things attract" is an adjacency rule for free. *Drags:* walkers exist to make
+  *placement* the game, which we have forbidden, and they cost pathing. **REJECT the walkers**;
+  **ADOPT the devolution ladder** (working → idle → decayed → ruin, recoverable at each step);
+  **ADAPT desirability into a static nuisance score** in the map generator.
+- **Regional specialisation by scarce development points (Manor Lords):** **per-region**
+  development points earned on tier-up, spent across Farming / Commerce / Industry / Forestry
+  *explicitly to force specialisation*; **regional wealth** kept distinct from the player's purse.
+  *Shines:* scarcity-forces-specialisation is our identity requirement already solved, and the
+  wealth split is exactly ours. *Drags:* it is a player-spent point pool (i.e. a build screen), and
+  the tier ladder is a treadmill. **ADAPT** — scarce per-town capacity as the specialisation
+  mechanism, and **town wealth ≠ your gold**; the *governor* spends it, never you.
+- **Autonomous citizens + budget levers (Tropico):** the economy runs itself; the player sets
+  budgets, wages and edicts. *Shines:* proof that a settlement sim is enjoyable when you **steer
+  rather than place** — the single-lever model our investment slider is. *Drags:* per-building
+  budget sliders are exactly the audited spreadsheet §1.1 forbids, and it still has placement.
+  **ADAPT one slider per haven; REJECT per-building budgets.**
+- **Self-organising labour (Banished / Ostriv):** villagers allocate themselves to jobs; the player
+  places, the sim staffs. *Shines:* the allocation half is exactly right — you never assign a man
+  to a job. *Drags:* both are placement games at heart, and **Banished's unfloored food spiral** is
+  precisely our death-spiral failure mode. **ADOPT autonomous labour allocation; REJECT the
+  unfloored spiral** — hence our hamlet floor + patron backstop.
+- **Population as strata (Songs of Syx):** large-scale population modelled as strata with needs.
+  *Shines:* proves population can be a *number with texture* rather than tracked individuals.
+  *Drags:* a deep management game whose texture demands constant player servicing. **REJECT as a
+  model** — one habit retained: population as a few strata rather than souls, which is also how
+  the ratified bonded-labour representation is carried honestly without becoming a resource.
+- **Off-screen world-gen history (Dwarf Fortress):** cheap per-site rules run over centuries
+  produce populations, resources and histories for places you never visit. *Shines:* enormous
+  emergent texture at almost no cost; sites you never visit still have a past. *Drags:* nearly
+  illegible without a wiki — the fidelity is invisible. **ADAPT** — run the cheap loop off-screen
+  over decades and surface its output as a **short readable town chronicle** ("founded on salt in
+  '41 · burned by the Dutch in '58 · rebuilt on timber"). **The chronicle is the payoff.**
+- **Towns with a size and wealth you can knock down (Sid Meier's Pirates! — lineage-adjacent):**
+  towns grow over the campaign and shrink when sacked. *Shines:* got roughly 80% of the feeling
+  this whole feature is chasing with about **three numbers**. *Drags:* far too thin to support
+  production chains, occupation, or a generated raid map. **ADOPT as the calibration point** — if
+  our version is not more interesting than Pirates!' three numbers, we over-built.
+- **The town-sim anti-pattern, in one line:** *every one of these games makes placement the game.*
+  We removed placement, so we must not import the machinery that existed to serve it — walkers,
+  service radii, desirability grids, job assignment, goods inventories. What survives the removal
+  is the ledger, the agenda, and the reason-string.
 
 ## Pirate-flavour fit — the taste test
 For **ragged, morale-driven privateer bands** (individual-figure RTS on land,
