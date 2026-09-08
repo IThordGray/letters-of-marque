@@ -255,7 +255,22 @@ loyalty-vs-competence trade-off made visible instead of asserted.
 haven you own. You set a standing goal; the governor plans within it. The ratified rule and this
 system are the same rule.
 
-### 5.6 Cadence
+### 5.6 He will not raise what nobody can work
+
+**The labour ceiling gates the plan, not just production.** A work the town has no spare hands
+for is *wanted* but not *started* — the governor waits. Without this the sim runs a visible
+pathology: he raises a shed, nobody mans it, it rots down the devolution ladder, the slot frees,
+and he raises it again — forever. (Found by playtest, 2026-09-07: a presidio of ninety souls
+built six taverns in sixty years.)
+
+So a want carries two separate gates, and they read differently:
+- **affordable** — the coffers can pay for it today. *"saving."*
+- **manned** — there are hands spare to work it. *"there is money and no men."*
+
+Both are surfaced on the published wants-list, so the reason a town is *not* building is as
+legible as the reason it is.
+
+### 5.7 Cadence
 
 The beat is a **season** (4/year). **The town never prompts.** It reports in prose, in batches,
 when you visit or when word reaches you.
