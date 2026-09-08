@@ -468,11 +468,16 @@ becoming a market simulator?* Ratified shape in [`town-economy.md`](town-economy
   though note that `access` plus a price that sags under volume are the two cheap corrections that
   keep the convenience without the flaw.
 
-**Heritage, recorded honestly:** there is **no confirmed evidence** that *Cutthroats* simulated
-town-internal trade or per-town commodity prices. The confirmed heritage is the *negative* — town
-wealth was a number that **responded to sacking**. The trading engine is therefore **our addition**,
-like the town footprint, and is recorded as such rather than dressed up as restoration.
-**Flagged for the human to confirm or correct.**
+**Heritage — CONFIRMED BY THE HUMAN, 2026-09-08.** Asked directly whether *Cutthroats* had per-town
+goods prices you traded against, or whether town wealth was simply a number, he answered:
+**"yes — that allows for trade."** Research had found only the *negative* heritage (town wealth was
+a number that responded to sacking); the human is the domain expert on the original and his answer
+supersedes that gap.
+
+**So the trading engine is LINEAGE, not invention.** Per-town prices you buy and sell against are
+part of what the original did, and §3.5 restores them rather than adding something new. This is a
+different footing from the town footprint, which genuinely is our addition — and it means the
+question when tuning prices is *"does this feel like Cutthroats?"*, not *"is this defensible?"*.
 
 ### The land map (hex UI) & steering a town
 How comparable games show a settlement's land, let the player lean it, and (rarely) make the

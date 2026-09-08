@@ -74,6 +74,30 @@ Trade gives a town appetites; weather gives it shocks; together they are what ma
 of it worth watching. And moving the player's agency from a dial to a doorway keeps the world
 running on its own terms.
 
+**Three follow-up answers, same day.**
+
+- **The heritage is CONFIRMED, and it is lineage rather than invention.** Asked whether
+  *Cutthroats* had per-town goods prices you traded against, the human answered **"yes — that
+  allows for trade."** Research had found only the *negative* heritage (town wealth was a number
+  that responded to sacking) and had recorded the engine as our own addition. **The human is the
+  domain expert on the original; his answer supersedes the gap.** §3.5 therefore **restores**
+  something the original did. The tuning question becomes *"does this feel like Cutthroats?"*
+  rather than *"is this defensible?"*. The **footprint remains genuinely our addition** — do not
+  conflate the two.
+- **TWO import classes, not four: victuals and materials.** **Comforts and munitions are CUT**
+  because they duplicated **prosperity** and **security**, which already exist — two systems doing
+  one job. If an appetite for cloth or powder ever needs a voice it **modulates the existing
+  measure** instead of becoming a good. Materials are the one that earns its place: a town that
+  cannot get timber and stone **cannot build however rich it is**, so razing the quay of a
+  stone-poor island stops it rebuilding its wall.
+- **The metropolis question is PARKED — the human reserved it.** *Whether a town's CLASS
+  (village → town → city → metropolis) emerges from growth or is authored when the world is
+  made* was put to him and he declined to settle it here: **"this describes how the entire world
+  works."** A recommendation of *emergent* is on file; **it is not ratified and must not be
+  assumed.** `dependency` itself is unaffected — it measures one town's own balance and needs no
+  world model — so **KAN-91 is not blocked**. But `tierOf`, which already derives a tier today,
+  **is inside the scope of the parked question** and should not be extended until it is settled.
+
 Spec: [spec/town-economy.md](spec/town-economy.md).
 Tickets: **KAN-54** (unparked, foundational) · **KAN-89** (town menu, new) · **KAN-90** (weather,
 new) · **KAN-72** (closed, superseded) · **KAN-77** and **KAN-81** (amended).

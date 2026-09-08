@@ -461,11 +461,17 @@ profile-supplier precedent of `region.bears`:
 side** — "a timber town". Imports are a short need list, because nobody cares *which* cloth a
 colony buys, only that it buys its bread:
 
-**victuals** (population) · **materials** (construction) · **comforts** (prosperity) ·
-**munitions** (security). The first slice ships **victuals only**.
+**TWO classes, ratified 2026-09-08:** **victuals** (population) · **materials** (construction).
+The first slice ships **victuals only**; materials follow.
 
-**Materials are the interesting one:** a town that cannot get timber and stone **cannot build**,
-however rich it is — so razing the quay of a stone-poor island stops it rebuilding its wall.
+**Comforts and munitions were CUT.** They duplicated **prosperity** and **security**, which already
+exist — two systems doing one job is exactly the failure this avoids. If a town's appetite for
+cloth or powder ever needs a voice, it **modulates the existing measure** rather than becoming a
+third and fourth good.
+
+**Materials are the point of the second class:** a town that cannot get timber and stone **cannot
+build**, however rich it is — so razing the quay of a stone-poor island stops it rebuilding its
+wall. Its coffers may be full; it simply cannot get the stone.
 
 **A town tracks a FLOW BALANCE, never a stock.** `derive()` gains a `commerce` block computed from
 the ledger exactly as `food` and `trade` are today. The ratified do-not-build item *"an in-town
@@ -487,12 +493,22 @@ auction:
 The fork is then honest arithmetic: **`need` argues for the farm, `market` argues for the cane.**
 Self-sufficiency wins in a small town and loses in a big one, **with no threshold anywhere.**
 
-### 3.5.5 The metropolis is emergent — one derived word
+### 3.5.5 Dependency — and the metropolis question, PARKED
 
-`dependency = imported victuals / total victuals`, **derived, zero stored state**, banded into one
-word for the town card: *self-feeding · mostly feeds itself · leans on the shipping ·*
-***fed from the sea***. It writes its own clause, and it is the most raid-relevant fact about a big
-town. The archetype `AGENDA` table already encodes the tendency, so **nothing is authored**.
+**`dependency` stands and is not in question.** `dependency = imported victuals / total victuals`,
+**derived, zero stored state**, banded into one word for the town card: *self-feeding · mostly
+feeds itself · leans on the shipping ·* ***fed from the sea***. It writes its own clause, it is
+what the `need` term reads (§3.5.4), and it is the most raid-relevant fact about a big town.
+
+> **PARKED 2026-09-08 — do not decide this here.** *Whether a town's CLASS (village → town → city
+> → metropolis) emerges from its own growth, or is authored when the world is made,* is **the
+> human's call and he has explicitly reserved it**: *"this describes how the entire world works."*
+> A recommendation of *emergent* is on file. **It is not ratified and must not be assumed.**
+>
+> **Nothing in the first slice depends on it.** `dependency` measures one town's own balance and
+> needs no world model at all, so **KAN-91 is not blocked** — build against `dependency` and leave
+> *town class* alone. Note that `tierOf` already derives a tier today; **that code is inside the
+> scope of the parked question, not outside it**, and should not be extended until it is settled.
 
 ### 3.5.6 What replaces the ~450-soul ceiling
 
