@@ -1,8 +1,15 @@
 // The ground plan — the ledger projected onto real earth.
 //
 // THE LEDGER IS THE SIMULATION; THIS IS THE PROJECTION. Nothing here decides
-// anything: it reads the town's claimed hexes, its regions and its works, and
-// lays out the streets and buildings they imply. Same seed, same town.
+// anything: it reads the claimed hexes, the regions and the works, and lays out
+// the streets and buildings they imply. Same seed, same town.
+//
+// THE HEX MAP IS A ZONING OVERVIEW, NOT A SCALE MAP. A hex is not a measured
+// acreage; it says what that ground is for and roughly where it lies. So this
+// file INTERPRETS the ledger rather than scaling it: the ledger says how much
+// development stands on a piece of ground, and the plan decides what that looks
+// like. One timber work is a sawpit; three in one region are a mill and its
+// yards, not three identical sheds. A dwellings work is a row of huts.
 //
 // ROADS ARE LAID FIRST AND BUILDINGS HANG OFF THEM. That is what gives distinct
 // streets rather than gaps left between blocks, and it is what stops the result
@@ -299,17 +306,35 @@ export function planTown(town: Town): Plan {
   //    9 all fall out of that one transform: no search, no packing.
   const fields: FieldPatch[] = [];
   const worked = new Set<number>();
+  // Works of one kind on one region are ONE INSTALLATION, sized by how many
+  // there are — not N identical sheds. The ledger says how much timber is worked
+  // here; the plan says whether that reads as a sawpit or as a mill and its
+  // yards. Its position is the centre of the ground it occupies.
+  const groups = new Map<string, Work[]>();
   for (const w of town.works) {
     if (CATALOGUE[w.kind].zone !== "beyondThePale" || !w.hex || w.region === null) continue;
     worked.add(w.region);
-    const p = at(w.hex);
-    const townward = scale(norm(sub(plaza, p)), H * 0.16);
+    const g = w.region + ":" + w.kind;
+    groups.set(g, [...(groups.get(g) ?? []), w]);
+  }
+  for (const [, ws] of groups) {
+    const live = ws.filter((w) => w.condition !== "ruin");
+    const hexes = ws.map((w) => at(w.hex!));
+    const mid = {
+      x: hexes.reduce((n, h) => n + h.x, 0) / hexes.length,
+      y: hexes.reduce((n, h) => n + h.y, 0) / hexes.length,
+    };
+    const townward = scale(norm(sub(plaza, mid)), H * 0.14);
+    const n = Math.max(1, live.length);
     fields.push({
-      label: w.name,
-      at: add(add(p, townward), { x: jitter(rng, H * 0.1), y: jitter(rng, H * 0.1) }),
-      r: H * 0.26,
-      terrain: town.regions[w.region]?.terrain ?? "scrub",
-      ruin: w.condition === "ruin",
+      // "sawpits" already reads as a plural; the count says how much of it.
+      label: n > 1 ? ws[0].name + " \u00d7" + n : ws[0].name,
+      at: add(add(mid, townward), { x: jitter(rng, H * 0.07), y: jitter(rng, H * 0.07) }),
+      // One work is a shed; several are a works. Area grows with the square root,
+      // so a big installation reads as bigger without swallowing the map.
+      r: H * 0.2 * Math.sqrt(n) * (live.length ? 1 : 0.7),
+      terrain: town.regions[ws[0].region!]?.terrain ?? "scrub",
+      ruin: live.length === 0,
     });
   }
   // A track out to each worked region — the road the timber comes down.

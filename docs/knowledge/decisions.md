@@ -10,6 +10,63 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-08 (fourth) — The hex map is a zoning overview, not a scale map
+A framing correction from the human, and it settles a tension the ground plan had been papering
+over. Stated by him, and it governs everything downstream:
+
+> **Ideally the hex map is a zoning planning overview, and not a scaled map. It represents the lay
+> of the land, and represents how the town is constructed on it.**
+
+- **A hex is not a measured acreage.** It says what that ground is *for* and roughly where it lies.
+  The **ground plan is the actual place**; the relationship between them is **interpretation, not a
+  scaled blow-up**. The 800-paces-per-hex constant is therefore a **layout guide** — it fixes
+  relative arrangement, bearing and adjacency — and must never be read as "a hex is 800 paces of
+  literal ground".
+- **THE LEDGER GIVES THE SCALE; THE PLAN GIVES THE FORM.** The ledger says how much development
+  stands on a piece of ground. The plan decides what that looks like. One timber work is a sawpit;
+  three on one region are a mill and its yards, not three identical sheds. A `dwellings` work is a
+  row of huts.
+- **This GENERALISES the dwellings exception rather than adding to it.** The cluster was recorded
+  as "the one sanctioned departure from one-work-one-building". Under this framing it is not a
+  departure at all — it is the general rule, and dwellings were merely the first case where the
+  old rule visibly failed. **Strike the exception; keep the behaviour.**
+- **Consequence for the fidelity contracts, recorded honestly rather than glossed:**
+  - **Contract 3 (Count) is softened.** It said *"sawpits ×3 means three sawpits on the ground —
+    not 'some industry'"*. It now means: **three works' worth of timber industry, visibly greater
+    than one work's worth, standing on that region's ground.** The count is legible as *scale*, not
+    necessarily as a headcount of buildings.
+  - **Contract 9 (Spread) is softened the same way.** Works of one kind on one region are **one
+    installation whose size reflects how many** — not N buildings in a row. What must remain true
+    is that **the place and the scale of an industry are both legible**: you can see that timber is
+    worked, where, and how much.
+  - **The human's original requirement still holds and is the test:** *"if a new lumber mill is
+    built and I land there with my units, I want to see the lumber mill."* Building a second timber
+    work must visibly change the ground — as a larger installation if not as a second building.
+- **Implementation:** works are grouped by `(region, kind)`; the group draws as one installation at
+  the centre of the ground it occupies, with area growing by the square root of the count so a big
+  works reads as bigger without swallowing the map. A group with nothing working draws as a ruin.
+
+**Deferred, explicitly — the human flagged it as vague and not to be taken verbatim:**
+- **Tile levels / upgrades.** *"Tiles can be upgraded later — one lumber tile might represent
+  different numbers or levels of a mill."* A work may later carry a **level** as well as a place,
+  so a region can deepen without spreading. The grouping above is the seam that will express it:
+  the plan already renders a group by its total, so a level is just another input to that total.
+  **Do not build it until the shape is clearer.**
+- **In-town works are not yet grouped.** The same rule should eventually apply to warehouses,
+  taverns and the rest; today they still take one frontage each. Left alone because a town's
+  buildings stand on streets and the case for merging them is weaker than for a mill and its yards.
+- **Plan extent is still keyed on hex count × 800, capped at 4000 paces.** Under a zoning framing it
+  should arguably key on how big the town actually *is* (population and core grade) rather than on
+  how many hexes it holds. Flagged, not changed — the cap keeps it honest for now.
+
+*Why:* the hex map was never meant to be a map of the ground, and treating it as one forced a
+one-work-one-building rule that produced ninety souls living in two houses. Separating *how much*
+(the ledger) from *what it looks like* (the plan) removes a special case, makes room for levels
+later, and keeps the thing the human actually asked for: land you land on and recognise.
+Spec: [spec/town-economy.md](spec/town-economy.md) §7 stage 4 and §7.5.
+
+---
+
 ### 2026-09-08 (third) — The land takes a shape: regions, not parcels; suitability, not determinism
 A correction round, prompted by the human looking at the rendered map. It supersedes parts of both
 entries below it, and it is cheaper than it looks because the ledger never knew what a hex was.

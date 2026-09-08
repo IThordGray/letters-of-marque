@@ -742,9 +742,17 @@ along it, rotated to face their street.
   stands on its own hex, nudged townward, snapped to its region's track. Contracts 1, 3 and 9 all
   fall out of that one transform, and it has no spatial degrees of freedom — so it can never become
   a packing problem.
-- **One sanctioned exception to work-to-building parity:** a `dwellings` work draws as a **cluster
-  of 3–4 huts sharing one ledger line**. Ninety souls in two houses looks wrong, and the ledger
-  should stay coarse.
+- **THE HEX MAP IS A ZONING OVERVIEW, NOT A SCALE MAP** *(ratified 2026-09-08, fourth)*. A hex is
+  not a measured acreage; it says what that ground is for and roughly where it lies. So the plan
+  **interprets** the ledger rather than scaling it: **the ledger gives the SCALE, the plan gives the
+  FORM.** Works are grouped by `(region, kind)` and drawn as one installation sized by count — a
+  `dwellings` work is a cluster of huts, three timber works on one region are a mill and its yards.
+  *(This was first recorded as "the one sanctioned exception to work-to-building parity". It is not
+  an exception — it is the general rule, and dwellings were simply the first case where one-for-one
+  visibly failed. That wording is struck.)*
+- **Deferred:** tile **levels**, so a region can deepen without spreading · grouping for in-town
+  works, which still take one frontage each · keying the plan's extent on the town's size rather
+  than on its hex count.
 
 *Superseded first-pass text:*
 
@@ -807,13 +815,13 @@ approach cost).
 |---|---|
 | 1 | **Bearing.** Timbered hills to the north on the map → sawpits at the north edge on the ground, and the ground rises that way. |
 | 2 | **Sea-arc.** Which ring hexes are water decides which edge you land on and how wide the waterfront is. |
-| 3 | **Count.** *"Sawpits ×3"* on the hex means **three sawpits** on the ground — not "some industry". **Promoted to a REQUIREMENT, 2026-09-08 — see below.** |
+| 3 | **Count.** *(softened 2026-09-08, fourth)* *"Sawpits ×3"* means **three works of timber industry on that ground, visibly greater than one** — the count is legible as SCALE, not necessarily as a headcount of buildings. Still never "some industry". |
 | 4 | **Size.** *(amended twice, 2026-09-08)* The raid map's extent is a function of the **claimed hex set**: `core` sets the town's depth, and each claimed hex adds a quarter where that hex lies. Population is an input to the footprint, never to the map directly. **Guard: the map covers the claimed set plus one ring of adjacent land, never the whole county** — beyond that ring, growth raises *density*, not extent, or a century-old port becomes an unplayable march. |
 | 5 | **Scar.** A ruin on the hex is a burnt shell on the ground. |
 | 6 | **Skirts.** *(new)* A bearing with a suburb has buildings **outside the town proper on that edge** — approach cover, or a landing you can make among houses. A compact town has open glacis on every side. |
 | 7 | **Trace.** The wall's frozen circuit is exactly the edges that carry a wall on the ground. **An unwalled edge is the way in.** A `ruin` wall draws as a broken line *through* the built-up area, not at its edge. |
 | 8 | **Faubourg.** Because the circuit is frozen at the moment it was raised, **a claimed hex outside it simply IS the suburb** — the wall runs through the middle of the raid map with no extra machinery. |
-| 9 | **Spread.** *(new, 2026-09-08 third)* A region's works stand **along its own ground**, not piled on a point: five sawpits in a line down the north woodline, one per hex. This is the human's work-visibility requirement at scale. |
+| 9 | **Spread.** *(softened 2026-09-08, fourth)* A region's works stand **on its own ground**, never piled somewhere else — but works of one kind on one region are **ONE INSTALLATION sized by how many**, not N buildings in a row. What must stay legible is **the place and the scale of an industry**: that timber is worked, where, and how much. |
 
 ### Work visibility — a requirement, not a contract
 
