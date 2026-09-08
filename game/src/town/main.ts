@@ -2,13 +2,13 @@
 // Run with `npm run dev`, then open /town.html.
 //
 // KAN-68 the entity and tick · KAN-69 the founding roll · KAN-70 the works ledger
-// · KAN-71 the governor's plan. The prose town card and chronicle are KAN-75; the
-// investment slider is KAN-72.
+// · KAN-71 the governor's plan · KAN-79/80 the hex land map. The prose town card
+// and chronicle are KAN-75; the investment slider and the steer are KAN-72.
 
 import type { Town } from "./types";
 import { foundTown, derive, summarise, year, prosperityWord, wealthWord } from "./sim";
 import { stepTownSeason, stepTownYears, wants } from "./governor";
-import { describeParcel } from "./parcels";
+import { renderHexMap, landCaption } from "./hexmap";
 import { SEASONS_PER_YEAR } from "./constants";
 
 // Three towns on three different patrons' money. The land is whatever their seed
@@ -65,7 +65,8 @@ function card(t: Town, i: number): string {
           <tr><th>wants</th><td>${unmet(d.needs)}</td></tr>
         </table>
         <h3>The land <span class="dim">(read-only — it explains the town)</span></h3>
-        <ul class="dim">${t.parcels.map((p) => `<li>${describeParcel(p)}</li>`).join("")}</ul>
+        ${renderHexMap(t)}
+        <p class="dim caption">${landCaption(t)}</p>
       </div>
       <div>
         <h3>Works</h3><ul>${ledger}</ul>${rotting}

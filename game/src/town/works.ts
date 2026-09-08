@@ -229,6 +229,12 @@ export function starvedFor(town: Town, kind: WorkKind): boolean {
   });
 }
 
+// Which works a given terrain could carry — what an unworked hex is FOR. Used by
+// the land map to ghost a hex's capacity before anything stands on it.
+export function worksForTerrain(terrain: ParcelTerrain): WorkKind[] {
+  return CHOOSABLE.filter((k) => CATALOGUE[k].needsParcel === terrain);
+}
+
 export const bestParcelQuality = (town: Town, kind: WorkKind): ParcelQuality | null => {
   const t = CATALOGUE[kind].needsParcel;
   return t ? (bestOf(town.parcels, t)?.quality ?? null) : null;

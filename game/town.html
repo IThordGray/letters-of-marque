@@ -30,6 +30,26 @@
       ul { margin: 0; padding-left: 18px; }
       li { margin: 1px 0; }
       .dim { color: #7d7464; }
+      .caption { margin: 2px 0 0; font-style: italic; }
+
+      /* ---- the land map: grades and words on the face, numbers on hover ---- */
+      .landmap { width: 100%; max-width: 340px; display: block; margin: 4px 0 0 -6px; }
+      .landmap text { text-anchor: middle; font-family: inherit; pointer-events: none; }
+      .hx-far { stroke: #14120e; stroke-width: 2; opacity: .5; }
+      .hx-face { stroke: #14120e; stroke-width: 2; }
+      .hx { cursor: help; }
+      .hx:hover .hx-face { stroke: #c9a227; }
+      .hx-name { font-size: 9px; fill: #d8cdb2; letter-spacing: .04em; }
+      .hx-grade { font-size: 9px; fill: #b9a97f; letter-spacing: .18em; }
+      /* capacity is GHOSTED until something stands on the ground... */
+      .hx-ghost { font-size: 8.5px; fill: #cfc4ac; opacity: .38; font-style: italic; }
+      /* ...and solid once it does. */
+      .hx-work { font-size: 9px; fill: #f0e7d2; }
+      .hx-dead { font-size: 12px; fill: #6c6552; }
+      .hx-ruin { font-size: 8px; fill: #a2603f; }
+      .is-dead .hx-face { opacity: .55; }
+      .hx-town .hx-core { stroke: #6b5c39; stroke-width: 1; }
+      .hx-town .hx-work { font-size: 13px; fill: #c9a227; }
       .wants li { margin: 4px 0; }
       .wants b { color: #c9a227; font-weight: normal; }
       .log li { color: #a89b82; }
