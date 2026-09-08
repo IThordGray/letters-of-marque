@@ -5,9 +5,11 @@
 // works are. Parcel scarcity is the primary growth cap — cap and flavour are the
 // same mechanism, so there are no arbitrary limits here beyond the land itself.
 
-import type { Town, Work, WorkKind, WorkClass, Need, ParcelTerrain, ParcelQuality } from "./types";
-import { WORKS, QUALITY_YIELD, DECAY } from "./constants";
-import { bestOf } from "./parcels";
+import type { Town, Work, WorkKind, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
+import type { Axial } from "./hex";
+import { key } from "./hex";
+import { WORKS, SUIT_YIELD, DECAY } from "./constants";
+import { isDead } from "./land";
 
 // Where a work sits when the ledger is projected onto a raid map (KAN-76).
 export type Zone = "waterfront" | "lowerTown" | "plaza" | "backTown" | "outworks" | "beyondThePale";
@@ -16,7 +18,12 @@ export interface WorkDef {
   label: string; // how it reads in a sentence
   cls: WorkClass;
   cost: number; // wealth to raise; subsistence works are free
-  needsParcel: ParcelTerrain | null; // the land it must have
+  // TWO GATES, NOT ONE (spec §2.5). A crop or extraction work names what it
+  // PRODUCES and is offered wherever the ground bears it, at any grade — terrain
+  // biases, it does not determine. A SITED work names hard ground and gets no
+  // gradient: you cannot half-build a harbour on a hill.
+  produces: Produce | null;
+  needsGround: TerrainKind | null;
   requires: WorkKind | null; // the dependency edges — exactly two in this slice
   food: number;
   trade: number;
@@ -36,43 +43,43 @@ export interface WorkDef {
 // is a chain the player can feel without us simulating logistics.
 export const CATALOGUE: Record<WorkKind, WorkDef> = {
   // --- subsistence: free, self-raising, and the reason a sacked town survives
-  dwellings: { label: "dwellings", cls: "subsistence", cost: 0, needsParcel: null, requires: null,
+  dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
-  gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, needsParcel: null, requires: null,
+  gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null, requires: null,
     food: 30, trade: 0, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
-  fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, needsParcel: "reef", requires: null,
+  fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, produces: "fish", needsGround: null, requires: null,
     food: 22, trade: 2, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
-  well: { label: "a well", cls: "subsistence", cost: 0, needsParcel: null, requires: null,
+  well: { label: "a well", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
-  chapel: { label: "a chapel", cls: "subsistence", cost: 0, needsParcel: null, requires: null,
+  chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
-  market: { label: "a market", cls: "subsistence", cost: 0, needsParcel: null, requires: null,
+  market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
     food: 0, trade: 3, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
 
   // --- capital: the twelve the governor weighs against each other
-  sawpit: { label: "sawpits", cls: "capital", cost: 260, needsParcel: "timberedHills", requires: null,
+  sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null, requires: null,
     food: 0, trade: 14, defence: 0, hands: 10, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  shipway: { label: "shipways", cls: "capital", cost: 900, needsParcel: "roadstead", requires: "sawpit",
+  shipway: { label: "shipways", cls: "capital", cost: 900, produces: null, needsGround: "roadstead", requires: "sawpit",
     food: 0, trade: 34, defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
-  caneField: { label: "cane fields", cls: "capital", cost: 220, needsParcel: "caneFlats", requires: null,
+  caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null, requires: null,
     food: 0, trade: 10, defence: 0, hands: 16, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  boilingHouse: { label: "a boiling house", cls: "capital", cost: 700, needsParcel: "caneFlats", requires: "caneField",
+  boilingHouse: { label: "a boiling house", cls: "capital", cost: 700, produces: null, needsGround: null, requires: "caneField",
     food: 0, trade: 30, defence: 0, hands: 14, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  provisionGround: { label: "provision grounds", cls: "capital", cost: 180, needsParcel: "provisionGrounds", requires: null,
+  provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null, requires: null,
     food: 90, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 90, max: 9, zone: "beyondThePale" },
-  warehouse: { label: "a warehouse", cls: "capital", cost: 320, needsParcel: "roadstead", requires: null,
+  warehouse: { label: "a warehouse", cls: "capital", cost: 320, produces: null, needsGround: "roadstead", requires: null,
     food: 0, trade: 12, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
-  customsHouse: { label: "a customs house", cls: "capital", cost: 480, needsParcel: "roadstead", requires: null,
+  customsHouse: { label: "a customs house", cls: "capital", cost: 480, produces: null, needsGround: "roadstead", requires: null,
     food: 0, trade: 16, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
-  battery: { label: "a stone battery", cls: "capital", cost: 620, needsParcel: "bluff", requires: null,
+  battery: { label: "a stone battery", cls: "capital", cost: 620, produces: null, needsGround: "bluff", requires: null,
     food: 0, trade: 0, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
-  palisade: { label: "a palisade", cls: "capital", cost: 240, needsParcel: null, requires: null,
+  palisade: { label: "a palisade", cls: "capital", cost: 240, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
-  barracks: { label: "a barracks", cls: "capital", cost: 420, needsParcel: null, requires: null,
+  barracks: { label: "a barracks", cls: "capital", cost: 420, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
-  tavern: { label: "a tavern", cls: "capital", cost: 200, needsParcel: null, requires: null,
+  tavern: { label: "a tavern", cls: "capital", cost: 200, produces: null, needsGround: null, requires: null,
     food: 0, trade: 4, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
-  church: { label: "a church", cls: "capital", cost: 550, needsParcel: null, requires: null,
+  church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null, requires: null,
     food: 0, trade: 0, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
 };
 
@@ -84,20 +91,49 @@ export const SUBSISTENCE = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => 
 const working = (t: Town, kind: WorkKind) => t.works.some((w) => w.kind === kind && w.condition === "working");
 export const countOf = (t: Town, kind: WorkKind) => t.works.filter((w) => w.kind === kind && w.condition !== "ruin").length;
 
-// How many of a kind the town could still raise. For a work that needs land, this
-// is the number of matching parcels — PARCEL SCARCITY IS THE CAP.
-export function roomFor(town: Town, kind: WorkKind): number {
+// The regions that could carry this work, best ground first. A CROP work is
+// offered wherever the ground bears its produce at ANY grade — terrain biases,
+// it does not determine. A SITED work needs its ground exactly.
+const SUIT_RANK: Record<Suit, number> = { ideal: 3, fair: 2, poor: 1 };
+
+export function regionsFor(town: Town, kind: WorkKind): { region: Region; suit: Suit | null }[] {
   const def = CATALOGUE[kind];
-  // Ground the town has built over entirely carries nothing — the one place the
-  // footprint writes into the ledger. Growth eats its own cause.
-  const ceiling = def.needsParcel
-    ? town.parcels.filter((p) => p.terrain === def.needsParcel && town.footprint.spill[p.bearing] < 3).length
-    : def.max;
-  return Math.max(0, Math.min(ceiling, def.max) - countOf(town, kind));
+  const out: { region: Region; suit: Suit | null }[] = [];
+  for (const r of town.regions) {
+    if (isDead(r.terrain)) continue;
+    if (def.needsGround) {
+      if (r.terrain === def.needsGround) out.push({ region: r, suit: null });
+    } else if (def.produces) {
+      const suit = r.bears[def.produces];
+      if (suit) out.push({ region: r, suit });
+    }
+  }
+  return out.sort((a, b) => SUIT_RANK[b.suit ?? "fair"] - SUIT_RANK[a.suit ?? "fair"]);
 }
 
-// Can it be raised at all? Land and supplier only — WEALTH IS THE BUDGET GATE and
-// is checked separately by the governor, never mixed into whether a town wants it.
+// Ground already spoken for: built over by the town, or carrying a work.
+function takenHexes(town: Town): Set<string> {
+  const taken = new Set(town.footprint.claimed.map(key));
+  for (const w of town.works) if (w.hex && w.condition !== "ruin") taken.add(key(w.hex));
+  return taken;
+}
+
+// How much ground is left for this work. AREA IS CAPACITY — and the town eating
+// its own land is what makes growth cost something.
+export function roomFor(town: Town, kind: WorkKind): number {
+  const def = CATALOGUE[kind];
+  if (!def.produces && !def.needsGround) return Math.max(0, def.max - countOf(town, kind)); // a civic work
+  const taken = takenHexes(town);
+  const free = regionsFor(town, kind).reduce(
+    (n, { region }) => n + region.hexes.filter((h) => !taken.has(key(h))).length,
+    0,
+  );
+  return Math.min(free, Math.max(0, def.max - countOf(town, kind)));
+}
+
+// Can it be raised at all? Ground and supplier only — WEALTH IS THE BUDGET GATE
+// and is checked separately by the governor, never mixed into whether a town
+// wants it.
 export function buildable(town: Town, kind: WorkKind): boolean {
   const def = CATALOGUE[kind];
   if (roomFor(town, kind) <= 0) return false;
@@ -105,45 +141,53 @@ export function buildable(town: Town, kind: WorkKind): boolean {
   return true;
 }
 
-// The index of the best unused parcel for this work, or null if it needs none.
-export function parcelFor(town: Town, kind: WorkKind): number | null {
+// The best free ground for this work: the best-suited region, and within it the
+// sweet spot if it is still open — which is why the boiling house stands where
+// it does.
+export function groundFor(town: Town, kind: WorkKind): { hex: Axial; region: Region; suit: Suit | null } | null {
   const def = CATALOGUE[kind];
-  if (!def.needsParcel) return null;
-  const taken = new Set(town.works.filter((w) => w.kind === kind && w.condition !== "ruin").map((w) => w.parcel));
-  const rank: Record<ParcelQuality, number> = { poor: 0, fair: 1, rich: 2 };
-  let best: number | null = null;
-  town.parcels.forEach((p, i) => {
-    if (p.terrain !== def.needsParcel || taken.has(i)) return;
-    if (best === null || rank[p.quality] > rank[town.parcels[best].quality]) best = i;
-  });
-  return best;
+  if (!def.produces && !def.needsGround) return null;
+  const taken = takenHexes(town);
+  for (const { region, suit } of regionsFor(town, kind)) {
+    const free = region.hexes.filter((h) => !taken.has(key(h)));
+    if (!free.length) continue;
+    const sweet = region.sweetSpot && free.find((h) => key(h) === key(region.sweetSpot!));
+    return { hex: sweet ?? free[0], region, suit };
+  }
+  return null;
 }
 
-// Mint a work, scaled by the quality of the land it sits on. Good land is simply
-// worth more — that is how a rich parcel becomes a rich town.
+// Mint a work on a named hex, scaled by how well that ground suits it. Ground
+// that was made for a crop is worth more of it; ground that merely grudges it
+// pays a fraction — which is adaptability with a visible price.
 export function raise(town: Town, kind: WorkKind, year: number): Work | null {
   if (!buildable(town, kind)) return null;
   const def = CATALOGUE[kind];
-  const parcel = parcelFor(town, kind);
-  if (def.needsParcel && parcel === null) return null;
-  const q = parcel !== null ? QUALITY_YIELD[town.parcels[parcel].quality] : 1;
-  // A wall goes up landward first, and the seaward side is normally never closed
-  // — an unfinished circuit is the rule, not the exception, and an unenclosed
-  // bearing is the way in.
-  const circuit = def.defence > 0 && kind === "palisade" ? (["N", "NE", "NW"] as Work["circuit"]) : undefined;
+  const ground = groundFor(town, kind);
+  if ((def.produces || def.needsGround) && !ground) return null;
+  let q = ground?.suit ? SUIT_YIELD[ground.suit] : 1;
+  if (ground && ground.region.sweetSpot && ground.hex && key(ground.hex) === key(ground.region.sweetSpot)) {
+    q *= WORKS.sweetSpotBonus; // the best of it
+  }
+  if (ground && ground.region.reach === "far") q *= WORKS.farPenalty; // men must walk
+
   const work: Work = {
     id: town.nextWorkId++,
-    circuit,
+    // A wall goes up landward first: it freezes the town's boundary AS IT THEN
+    // STANDS, and is never re-extended. A hex claimed later, outside it, is the
+    // faubourg.
+    circuit: kind === "palisade" ? town.footprint.claimed.map((h) => ({ ...h })) : undefined,
     kind,
     name: def.label,
-    parcel,
+    region: ground ? town.regions.indexOf(ground.region) : null,
+    hex: ground ? ground.hex : null,
     since: year,
     condition: "working",
     idleSince: null,
     food: def.food * q,
     trade: def.trade * q,
     defence: def.defence * q,
-    hands: def.hands,
+    hands: ground?.region.reach === "far" ? Math.ceil(def.hands * WORKS.farHands) : def.hands,
     serves: def.serves,
     servesFor: def.servesFor * q,
   };
@@ -186,8 +230,8 @@ function allocateLabour(town: Town): void {
   for (const w of live) {
     const req = CATALOGUE[w.kind].requires;
     const supplied = !req || working(town, req); // "the shipways stand idle for want of planks"
-    // Ground the town has built over entirely carries nothing any more.
-    const buried = w.parcel !== null && town.footprint.spill[town.parcels[w.parcel].bearing] >= 3;
+    // Ground the town has built over carries nothing any more.
+    const buried = !!w.hex && town.footprint.claimed.some((c) => key(c) === key(w.hex!));
     if (hands >= w.hands && supplied && !buried) {
       hands -= w.hands;
       if (w.condition === "idle") w.condition = "working";
@@ -232,19 +276,13 @@ export function unmetNeeds(town: Town): Record<Need, number> {
 // Is a downstream work standing idle for want of its supplier? This is the clause
 // "the shipways want planks" — the market term's sharpest input.
 export function starvedFor(town: Town, kind: WorkKind): boolean {
-  return CHOOSABLE.some((k) => {
-    const def = CATALOGUE[k];
-    return def.requires === kind && roomFor(town, k) > 0;
-  });
+  return CHOOSABLE.some((k) => CATALOGUE[k].requires === kind && roomFor(town, k) > 0);
 }
 
-// Which works a given terrain could carry — what an unworked hex is FOR. Used by
-// the land map to ghost a hex's capacity before anything stands on it.
-export function worksForTerrain(terrain: ParcelTerrain): WorkKind[] {
-  return CHOOSABLE.filter((k) => CATALOGUE[k].needsParcel === terrain);
-}
+// How well the best available ground suits this work — the "land calls for it"
+// term, and the clause that goes with it.
+export const bestSuitFor = (town: Town, kind: WorkKind): Suit | null => groundFor(town, kind)?.suit ?? null;
 
-export const bestParcelQuality = (town: Town, kind: WorkKind): ParcelQuality | null => {
-  const t = CATALOGUE[kind].needsParcel;
-  return t ? (bestOf(town.parcels, t)?.quality ?? null) : null;
-};
+// What a given region could carry — what an unworked stretch of ground is FOR.
+export const worksForRegion = (town: Town, r: Region): WorkKind[] =>
+  CHOOSABLE.filter((k) => regionsFor(town, k).some((x) => x.region.id === r.id));

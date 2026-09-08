@@ -9,9 +9,9 @@
 // decides what it can start now. Keeping those separate is what makes an
 // investment slider mean something.
 
-import type { Town, Work, WorkKind, Need, Archetype, ParcelTerrain } from "./types";
-import { CATALOGUE, CHOOSABLE, buildable, raise, parcelFor, starvedFor } from "./works";
-import { compass } from "./parcels";
+import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
+import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
+import { compass, LABEL } from "./land";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
@@ -38,14 +38,14 @@ export interface Want {
 
 // ---- The clauses each term can write ---------------------------------------
 
-// Only productive terrain can be a work's parcel, so dead ground needs no clause.
-const LAND_CLAUSE: Partial<Record<ParcelTerrain, string>> = {
-  timberedHills: "the hills are timbered",
-  caneFlats: "the flats take cane well",
-  provisionGrounds: "there is good ground to grow on",
-  reef: "the banks are thick with fish",
-  roadstead: "the anchorage is sheltered",
-  bluff: "the bluff commands the water",
+// THE LAND ANSWERS IN THREE REGISTERS (spec §5.8). It refuses outright, it
+// grudges, or it bears — and the middle one is the upgrade: a steer can now land
+// badly, which is more interesting than a refusal and more legible than silent
+// underperformance. The grudge is said BEFORE the work is raised.
+const SUIT_CLAUSE: Record<Suit, (ground: string) => string> = {
+  ideal: (g) => `the ${g} were made for it`,
+  fair: (g) => `the ${g} will take it well enough`,
+  poor: (g) => `the ${g} grudge it — it would pay a fraction`,
 };
 
 const NEED_CLAUSE: Record<Need, string> = {
@@ -96,17 +96,17 @@ export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): T
   const d = derived;
   const terms: Term[] = [];
 
-  // 1. THE LAND CALLS FOR IT — good ground argues for the work that uses it.
-  if (def.needsParcel) {
-    const idx = parcelFor(town, kind);
-    if (idx !== null) {
-      const quality = town.parcels[idx].quality;
-      terms.push({
-        key: "land",
-        weight: PLAN.affinity[quality] * PLAN.weights.land,
-        clause: LAND_CLAUSE[def.needsParcel] ?? "the land will bear it",
-      });
-    }
+  // 1. THE LAND CALLS FOR IT — and how loudly depends on how well it suits.
+  const ground = groundFor(town, kind);
+  if (ground) {
+    const suit = ground.suit;
+    terms.push({
+      key: "land",
+      weight: (suit ? PLAN.affinity[suit] : PLAN.affinity.fair) * PLAN.weights.land,
+      clause: suit
+        ? SUIT_CLAUSE[suit](LABEL[ground.region.terrain])
+        : `there is ${LABEL[ground.region.terrain]} for it`,
+    });
   }
 
   // 2. THE TOWN WANTS IT — an unmet want the work would answer.
@@ -160,8 +160,8 @@ export function reasonFrom(terms: Term[]): string {
 }
 
 function whereFor(town: Town, kind: WorkKind): string {
-  const idx = parcelFor(town, kind);
-  return idx === null ? "" : ` to the ${compass(town.parcels[idx].bearing)}`;
+  const g = groundFor(town, kind);
+  return g ? ` to the ${compass(g.region.bearing)}` : "";
 }
 
 // ---- The wants-list --------------------------------------------------------
