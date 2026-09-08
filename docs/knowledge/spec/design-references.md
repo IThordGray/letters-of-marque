@@ -442,6 +442,38 @@ becoming a city builder*, since the player never places a building.
   service radii, desirability grids, job assignment, goods inventories. What survives the removal
   is the ledger, the agenda, and the reason-string.
 
+#### Town-internal trade — inputs to the trading engine (2026-09-08)
+The governing question: *how does a town buy what it needs and sell what it has spare, without
+becoming a market simulator?* Ratified shape in [`town-economy.md`](town-economy.md); rationale in
+[`../decisions.md`](../decisions.md) (2026-09-08, fifth).
+
+- **Consumption baskets + stock-driven price (Patrician III/IV):** population tiers consume a daily
+  basket; per-town stock drives the price. *Shines:* it is literally *"they buy what they need"* —
+  the human's own sentence, already solved by a shipped game. *Drags:* per-good stockpiles plus
+  supply/demand indicators are exactly the spreadsheet we are forbidden. **ADAPT** — take the
+  consumption idea, **reject the stock**. Ours is a flow balance with no inventory anywhere.
+- **One good carries the whole economy (Mount & Blade II: Bannerlord):** town food comes from
+  satellite villages; a deficit tanks prosperity. *Shines:* a single legible good carries an entire
+  settlement economy — good evidence that a **victuals-only first slice is enough**. *Drags:*
+  documented **oscillation** — towns outgrow their supply, hit recession, shrink, regrow, repeat.
+  **ADOPT the single-good spine; carry the oscillation as a NAMED RISK** to watch for in the
+  100-year run.
+- **Join a market, never know your partner (Europa Universalis IV / Victoria 3):** a province
+  belongs to a *market* and never knows who it trades with. *Shines:* **exactly our
+  abstract-now/named-later seam** — proof that "the shipping" can become named neighbouring towns
+  later without a rewrite. *Drags:* the full version is opaque, which is already our recorded Vic3
+  lesson. **ADOPT the seam, not the depth.**
+- **The world buys everything (Anno / X4):** an infinite sink at a fixed price. *Shines:* free to
+  build, never stalls. *Drags:* infinite money, and towns stop mattering to each other. **REJECT** —
+  though note that `access` plus a price that sags under volume are the two cheap corrections that
+  keep the convenience without the flaw.
+
+**Heritage, recorded honestly:** there is **no confirmed evidence** that *Cutthroats* simulated
+town-internal trade or per-town commodity prices. The confirmed heritage is the *negative* — town
+wealth was a number that **responded to sacking**. The trading engine is therefore **our addition**,
+like the town footprint, and is recorded as such rather than dressed up as restoration.
+**Flagged for the human to confirm or correct.**
+
 ### The land map (hex UI) & steering a town
 How comparable games show a settlement's land, let the player lean it, and (rarely) make the
 strategic view predict the ground you fight on. Research inputs only; ratified model in

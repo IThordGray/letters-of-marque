@@ -10,6 +10,76 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-08 (fifth) — Towns trade: a town's wealth is EARNED, not emitted
+Three ratified calls from the human in one message. Together they move the module's centre of
+gravity: what makes a town live is its own trade, and the player is a visitor to it.
+
+**1. Every town has an internal trading engine.**
+
+> A town has trade. Grain is just one thing they buy. Basically they buy what they need. If they
+> grow enough grain and export the surplus, they don't import it. Most settlements will try [to be]
+> as self sufficient as possible, except for cities that [are] more metropolis. Again, we think
+> about these things logically. Considering they generate wealth, this is done via trade. So each
+> town has an underlying trading engine, that the player ties into when they come to port.
+
+- **Wealth is EARNED, not emitted.** Today `yield = trade + grant - upkeep`, where `trade` is a flat
+  number each work emits — a sawpit simply produces coin. Under this call a town's wealth is the
+  result of **selling what it has spare and paying for what it lacks**.
+- **The seam already exists and is currently thrown away.** `sim.ts` computes `surplus: food - mouths`
+  every season and uses it only to nudge prosperity. **Surplus is never sold; deficit is never
+  bought.** That discarded number is where the engine attaches.
+- **Self-sufficiency is the default posture**, not an optimisation. A settlement tries to cover its
+  own needs; only a **metropolis** leans on imports. This is a preference expressed in the
+  governor's *need* term, not a hard rule.
+- **This is expected to lift the ~450-soul ceiling honestly.** Population is capped at
+  `foodCap = localFood / perHead`, so no town can outgrow the ground it farms — which is why towns
+  claim only 1-3 of ~24 land hexes in a century. Bought food raises that cap. **Whatever replaces
+  land as the binding limit must be named explicitly**: the point is to move the wall somewhere
+  sensible, not to remove it.
+- **KAN-54 is unparked and reordered.** It was "the trade layer, later". It is now **foundational** —
+  the wealth model depends on it, and the town menu has nothing to trade against without it.
+
+**Ordering consequence: the trading engine comes before any player-facing layer, always.**
+
+**2. Growth outside the walls is accepted as it stands.**
+
+> That's fine. if the outpost expand outside the walls, there is logic to it. Housing built outside,
+> farming happening outside, etc.
+
+- The frozen `circuit` and the faubourg behaviour are **ratified as sufficient**. A wall is raised
+  once and never re-drawn; a claimed hex outside it is a suburb.
+- **The open question about walls being broken down and re-raised at a larger circuit is CLOSED —
+  do not build it.** What must be legible is that the overspill is *logical* (housing outside,
+  farming outside), not that the wall moves.
+
+**3. The investment slider is withdrawn; a town changes only through its own engine.**
+
+> Ignore this slider. it was meant to test something, but we'll address that as part of Towns menu,
+> where you can head to the docs, trade, visit the govenor, etc. For now let changes to the town
+> happen only through the natural growth engine (population growth, internal trading engine, weather
+> systems, all of which I know aren't built yet).
+
+- **The three natural drivers are named:** population growth · the internal trading engine ·
+  weather. Those, and nothing else, move a town for now.
+- **The player's entire surface becomes the town menu** — the docks, trade, the governor. Levers
+  designed against the slider are **parked there, not cancelled**: the steer (guns/coin/hands), a
+  named production line, investing coin, the bribery ladder, granting ground in a haven you own.
+- **KAN-72 is closed as superseded.** Its **archetypes survive**; its slider does not.
+- This makes the "living world, not a management screen" pillar **stronger**. It used to be defended
+  by keeping the dial small. It is now defended by there being **no dial at all**.
+
+*Why:* a town whose wealth is emitted by its own buildings cannot be surprised, cannot fail, and can
+never *need* anything — which is the deepest reason a century of simulation produced a flat line.
+Trade gives a town appetites; weather gives it shocks; together they are what make a hundred years
+of it worth watching. And moving the player's agency from a dial to a doorway keeps the world
+running on its own terms.
+
+Spec: [spec/town-economy.md](spec/town-economy.md).
+Tickets: **KAN-54** (unparked, foundational) · **KAN-89** (town menu, new) · **KAN-90** (weather,
+new) · **KAN-72** (closed, superseded) · **KAN-77** and **KAN-81** (amended).
+
+---
+
 ### 2026-09-08 (fourth) — The hex map is a zoning overview, not a scale map
 A framing correction from the human, and it settles a tension the ground plan had been papering
 over. Stated by him, and it governs everything downstream:

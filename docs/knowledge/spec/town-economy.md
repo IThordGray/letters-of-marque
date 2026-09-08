@@ -417,6 +417,128 @@ death. Each step is legible and each is reversible.
 
 ---
 
+## 3.5 The trading engine — wealth is EARNED, not emitted
+
+*Ratified 2026-09-08. Rationale: [`../decisions.md`](../decisions.md), top entry — "Towns trade".
+Tickets: **KAN-54** (epic) → KAN-91 · KAN-92 · KAN-93 · KAN-94.*
+
+> **A town buys what it needs and sells what it has spare. Its wealth is the difference.**
+
+**What this replaces.** `yield = trade + grant - upkeep`, where `trade` was a flat number each work
+emitted — a sawpit simply produced coin. And `surplus: food - mouths` was computed every season and
+spent on nothing but a prosperity nudge: **surplus was never sold, deficit was never bought.**
+
+### 3.5.1 The equation
+
+```
+yield = SUM(sold x price x access) + grant - imports paid - upkeep
+```
+
+**Imports are paid BEFORE construction.** Bread before batteries — which produces the good failure
+state: *"they spend all they make on corn."*
+
+`trade` on a `WorkDef` is **reframed, not replaced**: it is what a work sends to the quay. Coin is
+`trade x price x access`. The steer's three structural yield columns are untouched.
+
+### 3.5.2 Who they trade with — "the shipping"
+
+The partner is **the merchant traffic that calls at the roadstead**: not "the world", and not (yet)
+named neighbours. Diegetic rather than abstract — it is a thing you can see, blockade, and *be*.
+
+**Two seams let the named version arrive without a rewrite**, both copying the ratified
+profile-supplier precedent of `region.bears`:
+
+| Seam | First slice | Later, unchanged at every call site |
+|---|---|---|
+| `priceOf(town, produce)` | a flat table x a local modifier | reads a regional market of named towns |
+| `access` (0..1) | derived from harbour works + security | reads real routes and blockades |
+
+`access` multiplies **both** directions. No quay, no security → nothing moves either way.
+
+### 3.5.3 Sells by produce, buys by need
+
+**Asymmetric on purpose.** Exports are named `Produce`, because **identity lives on the export
+side** — "a timber town". Imports are a short need list, because nobody cares *which* cloth a
+colony buys, only that it buys its bread:
+
+**victuals** (population) · **materials** (construction) · **comforts** (prosperity) ·
+**munitions** (security). The first slice ships **victuals only**.
+
+**Materials are the interesting one:** a town that cannot get timber and stone **cannot build**,
+however rich it is — so razing the quay of a stone-poor island stops it rebuilding its wall.
+
+**A town tracks a FLOW BALANCE, never a stock.** `derive()` gains a `commerce` block computed from
+the ledger exactly as `food` and `trade` are today. The ratified do-not-build item *"an in-town
+goods inventory"* survives verbatim.
+
+### 3.5.4 Self-sufficiency — no new term, no threshold
+
+Most settlements try to be as self-sufficient as possible; only a metropolis leans on the shipping.
+That is **a preference, not a rule**, and it costs exactly two edits inside the existing five-term
+auction:
+
+1. **The food `need` term rebases from HUNGER to DEPENDENCY.** It scores *the share of the town's
+   victuals that came off a ship*, not whether anyone is hungry. A town buying a third of its bread
+   scores 0.33 **with full bellies**. Clause: *"too much of their bread comes off a ship."*
+   **This is the load-bearing line — it is why importing never silences the wish for a farm.**
+2. **The `market` term scores what a work would actually FETCH** — `trade x priceOf x access` —
+   rather than a flat constant.
+
+The fork is then honest arithmetic: **`need` argues for the farm, `market` argues for the cane.**
+Self-sufficiency wins in a small town and loses in a big one, **with no threshold anywhere.**
+
+### 3.5.5 The metropolis is emergent — one derived word
+
+`dependency = imported victuals / total victuals`, **derived, zero stored state**, banded into one
+word for the town card: *self-feeding · mostly feeds itself · leans on the shipping ·*
+***fed from the sea***. It writes its own clause, and it is the most raid-relevant fact about a big
+town. The archetype `AGENDA` table already encodes the tendency, so **nothing is authored**.
+
+### 3.5.6 What replaces the ~450-soul ceiling
+
+Population was capped at `foodCap = localFood / perHead`, so no town could outgrow the ground it
+farmed — which is why towns claim only 1–3 of ~24 land hexes in a century. **Bought food lifts that
+cap**, and four limits already in the model replace it:
+
+1. **Coin.** `pop ~= export revenue / (import price + upkeep/head)`. **The ceiling is set by the
+   land's QUALITY, not its acreage.**
+2. **Access.** No quay, no security → nothing moves.
+3. **Ground for houses** — the footprint (§2.11), now biting harder: claiming a provision hex
+   raises the grain bill.
+4. **Hands** — `labourShare`, unchanged.
+
+> **The old ceiling was solid; the new one is FRAGILE.** A trade-fed town of 1,500 falls back
+> toward 450 if you burn its quay. **Ceiling and raid consequence are the same mechanism.**
+
+### 3.5.7 The port seam
+
+Exactly three things are exposed, so the town menu has something real to talk to:
+`derive(town).commerce` · a public pure `priceOf()` · and **two write-points**,
+`sellTo()` / `buyFrom()`, each nudging the local price by `qty / seasonal flow`.
+
+> **The player is a small fish. Cap the nudge.** Otherwise the first thing anyone discovers is that
+> they can buy out a town — an exploit, and a betrayal of "the world runs without you".
+
+### 3.5.8 Two calibration hazards, known in advance
+
+- **A live bug this change triggers.** `prosperityTarget` scores `surplus/head` **positively**. A
+  metropolis has negative surplus *by design*, so every large town will read as "on its knees" the
+  moment imports exist. **Replace that term with `dependency` as a mild negative.**
+- **The oscillation failure mode** (observed in Bannerlord): a town outgrows what its exports fund
+  → coffers empty → food unbought → population falls → regrows → repeats. `POP.drift` should damp
+  it; **watch for it explicitly in the long run.**
+
+### 3.5.9 Never build
+
+Per-good town stockpiles · elasticity curves · goods physically shipped between AI towns ·
+**an omniscient cross-town price table**.
+
+**Guardrail clarified:** the ratified ban is on *the price **table*** — the arbitrage-enabling god
+view — **not on prices existing**. You learn a price by going there, or by **bribing the
+harbourmaster**, which gives rung 1 of the ratified bribery ladder a second thing to sell.
+
+---
+
 ## 4. Damage — what raiding actually does
 
 **Loot and raze must do different things**, or pillage-vs-raze is a flavour choice.
@@ -508,6 +630,14 @@ good at. "A few set-and-forget slots, never a city builder" is unchanged and, wi
 
 ### 5.8 The steer — one focus, and optionally one line
 
+> **MOVED 2026-09-08 — this is no longer part of the town sim.** The human withdrew the investment
+> slider and ruled that *"for now let changes to the town happen only through the natural growth
+> engine"*. The steer is a **player** lever, so it moves to the town menu (**KAN-89**) and ships
+> only when that exists. **The design below is not withdrawn** — one focus over a priority order,
+> the three guards, and "the louder voice writes the clause" all remain the right answers. Only its
+> home has changed. See [`../decisions.md`](../decisions.md), top entry.
+
+
 **Governing principle: thematic steer everywhere; spatial steer only where you own the ground.**
 
 A town is leaned **one way at a time** — ***guns*** or ***coin*** or ***hands*** *(ratified by the
@@ -586,6 +716,13 @@ when you visit or when word reaches you.
 
 ## 6. Archetypes, funding, and the slider
 
+> **AMENDED 2026-09-08 — the slider is WITHDRAWN; the archetypes stand.** The archetype table below
+> is unchanged and is now **KAN-95**. "Funded by" is re-read under §3.5: a colony lives on **its own
+> trade** plus a small charter grant, and a stipend's whole personality is that it is **independent
+> of trade** — an outpost never chases a market, never becomes a metropolis, and is barely worth
+> blockading. Everything about the *slider* is superseded (**KAN-72**, closed).
+
+
 | Archetype | Funded by | Agenda | Raid character |
 |---|---|---|---|
 | **Colony** | its own yield + a small charter grant | revenue first, comfort second, **defence last** | the raidable one; defends at `outpost` grade |
@@ -606,7 +743,16 @@ you can lose**.
 *Deferred archetypes:* **free port / smuggler's town** (the town you *shouldn't* raid, because you
 lose your market) · **company factory** (monoculture, big warehouse, tiny population, hired guns).
 
-### The investment slider
+### The investment slider — WITHDRAWN 2026-09-08
+
+> **Struck by the human:** *"Ignore this slider. it was meant to test something, but we'll address
+> that as part of Towns menu... For now let changes to the town happen only through the natural
+> growth engine (population growth, internal trading engine, weather systems)."*
+>
+> **Kept below for the record only — do not build any of it.** Investing coin in a town moves to
+> the town menu (**KAN-89**); the archetypes it was bundled with move to **KAN-95**. Divergence
+> between towns must now come from **land, archetype and weather**, not from a funding dial.
+
 
 **Coin per season, set as a STANDING COMMITMENT** — set once, changed when *you* choose. The town
 must **never** prompt you to revisit it. Effects, in order of interest:
@@ -1045,3 +1191,23 @@ coupling · the crown's "not worth the blood" stipend withdrawal · investment v
 derived `SettlementTier`; `LOOT` sourced from town wealth · the devolution ladder in detail ·
 migration into your haven from joined prisoners and ex-crew · cheap off-screen approximation for
 untouched towns.
+
+### The trade slice (2026-09-08, fifth) — the engine under everything
+
+*Ratified with the "towns trade" call. See §3.5.* **KAN-54** unparked and reordered from "later" to
+**foundational**, split into four stories: **KAN-91** victuals (the thin slice — one good, no new
+stored state, and the line that lifts the 450 ceiling) · **KAN-92** prices + the market term ·
+**KAN-93** import classes, materials gating construction · **KAN-94** the port seam. Alongside:
+**KAN-90** weather (the shock the engine absorbs) · **KAN-95** archetypes (KAN-72's surviving half)
+· **KAN-89** the town menu (every player lever, parked until the engine exists).
+
+**Build order is not negotiable:** the engine, then weather, then the long run that proves both,
+then — and only then — anything the player can touch.
+
+### Withdrawn (2026-09-08, fifth)
+
+The **investment slider** and everything keyed to it: category-unlocking thresholds, the
+projected-outcome paragraph, and slider-driven divergence. **KAN-72 closed as superseded.** Walls
+**do not** get re-drawn at a larger circuit — the human ratified the faubourg behaviour as
+sufficient (*"if the outpost expand outside the walls, there is logic to it. Housing built outside,
+farming happening outside"*), so that open question is closed rather than deferred.
