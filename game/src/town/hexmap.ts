@@ -11,9 +11,12 @@
 import type { Town, Parcel, ParcelTerrain } from "./types";
 import { CATALOGUE, worksForTerrain, roomFor } from "./works";
 import { isDead, compass, describeParcel } from "./parcels";
-import { axialOf, outerRing, toPixel, corners, CENTRE, isSeaward, type Axial } from "./hex";
+import { axialOf, outerRing, toPixel, corners, CENTRE, isSeaward, sharedEdge, towardCentre, type Axial } from "./hex";
+import { CORE_WORD, enclosedBearings, describeFootprint } from "./footprint";
 
-const SIZE = 40;
+// Smaller hexes, more of them — the same room on screen, visibly more country
+// around the town (ratified 2026-09-08).
+const SIZE = 26;
 
 // Terrain colours. Muted, era-ish, and dead ground is visibly drained.
 const FILL: Record<ParcelTerrain, string> = {
@@ -140,31 +143,60 @@ function parcelHex(town: Town, p: Parcel, index: number): string {
   return `<g class="hx ${worked ? "is-worked" : ""} ${dead ? "is-dead" : ""}">
     <title>${esc(hoverFor(town, p, index))}</title>
     <path d="${hexPath(c, SIZE - 1.5)}" fill="${FILL[p.terrain]}" class="hx-face" />
-    <text class="hx-name" x="${c.x}" y="${c.y - 12}">${esc(FACE[p.terrain])}</text>
+    ${lobe(town, p, c)}
+    <text class="hx-name" x="${c.x}" y="${c.y - 11}">${esc(FACE[p.terrain])}</text>
     ${dead ? "" : `<text class="hx-grade" x="${c.x}" y="${c.y - 1}">${GRADE[p.quality]}</text>`}
     ${body}
-    ${ruins ? `<text class="hx-ruin" x="${c.x}" y="${c.y + 18}">burnt ×${ruins}</text>` : ""}
+    ${ruins ? `<text class="hx-ruin" x="${c.x}" y="${c.y + 16}">burnt ×${ruins}</text>` : ""}
   </g>`;
+}
+
+// The town's built-up ground biting into the INNER EDGE of a hex. Never a
+// sub-hex and never a hexagon: the hex is not divided, part of it is built over.
+function lobe(town: Town, p: Parcel, c: { x: number; y: number }): string {
+  const level = town.footprint.spill[p.bearing];
+  if (!level) return "";
+  // Taken entirely — the ground is the town now, and its works are gone with it.
+  if (level >= 3) return `<path d="${hexPath(c, SIZE - 1.5)}" class="hx-absorbed" />`;
+  const at = towardCentre(c, level === 1 ? 0.44 : 0.3);
+  const r = (level === 1 ? 0.34 : 0.54) * SIZE;
+  return `<circle class="hx-lobe" cx="${at.x.toFixed(1)}" cy="${at.y.toFixed(1)}" r="${r.toFixed(1)}" />`;
+}
+
+// The wall runs along the edges its circuit encloses. GAPS ARE NORMAL — an
+// unenclosed bearing is the way in.
+function wallTrace(town: Town): string {
+  const c = toPixel(CENTRE, SIZE);
+  const ruined = town.works.some((w) => w.circuit && w.condition === "ruin");
+  return [...enclosedBearings(town)]
+    .map((b) => {
+      const [a, z] = sharedEdge(c, SIZE - 1.5, b);
+      return `<line class="hx-wall${ruined ? " is-ruin" : ""}" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${z.x.toFixed(1)}" y2="${z.y.toFixed(1)}" />`;
+    })
+    .join("");
 }
 
 function centreHex(town: Town): string {
   const c = toPixel(CENTRE, SIZE);
   const souls = Math.round(town.population);
-  // The glyph thickens with the town — size fidelity, so a bigger town reads as
-  // a bigger raid map before you ever land on it.
-  const density = Math.min(1, souls / 600);
+  // Driven by the CORE GRADE, not population: how closely a town is built is what
+  // the raid map's depth keys on (fidelity contract 4).
+  const grade = town.footprint.core;
   return `<g class="hx hx-town">
-    <title>${esc(`${town.name} — ${souls} souls.\nThe built-up town: this hex is the ground you land on.`)}</title>
+    <title>${esc(
+      `${town.name} — ${souls} souls, ${CORE_WORD[grade]}.` +
+        `\n${describeFootprint(town)}` +
+        `\nThe built-up town: this is the ground you land on.`,
+    )}</title>
     <path d="${hexPath(c, SIZE - 1.5)}" fill="#2b2519" class="hx-face" />
-    <path d="${hexPath(c, (SIZE - 6) * (0.45 + 0.5 * density))}" fill="#4a4029" class="hx-core" />
-    <text class="hx-name" x="${c.x}" y="${c.y - 10}">the town</text>
-    <text class="hx-work" x="${c.x}" y="${c.y + 6}">${souls}</text>
-    <text class="hx-grade" x="${c.x}" y="${c.y + 19}">souls</text>
+    <path d="${hexPath(c, (SIZE - 4) * (0.4 + 0.14 * grade))}" fill="#4a4029" class="hx-core" />
+    <text class="hx-name" x="${c.x}" y="${c.y - 8}">${esc(CORE_WORD[grade])}</text>
+    <text class="hx-work" x="${c.x}" y="${c.y + 8}">${souls}</text>
   </g>`;
 }
 
-// The twelve hinterland hexes: drawn so the map reads as country, carrying no
-// data yet (roads, neighbours and annexation are the deferred tail).
+// The hinterland: drawn so the map reads as country — there is a lot of land —
+// and carrying no data yet (roads, neighbours and annexation are the tail).
 function hinterland(): string {
   return outerRing()
     .map((h: Axial) => {
@@ -176,10 +208,11 @@ function hinterland(): string {
 }
 
 export function renderHexMap(town: Town): string {
-  return `<svg class="landmap" viewBox="-150 -150 300 300" role="img" aria-label="the land around ${esc(town.name)}">
+  return `<svg class="landmap" viewBox="-160 -160 320 320" role="img" aria-label="the land around ${esc(town.name)}">
     ${hinterland()}
     ${centreHex(town)}
     ${town.parcels.map((p, i) => parcelHex(town, p, i)).join("")}
+    ${wallTrace(town)}
   </svg>`;
 }
 
@@ -193,5 +226,5 @@ export function landCaption(town: Town): string {
     : "There is no sheltered water here; a landing would be an open beach.";
   const marsh = town.parcels.filter((p) => p.terrain === "marsh");
   const slow = marsh.length ? ` Slow going ${marsh.map((p) => `to the ${compass(p.bearing)}`).join(" and ")}.` : "";
-  return approach + slow;
+  return `${describeFootprint(town)} ${approach}${slow}`;
 }

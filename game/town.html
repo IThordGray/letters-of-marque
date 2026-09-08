@@ -33,7 +33,7 @@
       .caption { margin: 2px 0 0; font-style: italic; }
 
       /* ---- the land map: grades and words on the face, numbers on hover ---- */
-      .landmap { width: 100%; max-width: 340px; display: block; margin: 4px 0 0 -6px; }
+      .landmap { width: 100%; max-width: 380px; display: block; margin: 4px 0 0 -6px; }
       .landmap text { text-anchor: middle; font-family: inherit; pointer-events: none; }
       .hx-far { stroke: #14120e; stroke-width: 2; opacity: .5; }
       .hx-face { stroke: #14120e; stroke-width: 2; }
@@ -49,7 +49,13 @@
       .hx-ruin { font-size: 8px; fill: #a2603f; }
       .is-dead .hx-face { opacity: .55; }
       .hx-town .hx-core { stroke: #6b5c39; stroke-width: 1; }
-      .hx-town .hx-work { font-size: 13px; fill: #c9a227; }
+      .hx-town .hx-work { font-size: 12px; fill: #c9a227; }
+      /* the town's built-up ground biting into a hex — never a sub-hex */
+      .hx-lobe { fill: #6b5c39; opacity: .55; }
+      .hx-absorbed { fill: #6b5c39; opacity: .8; stroke: #14120e; stroke-width: 2; }
+      /* the wall's circuit. Gaps are normal — an unenclosed side is the way in. */
+      .hx-wall { stroke: #d8cdb2; stroke-width: 3.5; stroke-linecap: round; }
+      .hx-wall.is-ruin { stroke: #8a7f66; stroke-dasharray: 4 4; }
       .wants li { margin: 4px 0; }
       .wants b { color: #c9a227; font-weight: normal; }
       .log li { color: #a89b82; }
@@ -59,7 +65,7 @@
     <h1>Letters of Marque — living towns</h1>
     <p class="sub">
       KAN-68 the entity &amp; season tick · KAN-69 the founding roll · KAN-70 the works ledger ·
-      KAN-71 the governor's plan. The ledger is the simulation; the map is a projection of it.
+      KAN-71 the governor's plan · KAN-79/80 the land map · KAN-82/83 the footprint. The ledger is the simulation; the map is a projection of it.
       Three stored numbers — population, wealth, prosperity — everything else derived.
       Nobody here is taking orders from you.
     </p>

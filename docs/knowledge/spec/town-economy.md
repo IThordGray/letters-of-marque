@@ -101,7 +101,7 @@ grid; not a tag list. Each parcel:
 **`bearing` is the load-bearing field.** It is what turns an economic fact into a place on the
 raid map (§7). Without it a parcel is just a number.
 
-### The hex ring — draw 19, simulate 7
+### The hex ring — draw 37, simulate 7
 
 The land is shown as a hex flower, and **one hex = one parcel, never subdivided**. That rule is
 the anti-dilution guarantee: the old objection to a Civ grid ("many tiles average out") is a
@@ -111,7 +111,7 @@ property of *grain*, not of hexes.
 |---|---|
 | **Centre (1)** | **The town itself** — the built-up area. Load-bearing: one centre hex = one raid map (§7.5). |
 | **Inner (6)** | **The parcel ring.** Each hex is one `Parcel`. This is the whole simulated economy. |
-| **Outer (12)** | **Hinterland** — drawn, `sea \| land` only, no data. It makes the map read as *country* and holds the deferred tail (roads, neighbours, annexation). |
+| **Outer (30)** | **Hinterland** *(radius 3, amended 2026-09-08 — was 12 at radius 2)* — drawn, `sea \| land` only, no data. Smaller hexes and more of them: the map reads as *country*, and it holds the deferred tail (roads, neighbours, annexation). |
 
 **Flat-top hexes, deliberately:** their six directions drop E and W but **keep N and S**, so the
 ratified "the sea lies south" invariant survives. Pointy-top would have broken it.

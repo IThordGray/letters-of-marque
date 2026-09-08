@@ -3,7 +3,7 @@
 // grid's coordinates are a definition, not a tuning dial.
 
 import { describe, it, expect } from "vitest";
-import { axialOf, innerRing, outerRing, distance, toPixel, corners, CENTRE, BEARING_ORDER, isSeaward } from "./hex";
+import { axialOf, innerRing, outerRing, ring, distance, toPixel, corners, CENTRE, BEARING_ORDER, isSeaward, HINTERLAND_RADIUS, sharedEdge } from "./hex";
 
 describe("the flower", () => {
   it("puts one hex at the centre for the town itself", () => {
@@ -17,15 +17,18 @@ describe("the flower", () => {
     for (const h of ring) expect(distance(h, CENTRE)).toBe(1);
   });
 
-  it("surrounds that with twelve hinterland hexes", () => {
+  it("surrounds that with hinterland out to the drawn edge", () => {
     const outer = outerRing();
-    expect(outer.length).toBe(12);
-    for (const h of outer) expect(distance(h, CENTRE)).toBe(2);
+    expect(outer.length).toBeGreaterThan(6); // there is a lot of land
+    for (const h of outer) {
+      expect(distance(h, CENTRE)).toBeGreaterThan(1); // never over a parcel
+      expect(distance(h, CENTRE)).toBeLessThanOrEqual(HINTERLAND_RADIUS);
+    }
   });
 
   it("gives every hex in the flower its own coordinate", () => {
     const all = [CENTRE, ...innerRing(), ...outerRing()];
-    expect(new Set(all.map((h) => `${h.q},${h.r}`)).size).toBe(19);
+    expect(new Set(all.map((h) => `${h.q},${h.r}`)).size).toBe(all.length);
   });
 });
 
@@ -70,5 +73,23 @@ describe("drawing", () => {
     expect(outer.some((h) => !isSeaward(h))).toBe(true);
     // ...and it agrees with which way is down on the drawn map.
     for (const h of outer) if (isSeaward(h)) expect(toPixel(h, 10).y).toBeGreaterThan(0);
+  });
+});
+
+describe("geometry the map leans on", () => {
+  it("builds each ring from cells at exactly that distance", () => {
+    for (const n of [1, 2, 3]) for (const h of ring(n)) expect(distance(h, CENTRE)).toBe(n);
+  });
+
+  it("gives a wall an edge to run along, shared with the hex it faces", () => {
+    const size = 20;
+    for (const b of BEARING_ORDER) {
+      const [a, z] = sharedEdge({ x: 0, y: 0 }, size, b);
+      // the edge is a chord of the hex, and it faces the neighbour it separates
+      expect(Math.hypot(z.x - a.x, z.y - a.y)).toBeCloseTo(size, 6);
+      const mid = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
+      const to = toPixel(axialOf(b), size);
+      expect(Math.atan2(mid.y, mid.x)).toBeCloseTo(Math.atan2(to.y, to.x), 6);
+    }
   });
 });

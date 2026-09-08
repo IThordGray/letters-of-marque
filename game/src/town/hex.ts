@@ -32,16 +32,23 @@ export const CENTRE: Axial = { q: 0, r: 0 };
 // The six parcel hexes, in clockwise bearing order.
 export const innerRing = (): Axial[] => BEARING_ORDER.map(axialOf);
 
-// The twelve hinterland hexes — every cell at distance 2 from the centre.
-export function outerRing(): Axial[] {
+// Every cell at exactly distance n from the centre.
+export function ring(n: number): Axial[] {
   const out: Axial[] = [];
-  for (let q = -2; q <= 2; q++) {
-    for (let r = Math.max(-2, -q - 2); r <= Math.min(2, -q + 2); r++) {
-      if (distance({ q, r }, CENTRE) === 2) out.push({ q, r });
+  for (let q = -n; q <= n; q++) {
+    for (let r = Math.max(-n, -q - n); r <= Math.min(n, -q + n); r++) {
+      if (distance({ q, r }, CENTRE) === n) out.push({ q, r });
     }
   }
   return out;
 }
+
+// The hinterland: everything beyond the parcel ring, out to the drawn edge.
+// Drawn so the map reads as country — there is a lot of land — and carrying no
+// data yet beyond sea-or-shore.
+export const HINTERLAND_RADIUS = 3;
+export const outerRing = (): Axial[] =>
+  Array.from({ length: HINTERLAND_RADIUS - 1 }, (_, i) => ring(i + 2)).flat();
 
 export function distance(a: Axial, b: Axial): number {
   const dq = a.q - b.q;
@@ -68,3 +75,17 @@ export function corners(centre: { x: number; y: number }, size: number): { x: nu
 // A hinterland hex is "sea" if it lies seaward — the sea is south, so anything in
 // the southern arc of the outer ring is water. Enough to frame the coast.
 export const isSeaward = (a: Axial) => a.r + a.q / 2 > 0.5;
+
+// The two corners a hex shares with its neighbour in direction `b` — the line a
+// wall runs along when that bearing is enclosed.
+export function sharedEdge(centre: { x: number; y: number }, size: number, b: Bearing): [{ x: number; y: number }, { x: number; y: number }] {
+  const to = toPixel(axialOf(b), size);
+  const theta = Math.atan2(to.y, to.x);
+  const at = (a: number) => ({ x: centre.x + size * Math.cos(a), y: centre.y + size * Math.sin(a) });
+  return [at(theta - Math.PI / 6), at(theta + Math.PI / 6)];
+}
+
+// A point between a ring hex and the town, where the built-up ground bites in.
+export function towardCentre(from: { x: number; y: number }, t: number): { x: number; y: number } {
+  return { x: from.x * (1 - t), y: from.y * (1 - t) };
+}
