@@ -33,6 +33,8 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
   rendering — added when profiling / counts justify it, not up front.
 - Fixed-timestep sim loop (`loop.ts`), rendering decoupled. Sim systems stay pure so
   they're headless-testable; the DOM/canvas layer only runs in a browser.
+- **Verified with Vitest** — `npm test`. Pure systems are pinned by a real suite that
+  is kept, not a throwaway smoke. Rules and rationale: [testing.md](testing.md).
 
 ## Deliberate non-choices
 - **Durable stack = TypeScript + Vite** (decided 2026-08-17). The earlier C#/.NET +

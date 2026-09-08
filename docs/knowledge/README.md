@@ -32,7 +32,8 @@ Knowledge about **what the game should do** is kept separate from **how it's bui
 | [spec/town-economy.md](spec/town-economy.md) | WHAT | Living towns — the works ledger, parcels, the governor's plan, archetypes, map projection. |
 | [process/workflow.md](process/workflow.md) | process | Tickets & commits (Jira, 1 ticket = 1 commit, `ai` label). |
 | [implementation/solution-architecture.md](implementation/solution-architecture.md) | HOW | Stack, repo layout, run commands, non-choices. |
-| [implementation/coding-rules.md](implementation/coding-rules.md) | HOW | How prototype code is written & verified. |
+| [implementation/coding-rules.md](implementation/coding-rules.md) | HOW | How **prototype** code is written & verified. |
+| [implementation/testing.md](implementation/testing.md) | HOW | How the **durable build** (`game/`) is tested — Vitest, and the two house rules. |
 | [decisions.md](decisions.md) | cross-cutting | Ratified decisions & rationale (note each entry's layer). |
 
 ## Relationship to memory

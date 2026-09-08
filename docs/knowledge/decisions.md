@@ -10,6 +10,36 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-07 — The durable build gets a real test suite (Vitest); prototypes keep throwaway smokes
+`coding-rules.md` was scoped to the **prototypes** only, so `game/` had no testing convention —
+a gap found while building KAN-68. Settled: the durable build's **pure systems are pinned by a
+kept suite**, because in `game/` the sim *is* the product.
+- **Vitest**, because it is Vite-native — it shares the app's own module resolution, so TS and
+  extensionless imports work with no bundling step and no duplicated config. One devDependency.
+  `npm test` / `npm run test:watch`. Tests sit **co-located** (`sim.ts` → `sim.test.ts`).
+- **Pure systems only.** Never rendering, canvas, DOM, input, camera or the loop. A bug you can
+  only see on screen is found by playtesting, not by the suite.
+- **Rule 1 — a test name is a design claim, not a function name.** The suite should read like the
+  design doc (*"crawls back to a hamlet rather than dying"*, not *"stepSeason updates population"*).
+  Same discipline as the town spec's *no number without a sentence*: a test you can't read aloud is
+  testing the implementation, not the design.
+- **Rule 2 — assert directions and relationships, NEVER tuned constants.** Every number in a
+  `constants.ts` is an explicit starting guess meant to move after playtest; a suite that pins exact
+  values would punish tuning, which is backwards for this project. A test answers *"is the rule
+  still true?"*, never *"is the dial still where I left it?"*.
+- **Every module gets a reproducibility test** (same seed + same steps → same result): one
+  assertion, and it catches a whole class of otherwise-miserable bugs.
+- **No snapshots, no mocks, no coverage target.** Snapshots pin constants by the back door; pure
+  functions over plain structs need no doubles; coverage rewards testing trivia.
+- Acceptance criteria are the bar — **every story's criteria become tests**; every bug fix gets its
+  failing case first; a pure tuning pass should need no new tests (if it does, rule 2 broke).
+*Why:* the prototypes are disposable and optimise for how fast a rule can change; `game/` is kept,
+and its data-oriented split (pure systems over plain structs) exists precisely so behaviour is
+testable without a browser — that only pays off if the tests are kept too. Full rules:
+[implementation/testing.md](implementation/testing.md).
+
+---
+
 ### 2026-09-07 — Living towns: the ledger is the simulation, the map is a projection
 The parked town-economy epic (KAN-54) wakes up and widens — a town becomes an **entity with a
 life of its own** that the player acts upon but never operates (shaped with the game-designer;

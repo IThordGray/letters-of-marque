@@ -19,6 +19,11 @@ Every unit of work is tracked as a Jira ticket and lands as a matching commit.
 - **Every feature and every bug is a ticket.** No work without a ticket.
 - **Too big → break it down.** A large feature becomes an **epic** split into
   **stories**.
+- **Cross-cutting chore / infra → an unparented Task.** Work that serves the whole
+  project rather than one feature (tooling, test setup, build config) is a **Task with
+  no parent** — don't hang it off an epic it merely happened to surface during. It
+  still carries the `ai` label and a description. If the work was already done before
+  the ticket existed, say so in the description rather than pretending otherwise.
 - **One ticket = one commit.** If the work needs separate commits (e.g. a refactor,
   then the feature on top), each commit gets its own smaller ticket.
 - **Every ticket carries a description** — what and why (see the template below).
