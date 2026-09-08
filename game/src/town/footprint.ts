@@ -1,126 +1,122 @@
 // The town's built-up ground, and how it grows over a century.
 //
 // THE LAND A TOWN WORKS IS FIXED AT FOUNDING. What grows is how much of it the
-// town has built over. Pure systems over the Town struct — no DOM, no randomness.
+// town has built over — a set of CLAIMED HEXES, which makes "growth eats its own
+// cause" literal and countable: claim a cane hex and the cane is one hex smaller.
 //
-// The order of relief IS "builds inwards-out": densify first, spill second,
+// The order of relief IS "builds inwards-out": densify first, spread second,
 // outside the wall third, and nothing fourth.
 
-import type { Town, Bearing, Footprint, CoreGrade, SpillLevel, ParcelTerrain } from "./types";
+import type { Town, Region, TerrainKind, CoreGrade } from "./types";
+import type { Axial } from "./hex";
+import { key, neighbours, distance, CENTRE } from "./hex";
+import { isBuildable, LABEL, capacityOf } from "./land";
 import { CATALOGUE } from "./works";
 import { FOOTPRINT, SPRAWL } from "./constants";
-import { BEARING_ORDER } from "./hex";
 
 export const CORE_WORD = ["scattered", "settled", "close-built", "packed", "stone-built"] as const;
-export const SPILL_WORD = ["clear", "skirts", "a suburb", "absorbed"] as const;
 
-export function makeFootprint(): Footprint {
-  const spill = {} as Record<Bearing, SpillLevel>;
-  for (const b of BEARING_ORDER) spill[b] = 0;
-  return { core: 0, spill };
-}
+export const makeFootprint = () => ({ core: 0 as CoreGrade, claimed: [{ ...CENTRE }] as Axial[] });
+
+export const isClaimed = (town: Town, h: Axial) => town.footprint.claimed.some((c) => key(c) === key(h));
 
 // ---- Room, and running out of it -------------------------------------------
 
-// Everything that is not `beyondThePale` stands INSIDE the town. dwellings already
-// auto-raise one per forty souls, so population drives the pressure through
-// machinery that already exists.
+// Everything that is not `beyondThePale` stands INSIDE the town. Dwellings
+// already auto-raise one per forty souls, so population drives the pressure
+// through machinery that already exists.
 export const inTownWorks = (town: Town) =>
   town.works.filter((w) => w.condition !== "ruin" && CATALOGUE[w.kind].zone !== "beyondThePale").length;
 
-export function room(town: Town): number {
-  let r = FOOTPRINT.coreRoom[town.footprint.core];
-  for (const b of BEARING_ORDER) r += FOOTPRINT.quarterRoom[town.footprint.spill[b]];
-  return r;
-}
+export const room = (town: Town) =>
+  FOOTPRINT.coreRoom[town.footprint.core] + (town.footprint.claimed.length - 1) * FOOTPRINT.roomPerClaim;
 
 export const crowding = (town: Town) => inTownWorks(town) / Math.max(1, room(town));
 
 // ---- Where it may spread ---------------------------------------------------
 
-// A town builds over worthless ground first and its own living last. It will
-// never build on mangrove or water.
-const SPILL_ORDER: ParcelTerrain[] = ["scrub", "bluff", "timberedHills", "provisionGrounds", "caneFlats"];
-const canBuildOn = (t: ParcelTerrain) => SPILL_ORDER.includes(t);
+// A town builds over worthless ground first and its own living last. Order is by
+// what it can afford to lose.
+const SPREAD_ORDER: TerrainKind[] = [
+  "scrub", "bluff", "rockyGround", "timberedHills", "tilledGround", "cottonGround", "caneFlats", "saltPans",
+];
 
-// The bearings a standing wall actually encloses. Spilling onto one of these means
-// going OUTSIDE the gate — a faubourg.
-export function enclosedBearings(town: Town): Set<Bearing> {
-  const out = new Set<Bearing>();
+// The wall's frozen circuit — the boundary it enclosed WHEN IT WAS RAISED, never
+// re-extended. So a hex claimed later, outside it, simply IS the faubourg.
+export function walledGround(town: Town): Set<string> {
+  const out = new Set<string>();
   for (const w of town.works) {
     if (w.condition === "ruin" || !w.circuit) continue;
-    for (const b of w.circuit) out.add(b);
+    for (const h of w.circuit) out.add(key(h));
   }
   return out;
 }
 
-// Which way the town grows next. Ordered by what it can afford to lose, and
-// tie-broken by EXTENDING AN EXISTING QUARTER — which is what makes a town grow
-// lobes rather than a uniform ring.
-export function nextBearing(town: Town, outsideWall: boolean): Bearing | null {
-  const enclosed = enclosedBearings(town);
-  const granted = new Set(town.grantedToTown ?? []);
-  let best: { b: Bearing; rank: number; spill: number } | null = null;
+const regionAt = (town: Town, h: Axial): Region | null =>
+  town.regions.find((r) => r.hexes.some((x) => key(x) === key(h))) ?? null;
 
-  town.parcels.forEach((p) => {
-    if (!canBuildOn(p.terrain)) return; // never marsh, never open water
-    const level = town.footprint.spill[p.bearing];
-    if (level >= 3) return; // already taken entirely
-    if (enclosed.has(p.bearing) !== outsideWall) return;
+// Which hex the town takes next. Ordered by what it can afford to lose, and
+// tie-broken by THE MOST ALREADY-CLAIMED NEIGHBOURS — which is what makes a town
+// grow lobes rather than a uniform ring.
+export function nextHex(town: Town, outsideWall: boolean): Axial | null {
+  const walled = walledGround(town);
+  const granted = new Set(town.grantedToTown ?? []);
+  let best: { h: Axial; rank: number; touching: number } | null = null;
+
+  for (const h of town.land) {
+    if (isClaimed(town, h)) continue;
+    const r = regionAt(town, h);
+    if (!r || !isBuildable(r.terrain)) continue; // never mangrove, never water
+    // Must touch the town: a town grows outward from itself, not in patches.
+    const touching = neighbours(h).filter((n) => isClaimed(town, n)).length;
+    if (!touching) continue;
+    // Inside the old wall or outside it — the caller decides which pass this is.
+    if (walled.size > 0 && walled.has(key(h)) === outsideWall) continue;
     // A haven owner may open ground to the town; that ground goes first of all.
-    const rank = granted.has(p.bearing) ? -1 : SPILL_ORDER.indexOf(p.terrain);
-    if (!best || rank < best.rank || (rank === best.rank && level > best.spill)) {
-      best = { b: p.bearing, rank, spill: level };
+    const rank = granted.has(r.id) ? -1 : SPREAD_ORDER.indexOf(r.terrain);
+    if (rank < 0 && !granted.has(r.id)) continue;
+    if (!best || rank < best.rank || (rank === best.rank && touching > best.touching)) {
+      best = { h, rank, touching };
     }
-  });
-  return best ? (best as { b: Bearing }).b : null;
+  }
+  return best ? (best as { h: Axial }).h : null;
 }
 
 // ---- The season's growth ---------------------------------------------------
 
 export interface Grew {
-  kind: "densified" | "spilled" | "faubourg" | "stalled";
-  bearing?: Bearing;
+  kind: "densified" | "spread" | "faubourg" | "stalled";
+  hex?: Axial;
   sentence: string;
 }
-
-const terrainAt = (town: Town, b: Bearing) => town.parcels.find((p) => p.bearing === b)?.terrain;
-
-const SPILL_CLAUSE: Partial<Record<ParcelTerrain, string>> = {
-  scrub: "out over the dry scrub",
-  bluff: "up onto the bluff",
-  timberedHills: "up toward the timber",
-  provisionGrounds: "over the fields",
-  caneFlats: "over the cane",
-};
 
 export function stepFootprint(town: Town): Grew | null {
   if (crowding(town) < FOOTPRINT.crowdedAt) return null;
 
   const f = town.footprint;
   const temper = SPRAWL[town.archetype];
-  const costToRise = (g: CoreGrade) => FOOTPRINT.densifyCost[g] ?? Infinity;
+  const cost = (g: CoreGrade) => FOOTPRINT.densifyCost[g] ?? Infinity;
 
   // 1. DENSIFY. Building closer costs nothing at first; stone and storeys cost
-  //    money, which is why a poor town sprawls and a funded one does not.
-  if (f.core < 4 && costToRise(f.core) === 0) return densify(town);
+  //    money, which is why a poor town spreads and a funded one does not.
+  if (f.core < 4 && cost(f.core) === 0) return densify(town);
 
-  // 2. SPILL. A town that would rather spread than pay for stone does so here —
-  //    that single line is what makes a colony sprawl and a presidio hold.
+  // 2. SPREAD — and this single line is what makes a colony sprawl and a
+  //    presidio hold its outline for a century.
   if (temper.willSpill && f.core >= temper.densifyFirstTo) {
-    const grew = spill(town, false) ?? spill(town, true);
+    const grew = spread(town, false) ?? spread(town, true);
     if (grew) return grew;
   }
 
-  // 3. ...otherwise pay for the stone if the coffers allow.
-  if (f.core < 4 && town.wealth >= costToRise(f.core)) {
-    town.wealth -= costToRise(f.core);
+  // 3. ...otherwise pay for the stone, if the coffers allow.
+  if (f.core < 4 && town.wealth >= cost(f.core)) {
+    town.wealth -= cost(f.core);
     return densify(town);
   }
 
-  // 4. A last try at spilling, for a town that could not afford to build upward.
+  // 4. A last try, for a town that could not afford to build upward.
   if (temper.willSpill) {
-    const grew = spill(town, false) ?? spill(town, true);
+    const grew = spread(town, false) ?? spread(town, true);
     if (grew) return grew;
   }
 
@@ -139,32 +135,26 @@ function densify(town: Town): Grew {
   };
 }
 
-function spill(town: Town, outsideWall: boolean): Grew | null {
-  const b = nextBearing(town, outsideWall);
-  if (!b) return null;
-  const level = (town.footprint.spill[b] + 1) as SpillLevel;
-  town.footprint.spill[b] = level;
-  const where = SPILL_CLAUSE[terrainAt(town, b)!] ?? "outward";
-  if (outsideWall) {
-    return { kind: "faubourg", bearing: b, sentence: `There are houses outside the gate now, ${where}.` };
-  }
-  const how = level === 3 ? "has taken the ground entirely" : level === 2 ? "has spread" : "is creeping";
-  return { kind: "spilled", bearing: b, sentence: `The town ${how} ${where}.` };
+function spread(town: Town, outsideWall: boolean): Grew | null {
+  const h = nextHex(town, outsideWall);
+  if (!h) return null;
+  town.footprint.claimed.push(h);
+  const r = regionAt(town, h);
+  const over = r ? LABEL[r.terrain] : "the open ground";
+  const gone = r && capacityOf(town, r) === 0 ? ` The ${LABEL[r.terrain]} are gone.` : "";
+  return outsideWall
+    ? { kind: "faubourg", hex: h, sentence: `There are houses outside the gate now, out over ${over}.${gone}` }
+    : { kind: "spread", hex: h, sentence: `The town has spread out over ${over}.${gone}` };
 }
 
 // ---- Reading it back -------------------------------------------------------
 
-// Ground the town has built over entirely — its works are gone and no more can be
-// raised there. This is the one place the footprint writes into the ledger.
-export const isAbsorbed = (town: Town, b: Bearing) => town.footprint.spill[b] >= 3;
-
 export function describeFootprint(town: Town): string {
   const f = town.footprint;
-  const quarters = BEARING_ORDER.filter((b) => f.spill[b] > 0);
-  if (!quarters.length) return `A ${CORE_WORD[f.core]} town on its own ground.`;
-  const enclosed = enclosedBearings(town);
-  const out = quarters.filter((b) => enclosed.has(b));
-  const parts = [`A ${CORE_WORD[f.core]} town, spread onto ${quarters.length} side${quarters.length > 1 ? "s" : ""}`];
-  if (out.length) parts.push(`with houses outside the gate`);
-  return parts.join(", ") + ".";
+  const quarters = f.claimed.length - 1;
+  if (quarters <= 0) return `A ${CORE_WORD[f.core]} town on its own ground.`;
+  const walled = walledGround(town);
+  const outside = f.claimed.filter((h) => walled.size > 0 && !walled.has(key(h)) && distance(h, CENTRE) > 0).length;
+  const base = `A ${CORE_WORD[f.core]} town, spread over ${quarters} more hex${quarters > 1 ? "es" : ""}`;
+  return outside > 0 ? `${base}, with houses outside the gate.` : `${base}.`;
 }
