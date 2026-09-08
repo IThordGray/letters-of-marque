@@ -37,6 +37,12 @@ durable is committed. Full detail:
 ## Delegation protocol
 - Read the request → identify its scope (`cross-cutting` · `naval` · `land` ·
   `strategic` · `design` · `qa`) → choose an agent from the roster.
+- **Sizeable or half-formed request? `scope-analyst` FIRST, before design or code.**
+  Standing instruction from the human (2026-09-08): *"there is a lot I'm figuring out
+  as I go, so I'm giving you a lot of contradictions and ambiguity… get a list of
+  questions to me rather than try something and then clear it up afterwards."*
+  **Bring him questions, not guesses** — and never a question you could have defaulted
+  yourself.
 - In the delegation prompt, always give the agent: **(a)** the goal, **(b)** which
   knowledge/spec files to read first, **(c)** the scope guardrail, **(d)** an
   instruction to end its report with **"Knowledge to capture:"** — anything the
@@ -52,6 +58,7 @@ only when a real, recurring need appears (stay lean).
 
 | Agent | Delegate to it for |
 |-------|--------------------|
+| `scope-analyst` | **Run it FIRST on any sizeable or half-formed request.** Reads the brief against the ratified knowledge base, separates what is actually decided from what only looks decided, and returns a ranked list of questions for the human — ambiguity, contradiction, hidden scope, collisions with existing decisions. Asks; never designs, never writes code. |
 | `ticket-manager` | Capturing/updating work on the Jira board — tickets, epics→stories, `ai` label, commit links. (Needs the Atlassian connector authorized.) |
 | `game-designer` | Shaping any feature/mechanic — grounds proposals in the Cutthroats heritage + design pillars, surveys how comparable games handle it, returns pirate-flavoured options & trade-offs. Advises; writes no code. |
 | *generic:* general-purpose · Explore · Plan | Search, research, planning when no specialist fits. |
