@@ -35,11 +35,12 @@
       /* ---- the land map: one label per region, numbers on hover only ---- */
       .landmap { width: 100%; max-width: 420px; display: block; margin: 6px 0 0; }
       .landmap text { text-anchor: middle; font-family: inherit; pointer-events: none; }
-      .rg { cursor: help; }
       .rg-face { stroke: none; }
+      /* EACH HEX is the unit you inspect; the region only draws around them. */
+      .hx { cursor: help; }
+      .hx:hover .rg-face { filter: brightness(1.35); }
       /* the region drawn as ONE shape — the union outline, not per-hex borders */
       .rg-edge { fill: none; stroke: #14120e; stroke-width: 1.6; opacity: .8; }
-      .rg:hover .rg-edge { stroke: #c9a227; stroke-width: 2.4; opacity: 1; }
       .rg-name { font-size: 9px; fill: #e2d8bf; letter-spacing: .05em; opacity: .92; }
       .is-dead .rg-face { opacity: .5; }
       .is-dead .rg-name { fill: #8b8271; }

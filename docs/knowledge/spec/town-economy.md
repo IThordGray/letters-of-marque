@@ -150,6 +150,23 @@ named hex.
 > **R4 — one label per region, never per hex.** A hex is a unit of area, not of announcement. This
 > is the single biggest anti-quilt measure.
 
+**R4 governs LABELS, not ADDRESSING** *(clarified 2026-09-08 by the human, on seeing the map)*. A
+region is a unit of **capacity and drawing**; the **hex remains the unit of ground, of the ledger,
+and of inspection**. Three hexes of tilled land are three separate pieces of ground that happen to
+be alike:
+
+- **Every hex is independently inspectable** — its own hover, its own text, saying what stands on
+  *that* hex and whether the town has built over it.
+- **Capacity falls one hex at a time.** Build over one of three field hexes and production drops
+  to two; the work standing there idles and the other two carry on. *"If growth is prioritised it
+  should be able to expand into the fields as a last resort for housing — that reduces the overall
+  production of this town's 3 tiles to 2."*
+- **The merged outline and the single label are a visual grouping only.** They must never become
+  the thing the player addresses, because that hides the very cost that makes growth matter.
+
+Failing this is how a model that is correct underneath can still *look* coarse: the sim already
+counted hexes; only the map had stopped saying so.
+
 **Identity comes from three sources where it came from one:** **proportion** (new, and the
 strongest) · the **dominant region** (what the place is *for*) · **shape and adjacency** (which the
 raid map cashes in). The prose must speak in proportions or none of it is visible: not *"cane flats

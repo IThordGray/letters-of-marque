@@ -14,7 +14,7 @@ import type { Axial } from "./hex";
 import { toPixel, corners, key, centroid, bounds, sharedEdge, BEARING_ORDER, axialOf } from "./hex";
 import { isDead, isWater, LABEL, SHORT, compass, describeLand, capacityOf, liveRegions } from "./land";
 import { CATALOGUE, worksForRegion } from "./works";
-import { describeFootprint, walledGround } from "./footprint";
+import { describeFootprint, walledGround, isClaimed } from "./footprint";
 
 const SIZE = 22;
 
@@ -100,8 +100,8 @@ export function regionSummary(town: Town, r: Region): RegionSummary {
 
 const SUIT_WORD: Record<Suit, string> = { ideal: "made for", fair: "takes, well enough,", poor: "grudges" };
 
-// Grades and words on the face; numbers only here, and only with their sentence.
-function hoverFor(town: Town, r: Region): string {
+// The region as a whole, for the town card. The MAP inspects per hex (above).
+export function hoverFor(town: Town, r: Region): string {
   const s = regionSummary(town, r);
   const lines = [
     `${LABEL[r.terrain]} to the ${compass(r.bearing)} — ${s.hexes} hex${s.hexes > 1 ? "es" : ""}${
@@ -129,32 +129,87 @@ function hoverFor(town: Town, r: Region): string {
   return lines.join("\n");
 }
 
+// What ONE HEX is, said on its own. The region is a visual grouping and a unit of
+// capacity; THE HEX REMAINS THE UNIT OF GROUND. Three hexes of tilled land are
+// three separate pieces of ground that happen to be alike — build over one and
+// the other two carry on.
+function hoverForHex(town: Town, r: Region, h: Axial): string {
+  const idx = town.regions.indexOf(r);
+  const here = town.works.filter((w) => w.region === idx && w.hex && key(w.hex) === key(h));
+  const claimed = isClaimed(town, h);
+  const kin = r.hexes.length;
+  const lines = [
+    `${LABEL[r.terrain]}, ${compass(r.bearing)}${kin > 1 ? ` — one of ${kin} such hexes here` : ""}.`,
+  ];
+  if (claimed) {
+    lines.push("The town has built over this ground. Nothing more will come off it.");
+    return lines.join("\n");
+  }
+  if (isDead(r.terrain)) {
+    lines.push("Nothing will grow here, and nothing can be built on it.");
+    if (r.terrain === "marsh") lines.push("Slow going for anyone coming that way.");
+    return lines.join("\n");
+  }
+  const bears = Object.entries(r.bears) as [Produce, Suit][];
+  if (bears.length) lines.push(bears.map(([p, g]) => `${SUIT_WORD[g]} ${p}`).join("; ") + ".");
+  if (here.length) {
+    lines.push(here.map((w) => `${w.name} (${w.condition})`).join(", "));
+    const e: string[] = [];
+    const live = here.filter((w) => w.condition === "working");
+    const trade = live.reduce((n, w) => n + w.trade, 0);
+    const food = live.reduce((n, w) => n + w.food, 0);
+    const def = live.reduce((n, w) => n + w.defence, 0);
+    if (trade) e.push(`${Math.round(trade)} coin a season`);
+    if (food) e.push(`feeds ${Math.round(food)}`);
+    if (def) e.push(`${Math.round(def)} toward the defence`);
+    if (e.length) lines.push(`Off this hex: ${e.join(", ")}.`);
+  } else {
+    const could = worksForRegion(town, r).map((k) => CATALOGUE[k].label);
+    lines.push(could.length ? `Open ground — it would carry ${could.join(" or ")}.` : "Open ground.");
+  }
+  if (r.sweetSpot && key(r.sweetSpot) === key(h)) lines.push("The best of it.");
+  const s = regionSummary(town, r);
+  if (kin > 1) lines.push(`Of these ${kin}, ${s.free} still open.`);
+  return lines.join("\n");
+}
+
+// One hex, independently inspectable. The region draws around it.
+function hexCell(town: Town, r: Region, h: Axial): string {
+  const c = toPixel(h, SIZE);
+  const idx = town.regions.indexOf(r);
+  const marks = town.works
+    .filter((w) => w.region === idx && w.hex && key(w.hex) === key(h))
+    .map((w) => {
+      const cls = w.condition === "working" ? "wk" : w.condition === "ruin" ? "wk is-ruin" : "wk is-idle";
+      return `<rect class="${cls}" x="${(c.x - 4).toFixed(1)}" y="${(c.y - 1.5).toFixed(1)}" width="8" height="5.5" />`;
+    })
+    .join("");
+  const sweet =
+    r.sweetSpot && !isDead(r.terrain) && key(r.sweetSpot) === key(h)
+      ? `<circle class="rg-sweet" cx="${c.x.toFixed(1)}" cy="${(c.y - 7).toFixed(1)}" r="2.4" />`
+      : "";
+  return `<g class="hx"><title>${esc(hoverForHex(town, r, h))}</title>` +
+    `<path d="${hexPath(c, SIZE)}" fill="${FILL[r.terrain]}" class="rg-face" />${sweet}${marks}</g>`;
+}
+
 // ---- Drawing ---------------------------------------------------------------
 
 function regionGroup(town: Town, r: Region): string {
-  const at = toPixel(centroid(r.hexes), SIZE);
-  const faces = r.hexes
-    .map((h) => `<path d="${hexPath(toPixel(h, SIZE), SIZE)}" fill="${FILL[r.terrain]}" class="rg-face" />`)
-    .join("");
-  const sp = r.sweetSpot && !isDead(r.terrain) ? toPixel(r.sweetSpot, SIZE) : null;
-  const sweet = sp ? `<circle class="rg-sweet" cx="${sp.x.toFixed(1)}" cy="${sp.y.toFixed(1)}" r="2.6" />` : "";
-  // Every work stands on its OWN hex — five mills in a line down the woodline,
-  // never five piled on a point (fidelity contract 9).
-  const idx = town.regions.indexOf(r);
-  const marks = town.works
-    .filter((w) => w.region === idx && w.hex)
-    .map((w) => {
-      const p = toPixel(w.hex!, SIZE);
-      const cls = w.condition === "working" ? "wk" : w.condition === "ruin" ? "wk is-ruin" : "wk is-idle";
-      return `<rect class="${cls}" x="${(p.x - 4).toFixed(1)}" y="${(p.y - 1.5).toFixed(1)}" width="8" height="5.5" />`;
-    })
-    .join("");
-  const named = !isWater(r.terrain) || r.hexes.length > 2;
+  // The label sits on a hex that is actually IN the region and not under the
+  // town — a centroid can fall outside an L-shaped region, which is what put a
+  // label in the wrong place and let the town silhouette clip it.
+  const mid = centroid(r.hexes);
+  const free = r.hexes.filter((h) => !isClaimed(town, h));
+  const anchor = (free.length ? free : r.hexes).reduce((a, b) =>
+    Math.hypot(a.q - mid.q, a.r - mid.r) <= Math.hypot(b.q - mid.q, b.r - mid.r) ? a : b,
+  );
+  const at = toPixel(anchor, SIZE);
+  // A region the town has taken entirely has no ground left to name — its label
+  // would only sit under the silhouette.
+  const named = free.length > 0 && (!isWater(r.terrain) || r.hexes.length > 2);
   return `<g class="rg ${isDead(r.terrain) ? "is-dead" : ""} ${isWater(r.terrain) ? "is-water" : ""}">
-    <title>${esc(hoverFor(town, r))}</title>
-    ${faces}
+    ${r.hexes.map((h) => hexCell(town, r, h)).join("")}
     <path d="${outline(r.hexes, SIZE)}" class="rg-edge" />
-    ${sweet}${marks}
     ${named ? `<text class="rg-name" x="${at.x.toFixed(1)}" y="${(at.y + 3).toFixed(1)}">${esc(SHORT[r.terrain])}</text>` : ""}
   </g>`;
 }
