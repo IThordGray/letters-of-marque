@@ -9,37 +9,40 @@
 // engines are PERMITTED to differ and do. V8 changed Math.tanh in Chrome 148 to
 // defer to the host libm, so the same call now returns different values on
 // Windows, macOS and Linux. A save file would diverge on a Node upgrade.
+//
+// Factorio reached the same rule independently: it ships custom trigonometry
+// "to ensure determinism across platforms", and a custom number formatter
+// because %g prints 0.00001 differently on gcc than on MSVC.
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const HERE = join(process.cwd(), "src", "town");
+const SRC = join(process.cwd(), "src");
 
-// Files that ARE the simulation: pure systems over the town struct, whose output
-// must be bit-identical everywhere. Add a file here the moment it becomes one.
+// Directories where EVERY file is simulation. Contents are discovered, not
+// listed, so a new system cannot arrive unguarded.
+const SIM_DIRS = ["overworld"];
+
+// `src/town` is mixed — the ledger simulates, the plan draws. So it is listed
+// rather than discovered, and the roster below must account for every file.
+const TOWN_SIM = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts", "types.ts", "land.ts"];
+const TOWN_PRESENTATION = ["plan.ts", "planview.ts", "hexmap.ts", "main.ts"];
+
+// Known exceptions, each with a reason. This list must only ever SHRINK — the
+// last test fails if a file here has become clean.
 //
-// NOTE ON REACH: this guard is SOURCE-LEVEL, not transitive. `land.ts` is listed
-// here and is clean by its own text, but it calls `bearingOf` in `hex.ts`, which
-// is not. Transitive contamination is tracked against the file that owns the
-// offending call — see EXCEPTIONS below. A guard that chased imports would have
-// to model the whole graph; a guard that names the owner is enough to stop the
-// list growing, which is what it is for.
-const GUARDED = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts", "types.ts", "land.ts"];
-
-// Files deliberately NOT guarded, and why. Presentation may use whatever maths it
-// likes — a pixel is not simulation state.
-const PRESENTATION = ["plan.ts", "planview.ts", "hexmap.ts", "main.ts"];
-
-// Known exceptions, each with a reason and an owner. This list must only ever
-// shrink. See the test at the bottom, which fails if a file is cleaned but not
-// promoted into GUARDED.
+// NOTE ON REACH: the guard is source-level, not transitive. `land.ts` is guarded
+// and is clean by its own text, but it calls `bearingOf` in `hex.ts`, which is
+// not. Transitive contamination is tracked against the file that owns the
+// offending call. A guard that chased imports would have to model the whole
+// graph; naming the owner is enough to stop the list growing, which is the job.
 const EXCEPTIONS: Record<string, string> = {
-  // bearingOf() calls Math.hypot twice per iteration to normalise dot products by
-  // a constant that cannot change which bearing wins — a banned function doing
-  // nothing. Goes with the land rework ([HC-19], [HC-73]); the replacement must
-  // not reintroduce it.
-  "hex.ts": "Math.hypot in bearingOf — pointless normalisation, dies with the land rework",
+  // bearingOf() calls Math.hypot twice per iteration to normalise dot products
+  // by a constant that cannot change which bearing wins — a banned function
+  // doing nothing at all. Dies with the land rework ([HC-19], [HC-73]); the
+  // replacement must not reintroduce it.
+  "town/hex.ts": "Math.hypot in bearingOf — pointless normalisation, dies with the land rework",
 };
 
 // ECMA-262 §21.3.2: "The behaviour of the functions acos, acosh, asin, asinh,
@@ -52,16 +55,15 @@ const APPROXIMATED = [
   "cbrt", "hypot", "pow", "random",
 ];
 
-// Strip comments so a `/** ... */` block or a prose mention is not a violation.
-function code(file: string): string {
-  const raw = readFileSync(join(HERE, file), "utf8");
-  return raw.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
-}
+// Strip comments so a prose mention or a `/** */` block is not a violation.
+const code = (rel: string): string =>
+  readFileSync(join(SRC, rel), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ");
 
-function violations(file: string): string[] {
-  const src = code(file);
+function violations(rel: string): string[] {
+  const src = code(rel);
   const found: string[] = [];
-
   for (const fn of APPROXIMATED) {
     if (new RegExp(`\\bMath\\.${fn}\\b`).test(src)) found.push(`Math.${fn}`);
   }
@@ -69,32 +71,44 @@ function violations(file: string): string[] {
   if (/[^*/\s][ \t]*\*\*[ \t]*[^*/]/.test(src)) found.push("** operator");
   if (/\bDate\.now\b/.test(src)) found.push("Date.now");
   if (/\bperformance\.now\b/.test(src)) found.push("performance.now");
-
   return found;
 }
 
+const isSource = (f: string) => f.endsWith(".ts") && !f.endsWith(".test.ts");
+
+const discovered = SIM_DIRS.flatMap((dir) =>
+  readdirSync(join(SRC, dir)).filter(isSource).map((f) => `${dir}/${f}`),
+);
+const guarded = [...discovered, ...TOWN_SIM.map((f) => `town/${f}`)].filter((f) => !(f in EXCEPTIONS));
+
 describe("the simulation reads no clock and does no approximated maths", () => {
-  for (const file of GUARDED) {
-    it(`${file} stays bit-identical on every machine`, () => {
-      expect(violations(file)).toEqual([]);
+  for (const rel of guarded) {
+    it(`${rel} stays bit-identical on every machine`, () => {
+      expect(violations(rel)).toEqual([]);
     });
   }
 
-  it("names every file it is guarding, so a new system cannot slip in unguarded", () => {
-    // If a simulation file is added and not listed, this is where it is noticed.
-    const known = new Set([...GUARDED, ...PRESENTATION, ...Object.keys(EXCEPTIONS), "hex.ts"]);
-    const all = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts",
-      "types.ts", "land.ts", "hex.ts", "hexmap.ts", "plan.ts", "planview.ts", "main.ts"];
+  it("guards every file in a simulation directory, discovered rather than listed", () => {
+    // The whole point of discovery: adding a file to src/overworld guards it
+    // automatically. This asserts the discovery actually found something, so a
+    // renamed directory fails loudly instead of guarding nothing in silence.
+    expect(discovered.length).toBeGreaterThan(0);
+    for (const rel of discovered) expect(rel).toMatch(/^overworld\/.+\.ts$/);
+  });
+
+  it("accounts for every file in the mixed town module", () => {
+    const all = readdirSync(join(SRC, "town")).filter(isSource);
+    const known = new Set([...TOWN_SIM, ...TOWN_PRESENTATION, "hex.ts", "fixtures.ts"]);
     for (const f of all) expect(known.has(f)).toBe(true);
   });
 });
 
 describe("the exception list only ever shrinks", () => {
-  for (const [file, why] of Object.entries(EXCEPTIONS)) {
-    it(`${file} is still excepted — ${why}`, () => {
-      // When this fails, the file is clean: delete it from EXCEPTIONS and add it
-      // to GUARDED. A shrinking list is the point.
-      expect(violations(file).length).toBeGreaterThan(0);
+  for (const [rel, why] of Object.entries(EXCEPTIONS)) {
+    it(`${rel} is still excepted — ${why}`, () => {
+      // When this fails, the file is clean: delete it from EXCEPTIONS. A
+      // shrinking list is the point.
+      expect(violations(rel).length).toBeGreaterThan(0);
     });
   }
 });
