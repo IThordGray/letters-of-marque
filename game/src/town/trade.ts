@@ -22,7 +22,7 @@
 //         nothing moves either direction — which is why raiding and trade are
 //         the same mechanism seen from two sides.
 
-import type { Town, Work } from "./types";
+import type { Town, Work, WorkKind } from "./types";
 import { CATALOGUE } from "./works";
 import { ACCESS, FOOD, TRADE, WEALTH, DEPENDENCY_BANDS } from "./constants";
 
@@ -210,6 +210,32 @@ export function commerceOf(
     dependency: dependencyOf(produced[0], consumed[0]),
     luxuryShort: shortfallOf(produced[2] + m.bought[2], consumed[2]),
   };
+}
+
+// ---- Prices, and what a work would fetch -----------------------------------
+//
+// The LOCAL price this place faces, and the only way anyone learns one is by
+// being here. §3.5.9's ratified ban is on the price TABLE — the arbitrage-
+// enabling god view — not on prices existing, and [HC-82] makes the ban
+// structural rather than a matter of restraint: each neighbourhood clears on its
+// own ratio, so there is no global price to table in the first place.
+//
+// [HC-71] holds: the town reads the block the world handed it and never reaches
+// out to ask a neighbour anything.
+export const priceOf = (town: Town, cls: TradeClass): number => town.market.price[CLASSES[cls].rank];
+
+// What a work of this kind would ACTUALLY FETCH here — `trade x price x access`,
+// the second of §3.5.4's two edits to the auction. It replaces a flat constant,
+// and that is the whole of what makes the governor's market term an argument
+// about this place rather than a fact about the catalogue: the same sawpit is
+// worth raising where timber is dear and not where it is cheap.
+//
+// A work with no cargo class fills no hold, so it fetches its own cut of the
+// traffic and rides on `access` alone.
+export function fetchOf(town: Town, kind: WorkKind, access: number): number {
+  const def = CATALOGUE[kind];
+  const price = def.exports ? town.market.price[CLASSES[def.exports].rank] : 1;
+  return def.trade * price * access;
 }
 
 // ---- Dependency ------------------------------------------------------------

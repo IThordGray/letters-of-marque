@@ -24,7 +24,7 @@
 //         neighbours; there is no abstract partner anywhere in this file.
 
 import type { Town } from "../town/types";
-import { CLASSES, CLASS_COUNT, type TradeClass } from "../town/trade";
+import { CLASS_COUNT } from "../town/trade";
 import { TRADE } from "../town/constants";
 import { derive, produceSeason, settleSeason, year } from "../town/sim";
 import { governorTurn, type Season as TownSeason } from "../town/governor";
@@ -299,11 +299,6 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
   }
 }
 
-// The local price of a class at a named place, and the only way anyone learns
-// one: by being there. [HC-82] / §3.5.9 — the ratified ban is on the price
-// TABLE, the arbitrage-enabling god view, not on prices existing.
-export const priceOf = (town: Town, cls: TradeClass): number => town.market.price[CLASSES[cls].rank];
-
 // ---- The seasonal tick -----------------------------------------------------
 //
 // §2.3's five phases, and the reason they exist: THE PHASES KEEP THE WORLD
@@ -353,3 +348,4 @@ export function runYears(
     stepDay(world);
   }
 }
+

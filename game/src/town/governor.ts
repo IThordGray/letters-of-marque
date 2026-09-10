@@ -12,7 +12,7 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
 import { compass, LABEL } from "./land";
-import { DEPENDENCY_CLAUSE } from "./trade";
+import { DEPENDENCY_CLAUSE, fetchOf } from "./trade";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
@@ -123,9 +123,15 @@ export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): T
     });
   }
 
-  // 3. THE MARKET WANTS IT — it earns, and more sharply, something downstream is
-  //    waiting on it.
-  const earns = def.trade / PLAN.tradeScale;
+  // 3. THE MARKET WANTS IT — it earns WHAT IT WOULD ACTUALLY FETCH HERE, and
+  //    more sharply, something downstream is waiting on it.
+  //
+  //    §3.5.4's second edit to the auction: `trade x priceOf x access` rather
+  //    than a flat constant. It is what turns this term from a fact about the
+  //    catalogue into an argument about this place — the same sawpit is worth
+  //    raising where timber is dear and not where it is cheap, and a port whose
+  //    quay has burned has no market argument for anything at all.
+  const earns = fetchOf(town, kind, d.access) / PLAN.tradeScale;
   const starved = starvedFor(town, kind) ? PLAN.starvedBonus : 0;
   if (earns + starved > 0) {
     terms.push({

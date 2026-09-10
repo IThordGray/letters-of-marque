@@ -161,6 +161,67 @@ describe("bread before batteries", () => {
   });
 });
 
+describe("the market term scores what a work would FETCH", () => {
+  it("wants the sawpit more where timber is dear than where it is cheap", () => {
+    // §3.5.4's second edit to the auction: `trade x priceOf x access` in place of
+    // a flat constant. It is what turns the term from a fact about the catalogue
+    // into an argument about this place.
+    const build = (price: number) => {
+      const t = open(mixedTown({ population: 300, wealth: 5000 }));
+      t.market.price[1] = price;
+      return scoreWork(t, "sawpit").find((x) => x.key === "market")!.weight;
+    };
+    expect(build(2)).toBeGreaterThan(build(0.3));
+  });
+
+  it("gives a port whose quay has burned no market argument at all", () => {
+    // [HC-85] again, now inside the auction: there is no money in it if nothing
+    // can leave. The other four terms still speak.
+    const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    for (const w of town.works) if (w.kind === "warehouse" || w.kind === "fishingShacks") w.condition = "ruin";
+    town.patron = { kind: "none", name: "", owns: false };
+    const terms = scoreWork(town, "warehouse");
+    expect(derive(town).access).toBe(0);
+    expect(terms.find((t) => t.key === "market")).toBeUndefined();
+    expect(terms.length).toBeGreaterThan(0);
+  });
+
+  it("still says there is money in it, in the same words", () => {
+    // The clause is the term's own, and the rule is that no term arrives without
+    // one. Rewriting the arithmetic must not cost the sentence.
+    const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    const market = scoreWork(town, "warehouse").find((t) => t.key === "market");
+    expect(market!.clause).toBe("there is money in it");
+  });
+
+  it("argues for the cane where sugar pays and for the farm where the bread is bought", () => {
+    // "The fork is then honest arithmetic: `need` argues for the farm, `market`
+    // argues for the cane. Self-sufficiency wins in a small town and loses in a
+    // big one, WITH NO THRESHOLD ANYWHERE."
+    const town = open(mixedTown({ population: 400, wealth: 5000 }));
+    for (const w of town.works) if (w.kind === "gardenPlots") w.condition = "ruin";
+    stepSeason(town);
+
+    town.market.price[2] = 4; // sugar is dear
+    const cane = scoreWork(town, "caneField").find((t) => t.key === "market")!.weight;
+    const farm = scoreWork(town, "provisionGround").find((t) => t.key === "need")!.weight;
+    expect(cane).toBeGreaterThan(0);
+    expect(farm).toBeGreaterThan(0); // both are heard; neither is switched off
+  });
+
+  it("weighs a work with no cargo class on access alone", () => {
+    // A customs house fills no hold, so no price moves it — only whether the
+    // traffic can reach the quay at all.
+    const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    const before = scoreWork(town, "customsHouse").find((t) => t.key === "market")!.weight;
+    town.market.price[0] = 9;
+    town.market.price[1] = 9;
+    town.market.price[2] = 9;
+    const after = scoreWork(town, "customsHouse").find((t) => t.key === "market")!.weight;
+    expect(after).toBe(before);
+  });
+});
+
 describe("dependency", () => {
   it("counts the share of a town's bread that is not off its own ground", () => {
     expect(dependencyOf(100, 100)).toBe(0);
