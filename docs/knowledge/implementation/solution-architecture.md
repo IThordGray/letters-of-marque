@@ -45,6 +45,13 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
 - **No datastore chosen yet.** *What* to persist is a WHAT question for `../spec/`;
   *which* database is a HOW decision, deferred until the spec needs it.
   (See [`../decisions.md`](../decisions.md).)
+- **NO MOD SYSTEM — and don't re-propose one** (decided 2026-09-10). Content lives in **data
+  tables**; there is deliberately **no loader, no manifest format, no versioning, no load-order
+  resolution, no merge semantics, no sandbox and no public API to keep stable.** Those are the price
+  of a *second author*, and there is one consumer. The tables are most of what a mod system would
+  need, so a loader can be added later on top of content that already lives in data — that is a small
+  job, and building it first would be a road to nowhere. **Behaviour stays in code: no DSL, no
+  scripting language, no rule engine** (`[HC-90]`–`[HC-92]`).
 
 > The prototypes' opposite *control philosophies* (naval = group-command / captains
 > interpret; land = direct RTS) are **design**, not architecture — they live in the

@@ -10,6 +10,83 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-10 (second) — Content lives in data. We are not building a mod system.
+
+Raised by the human, drawn to how Factorio ships its own expansions through its modding seam. He
+explored it deliberately (*"I'm still just exploring the idea"*), then supplied the two facts that
+settle it: **he is the only consumer**, and *"if I ever want to port this, I'd like to already have
+played with the modding idea, instead of figuring it out then."*
+
+**The decision: make content data-driven; do not build mod machinery.**
+
+- **YES — definitions live in data tables.** The works catalogue, every number in `constants.ts`,
+  terrain and produce and suitability, the crowns' identities and characters, climate zones, name
+  pools and display prose. Later: ship classes, and building/character skins.
+- **NO — no mod machinery.** No loader, no manifest format, no versioning, no load-order resolution,
+  no merge semantics, no sandbox, and no public API to keep stable.
+- **NO — behaviour stays in code.** The auction, the tick order, the trade clearing, the will-spine.
+
+*Why:* **with one consumer this was never really about modding — it is about data-driven content, and
+the economics are completely different.** Every cost Factorio actually paid is the price of a *second
+author*: a staffed breaking-changes forum thread running since 2019, a ~600-line community porting
+guide, load-order arms races (`zzz-fix-your-shit`), a Lua sandbox escape that reached RCE, and
+*"even something as simple as renaming a sprite can break dozens of mods."* None of those is the
+price of content living in a table. Strip the second author and most of the value survives at a
+fraction of the cost.
+
+**The argument that actually decided it — the port.** *Code does not port; data does.* A rewrite in
+another language carries the balance, the industries, the terrain and the tuning across intact if
+they are data files. As TypeScript object literals welded to union types, they are a rewrite. **The
+content is the expensive-to-recreate, cheap-to-move part of a game — if it is allowed to be movable.**
+
+**And it is not "no modding, ever" — it is modding minus the machinery.** The tables *are* most of
+what a mod system needs. A loader added later, on top of content that already lives in data, is a
+small contained job; a loader built first is a road to nowhere. Meanwhile **the human is already his
+own first modder** — able to add an industry or retune the auction without touching simulation code,
+which is the value he was reaching for. The mod system was never what would have given him that.
+
+**Timing, and this is the operative half.** Rows for **nations, climate zones and ship classes cost
+nothing**, because those systems do not exist yet — writing their definitions as tables is not extra
+work, it is a choice made at the moment of writing, and **that window closes as each system lands.**
+The works catalogue is the one piece of real work: it is already a complete prototype table, blocked
+only by `WorkKind` being a closed TypeScript union.
+
+**The one real cost, and how it is avoided.** Opening `WorkKind` would lose the compile-time
+exhaustiveness that `Record<WorkKind, WorkDef>` currently enforces, plus autocomplete and
+go-to-definition — a genuine daily tax for a solo developer. **Resolution: generate the union type
+from the data at build time.** The data file is the source of truth; a build step emits the union.
+Exhaustiveness, autocomplete and portability all survive, so the trade-off mostly is not one.
+
+**Recorded against the temptation to go further:** behaviour-as-data means inventing a DSL, and DSL
+creep is the universal failure mode — mcfunction has no loops so the community built them from
+`/execute` chains and scoreboards; CK3 grew a `while` capped at 1000 iterations and text-substitution
+macros; RimWorld's *patch* format grew conditionals and feature detection. **For one consumer who can
+edit TypeScript directly, a DSL is a worse TypeScript.** Dwarf Fortress's model is the right one:
+raws stayed declarative for content *instances*, and when real logic was finally needed (v52.01,
+2025) Lua was added *alongside* rather than growing the token language.
+
+**Two research findings kept because they outlive this decision:**
+- **The clean way to describe the split is *types versus instances*.** Factorio's C++ engine owns the
+  ~500 prototype *types* and all their update logic; the `base` mod supplies *instances*. **A mod can
+  never add a type.**
+- **Nobody designs this up front, including Wube.** *(Human's own correction, 2026-09-10: Quality
+  ships as a mod and, as of experimental 2.1, can be disabled while Space Age stays enabled.)*
+  Twelve years in and two years past Space Age, 2.1 is **still** doing separability work — Quality
+  made independently disableable, the Recycler split out, a new `+` dependency modifier invented for
+  it, the collision-layer cap raised 55→256. It arrived incrementally, pulled along by content that
+  needed separating. That is the evidence for extracting a seam when something pulls on it, rather
+  than in advance of a consumer.
+- **Both halves are true at once**: the same 2.1 release that made Quality separable also added
+  engine-side quality behaviour (quality multipliers on modules and rolling stock, locomotive speed
+  and tank volume scaling with quality). The mod supplies the levels and their numbers; **the engine
+  knows what quality means.** The `*_required` feature flags are the *declared* boundary between
+  "data I supply" and "engine capability I need" — the transferable idea.
+
+Spec: `world-simulation.md` `[HC-90]`–`[HC-92]`. **Nothing implemented; the human explicitly said not
+to.**
+
+---
+
 ### 2026-09-10 — The spec outranks the shipped module; three manager's calls ratified
 
 **The precedence rule, and it is the important half of this entry.** Asked to unpark the town suite

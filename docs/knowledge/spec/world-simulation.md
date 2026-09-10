@@ -202,6 +202,21 @@ A failed town is a town that wasted its potential, never a settlement again.
 decline alone can never empty one. `Abandoned` is reachable only by being razed to nothing, by a
 player or by a war.
 
+**`[HC-90]` Every system's DEFINITIONS live in a data table; only its BEHAVIOUR lives in code.**
+*Ratified 2026-09-10.* The engine owns the **types**; content supplies the **instances**. So the
+climate's four parts, the crowns' identities and characters, ship classes, the works catalogue and
+every tuning number are **tables**; the tick order, the auction, the trade clearing and the will-spine
+are **code**. This costs nothing at the moment a system is written and is a rewrite afterwards — see
+`decisions.md` (2026-09-10, second) for why the port argument decided it.
+
+**`[HC-91]` A definition table is the source of truth; its TypeScript type is generated from it.**
+Never the reverse. This is what keeps exhaustiveness checking and autocomplete while leaving the
+content portable — a closed hand-written union would weld the content to this language.
+
+**`[HC-92]` Behaviour is never expressed as data. No DSL, no scripting language, no rule engine.**
+There is one consumer and he can edit TypeScript. Every surveyed system that put behaviour in data
+grew a bad language by accretion; this one will not start.
+
 **`[HC-19]` The world map is the single source of geography.** A town's local land is *derived* from
 its position on it and never independently rolled. **Consequence: the shipped invariant that the sea
 lies south of every town is void** — a town faces whatever way its coast faces.
