@@ -99,6 +99,28 @@ export const neighbours = (a: Axial): Axial[] =>
 // coastline is irregular; which way the DRAWING faces is not (spec §2.7).
 export const southness = (a: Axial) => a.r + a.q / 2;
 
+// Seaward first, then easterly — the order a TIE between two bearings is settled
+// in, and the whole of why it is seaward-first (KAN-111).
+//
+// Ground exactly between two bearings has to be called something, and it used to
+// be called whichever of the two `BEARING_ORDER` happened to list first. That is
+// an accident of an array, not a rule, and it read wrongly in the one case a
+// player actually sees: a hex due east of the town on the local frame's axis (its
+// seaward-ness exactly 0, e.g. q=2 r=-1) ties between NE and SE, and water
+// straight out to the east was described in prose as lying "to the north-east".
+//
+// It resolves seaward because in a town's local frame south IS seaward ([HC-73])
+// and what a bearing names is usually a coast or a stretch of water, so the
+// seaward reading is the one that is true of a coastal town. `S` outranks its
+// neighbours, `SE`/`SW` outrank `NE`/`NW`, and those outrank `N`.
+//
+// This ranking is a permutation of the six, so it is a strict total order and the
+// answer no longer depends on the order the compass is walked in at all ([P-10]).
+// It is (seaward-ness descending, then easterly) written out: the second key only
+// separates NE from NW and SE from SW, which the measurement below says can never
+// be tied for the win — it is here so the order is total rather than nearly so.
+const SEAWARD_FIRST: Record<Bearing, number> = { S: 0, SE: 1, SW: 2, NE: 3, NW: 4, N: 5 };
+
 // The compass direction of a hex from the town, for prose and the placement
 // skew. DERIVED — never stored as the spatial fact (spec §2.10).
 //
@@ -109,14 +131,28 @@ export const southness = (a: Axial) => a.r + a.q / 2;
 // (`Math.hypot`, [P-5]). Verified identical over every region centroid of six
 // hundred rolled towns, every integer hex within eight of the centre, and a
 // twelfth-of-a-hex grid: no disagreement anywhere.
+//
+// WHICH HEXES TIE WAS MEASURED, NOT DERIVED, because the six vectors are the same
+// length mathematically and NOT bit-identically — N and S square to
+// 2.9999999999999996 and the other four to 3.0, which is the ULP that made the
+// de-normalisation argument hold empirically rather than by algebra. Measured:
+// exact ties occur on all six boundaries between ADJACENT bearings and nowhere
+// else — 20 of the 216 integer hexes within eight of the centre, and 104 samples
+// of a half- and third-hex centroid grid. Adjacent bearings always differ in
+// seaward-ness, so seaward-first settles every tie that can actually happen.
 export function bearingOf(a: Axial): Bearing {
-  let best: Bearing = "N";
+  // The initial value is never read — the first candidate always beats -Infinity.
+  // It is the seaward bearing so the declaration reads as no preference at all.
+  let best: Bearing = "S";
   let bestDot = -Infinity;
   const p = toPixel(a, 1);
   for (const b of BEARING_ORDER) {
     const d = toPixel(axialOf(b), 1);
     const dot = p.x * d.x + p.y * d.y;
-    if (dot > bestDot) { bestDot = dot; best = b; }
+    if (dot > bestDot || (dot === bestDot && SEAWARD_FIRST[b] < SEAWARD_FIRST[best])) {
+      bestDot = dot;
+      best = b;
+    }
   }
   return best;
 }

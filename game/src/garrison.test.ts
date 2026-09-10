@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import { GARRISON } from "./constants";
 import { makeWorld } from "./world";
-import { populateBattle } from "./spawn";
+import { populateBattle, enemyGarrisonSize, DEFAULT_GRADE } from "./spawn";
 import type { GarrisonGrade } from "./types";
 import type { PartySpec } from "./spawn";
 
@@ -115,5 +115,49 @@ describe("a raid on a graded town", () => {
 
     const raiders = (w: typeof soft) => w.units.filter((u) => u.side === "player").length;
     expect(raiders(hard)).toBe(raiders(soft));
+  });
+});
+
+// KAN-109. The deploy screen is the one place the player is told what he is walking into,
+// and the decision it asks for — how many men to land — is only meaningful if the number is
+// true. It previewed a hardcoded 15 against a picket that fields 9, and it could not have
+// been right for more than one rung because it never saw the grade at all ([HC-59]: the
+// garrison is a reading of the place, not a fixed number).
+//
+// These assert the RELATIONSHIP — preview equals field — not any headcount. Every number in
+// `constants.ts` is a starting guess; that the screen tells the truth is not.
+describe("the garrison the deploy screen previews", () => {
+  const defenders = (w: ReturnType<typeof makeWorld>) => w.units.filter((u) => u.side === "enemy").length;
+
+  const fielded = (grade: GarrisonGrade): number => {
+    const world = makeWorld();
+    populateBattle(world, party, grade);
+    return defenders(world);
+  };
+
+  it("promises exactly the men the raid then puts on the field, on every rung of the ladder", () => {
+    // The whole bug. One rung agreeing by luck is not the claim — all three are.
+    for (const grade of LADDER) expect(enemyGarrisonSize(grade)).toBe(fielded(grade));
+  });
+
+  it("counts the officer who leads the plaza guard, because the raiders have to break him too", () => {
+    // The garrison is a led band plus unled posts and patrols, so the preview is not just
+    // the sum of the watch counts — it is one more than that.
+    for (const grade of LADDER) expect(enemyGarrisonSize(grade)).toBeGreaterThan(watchmen(grade));
+  });
+
+  it("previews a harder place as a heavier butcher's bill", () => {
+    for (const [soft, hard] of rungs()) {
+      expect(enemyGarrisonSize(hard)).toBeGreaterThan(enemyGarrisonSize(soft));
+    }
+  });
+
+  it("previews the grade a raid is actually set against when nobody names one", () => {
+    // The screen and the battle must not hold two opinions about which town this is: the
+    // default the spawner uses is the default the screen reads.
+    const world = makeWorld();
+    populateBattle(world, party);
+    expect(world.garrison).toBe(DEFAULT_GRADE);
+    expect(enemyGarrisonSize(DEFAULT_GRADE)).toBe(defenders(world));
   });
 });
