@@ -1,9 +1,9 @@
 import type { World } from "./world";
-import type { Side, UnitKind, WeaponType, Stance, BuildingKind, SettlementTier } from "./types";
+import type { Side, UnitKind, WeaponType, Stance, BuildingKind, GarrisonGrade } from "./types";
 import type { OfficerProfile } from "./roster";
 import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, TIER, PLAYER_CREW } from "./constants";
 
-// A figure's three combat stats — the shape a settlement tier's bands come in.
+// A figure's three combat stats — the shape a garrison grade's bands come in.
 type Stats = { morale: number; ferocity: number; marks: number };
 import { formationSlots } from "./formation";
 import { makeRoster } from "./roster";
@@ -90,7 +90,7 @@ function spawnSquad(world: World, side: Side, cx: number, cy: number, sq: SquadS
   }
   for (; i < slots.length; i++) {
     // player pirates land at the seasoned crew baseline (steadier than the rabble); enemy
-    // pirates raised this way take their tier band instead
+    // pirates raised this way take their garrison-grade band instead
     const troop = side === "player" ? PLAYER_CREW.pirate : undefined;
     spawnUnit(world, side, "pirate", slots[i].x, slots[i].y, { squadId: officerId, weapon: sq.weapon, ...troop });
   }
@@ -110,7 +110,7 @@ function spawnPlayerParty(world: World, party: PartySpec) {
 }
 
 // A plain officer-led band (no roster / no rolled stats) — used for the enemy. `troop` /
-// `officer` set the men's and their leader's stats (from a settlement tier); omitted → the
+// `officer` set the men's and their leader's stats (from a garrison grade); omitted → the
 // UNIT defaults.
 function spawnPlainBand(
   world: World,
@@ -153,9 +153,9 @@ function spawnPatrol(world: World, route: { x: number; y: number }[], n: number,
 // The garrison, distributed like a town's watch rather than one blob: the main guard holds
 // the plaza (the prize), sentries hold the seaward approach, and patrols walk the cross-
 // streets. Both its strength (stat bands) and its depth (headcounts) scale with the town's
-// settlement tier — a sleepy settlement is a thin, brittle watch; a capital, a deep one.
-function spawnEnemyGarrison(world: World, tier: SettlementTier) {
-  const t = TIER[tier];
+// garrison grade — a picket is a thin, brittle watch; a fortress, a deep one.
+function spawnEnemyGarrison(world: World, grade: GarrisonGrade) {
+  const t = TIER[grade];
   spawnPlainBand(world, "enemy", 1200, 700, t.watch.plazaGuard, "musket", "holdGround", t.troop, t.officer);
   const posts = [
     { x: 1050, y: 1680 }, // seaward approach, west
@@ -167,7 +167,7 @@ function spawnEnemyGarrison(world: World, tier: SettlementTier) {
   const routes = [
     [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], // upper cross-street
     [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], // lower cross-street
-    [{ x: 780, y: 1610 }, { x: 1620, y: 1610 }], // quay approach (capitals only)
+    [{ x: 780, y: 1610 }, { x: 1620, y: 1610 }], // quay approach (fortresses only)
   ];
   for (let i = 0; i < t.watch.patrols && i < routes.length; i++) {
     spawnPatrol(world, routes[i], t.watch.patrolSize, t.troop);
@@ -181,7 +181,7 @@ export function enemyGarrisonSize(): number {
 }
 
 // A reinforcement wave that musters from the town gate when the alarm climbs. Spawns
-// aggressive (they come to hunt, not to hold), at the defended town's tier strength; the AI
+// aggressive (they come to hunt, not to hold), at the defended town's garrison grade; the AI
 // directs them from there.
 export function spawnReinforcementWave(world: World, pirates: number) {
   const t = TIER[world.tier];
@@ -259,15 +259,17 @@ function seedTown(world: World) {
 }
 
 // Build a battle: the player's composed landing party vs the town's garrison, whose strength
-// and depth follow the settlement `tier`. The current playable town defends at `settlement`
-// grade so the raid reads as winnable against a seasoned band (tune by playtest).
-export function populateBattle(world: World, party: PartySpec, tier: SettlementTier = "settlement") {
-  world.tier = tier;
+// and depth follow the garrison `grade`. The current playable town defends at `picket` — the
+// SOFTEST rung — so the raid reads as winnable against a seasoned band (tune by playtest).
+// The grade says nothing about how big the town is ([HC-60]): a picket can be a large trading
+// town that never armed itself, and a fortress can be ninety souls behind stone.
+export function populateBattle(world: World, party: PartySpec, grade: GarrisonGrade = "picket") {
+  world.tier = grade;
   seedTown(world);
   deriveTerrain(world);
   world.navGrid = buildNavGrid(world);
   spawnPlayerParty(world, party);
-  spawnEnemyGarrison(world, tier);
+  spawnEnemyGarrison(world, grade);
   world.raid.extraction = { y: WORLD.height - 100 }; // the beach — behind where the party lands
   // the church keeps its rich seeded loot (LOOT.church) — it *is* the strong-house / big haul
 }

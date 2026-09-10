@@ -45,15 +45,25 @@ export function derive(town: Town): Derived {
   };
 }
 
-// What a raider actually faces. Guns alone don't make a capital — a heavily
-// fortified presidio of ninety souls is a hard target, but it is still an
-// outpost. So importance weighs SIZE as well as SECURITY (spec §1). This is the
-// value that should eventually replace the hand-set SettlementTier in the land
-// module (spec §9, deferred).
+// How hard the garrison is — what a raider actually faces, graded
+// `picket · garrison · fortress` ([HC-60], renamed 2026-09-10 from outpost/town/capital,
+// which shared two words with the size class settlement → town → city and so read as a
+// size axis it never was).
+//
+// Guns alone don't make a fortress — a heavily fortified presidio of ninety souls is a
+// hard target, but it is still a small place. So importance weighs SIZE as well as
+// SECURITY (town-economy.md §1: the grade comes from population + security + patron),
+// and that is also what lets a hard little place outgrade a soft place twice its size,
+// which is `[HC-59]`'s whole pay-off.
+//
+// [HC-59]'s full population × size × purpose model is NOT built here: size class and
+// purpose do not exist as fields yet. This stays the value that should eventually replace
+// the hand-set GarrisonGrade in the land module (spec §9, deferred — deliberately not
+// wired up by KAN-104).
 function tierOf(town: Town, security: number): Derived["tier"] {
-  const size = (Math.min(town.population, SECURITY.capitalPop) / SECURITY.capitalPop) * 100;
+  const size = (Math.min(town.population, SECURITY.fullSizePop) / SECURITY.fullSizePop) * 100;
   const importance = security * SECURITY.securityShare + size * (1 - SECURITY.securityShare);
-  return importance >= SECURITY.capitalAt ? "capital" : importance >= SECURITY.townAt ? "town" : "outpost";
+  return importance >= SECURITY.fortressAt ? "fortress" : importance >= SECURITY.garrisonAt ? "garrison" : "picket";
 }
 
 // What the land can feed, held below that ceiling when the place is miserable.

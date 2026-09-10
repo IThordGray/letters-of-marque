@@ -1,4 +1,4 @@
-import type { UnitKind, WeaponType, BuildingKind, SettlementTier } from "./types";
+import type { UnitKind, WeaponType, BuildingKind, GarrisonGrade } from "./types";
 
 // ============================================================================
 // LAND MODULE — durable build. Data-oriented: plain structs + pure systems.
@@ -138,7 +138,7 @@ export const RAID = {
     muster: 85,
   },
   musterPoint: { x: WORLD.width / 2, y: 230 }, // the landward gate / barracks the muster pours from
-  // (reinforcement-wave sizes now scale with settlement tier — see TIER below)
+  // (reinforcement-wave sizes now scale with the garrison grade — see TIER below)
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
   pickupRange: 24, // a free raider this close to a dropped load takes it up
@@ -157,19 +157,23 @@ export const RAID = {
   prisonerJoin: { town: 0.15, gaol: 0.7 }, // chance a prisoner joins the crew, by source
 };
 
-// ---- Settlement tier — garrison strength & depth by a town's importance (KAN-55) -------
-// A stand-in for faction AI: a tier sets absolute stat *bands* for the defenders (rank &
+// ---- The garrison ladder — how hard a place's defence is (KAN-55, renamed KAN-104) -----
+// A stand-in for faction AI: a grade sets absolute stat *bands* for the defenders (rank &
 // file read `troop`, their officer reads `officer`) AND the garrison's *depth* (`watch`
 // counts for the initial layout + `reinforce` wave sizes at Alarm / Muster). Morale is the
-// sharpest dial, because the spine is break-the-will: a settlement's men sit barely above the
-// steady line (MORALE.steadyAbove 55) and crumble; a capital's sit well clear and hold.
+// sharpest dial, because the spine is break-the-will: a picket's men sit barely above the
+// steady line (MORALE.steadyAbove 55) and crumble; a fortress's sit well clear and hold.
 // Headcounts are an abstracted, compressed slice of a town's population (pop × men ×
 // combatant-fraction) — the standing watch here, the mustering militia in the reinforcement
-// waves; relative sizes follow the population logic, absolutes stay small for readability. A
-// militarised `outpost` (small but soldier-dense) is a future tier — see decisions.md
-// 2026-09-07. Bands are starting guesses — tune by playtest / the economy model (KAN-54).
+// waves; relative sizes follow the population logic, absolutes stay small for readability.
+// Bands are starting guesses — tune by playtest / the economy model (KAN-54).
+//
+// The ladder is `picket · garrison · fortress` ([HC-60], ratified 2026-09-10). It measures
+// HARDNESS, not size, and shares no word with the size class settlement → town → city. The
+// old "militarised `outpost` is a future tier" plan (decisions.md 2026-09-07) is STRUCK:
+// [HC-55] settles that an outpost is a *reading* of size × purpose, never a rung here.
 export const TIER: Record<
-  SettlementTier,
+  GarrisonGrade,
   {
     troop: { morale: number; ferocity: number; marks: number };
     officer: { morale: number; ferocity: number; marks: number };
@@ -177,19 +181,22 @@ export const TIER: Record<
     reinforce: { wave2: number; wave3: number };
   }
 > = {
-  settlement: {
+  // A thin militia watch. Was `settlement` — same numbers, a word that means hardness.
+  picket: {
     troop: { morale: 48, ferocity: 34, marks: 30 }, // brittle, poorly drilled, off-guard
     officer: { morale: 68, ferocity: 56, marks: 58 }, // a middling militia captain
     watch: { plazaGuard: 4, sentryPosts: 1, patrols: 1, patrolSize: 2 }, // a thin militia watch
     reinforce: { wave2: 3, wave3: 0 }, // few hands to call on
   },
-  town: {
+  // A standing garrison. Was `town` — the word that caused the collision.
+  garrison: {
     troop: { morale: 60, ferocity: 42, marks: 38 }, // = the UNIT.pirate baseline
     officer: { morale: 85, ferocity: 70, marks: 72 }, // = the UNIT.officer baseline
     watch: { plazaGuard: 6, sentryPosts: 2, patrols: 2, patrolSize: 2 },
     reinforce: { wave2: 6, wave3: 8 },
   },
-  capital: {
+  // A fortified place. Was `capital` — which read as a seat of government, not a hard target.
+  fortress: {
     troop: { morale: 78, ferocity: 52, marks: 50 }, // disciplined — steady, breaks late
     officer: { morale: 92, ferocity: 80, marks: 82 }, // a fine commander
     watch: { plazaGuard: 8, sentryPosts: 2, patrols: 3, patrolSize: 3 }, // a deep garrison
@@ -197,7 +204,7 @@ export const TIER: Record<
   },
 };
 
-// The player's landing party — seasoned, not veteran (KAN-66). A *notch* above town-grade
+// The player's landing party — seasoned, not veteran (KAN-66). A *notch* above garrison-grade
 // defenders in skill (they know their way around a good fight), and notably steadier: morale
 // set well clear of the steady line (MORALE.steadyAbove 55) so the crew doesn't break easily
 // — but not invincible. Officers keep their rolled roster quality (topping out ~brigadier),
