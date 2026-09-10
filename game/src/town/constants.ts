@@ -102,15 +102,18 @@ export const PROSPERITY = {
 export const SECURITY = {
   perDefence: 4, // each point of defensive work
   patronBonus: 18, // a crown at your back
-  // What a raider actually faces. Importance weighs guns AND size: a heavily
-  // fortified presidio of ninety souls is a hard target but still an outpost, so
-  // a battery alone must never read as a capital. Derived here so the hand-set
-  // SettlementTier in the land module can eventually be replaced by it
-  // (spec §9, deferred — it touches the ratified garrison-tier decision).
+  // The garrison grade — how hard a raider's target is, on the ladder
+  // `picket · garrison · fortress` ([HC-60], renamed 2026-09-10 from
+  // outpost/town/capital, which shared two words with the size class). It weighs
+  // guns AND size, because population is a real input to the garrison ([HC-59]):
+  // a heavily fortified presidio of ninety souls is a hard target but it is still
+  // a small place, so a battery alone must never read as a fortress. Derived here
+  // so the hand-set GarrisonGrade in the land module can eventually be replaced by
+  // it (spec §9, deferred — NOT wired up in KAN-104).
   securityShare: 0.6, // ...the rest is size
-  capitalPop: 800, // population that counts as a full-size settlement
-  townAt: 35,
-  capitalAt: 70,
+  fullSizePop: 800, // population that counts as full size — a normaliser, not a rung
+  garrisonAt: 35, // importance at which a picket becomes a standing garrison
+  fortressAt: 70, // ...and a garrison becomes a fortress
 };
 
 // ---- The governor's plan ---------------------------------------------------

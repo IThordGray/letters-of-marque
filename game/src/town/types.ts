@@ -201,6 +201,12 @@ export interface Derived {
   yield: number; // trade + grant - upkeep: "how well the town is doing", as a FLOW
   security: number; // 0..100, from defensive works + patron
   hands: { needed: number; available: number }; // the labour ceiling
-  tier: "outpost" | "town" | "capital"; // what a raider would face
+  // How hard the garrison is — what a raider would face. The same ladder as the raid
+  // layer's `GarrisonGrade` ([HC-60], renamed 2026-09-10 from outpost/town/capital):
+  // it grades HARDNESS and deliberately shares no word with the size class
+  // settlement → town → city. The two unions are kept separate structs, not one import,
+  // because the world drives the ledger and never the other way ([HC-71]); a test pins
+  // that they stay the same three words.
+  tier: "picket" | "garrison" | "fortress";
   needs: Record<Need, number>; // 0..1 UNMET — a governor input, never a player gauge
 }

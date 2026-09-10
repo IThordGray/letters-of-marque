@@ -1,4 +1,4 @@
-import type { Unit, Terrain, Building, SettlementTier } from "./types";
+import type { Unit, Terrain, Building, GarrisonGrade } from "./types";
 import type { LogLine } from "./log";
 import type { Rng } from "./rng";
 import { makeRng } from "./rng";
@@ -77,7 +77,7 @@ export interface World {
   patrols: Patrol[]; // enemy patrols walking routes while dormant
   aiNextAt: number; // sim time of the enemy AI's next decision
   raid: RaidState; // the raid scenario (objective, extraction, alarm)
-  tier: SettlementTier; // the defended town's importance — scales garrison strength & depth
+  tier: GarrisonGrade; // how hard the defence is — scales garrison strength & depth, NOT the town's size
 }
 
 export function makeWorld(): World {
@@ -96,6 +96,6 @@ export function makeWorld(): World {
     patrols: [],
     aiNextAt: 0,
     raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], prisoners: [], joined: 0, ransomed: 0, result: null },
-    tier: "town", // populateBattle sets the real tier for the battle
+    tier: "garrison", // the middle rung; populateBattle sets the real grade for the battle
   };
 }

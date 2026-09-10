@@ -7,10 +7,21 @@ export type WeaponType = "musket" | "pistol" | "cannon";
 export type UnitState = "steady" | "wavering" | "routing" | "surrendered" | "down";
 export type Cause = "fire" | "melee" | "flank" | "rear" | "friend-down" | null;
 export type Stance = "aggressive" | "holdGround" | "ceaseFire";
-// A settlement's importance — sets how strong and deep its garrison is (a stand-in for
-// faction AI). Rises settlement → town → capital on a single size axis. (A militarised
-// "outpost" — small but soldier-dense — is a distinct future tier; see decisions.md 2026-09-07.)
-export type SettlementTier = "settlement" | "town" | "capital";
+// How HARD a place's garrison is — the stat bands and the depth a raider actually faces
+// (a stand-in for faction AI). Rises picket → garrison → fortress: a thin watch, a
+// standing garrison, a fortified place.
+//
+// Renamed 2026-09-10 (KAN-104, [HC-60]). It read `settlement | town | capital`, which
+// shared two words with the SIZE class (settlement → town → city) by accident and so
+// welded two independent axes into one. It does not measure size and never did:
+//   - size, purpose and faction are independent axes, every combination legal ([HC-54]);
+//   - "outpost" is a READING of two of them — a small place with a military purpose —
+//     not a class, not a stored field, and NOT a rung on either ladder ([HC-55]);
+//   - the garrison itself is derived from population × size × purpose ([HC-59]), which is
+//     why a hard little place can outgrade a soft big one.
+// The retired "militarised outpost as a future tier" plan is therefore struck, here and
+// in the TIER bands in constants.ts.
+export type GarrisonGrade = "picket" | "garrison" | "fortress";
 
 export interface Unit {
   id: number;
