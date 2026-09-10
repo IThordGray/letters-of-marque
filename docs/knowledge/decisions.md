@@ -10,6 +10,259 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-09 (second) — Six ratified lines moved; abandonment finally gets a cause
+
+Ratified by the human *after* the fourteen forks below were settled. He deliberately deferred these
+six until his other answers were in — **"I didn't want to answer those and possibly contradict what
+I've already answered"** — which was the right call: re-derived against the answers, one line closed
+itself, two were decided outright, and only three still carried a real choice. He agreed every
+proposal.
+
+- **AMENDED — *"an outpost is barely worth blockading"*.** The funding independence stands: an
+  outpost's coin still comes from the crown and it still never chases a market. **The blockade
+  conclusion is struck.** Because an outpost now imports the majority of its needs and its crown
+  support arrives as an interceptable shipment, it is **the most supply-fragile place on the map** —
+  the exact inverse of the old line. The idea the line was protecting — *a target worth declining* —
+  survives, relocated: **an outpost is a poor raid and an excellent interception.** Little to loot,
+  but a lifeline you can cut. *Why:* this gives the interception game its natural first target
+  instead of leaving it abstract.
+- **HALF-OVERRULED — *"comforts and munitions are CUT"*.** **Luxury returns as a real class of traded
+  good; munitions stay cut.** And it returns as a **third import class**, not an export-only
+  flavour: a town with its victuals and materials covered then wants luxury, and goes short without
+  it. The original cut reason (it duplicated prosperity) is answered by making the appetite **a need
+  with teeth** rather than a second prosperity meter. **New rule ratified in the same breath:
+  luxury is trade cargo, NOT the default plunder payout.**
+  > "In Cutthroats we had trade, different resources. But on a raiding, there was always gold and
+  > jewels. Luxury goods as trading is fine. Jewels as a standard raiding currency is what I pushed
+  > back on."
+- **STANDS UNTOUCHED — *"a sacked town always crawls back"*.** The hamlet floor is not switched off by
+  anything. **"Ruined" is a *description* of a town sitting on that floor** — a hamlet living in the
+  wreck of a town — not a new state and not a new stored field. Of the three failure states, *poor*
+  recovers unaided, *ruined* recovers only with substantial outside help (from the nation, which
+  treats it as a cost-vs-benefit call and generally leads with a show of force, or from the player),
+  and *abandoned* does not recover. **Recovery must never be a grinding mechanic for the player.**
+- **STRUCK — *"a re-founded town rolls its footprint back to nothing"*.** Abandonment is
+  unrecoverable — *"abandoned, not really"* — so the clause described something that cannot happen.
+  Spec §4's *patroned towns refound instead of abandoning* is a different rule and survives untouched.
+- **RETIRED FOR TOWNS, KEPT FOR SHIPS — *"untouched towns run a cheap approximation"*.** At ~50 places
+  every town runs the real ledger and every town's century is real; watching all fifty *is* the
+  milestone. The principle was not rejected, it was **relocated** — it is now the three-ring ship
+  model, where thousands of hulls make it earn its keep. Re-add for towns only if 50 proves slow.
+- **SUPERSEDED — *"cities are placed by hand when the world is made"*.** Nothing is placed by a human
+  hand: cities are **designated by the generator at world creation** and are never demoted.
+  "Promotion is one-way" stands exactly as ratified. (Not a real contradiction: "authored" was
+  contrasted with *emergent from growth*, never with *procedural*.)
+
+**Two new rules his answers forced:**
+- **A catastrophic storm CAN destroy a single work.** Rare, one at a time, only at the very top of
+  the severity spectrum. **This overturns the manager's earlier default that storms never raze.**
+  The player's verb stays distinct because **razing is deliberate and wholesale; the storm is random
+  and singular.** A town can lose its quay to the sea.
+- **Only a deliberate hand empties a town.** With the hamlet floor intact, decline alone can never
+  empty a place — so `Abandoned` needed a cause or it was a state nothing could enter. It is now
+  reachable **only** by being razed to nothing, by a player or by a war. **Abandonment is something
+  done *to* a place, never something it drifts into.**
+
+**And one documentation consequence:** the world is invented every game, so **Havana, Port Royal and
+Tortuga survive as *heritage references* — what we build toward in feel — and are no longer map
+content.**
+
+*Why:* a ratified line should be struck deliberately, not drifted past. Each of the six was
+resurfaced with what the new answers did to it and an explicit proposal, and each was consented to
+rather than inferred.
+
+---
+
+### 2026-09-09 — The world layer: fifty generated ports, a warm start, and three rings
+
+Fourteen forks put to the human and answered. This is the world the town engine will be driven
+from. Read together with the amendments above.
+
+**The world, and how it is made**
+- **~50 places, procedurally generated, invented every game.** New coastlines, generated place names
+  from per-nation pools, five real crowns. *"This is more of an open sandbox game, rather than a
+  narrated story."*
+- **Warm start.** The generator writes a believable 1660s map — cities already cities, a great port
+  here, a hamlet there — and the simulation runs on from that day. Not a cold world watched from its
+  origin.
+- **The world decides a town's land.** A town's ground is cut from the world map at its position: its
+  coast, its climate, and what it will bear.
+  > **REFINED 2026-09-10 — the sea-lies-south invariant SURVIVES, as a drawing convention.** This
+  > bullet first recorded the invariant as dying outright, and as the largest piece of rework the
+  > world layer creates. That overstated it. `town-economy.md` §2.7 states the invariant's own
+  > purpose: **"The invariant is about readability, not geography."** So both halves hold at once —
+  > **the world holds a place's TRUE coastal bearing, and the town's local views are drawn in a
+  > local frame whose south is seaward.** What dies is only code that *generates* a town's land
+  > facing south independently of the world; what survives is the presentation rule that open water
+  > lies in the southern arc and the raid map's landing edge is the near edge. A rotation into a
+  > town-local frame preserves it exactly. Materially less rework, and a ratified readability rule
+  > kept. Spec: `world-simulation.md` `[HC-73]`. Ticket **KAN-103** (re-briefed).
+- **Nations are configured, not generated** — five crowns with fixed identities; the generator only
+  decides who holds what on day one.
+- **The neutral set is fixed at generation.** No new abbeys or havens found themselves over two
+  centuries, so the neutral share of the map can only shrink as crowns take places. **Neutral
+  factions stay neutral and have no expansionist agenda** — *"an abbey has no reason to try expand.
+  A pirate haven is a place for drinking and whoring."* Neutral is still a faction, not an absence
+  of one. **Your own haven is the standing exception** — its agenda is you.
+
+**Time, determinism and fidelity**
+- **The world owns one clock and one random stream.** A place's founding roll still takes a seed, but
+  it is derived from the world seed, so the whole world is reproducible from one number.
+- **"Reproducible" means the entire history**, not merely the starting state: the same seed
+  fast-forwarded twice gives the same two hundred years, at any speed.
+- **Two beats:** days for weather and travel; the season for economies, governors and nations.
+- **Every one of the ~50 places runs at full fidelity, always** (see the retirement above).
+
+**Ships — the three-ring model (the human's own design)**
+> "Generic trade ships can stop existing and just fall back to the simulation. But a governor has
+> real impact, so this might be a permanent ship. Reinforcements are important. … So perhaps 3
+> rings? near = loaded, granular, reachable with direct action (can catch up if we go for it
+> directly), loaded, trackable, permanent. On the side of the map, just simulated."
+
+- **Near** — every ship a real object with a position and a course. **Middle** — ships exist and hold
+  a course but are not drawn in detail; **a chase committed to will find its quarry there.** **Far**
+  — ordinary trade is a flow between ports, with no objects at all.
+- **The governing rule: the flow is the truth; ships are how the truth is drawn.**
+- **A ring is a rendering and interaction boundary, NEVER a simulation boundary.** The flow resolves
+  identically whether anyone is watching; a materialised ship is a *view* of it, never a second
+  source of truth. Get this backwards and the same seed yields two histories, and the speed control
+  becomes a lie.
+- **The four war-currencies are permanent objects in all three rings** — treasury, reinforcements,
+  charter, invasion force: findable, chaseable, takeable. There are only ever a dozen or so, so they
+  cost nothing; the thousands of anonymous grain hoys are what dissolve. **This is the sole carve-out
+  from the ratified ban on goods physically shipped between AI towns** — ordinary cargo stays a flow.
+- Cost recorded honestly: **the middle ring is the expensive one**, because "trackable and permanent"
+  means a course that survives being unwatched. Affordable at 50 ports; not at 500.
+- **These are the four currencies by which a player tips a war:** towns raided or won and handed to a
+  nation · treasury or reinforcements intercepted so support never lands · **a charter intercepted,
+  which stops a town upgrading** · an invasion force intercepted, protecting a town from changing hands.
+
+**Places and their economies**
+- **Towns trade with named neighbours.** One town's surplus grain is another's imported bread; prices
+  stay local; a burned quay is felt three bays over. **The specced abstract partner ("the shipping")
+  is therefore dead weight** — trade will be written against real neighbours directly.
+- **An outpost is a town with a narrowed purpose.** Same mechanics, same governor shaping its growth;
+  **purpose decides which way that growth can go**, and a town has more latitude than an outpost.
+  Militaristic is the only purpose in scope for now.
+  > "An outpost still works on most of the same mechanics of a town. A governor still shapes the
+  > direction of an outpost's growth. Its growth will always just be shaped by its purpose, whereas
+  > towns have a bit more flexibility."
+
+  Framed by the human against *Galactic Civilizations*: an outpost there is mining, cultural or
+  militaristic and that purpose defines it; a planet with tiles is the analogue of a town. **This
+  refines rather than replaces "every place tries to be as self-sufficient as it can":** the drive is
+  universal; what a place counts as *its own job* is not.
+- **Needs are a pyramid of shape, not of list.** Basic → refined → luxury, and a place reaches up only
+  once the tier below is secure. No catalogue authored yet.
+- **The three names are retired as a taxonomy.** `colony` / `royalOutpost` / `pirateHaven` were
+  *"examples of how they fit into the world"*. What the field actually carries in code — the
+  governor's build priorities and the sprawl temperament — **moves onto the axes** (purpose supplies
+  priorities, funding supplies temperament). Note for the record: the field was **never** the funding
+  model; funding is already separate.
+- **An outpost buys its victuals with the crown's grant**, which the shipped equation already permits.
+  Naming the replacement ceiling as the ratified rule requires: **the grant becomes the outpost's
+  population ceiling.**
+- **The charter is automatic.** A quiet threshold fires a visible event — charter granted, governor
+  installed — with nothing between the threshold and the grant. **So intercepting the charter is the
+  only thing that can stop a promotion.**
+
+**Weather**
+- **Severity is a moving point on one continuous spectrum**, read at the place and moment of contact,
+  never off the event's name. An event forms, travels, and **gains or loses momentum as it goes**.
+  **One event is not one consequence** — nothing is owed damage merely because a storm arrived.
+- **Ordinary storms are common and cheap; bad ones are rare and memorable.** The human's own gradient:
+  *loose shingles* — a little coin on maintenance and no real impact; *a downpour on the fields* — a
+  surplus of 100 becomes 70; *a bad one* — the warehouse goes over and its contents spoil; and at the
+  very top, a work destroyed outright.
+- **Climate is written at world generation and does not change**; weather happens within its rules.
+
+**The build order**
+1. **Generate a world against a seed.**
+2. **Run it with no player at all** — the only external forces are the world systems: how nations
+   impact places, how weather impacts places. **Success looks like a world map:** fifty dots that
+   grow, shrink and change colour, with storms crawling across them.
+3. **Connect the overworld to the town view** — a continuous zoom down to the hex map and the ground
+   plan, *both of which already exist and already ship*.
+
+- **Sequence within that: world, then weather, then trade.** So the first cut of "how the towns
+  interact" is *how they react to the same storms*; real named-neighbour trade lands third.
+- **In scope for the sim milestone:** time and the speed control · the map as positions, distances
+  and coastlines · weather · nations · places · the ledger · trade. **Out:** the port, raiding,
+  officers, and **the sailing model** — with no player ship, wind need only move storms and make a
+  sea route take time.
+- **The world-sim view is a developer instrument**, so the ratified "at most ~5 surfaced values per
+  town" and "no numbers-only town screen" rules — which govern the **player's** view — do not
+  constrain it.
+
+**Hygiene, recorded so the spec can be written without collisions**
+- **`Region` is overloaded and gets renamed at the world scale.** The town's land groups keep the word
+  (it is in shipped code); the world's climate divisions are **zones**, or the spec reads as "each cane
+  flat gets its own climate". *Manager's call, taken because the world spec could not be written
+  without a word and both the generator and weather were blocked on it — one word, overrule freely.*
+  Spec: `world-simulation.md` `[HC-23]`.
+  > **Refined 2026-09-10 — this half costs NO code.** The town keeps `Region`; the world generator
+  > creates `zones` correctly from the start, so there is nothing to migrate. **The real work under
+  > this heading is the other overload:** `tierOf`'s `outpost / town / capital` measures *garrison
+  > hardness* and collides with the *settlement → town → city* size class in shipped code
+  > (`[HC-60]`). That split is now the subject of **KAN-104**, which blocks the warm start rather
+  > than the generator. Manager's proposed replacement ladder: **`picket · garrison · fortress`.**
+- **Two ladders, renamed rather than merged.** `tierOf`'s `outpost/town/capital` is *how hard the
+  garrison is*; settlement → town → city is *size class*. Same words, different jobs.
+- **The metropolis question is UNPARKED and answered.** Class is emergent below city and designated at
+  city, decided at world generation — so **`tierOf` is no longer blocked** by a parked question.
+- **The town suite is PARKED, not missing — and its exit condition has just been met.** `game/` holds
+  no test files, but that is not drift from the 2026-09-07 Vitest decision: on **2026-09-08 the human
+  parked it deliberately** — *"For the town, ignore the tests — until we've locked down what the town
+  should do"* — because the land model had been reshaped three times in two days and each reshape
+  churned the suite harder than the code. The suite was **removed rather than left red**, and
+  `--passWithNoTests` was added so a parked suite would not read as a failing one (`cd9b6e9`). All of
+  that was correct and is recorded in `implementation/testing.md`.
+  **What changes today: `testing.md` says "the suite comes back when the design locks." The design has
+  now locked.** So the park is spent, and the tests worth writing first are the ones already named
+  there — the hamlet floor, the shipways idle for want of planks, a governor who will not raise what
+  nobody can man, and a reproducibility test per module. Do this **before** the world sim is stacked on
+  the ledger, and note it gates a chain: tests → the sea-lies-south rework → the generator handing a
+  town its land. Ticket **KAN-102**.
+- **CORRECTION TO THE RECORD — there is no trading engine.** `priceOf`, `access` and `commerce` do not
+  exist anywhere in `game/src/town/`. `derive()` still computes `yield = trade + grant − upkeep` with a
+  flat per-work `trade`, and `surplus` is still discarded on a prosperity nudge. §3.5 is **spec only**;
+  KAN-91–94 are unbuilt. Any document claiming the trade seam "held" was describing a design, not code.
+
+*Why:* the human asked for the whole world to be settled before any of it was built, and for
+questions rather than guesses — *"get a list of questions to me rather than try something and then
+clear it up afterwards."* These are his answers, quoted verbatim wherever the wording carries the rule.
+
+Spec: [spec/world-simulation.md](spec/world-simulation.md) — the tick order, the interaction model
+and the hard constraints this entry becomes.
+Tickets: **KAN-96** (epic, the world layer) → **KAN-97** clock · **KAN-98** generator · **KAN-105**
+the dispatch · **KAN-99** warm start · **KAN-101** nations · **KAN-90** weather (reparented from
+KAN-67) · **KAN-100** world map view. Unparented tasks: **KAN-102** unpark the town suite ·
+**KAN-103** a town's land comes from the world map · **KAN-104** split the two overloaded ladders.
+Re-briefed: **KAN-91–95**. Each story cites the spec and defers to it: **where a ticket and
+`world-simulation.md` disagree, the spec wins.**
+
+**The blocking graph** — recorded here because it otherwise exists only scattered across ticket
+bodies:
+
+```
+KAN-97 (clock) ─────────────────────────────► everything
+KAN-102 (tests) → KAN-103 (town land) → KAN-98 (generator)
+KAN-97 + KAN-98 → KAN-105 (dispatch) → { KAN-99 (warm start), KAN-101 (nations) }
+KAN-104 (ladders) → KAN-99
+KAN-99 → KAN-100 (world map view)
+```
+
+Note what sits at the head of it: **three refactors of shipped, currently untested sim code.** That
+is why `KAN-102` is first and not housekeeping.
+
+**Not ticketed, deliberately:** the three-ring ship fidelity model (specced in §6; needs a player to
+matter) · **interception itself** (§2.2 step 4 is a deliberate no-op in this milestone) · step 3 of
+the build order, the continuous zoom from overworld to town. **The war-currency *object* IS in scope
+and is KAN-105** — a manager's error corrected 2026-09-10: nations cannot fund or charter anything
+without it, so the player-free simulation stands on it even though no one can intercept it yet.
+
+---
+
 ### 2026-09-08 (fifth) — Towns trade: a town's wealth is EARNED, not emitted
 Three ratified calls from the human in one message. Together they move the module's centre of
 gravity: what makes a town live is its own trade, and the player is a visitor to it.
@@ -87,10 +340,21 @@ running on its own terms.
 - **TWO import classes, not four: victuals and materials.** **Comforts and munitions are CUT**
   because they duplicated **prosperity** and **security**, which already exist — two systems doing
   one job. If an appetite for cloth or powder ever needs a voice it **modulates the existing
-  measure** instead of becoming a good. Materials are the one that earns its place: a town that
+  measure** instead of becoming a good.
+  > **HALF-OVERRULED 2026-09-09 — THREE import classes: victuals · materials · LUXURY.** The human
+  > restored luxury as a real traded good *and* as a need with teeth: a town with victuals and
+  > materials covered then wants luxury and goes short without it. **Munitions stay cut.** The
+  > duplication objection is answered by making the appetite a need rather than a second prosperity
+  > meter. New rule in the same breath: **luxury is trade cargo, not the default plunder payout.** Materials are the one that earns its place: a town that
   cannot get timber and stone **cannot build however rich it is**, so razing the quay of a
   stone-poor island stops it rebuilding its wall.
-- **The metropolis question is PARKED — the human reserved it.** *Whether a town's CLASS
+- **The metropolis question is PARKED — the human reserved it.**
+  > **UNPARKED AND ANSWERED 2026-09-09.** Class is **emergent below city, designated at city**, and
+  > decided at world generation. **`tierOf` is no longer blocked** — but see the two-ladders note in
+  > the 2026-09-09 entry: `tierOf`'s `outpost/town/capital` measures *garrison hardness*, not size
+  > class, and gets renamed rather than extended.
+
+  *Whether a town's CLASS
   (village → town → city → metropolis) emerges from growth or is authored when the world is
   made* was put to him and he declined to settle it here: **"this describes how the entire world
   works."** A recommendation of *emergent* is on file; **it is not ratified and must not be
@@ -398,9 +662,12 @@ one of them an overrule). The load-bearing sentence:
 **The human's four calls (2026-09-08):**
 - **The footprint model, and draw 37 hexes** (radius 3 at ~26px, was 19 at 40px). The literal ask —
   "smaller tiles, more of them" — is honoured on the *drawing*, while the parcel ring stays six.
-- **Absorbed ground is permanent** — build over the cane and the cane is gone. The one exception:
+- **Absorbed ground is permanent** — build over the cane and the cane is gone. ~~The one exception:
   a town reaching the ratified `Abandoned` end-state and later re-founded rolls its footprint back
-  to nothing and keeps its parcels.
+  to nothing and keeps its parcels.~~
+  > **STRUCK 2026-09-09.** The human ruled abandonment unrecoverable — *"abandoned, not really"* —
+  > so the exception described something that cannot happen. **Absorbed ground is permanent, full
+  > stop.** Spec §4's *patroned towns refound instead of abandoning* is a different rule and stands.
 - **OVERRULE — a haven owner MAY grant a hex "to the town".** The designer (and the manager)
   recommended refusing this as the thin end of zoning; the human ratified it. It is defensible on
   the same ground as every other grant: **you are still answering *what is this land for*, once,
@@ -660,6 +927,12 @@ building) is absorbed by KAN-70. The load-bearing split:
   **patron backstop**, **bounded flight** (population outflow capped per event, some refugees
   return), and **Abandoned** as a rare, *deliberate* end-state (patroned towns re-found instead,
   so the map never bleeds out by accident).
+  > **SHARPENED 2026-09-09 — abandonment now has exactly one cause.** With the hamlet floor intact,
+  > decline alone can never empty a place, so `Abandoned` was a state nothing could enter. It is
+  > reachable **only by being razed to nothing**, by a player or by a war: **something done *to* a
+  > place, never something it drifts into.** "Deliberate" is now literal. And *ruined* — the middle
+  > failure state — is a **description of a town sitting on the hamlet floor**, not a state that
+  > switches the floor off; no new stored field.
 - **Identity comes from a read-only parcel ring** — 6–9 parcels `{terrain, quality, bearing}`,
   drawn on a **biased founding roll** (one dominant vocation + one or two supporting, never
   uniform random — uniform makes every town mediocre at everything). **Parcel scarcity is the
@@ -721,7 +994,14 @@ inventory (flows + one wealth stock; the raid haul is the sole spec'd exception)
 prompt · an optimal layout to discover — including smuggled back in as "choose the town's plan" ·
 a numbers-only town screen · more than ~5 surfaced values per town (population, wealth,
 prosperity, security, works; everything else is prose) · a commodity price table for the player to
-arbitrage · full-fidelity simulation of untouched towns (they run a cheap approximation).
+arbitrage · ~~full-fidelity simulation of untouched towns (they run a cheap approximation)~~.
+
+> **RETIRED FOR TOWNS 2026-09-09 — kept for ships.** At ~50 places the approximation has no cost
+> basis, and the world milestone *is* watching all fifty untouched towns run real centuries. Every
+> place runs the real ledger. The principle was relocated rather than rejected: it is now the
+> **three-ring ship model** (near = real objects · middle = exists and holds a course · far = trade
+> is a flow), where thousands of hulls make it earn its keep. Re-add for towns only if 50 proves slow.
+> **Every other item in this list stands.**
 
 *Why:* this is the consequence the plunder layer was stubbed against and the substrate §7.3's
 trade layer plugs into — and it makes the pirate verbs **economic**: a town you can impoverish, a

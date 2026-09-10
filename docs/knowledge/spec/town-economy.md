@@ -332,9 +332,13 @@ symmetry, and a wall holds one side rigid while the other sprawls.
 Build over the cane and the cane is gone: a claimed hex leaves its region's capacity and any work
 standing on it idles. Claiming is **binary** — every claim costs capacity the moment it happens,
 which is the correct fiction and a legible event rather than a numeric bleed. Over a century a
-town claims perhaps a quarter to a third of its workable ground. The one exception: a town that
-reaches `Abandoned` and is later re-founded rolls its footprint back to nothing and keeps its
-land.
+town claims perhaps a quarter to a third of its workable ground.
+
+> **STRUCK 2026-09-09.** There was an exception here — *a town that reaches `Abandoned` and is later
+> re-founded rolls its footprint back to nothing and keeps its land*. Abandonment is unrecoverable
+> (*"abandoned, not really"*), so it described something that cannot happen. **Claiming is
+> permanent, with no exception.** §4's *patroned towns refound instead of abandoning* is a
+> different rule and is unaffected.
 
 **The footprint never retreats.** Collapse leaves derelict ground, then ruins.
 
@@ -461,13 +465,24 @@ profile-supplier precedent of `region.bears`:
 side** — "a timber town". Imports are a short need list, because nobody cares *which* cloth a
 colony buys, only that it buys its bread:
 
-**TWO classes, ratified 2026-09-08:** **victuals** (population) · **materials** (construction).
-The first slice ships **victuals only**; materials follow.
+**THREE classes, as amended 2026-09-09:** **victuals** (population) · **materials** (construction) ·
+**luxury** (the top of the pyramid). The first slice ships **victuals only**; materials follow, then
+luxury.
 
-**Comforts and munitions were CUT.** They duplicated **prosperity** and **security**, which already
-exist — two systems doing one job is exactly the failure this avoids. If a town's appetite for
-cloth or powder ever needs a voice, it **modulates the existing measure** rather than becoming a
-third and fourth good.
+> **AMENDED 2026-09-09 — luxury is restored; munitions stay cut.** The line below read *"comforts and
+> munitions were CUT"*. The human restored the comforts half as **luxury**, and as a **need with
+> teeth**: a town whose victuals and materials are covered then wants luxury and **goes short without
+> it** — which is what makes the needs pyramid a pyramid rather than a list. The duplication
+> objection is answered by making the appetite a *need* rather than a second prosperity meter.
+> **Munitions remain cut** and still modulate **security**.
+>
+> **And a new rule the original decision never had: luxury is trade cargo, not the default plunder
+> payout.** *"Luxury goods as trading is fine. Jewels as a standard raiding currency is what I pushed
+> back on."* A raid does not pay out in jewels by default.
+
+**Munitions were CUT.** They duplicated **security**, which already exists — two systems doing one
+job is exactly the failure this avoids. If a town's appetite for powder ever needs a voice, it
+**modulates the existing measure** rather than becoming a fourth good.
 
 **Materials are the point of the second class:** a town that cannot get timber and stone **cannot
 build**, however rich it is — so razing the quay of a stone-poor island stops it rebuilding its
@@ -548,6 +563,15 @@ Exactly three things are exposed, so the town menu has something real to talk to
 
 Per-good town stockpiles · elasticity curves · goods physically shipped between AI towns ·
 **an omniscient cross-town price table**.
+
+> **ONE CARVE-OUT, ratified 2026-09-09.** *Goods physically shipped between AI towns* still holds for
+> **ordinary cargo** — inter-town trade resolves as **flows between named neighbours**, and the sails
+> you see near you are a materialisation of those flows, never a second source of truth. The
+> exception is the **four war-currencies** — treasury · reinforcements · **charter** · invasion force
+> — which **are** permanent, interceptable objects wherever they are, because that is the whole of
+> how a player tips a war. There are only ever a dozen or so in the world at a time. See the
+> three-ring model in `decisions.md` (2026-09-09): **a ring is a rendering and interaction boundary,
+> never a simulation boundary.**
 
 **Guardrail clarified:** the ratified ban is on *the price **table*** — the arbitrage-enabling god
 view — **not on prices existing**. You learn a price by going there, or by **bribing the
@@ -735,8 +759,31 @@ when you visit or when word reaches you.
 > **AMENDED 2026-09-08 — the slider is WITHDRAWN; the archetypes stand.** The archetype table below
 > is unchanged and is now **KAN-95**. "Funded by" is re-read under §3.5: a colony lives on **its own
 > trade** plus a small charter grant, and a stipend's whole personality is that it is **independent
-> of trade** — an outpost never chases a market, never becomes a metropolis, and is barely worth
-> blockading. Everything about the *slider* is superseded (**KAN-72**, closed).
+> of trade** — an outpost never chases a market, never becomes a metropolis, and ~~is barely worth
+> blockading~~. Everything about the *slider* is superseded (**KAN-72**, closed).
+>
+> **AMENDED AGAIN 2026-09-09 — two changes, and the second inverts a conclusion.**
+>
+> **(1) "Archetype" is retired as a taxonomy.** The three names were *"examples of how they fit into
+> the world"*, not a classification. A place is described by **size × purpose × faction**; what this
+> table's rows actually carry in code moves onto those axes — **purpose supplies the governor's build
+> priorities, funding supplies the sprawl temperament.** The table survives below as *worked examples
+> of common combinations*, which is what the human always meant by it. Note for the record: the
+> archetype field was **never** the funding model — funding is already separate.
+>
+> **(2) "Barely worth blockading" is STRUCK, and its idea relocated.** An outpost now **imports the
+> majority of its needs** (its purpose is military, not industry) and its crown support arrives as an
+> **interceptable shipment** rather than a number from nowhere. That makes it **the most
+> supply-fragile place on the map** — the exact inverse. The funding independence stands: its coin
+> still comes from the crown and it still never chases a market. What replaces the struck clause:
+> **an outpost is a poor raid and an excellent interception** — little to loot, but a lifeline you can
+> cut. *"A target worth declining"* survives, for the **raiding** verb only.
+>
+> Also ratified: **an outpost buys its victuals with the crown's grant**, which the §3.5 equation
+> already permits — so, naming the replacement ceiling as the rules require, **the grant is the
+> outpost's population ceiling.** And an outpost is otherwise **a town with a narrowed purpose**: same
+> mechanics, same governor shaping its growth, but *"its growth will always just be shaped by its
+> purpose, whereas towns have a bit more flexibility."*
 
 
 | Archetype | Funded by | Agenda | Raid character |
@@ -1217,8 +1264,15 @@ stored state, and the line that lifts the 450 ceiling) · **KAN-92** prices + th
 **KAN-90** weather (the shock the engine absorbs) · **KAN-95** archetypes (KAN-72's surviving half)
 · **KAN-89** the town menu (every player lever, parked until the engine exists).
 
-**Build order is not negotiable:** the engine, then weather, then the long run that proves both,
-then — and only then — anything the player can touch.
+~~**Build order is not negotiable:** the engine, then weather, then the long run that proves both,
+then — and only then — anything the player can touch.~~
+
+> **REORDERED 2026-09-09 — the world came first.** The order is now **world → weather → trade**. Two
+> things changed it: the human chose to build the world layer before the trade engine, and trade is
+> now written against **real named neighbours** rather than the abstract "the shipping" partner, so
+> there is no longer anything to gain by writing it first. The *last* clause survives untouched and
+> is the part that mattered: **anything the player can touch comes last.** See
+> [world-simulation.md](world-simulation.md) §0 and `../decisions.md` (2026-09-09).
 
 ### Withdrawn (2026-09-08, fifth)
 

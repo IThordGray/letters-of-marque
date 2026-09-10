@@ -3,6 +3,14 @@
 
 A spiritual successor to *Cutthroats: Terror on the High Seas* (1999). Age-of-sail privateer campaign in a persistent Caribbean.
 
+> **Setting note, ratified 2026-09-09 — the sea is invented every game.** The world is **procedurally
+> generated**: ~50 places, new coastlines, place names drawn from per-nation pools, five real crowns.
+> **Havana, Port Royal and Tortuga — and every other real port named anywhere in this document — are
+> HERITAGE REFERENCES, not map content.** They say what we are building toward in feel; they are not
+> places a player will visit. Read every such name below as flavour illustrating a mechanic. The
+> *Caribbean* remains the register — period, powers, latitudes, weather — rather than the map.
+> See `knowledge/decisions.md` (2026-09-09) for the world layer in full.
+
 **Changes from v0.16** *(reverted to design-spec + prototypes; a process note, not a design change)*
 - **Withdrawn: the v0.16 "durable build begins" step.** Durable development has been set aside; the project is back to this design spec plus the two throwaway prototypes (naval, land) that validate the fun. **No game rules changed.**
 - **Removed §8 Technology** — engine, language, and simulation-core architecture are decisions deferred out of the design spec, which is once again pure game design. Old **§9–12 renumber to §8–11**.

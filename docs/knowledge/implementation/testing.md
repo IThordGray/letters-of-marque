@@ -77,7 +77,37 @@ Sim systems are deterministic by construction — a seeded PRNG in world state
 same seed and same steps produce the same result. It is one assertion and it catches an entire
 class of bug that is otherwise miserable to chase.
 
-## Parked: the town module (2026-09-08)
+## Parked: the town module (2026-09-08) — **the park is spent as of 2026-09-09**
+
+> **THE EXIT CONDITION BELOW HAS BEEN MET.** This section says *"the suite comes back when the design
+> locks."* On **2026-09-09 the design locked** — the world layer was ratified in full and the town's
+> own open questions (failure states, purpose, import classes, the outpost's ceiling) were all
+> answered. The reshaping that justified the park has stopped.
+>
+> **So: the suite comes back, and it comes back before the world simulation is stacked on the
+> ledger** — a fifty-place, two-hundred-year run over untested sim code is exactly the situation the
+> reproducibility test exists for. The named starting set below is still the right one. Ticket
+> **KAN-102**.
+>
+> Keep `--passWithNoTests` until the first test lands, then **remove it** — it was added so a parked
+> suite would not read as a failing one (`cd9b6e9`), which was correct while parked and becomes a
+> blindfold once it is not.
+
+The rest of this section is kept for the record — it explains why the park was right at the time.
+
+### A second gap, which the park does NOT cover (recorded 2026-09-09)
+
+**Every test file that has ever existed in `game/` was a town-module file** — all seven removed
+together by `220cf15`. Verified against the full history: no other module has ever had one.
+
+So **the raid layer — `ai`, `combat`, `morale`, `movement`, `nav`, `patrol`, `raid`, `spawn` — has
+never had a suite and was never parked.** It sits outside the exit condition above, because there was
+nothing to exit. That is a real gap and a different one: it is not what the world simulation stacks
+on, so it does not gate the world milestone, and it should not be silently absorbed into the unpark
+work as though the park had covered it.
+
+Recorded here rather than fixed. **It wants its own decision** — the raid layer holds the ratified
+will-spine, which is exactly the kind of rule the house style says to pin as a design claim.
 
 **`game/src/town/` is exempt from everything below, temporarily**, by the human's explicit call:
 
