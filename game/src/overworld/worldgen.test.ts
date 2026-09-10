@@ -42,15 +42,17 @@ describe("one seed, one world", () => {
     expect(WORLD.zones.length).toBeGreaterThan(0); // climate zones
     expect(WORLD.places.length).toBeGreaterThan(0); // the ~50 positions
     expect(WORLD.nations.length).toBe(Object.keys(FACTIONS).length); // who holds what
-    // ...and no heightmap, no tile grid, no stored weather, no place's land.
-    // `dispatches` joined the list on KAN-105 and is the exception that proves
-    // the rule: the four war-currencies are the sole carve-out from "the flow is
-    // the truth" ([HC-13]), and they are cheap to store only because a passage is
-    // a departure and an arrival rather than a position ([P-16]). The generator
-    // still writes none — a fresh world sails nothing.
+    // ...and no heightmap, no tile grid, no place's land, and no AMBIENT weather.
+    // Two fields joined this list on the same day and they are the only two
+    // exceptions there will be: `dispatches`, the four war-currencies at sea
+    // ([HC-13], cheap only because [P-16] makes a passage a departure and an
+    // arrival), and `storms`, the live events that [HC-31] makes the one
+    // sanctioned exception to [HC-14] because momentum is history.
+    // The generator writes neither — a fresh world sails nothing and is calm.
     expect(Object.keys(WORLD).sort())
-      .toEqual(["day", "dispatches", "nations", "places", "seed", "shape", "zones"]);
+      .toEqual(["day", "dispatches", "nations", "places", "seed", "shape", "storms", "zones"]);
     expect(inFlightCount(WORLD)).toBe(0);
+    expect(WORLD.storms).toEqual([]);
   });
 
   it("can say what it made, in one sentence", () => {

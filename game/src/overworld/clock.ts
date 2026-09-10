@@ -20,6 +20,7 @@ import { makeDispatches, type Dispatches } from "./dispatch";
 import type { Nation } from "./factions";
 import type { Place } from "./places";
 import { emptyShape, type WorldShape } from "./shape";
+import type { Storm } from "./weather";
 
 // ---- The calendar, as data ([HC-90]) --------------------------------------
 // No real calendar, no leap years, no months. Nothing in the design needs a true
@@ -64,11 +65,22 @@ export interface World {
   nations: Nation[];
   // ~50 ports on real coasts, at real positions ([HC-24]).
   places: Place[];
+  // TWO exceptions to everything the comment above says, and only two. Both
+  // arrived on the same day from different workstreams, which is a fair sign
+  // that the list is closed rather than merely short.
+  //
   // The four war-currencies at sea ([HC-13], [HC-44]) — the sole carve-out from
   // "the flow is the truth", and the only moving things the world stores. They
   // are cheap to store precisely because [P-16] lets a passage be a departure
   // and an arrival rather than a position that has to be kept up to date.
   dispatches: Dispatches;
+  // The live weather events ([HC-31]). Ambient weather is a pure function of
+  // (seed, zone, day) and is stored nowhere; an EVENT has to be stored, because
+  // momentum is history — an event that is building is not the same as an
+  // identical event spending itself, and no pure function of (seed, day) can
+  // know which. Its spawning is still derived, so the same world breeds the same
+  // storms. There are only ever a handful alive at once.
+  storms: Storm[];
 }
 
 // One factory, every field present, same order, same types ([P-26]) — so the
@@ -78,7 +90,7 @@ export interface World {
 export function makeWorld(seed: number): World {
   return {
     seed: seed >>> 0, day: 0, shape: emptyShape(),
-    zones: [], nations: [], places: [], dispatches: makeDispatches(),
+    zones: [], nations: [], places: [], dispatches: makeDispatches(), storms: [],
   };
 }
 
