@@ -89,7 +89,7 @@ export const TRADE = {
   // Base prices, in coin per unit. Materials and luxury sit at par because the
   // catalogue's `trade` numbers are already value-weighted; victuals are cheap
   // and bulky, which is what makes a city fed from the sea expensive to keep.
-  basePrice: [0.25, 1.0, 1.2],
+  basePrice: [0.15, 1.0, 1.2],
   // How far a cleared ratio may move a price either way ([HC-82]: the ratio sets
   // the local price). A glut halves it, a famine trebles it, and nothing on the
   // map ever reads a price it did not sail to.
@@ -103,6 +103,10 @@ export const TRADE = {
   // pays the quay before the governor sees a coin. A governor who spent every
   // penny on corn would never raise anything again.
   growthShare: 0.6,
+  // [HC-88] THE PLAYER IS A SMALL FISH. However much he lands or lifts in one
+  // deal, he may not move a local price by more than this share of it. Uncapped,
+  // the first thing anyone discovers is that they can buy out a town.
+  nudgeCap: 0.08,
   // How nearly a tier must be covered to count as SECURE and let a place reach
   // one rung higher ([HC-77]). Not zero, because a place a bushel short of its
   // own corn is not a place in famine.

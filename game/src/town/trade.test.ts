@@ -9,8 +9,8 @@
 
 import { describe, it, expect } from "vitest";
 import { derive, stepSeason, stepYears, carryingCapacity, prosperityTarget } from "./sim";
-import { raise } from "./works";
-import { accessOf, dependencyOf, dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
+import { CATALOGUE, raise } from "./works";
+import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE } from "./constants";
 import { governorTurn, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
@@ -125,6 +125,51 @@ describe("the coin ceiling", () => {
     stepSeason(town);
     const d = derive(town);
     expect(d.commerce.want[0]).toBe(0);
+  });
+});
+
+describe("the ceiling is fragile, and the raid consequence IS the ceiling", () => {
+  // [HC-87]: nothing separate implements "raiding hurts" — this is it. A
+  // trade-fed town falls back toward what its own ground grows the moment its
+  // quay stops working, because the bought half of the sum simply stops
+  // arriving. Stated on a place whose only waterfront works are CAPITAL ones, so
+  // the quay stays shut: subsistence works raise themselves again for nothing,
+  // which is the hamlet floor doing its job and not a hole in the rule.
+  function seaFed(): Town {
+    const t = seaTown({ population: 60, wealth: 500000 });
+    raise(t, "warehouse", 1650);
+    raise(t, "customsHouse", 1650);
+    raise(t, "sawpit", 1650);
+    stepSeason(t);
+    return t;
+  }
+
+  // A season's worth of grain landed on the quay, as the world would hand it in.
+  const fedFor = (town: Town, seasons: number) => {
+    for (let i = 0; i < seasons; i++) {
+      clearedWith(town, 0, 1600, TRADE.basePrice[0]);
+      stepSeason(town);
+    }
+  };
+
+  it("carries far more souls on bought bread than its own ground could feed", () => {
+    const town = seaFed();
+    fedFor(town, 200);
+    expect(derive(town).commerce.produced[0]).toBe(0); // not one acre of its own
+    expect(town.population).toBeGreaterThan(450); // and far past the old cap
+  });
+
+  it("falls back toward the hamlet floor when the quay stops", () => {
+    const town = seaFed();
+    fedFor(town, 200);
+    const before = town.population;
+
+    for (const w of town.works) if (CATALOGUE[w.kind].zone === "waterfront") w.condition = "ruin";
+    for (let i = 0; i < 200; i++) stepSeason(town); // nothing comes over the beach
+
+    expect(derive(town).access).toBe(0);
+    expect(derive(town).commerce.want[0]).toBe(0); // it cannot even ask
+    expect(town.population).toBeLessThan(before * 0.2);
   });
 });
 
@@ -387,6 +432,143 @@ describe("a town fed from the sea is not a town on its knees", () => {
     const gap = prosperityTarget(own, dm) - prosperityTarget(fed, df);
     expect(gap).toBeGreaterThan(0); // it costs it something...
     expect(gap).toBeLessThan(20); // ...but nothing like a collapse. MILD ([HC-79]).
+  });
+});
+
+describe("the port seam", () => {
+  // §3.5.7 exposes exactly three things: `derive(town).commerce`, a public pure
+  // `priceOf()`, and two write-points. The player's VERBS are KAN-89; this is the
+  // shape they will be built against.
+  const opened = () => {
+    const t = open(mixedTown({ population: 300, wealth: 5000 }));
+    stepSeason(t);
+    return t;
+  };
+
+  it("answers what a good costs here, and only here", () => {
+    const town = opened();
+    town.market.price[0] = 0.4;
+    expect(priceOf(town, "victuals")).toBe(0.4);
+    expect(priceOf(town, "materials")).not.toBe(0.4);
+  });
+
+  it("softens a price when cargo is landed and hardens it when cargo is lifted", () => {
+    const landed = opened();
+    const lifted = opened();
+    const before = landed.market.price[1];
+    sellTo(landed, "materials", 20, derive(landed));
+    buyFrom(lifted, "materials", 20, derive(lifted));
+    expect(landed.market.price[1]).toBeLessThan(before);
+    expect(lifted.market.price[1]).toBeGreaterThan(before);
+  });
+
+  it("will not let one man buy out a town, however much he lands", () => {
+    // [HC-88]. He is a small fish, and the cap is what keeps him one — otherwise
+    // the first thing anyone discovers is the exploit.
+    const town = opened();
+    const before = town.market.price[1];
+    buyFrom(town, "materials", 1e9, derive(town));
+    expect(town.market.price[1]).toBeLessThanOrEqual(before * (1 + TRADE.nudgeCap));
+  });
+
+  it("moves a hamlet's price further than a great port's for the same cargo", () => {
+    // The nudge is measured against the season's flow, so scale does the work and
+    // no rule has to name a size.
+    const small = opened();
+    const great = opened();
+    raise(great, "sawpit", 1650);
+    raise(great, "sawpit", 1650);
+    stepSeason(great);
+    const a = small.market.price[1];
+    const b = great.market.price[1];
+    buyFrom(small, "materials", 1, derive(small));
+    buyFrom(great, "materials", 1, derive(great));
+    expect(small.market.price[1] / a).toBeGreaterThan(great.market.price[1] / b);
+  });
+
+  it("pays the town for what it lifts, and takes its coin for what it lands", () => {
+    const town = opened();
+    const before = town.wealth;
+    buyFrom(town, "materials", 10, derive(town));
+    expect(town.wealth).toBeGreaterThan(before);
+    const mid = town.wealth;
+    sellTo(town, "materials", 10, derive(town));
+    expect(town.wealth).toBeLessThan(mid);
+  });
+
+  it("never spends coin the town has not got", () => {
+    const town = open(mixedTown({ population: 300, wealth: 0 }));
+    town.wealth = 0; // bare coffers at the moment the boat comes alongside
+    const deal = sellTo(town, "materials", 1e6, derive(town));
+    expect(town.wealth).toBe(0);
+    expect(deal.coin).toBe(0);
+  });
+});
+
+describe("what a purpose puts out of reach", () => {
+  // §11.3. Dependency is scored identically for every place ([HC-81]); what a
+  // purpose changes is what the governor may DO about it.
+  // A garrison on thin ground: one grudging acre that WOULD bear a crop, a
+  // roadstead, a stand of timber. It could raise a farm; the whole point is that
+  // it never will.
+  const onThatGround = (archetype: Town["archetype"]) => {
+    const t = townOf(
+      [
+        reg(0, "roadstead", RING1.slice(0, 3)),
+        reg(1, "timberedHills", RING1.slice(3, 5), { bears: { timber: "fair" } }),
+        reg(2, "tilledGround", RING2.slice(0, 5), { bears: { food: "poor" } }),
+        reg(3, "scrub", RING2.slice(5, 11)),
+      ],
+      { population: 200, wealth: 100000, archetype, grant: 40 },
+    );
+    raise(t, "warehouse", 1650);
+    stepSeason(t);
+    t.market.bought[0] = 400; // the crown's grant buys its bread
+    t.market.bought[1] = 400;
+    return t;
+  };
+
+  const outpost = () => onThatGround("royalOutpost");
+
+  // A century of seasons, fed the same way throughout.
+  const live = (t: Town, seasons: number) => {
+    for (let i = 0; i < seasons; i++) {
+      t.market.allotted[0] = 400;
+      t.market.allotted[1] = 400;
+      t.market.price[0] = TRADE.basePrice[0];
+      t.market.price[1] = TRADE.basePrice[1];
+      stepSeason(t);
+      governorTurn(t, 1650 + i);
+    }
+  };
+
+  it("still asks for a farm, in the same words, and is heard", () => {
+    const t = outpost();
+    const wish = wants(t, 12).find((w) => w.kind === "provisionGround");
+    expect(derive(t).dependency).toBeGreaterThan(0.7);
+    expect(wish).toBeDefined();
+    expect(wish!.terms.some((x) => x.clause === DEPENDENCY_CLAUSE)).toBe(true);
+  });
+
+  it("and never builds one, though a colony on the same ground does", () => {
+    // Paired deliberately. "The outpost has no farm" on its own is satisfied by
+    // any town that never wanted one; the claim only means something beside a
+    // place that WOULD have built it from the identical brief.
+    const garrison = outpost();
+    const colony = onThatGround("colony");
+    expect(wants(garrison, 12).find((w) => w.kind === "provisionGround")!.permitted).toBe(false);
+
+    live(garrison, 400);
+    live(colony, 400);
+
+    expect(colony.works.some((w) => w.kind === "provisionGround")).toBe(true);
+    expect(garrison.works.some((w) => w.kind === "provisionGround")).toBe(false);
+    expect(garrison.works.length).toBeGreaterThan(3); // it built plenty of other things
+  });
+
+  it("puts nothing out of a colony's reach", () => {
+    const t = open(mixedTown({ population: 300, wealth: 9000 }));
+    expect(wants(t, 12).every((w) => w.permitted)).toBe(true);
   });
 });
 

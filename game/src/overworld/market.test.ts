@@ -146,6 +146,36 @@ describe("clearing is order-independent", () => {
     }
   });
 
+  it("allots a short supply pro-rata, so nobody gets FIRST CALL on it", () => {
+    // The companion claim, and the one that catches the bug [HC-7] actually
+    // names. Shuffling the caller's array cannot find it: this clearing walks
+    // each neighbourhood's members in a fixed order whatever order the world was
+    // stepped in, so a first-come-first-served allocation against a draining pool
+    // would still be perfectly reproducible — and still wrong, because the low
+    // id would eat first every season for two centuries. Pro-rata is the rule;
+    // this is what states it.
+    const places = [placeAt(0, 0), placeAt(1, 40), placeAt(2, 80)];
+    const markets = makeMarkets(places);
+
+    const port = () => {
+      const t = seaTown({ population: 300, wealth: 200000 });
+      raise(t, "warehouse", 1650);
+      raise(t, "customsHouse", 1650);
+      return t;
+    };
+    // A farm with far less corn than the two ports between them want.
+    const farm = mixedTown({ population: 60, wealth: 500 });
+    raise(farm, "warehouse", 1650);
+    raise(farm, "provisionGround", 1650);
+    produceSeason(farm);
+
+    const towns = [port(), farm, port()];
+    clearSeason(markets, places, towns, noWars(3));
+
+    expect(towns[0].market.allotted[0]).toBeGreaterThan(0);
+    expect(towns[2].market.allotted[0]).toBeCloseTo(towns[0].market.allotted[0], 9);
+  });
+
   it("gives the same two hundred years from the same seed, twice over", () => {
     // [HC-11]: reproducible means the whole history, not the starting state.
     const a = bench();
@@ -203,6 +233,16 @@ describe("the pyramid, and its gate", () => {
     return t;
   }
 
+  // ...and a neighbour just as hungry, but with timber to sell. It is here so the
+  // first claim below is not vacuous: there must be timber ON THE MARKET for
+  // "registers no demand for it" to mean anything at all.
+  function hungryTimberPort(): Town {
+    const t = hungryPort();
+    raise(t, "sawpit", 1650);
+    raise(t, "sawpit", 1650);
+    return t;
+  }
+
   // ...and a neighbour with corn and timber to spare.
   function farmingNeighbour(): Town {
     const t = mixedTown({ population: 120, wealth: 500 });
@@ -217,11 +257,13 @@ describe("the pyramid, and its gate", () => {
     const places = [placeAt(0, 0), placeAt(1, 40)];
     const markets = makeMarkets(places);
 
-    const hungry = [hungryPort(), hungryPort()]; // neither has an acre of corn
+    // Neither has an acre of corn; the second has timber on the quay.
+    const hungry = [hungryPort(), hungryTimberPort()];
     clearSeason(markets, places, hungry, noWars(3));
     const c = derive(hungry[0]).commerce;
+    expect(derive(hungry[1]).commerce.offer[1]).toBeGreaterThan(0); // timber IS to be had
     expect(c.want[0]).toBeGreaterThan(0);
-    expect(c.want[1]).toBeGreaterThan(0); // it wants timber...
+    expect(c.want[1]).toBeGreaterThan(0); // and it wants some...
     expect(hungry[0].market.allotted[0]).toBe(0); // ...but there is no bread to be had
     expect(hungry[0].market.allotted[1]).toBe(0); // ...so it registers no demand for it
   });
@@ -291,6 +333,85 @@ describe("war is a filter on the pool, never on a place", () => {
     declareWar(wars, 0, 1);
     // With its only customer cut off, the farmer's corn is worth less.
     expect(price(wars)).toBeLessThan(price(noWars(3)));
+  });
+});
+
+describe("the ceiling is fragile, by design", () => {
+  // [HC-87] is stated at TOWN scale, in trade.test.ts, where the quay can
+  // actually be held shut. It cannot be stated here, and the reason is worth
+  // recording rather than working around: a place's fishing shacks are
+  // SUBSISTENCE works, so they raise themselves again for nothing every season —
+  // the hamlet floor doing exactly its job. Burning them is a season's
+  // inconvenience, not a blockade, and `access` built out of works alone cannot
+  // express one. §3.5.2 already names the seam that will: "access reads real
+  // routes and blockades".
+  it("feeds a sea-fed port from the market at all, which is what makes it fragile", () => {
+    const { world, towns, markets, wars } = bench();
+    runYears(world, towns, markets, wars, 60);
+
+    let fed = 0;
+    for (let i = 1; i < towns.length; i++) {
+      if (derive(towns[i]).commerce.bought[0] > derive(towns[fed]).commerce.bought[0]) fed = i;
+    }
+    const port = towns[fed];
+    const d = derive(port);
+    expect(d.commerce.bought[0]).toBeGreaterThan(0);
+    // Its people outnumber what its own ground could ever have fed — which the
+    // old ~450-soul cap forbade by construction.
+    expect(port.population).toBeGreaterThan(d.commerce.produced[0]);
+  });
+});
+
+describe("cost is linear in the number of places", () => {
+  it("bounds the work per season by the place count, never by its square", () => {
+    // [HC-15] / [HC-83]. Stated structurally rather than by a stopwatch: the
+    // clearing walks each neighbourhood's members once per class, so the total
+    // is the sum of the memberships — and the cap holds that under k x N.
+    const { markets } = bench();
+    let visits = 0;
+    for (const h of markets.hoods) visits += h.members.length;
+    expect(visits).toBeLessThanOrEqual(MARKET.maxMembers * markets.hoods.length);
+  });
+
+  it("keeps no price of its own, so there is no table to consult", () => {
+    // §3.5.9's ratified ban is on the price TABLE — the arbitrage-enabling god
+    // view. [HC-82] makes it structural: the market module holds neighbourhoods
+    // and nothing else, and a price lives only on the town that faces it.
+    const { markets } = bench();
+    expect(Object.keys(markets).sort()).toEqual(["hoods", "hoodsOf"]);
+    for (const h of markets.hoods) expect(Object.keys(h).sort()).toEqual(["id", "members"]);
+  });
+});
+
+describe("no place oscillates with growing amplitude across two centuries", () => {
+  // [HC-75], and the spec is explicit that this is a NAMED ACCEPTANCE TEST, not
+  // a hope. The failure mode is Bannerlord's: a place outgrows what its exports
+  // fund, the coffers empty, the food goes unbought, the population falls, it
+  // regrows, and it repeats — louder each time. POP.drift is what damps it.
+  it("swings no wider in its third century than in its second", () => {
+    const { world, towns, markets, wars } = bench();
+    const trace: number[][] = towns.map(() => []);
+    runYears(world, towns, markets, wars, 200, () => {
+      for (let i = 0; i < towns.length; i++) trace[i].push(towns[i].population);
+    });
+
+    const swing = (xs: number[], from: number, to: number) => {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let i = from; i < to; i++) {
+        if (xs[i] < lo) lo = xs[i];
+        if (xs[i] > hi) hi = xs[i];
+      }
+      return hi - lo;
+    };
+
+    for (let i = 0; i < towns.length; i++) {
+      const settled = swing(trace[i], 400, 600); // years 100-150
+      const late = swing(trace[i], 600, 800); // years 150-200
+      // Growing amplitude is the failure. A place still settling in may swing
+      // less later, and a steady place swings not at all; neither is a fault.
+      expect(late).toBeLessThanOrEqual(settled + 1);
+    }
   });
 });
 

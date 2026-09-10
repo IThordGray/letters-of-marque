@@ -22,7 +22,7 @@
 //         nothing moves either direction — which is why raiding and trade are
 //         the same mechanism seen from two sides.
 
-import type { Town, Work, WorkKind } from "./types";
+import type { Derived, Town, Work, WorkKind } from "./types";
 import { CATALOGUE } from "./works";
 import { ACCESS, FOOD, TRADE, WEALTH, DEPENDENCY_BANDS } from "./constants";
 
@@ -269,6 +269,64 @@ export function fetchOf(town: Town, kind: WorkKind, access: number): number {
   return def.trade * price * access;
 }
 
+// ---- The port seam (§3.5.7) ------------------------------------------------
+//
+// Exactly three things are exposed, so the town menu has something real to talk
+// to: `derive(town).commerce`, a public pure `priceOf()`, and the two
+// write-points below. The player's VERBS are KAN-89 and are deliberately not
+// here — this is the shape they will be built against, and nothing more.
+//
+// [HC-88] THE PLAYER IS A SMALL FISH, AND THE NUDGE IS CAPPED. Uncapped, the
+//         first thing anyone discovers is that they can buy out a town — an
+//         exploit, and a betrayal of "the world runs without you".
+
+export interface Deal {
+  qty: number; // what actually changed hands
+  price: number; // what it went at
+  coin: number; // ...and what that came to
+}
+
+// How much of this class crosses the quay in a season. The nudge is measured
+// against it, so a hundred barrels is a great deal in a hamlet and nothing at
+// all in a great port — which is the right shape without any special case.
+const flowOf = (town: Town, rank: number, produced: number): number => {
+  const f = produced + town.market.bought[rank];
+  return f > 1 ? f : 1;
+};
+
+function nudge(town: Town, rank: number, by: number): void {
+  const cap = TRADE.nudgeCap;
+  const moved = by > cap ? cap : by < -cap ? -cap : by;
+  const p = town.market.price[rank] * (1 + moved);
+  const base = TRADE.basePrice[rank];
+  const lo = base * TRADE.priceFloor;
+  const hi = base * TRADE.priceCeiling;
+  town.market.price[rank] = p < lo ? lo : p > hi ? hi : p;
+}
+
+// The player lands cargo here. The town pays for it, and its price softens.
+export function sellTo(town: Town, cls: TradeClass, qty: number, d: Derived): Deal {
+  const rank = CLASSES[cls].rank;
+  const price = town.market.price[rank];
+  const take = qty > 0 ? qty : 0;
+  const coin = take * price;
+  const paid = coin > town.wealth ? town.wealth : coin;
+  const moved = price > 0 ? paid / price : 0;
+  town.wealth -= paid;
+  nudge(town, rank, -moved / flowOf(town, rank, d.commerce.produced[rank]));
+  return { qty: moved, price, coin: paid };
+}
+
+// ...and takes cargo away. The town is paid, and its price hardens.
+export function buyFrom(town: Town, cls: TradeClass, qty: number, d: Derived): Deal {
+  const rank = CLASSES[cls].rank;
+  const price = town.market.price[rank];
+  const take = qty > 0 ? qty : 0;
+  town.wealth += take * price;
+  nudge(town, rank, take / flowOf(town, rank, d.commerce.produced[rank]));
+  return { qty: take, price, coin: take * price };
+}
+
 // ---- Dependency ------------------------------------------------------------
 //
 // §3.5.5: "dependency = imported victuals / total victuals", derived, zero
@@ -325,6 +383,10 @@ export function payImports(town: Town, purse: number): number {
       paid += m.bought[c] * price;
       left = 0;
     }
+    // An allotment is for ONE season. Consumed here so a place that is never
+    // cleared again cannot go on landing the same shipment for ever — the flow
+    // balance holds no stock, and neither does this.
+    m.allotted[c] = 0;
   }
   m.paid = paid;
   return paid;

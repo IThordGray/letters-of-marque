@@ -40,6 +40,10 @@ export interface Want {
   // only about what it can start. A stone-poor island with full coffers and idle
   // hands still cannot rebuild its wall.
   supplied: boolean;
+  // ...and it is a thing a place of this purpose would ever raise (§11.3). A
+  // military settlement wishes for a farm, publishes the wish, and never builds
+  // one — which is the whole of what purpose changes.
+  permitted: boolean;
 }
 
 // ---- The clauses each term can write ---------------------------------------
@@ -98,6 +102,25 @@ export const AGENDA: Record<Archetype, Partial<Record<WorkKind, number>>> = {
     barracks: 0.4, church: 0.2, customsHouse: 0.1, // no crown, no customs
   },
 };
+
+// WHAT A PLACE'S PURPOSE PUTS OUT OF REACH — §11.3, and the cheaper of the two
+// readings of Q7. [HC-81] says dependency is scored IDENTICALLY for every place,
+// whatever its purpose, so that "importing never silences the wish for a farm"
+// survives verbatim. What purpose changes is what the governor may DO about it:
+// a farm is simply not in a military settlement's vocabulary.
+//
+// So the wish stays VISIBLE — the wants-list publishes it, clause and all, and
+// the town card still reads "too much of their bread comes off a ship" — and it
+// is PERMANENTLY UNFULFILLED. That is the whole implementation: no per-purpose
+// scoring anywhere, and one line of vocabulary here.
+export const OUT_OF_VOCABULARY: Record<Archetype, Partial<Record<WorkKind, true>>> = {
+  colony: {},
+  royalOutpost: { provisionGround: true }, // it buys its bread with the crown's grant
+  pirateHaven: {},
+};
+
+export const permits = (town: Town, kind: WorkKind): boolean =>
+  OUT_OF_VOCABULARY[town.archetype][kind] !== true;
 
 // ---- Scoring ---------------------------------------------------------------
 
@@ -205,6 +228,7 @@ export function wants(town: Town, limit = 3): Want[] {
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
       supplied,
+      permitted: permits(town, kind),
     });
   }
   out.sort((a, b) => b.score - a.score);
@@ -234,7 +258,7 @@ export function governorTurn(town: Town, year: number): Built | null {
   // Nor will he raise what there is nothing to raise it WITH. Timber and stone
   // gate construction outright (§3.5.3), which is what makes razing the quay of a
   // stone-poor island a lasting act rather than a season's inconvenience.
-  const achievable = ranked.filter((w) => w.manned && w.supplied);
+  const achievable = ranked.filter((w) => w.manned && w.supplied && w.permitted);
   if (!achievable.length) return null;
 
   const best = achievable[0]; // what he actually wants
