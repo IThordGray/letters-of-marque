@@ -158,6 +158,12 @@ when read.
 >   inland, so all three seaward neighbours were dry, the guaranteed-landing rule fired for *every
 >   place in the world*, and 48 of 50 towns shared an identical shoreline — the rim of the trim.
 
+**`[P-17b]` Where a rule says "must not read X", enforce it with a function that is not GIVEN X.**
+The strongest form of `[HC-33]` turned out not to be a rule anyone remembers but a signature:
+`effectOf(severity, roll)` takes two numbers, so it cannot see a storm, cannot ask whether one was
+involved, and cannot ask whether it was building. **There is no argument through which the forbidden
+fact could arrive.** Prefer this to a comment, a lint rule or a code review every time.
+
 **`[P-17a]` A frame rotation needs no trigonometry.** Carrying a stored seaward unit vector
 `(sx, sy)` onto local south is the matrix `[sy −sx; sx sy]` — two numbers, multiply and add, exact
 under `[P-5]`. So `[HC-73]`'s town-local frame is not an approximation of the world; it is an **exact

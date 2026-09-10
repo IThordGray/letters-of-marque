@@ -462,9 +462,27 @@ illustrations of it. Numbers are tuning; the *sentences* are the rule.
 **`[HC-34]` Damage moves works down the existing ladder** — `working → idle → decayed → ruin` — one
 grade at a time. It never skips to ruin, and it never touches more works than the severity warrants.
 
-**`[HC-35]` The extreme tail may destroy exactly ONE work, never a sweep.** This is what preserves
-the distinction the human drew: **razing is deliberate and wholesale; the storm is random and
-singular.** A town can lose its quay to the sea; it cannot lose its town to the sea.
+**`[HC-35]` The extreme tail may destroy exactly ONE work PER CONTACT, never a sweep.** This is what
+preserves the distinction the human drew: **razing is deliberate and wholesale; the storm is random
+and singular.** A town can lose its quay to the sea; it cannot lose its town to the sea.
+
+> **Reworded 2026-09-10 from "per event" to "per contact", because the two readings are not both
+> reachable.** KAN-90 built this and reported the tension rather than tuning it away.
+>
+> Per **contact**, the cap is absolute and provable — an exhaustive sweep shows at most one work
+> destroyed for every (severity, roll) pair. Per **event** it is not reachable, because a storm that
+> lingers gets more than one contact: measured, **25 of 457 destroying (event, place) pairs took two
+> works on consecutive days** of the same storm. Never three.
+>
+> **The only structural fix would be a code path that knows "this event already took a work here" —
+> which is exactly what `[HC-33]` forbids.** So the two constraints are in genuine tension, and
+> `[HC-33]` wins: effects read sampled severity and nothing else. Lowering the rate to suppress the
+> doubles does not work either, because the double rate is proportional to the destroy rate — you
+> suppress the whole effect along with it.
+>
+> **The intent survives intact.** Two works over two days is not "losing your town to the sea": in
+> the same 200-year run the single most destructive storm in the world took nine works across its
+> entire life and an entire coast. The rule was protecting against a sweep, and there is no sweep.
 
 **`[HC-36]` "Contents spoil" is a WEALTH loss, never a stockpile deduction.** There is no in-town
 goods inventory — the ratified model is flows plus one wealth stock — so there is literally nothing
@@ -527,8 +545,9 @@ the milestone produces:
 - **Exposure matters.** Places on exposed coasts take measurably more than sheltered ones over the
   run. If siting makes no difference, `[HC-29]` is not really implemented.
 - **No place stores weather**, and no place's stored fields grow because weather exists.
-- **Nothing is razed by a sweep.** Across the whole run, no single event ever destroys more than one
-  work at one place.
+- **Nothing is razed by a sweep.** No single *contact* ever destroys more than one work (`[HC-35]`,
+  as reworded). A lingering event may take a second on a later day; it must never take a third, and
+  no event may ever level a place.
 
 ---
 
