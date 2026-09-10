@@ -41,8 +41,11 @@ describe("one seed, one world", () => {
     expect(WORLD.zones.length).toBeGreaterThan(0); // climate zones
     expect(WORLD.places.length).toBeGreaterThan(0); // the ~50 positions
     expect(WORLD.nations.length).toBe(Object.keys(FACTIONS).length); // who holds what
-    // ...and no heightmap, no tile grid, no stored weather, no place's land.
-    expect(Object.keys(WORLD).sort()).toEqual(["day", "nations", "places", "seed", "shape", "zones"]);
+    // ...and no heightmap, no tile grid, no place's land, and no AMBIENT weather:
+    // `storms` holds the live events, which [HC-31] makes the one sanctioned
+    // exception to [HC-14], and the generator leaves it empty (KAN-90).
+    expect(Object.keys(WORLD).sort()).toEqual(["day", "nations", "places", "seed", "shape", "storms", "zones"]);
+    expect(WORLD.storms).toEqual([]);
   });
 
   it("can say what it made, in one sentence", () => {

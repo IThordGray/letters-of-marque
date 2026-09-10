@@ -19,6 +19,7 @@ import type { Zone } from "./climate";
 import type { Nation } from "./factions";
 import type { Place } from "./places";
 import { emptyShape, type WorldShape } from "./shape";
+import type { Storm } from "./weather";
 
 // ---- The calendar, as data ([HC-90]) --------------------------------------
 // No real calendar, no leap years, no months. Nothing in the design needs a true
@@ -63,6 +64,14 @@ export interface World {
   nations: Nation[];
   // ~50 ports on real coasts, at real positions ([HC-24]).
   places: Place[];
+  // The live weather events, and THE ONLY EXCEPTION to everything the comment
+  // above says ([HC-31]). Ambient weather is a pure function of (seed, zone,
+  // day) and is stored nowhere; an EVENT has to be stored, because momentum is
+  // history — an event that is building is not the same as an identical event
+  // spending itself, and no pure function of (seed, day) can know which. Its
+  // spawning is still derived, so the same world breeds the same storms. There
+  // are only ever a handful alive at once.
+  storms: Storm[];
 }
 
 // One factory, every field present, same order, same types ([P-26]) — so the
@@ -70,7 +79,7 @@ export interface World {
 // ever added to one later. `makeWorld` is the CLOCK; `generateWorld` in
 // `worldgen.ts` is the world, and it fills these four in.
 export function makeWorld(seed: number): World {
-  return { seed: seed >>> 0, day: 0, shape: emptyShape(), zones: [], nations: [], places: [] };
+  return { seed: seed >>> 0, day: 0, shape: emptyShape(), zones: [], nations: [], places: [], storms: [] };
 }
 
 // ---- Derived readings -----------------------------------------------------
