@@ -16,6 +16,7 @@
 // one timeline (KAN-107).
 
 import type { Zone } from "./climate";
+import { makeDispatches, type Dispatches } from "./dispatch";
 import type { Nation } from "./factions";
 import type { Place } from "./places";
 import { emptyShape, type WorldShape } from "./shape";
@@ -63,6 +64,11 @@ export interface World {
   nations: Nation[];
   // ~50 ports on real coasts, at real positions ([HC-24]).
   places: Place[];
+  // The four war-currencies at sea ([HC-13], [HC-44]) — the sole carve-out from
+  // "the flow is the truth", and the only moving things the world stores. They
+  // are cheap to store precisely because [P-16] lets a passage be a departure
+  // and an arrival rather than a position that has to be kept up to date.
+  dispatches: Dispatches;
 }
 
 // One factory, every field present, same order, same types ([P-26]) — so the
@@ -70,7 +76,10 @@ export interface World {
 // ever added to one later. `makeWorld` is the CLOCK; `generateWorld` in
 // `worldgen.ts` is the world, and it fills these four in.
 export function makeWorld(seed: number): World {
-  return { seed: seed >>> 0, day: 0, shape: emptyShape(), zones: [], nations: [], places: [] };
+  return {
+    seed: seed >>> 0, day: 0, shape: emptyShape(),
+    zones: [], nations: [], places: [], dispatches: makeDispatches(),
+  };
 }
 
 // ---- Derived readings -----------------------------------------------------
