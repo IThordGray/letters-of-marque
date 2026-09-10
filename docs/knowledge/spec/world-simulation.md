@@ -294,6 +294,30 @@ works must feed its population, its wealth must service its upkeep. A generated 
 would immediately collapse is a bug, and the cheapest test of the whole generator is **run the fresh
 world for twenty years and check nothing falls over.**
 
+> **Sharpened by KAN-98, which built it: `[HC-22]` is a FOUNDING RULE, not a check.** The rule that
+> makes it hold is *"a place is founded at a population its own ground can feed"* — the class caps
+> it, the land decides it, and the smaller wins. Its failure mode is not a crash; it is a **silent
+> decline in the first twenty years**, which every other test passes straight through.
+>
+> **And the honest limit, measured rather than argued.** The shipped ledger settles at **~50–210
+> souls** with no trade layer, so a "city" written at 200 souls **measurably shrank to 108**.
+> Day-0 places are therefore designated correctly by class but are **young in the ledger**, and a
+> 1660s map with cities *already cities* is not reachable until **KAN-99's works and `[HC-87]`'s
+> trade-fed ceiling** exist. That is a constraint on KAN-99, not a defect in the generator — and the
+> ~80–450 figure in the town's constants is optimistic at day 0.
+
+**`[HC-22a]` A neutral place must never be DESIGNATED a city.** `[HC-51]` gives neutrals no patron
+and `[HC-65]` says a neutral place can never be chartered — so designating one a city at generation
+would start the world with an unpromotable great port that the size class cannot explain. *(Found by
+KAN-98, where the two constraints only interact at generation time.)*
+
+**`[HC-22b]` Cities and crown seats are ONE decision.** In this period the great ports of this sea
+*are* the five crowns' seats, which satisfies `[HC-39]` and `[HC-62]` together and is why there are
+exactly five. **And a crown's holdings must interleave with its rivals', never sit in a block** —
+strict nearest-seat assignment is degenerate (it left France holding its capital and nothing else),
+while reach-weighted assignment gives each crown 5–12 holdings. That interleaving is the
+precondition for §8's wars having anything to fight over.
+
 **Distance and scale.** The world is measured in **nautical miles** and distances are real. A
 Caribbean-register sea holding fifty ports is on the order of 1,500 × 800 nm; at an average made-good
 of 4–8 knots a typical inter-port leg is **one to four days**. That is what gives the day beat

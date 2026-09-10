@@ -143,6 +143,27 @@ stepped and never stored.** This is exactly `[HC-30]` — ambient weather is der
 never stored per place. State that is stepped must be visited; state that is derived is visited only
 when read.
 
+> **The strongest instance of this in the codebase, built for KAN-98.** The world's geography is a
+> **pure function, not a bitmap** — a few dozen elliptical lobes plus noise fields, answered at any
+> resolution and storing nothing. **The world map and a town's own coast are literally the same
+> geography read at 280 nm and at 1.8 nm.** That is what makes `[HC-19]` cheap rather than expensive:
+> a saved world is a seed, a day, and a few hundred numbers.
+>
+> **Two traps it hit, both worth inheriting:**
+> - **A fractal field is smooth at the small scale unless you make it otherwise.** Octave weights
+>   halve, so by 15 nm a single fbm contributed under a hundredth and every town's shore came out
+>   straight — `[HC-19]` would have been geography in name only. **Any field read at two very
+>   different scales needs a separate term at the fine one.**
+> - **Trimming a region to a radius returns a disc, not a coast.** The first cut put every town 2.2 nm
+>   inland, so all three seaward neighbours were dry, the guaranteed-landing rule fired for *every
+>   place in the world*, and 48 of 50 towns shared an identical shoreline — the rim of the trim.
+
+**`[P-17a]` A frame rotation needs no trigonometry.** Carrying a stored seaward unit vector
+`(sx, sy)` onto local south is the matrix `[sy −sx; sx sy]` — two numbers, multiply and add, exact
+under `[P-5]`. So `[HC-73]`'s town-local frame is not an approximation of the world; it is an **exact
+rotation of it**. Reach for a stored unit vector before reaching for an angle, always: an angle costs
+a banned function to use and a banned function to recover.
+
 **`[P-18]` Compute an invariant once per scope, not once per use.** See §7 for the live example in
 our own code: an auction that rebuilds the same `Set` thirty-six times.
 
