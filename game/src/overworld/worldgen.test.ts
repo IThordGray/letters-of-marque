@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { DAYS_PER_YEAR, yearOf } from "./clock";
+import { inFlightCount } from "./dispatch";
 import { describeWorld, foundAll, foundPlace, generateWorld } from "./worldgen";
 import { FACTIONS } from "./factions";
 import { SIZES } from "./places";
@@ -42,7 +43,14 @@ describe("one seed, one world", () => {
     expect(WORLD.places.length).toBeGreaterThan(0); // the ~50 positions
     expect(WORLD.nations.length).toBe(Object.keys(FACTIONS).length); // who holds what
     // ...and no heightmap, no tile grid, no stored weather, no place's land.
-    expect(Object.keys(WORLD).sort()).toEqual(["day", "nations", "places", "seed", "shape", "zones"]);
+    // `dispatches` joined the list on KAN-105 and is the exception that proves
+    // the rule: the four war-currencies are the sole carve-out from "the flow is
+    // the truth" ([HC-13]), and they are cheap to store only because a passage is
+    // a departure and an arrival rather than a position ([P-16]). The generator
+    // still writes none — a fresh world sails nothing.
+    expect(Object.keys(WORLD).sort())
+      .toEqual(["day", "dispatches", "nations", "places", "seed", "shape", "zones"]);
+    expect(inFlightCount(WORLD)).toBe(0);
   });
 
   it("can say what it made, in one sentence", () => {
