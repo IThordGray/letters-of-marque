@@ -10,6 +10,41 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-10 (third) — A crown can come for your haven
+
+Not a decision taken deliberately so much as one **discovered by building**, and it is a design fact
+rather than an implementation detail, so it is recorded where design facts live.
+
+Three spec lines disagreed, and the dispatch work (KAN-105) surfaced it: §8.7 says the neutral share
+of the map *"can only shrink"* — which requires neutral places to be takeable; the §8 acceptance
+criteria said *no neutral place ever receives a dispatch* — but an arriving invasion force **is** a
+dispatch; and §8.6 makes invasions available *"between the belligerents"*, and a neutral is never at
+war. Resolved as `[HC-51a]`:
+
+> **A neutral place receives no dispatch of SUPPORT, but can receive an invasion.** No treasury, no
+> reinforcements, no charter — a neutral has no patron and can never be chartered, which is what the
+> criterion was actually protecting. But taking a neutral place is not a war action against another
+> crown, and it is the only way *"can only shrink"* is anything but decorative.
+
+**The consequence, stated plainly because it is about the player and not about dispatches: a
+pirate haven is a neutral place, so a crown may come for yours.**
+
+*Why this is right rather than merely consistent:* it is the threat that makes a haven worth
+defending. A haven no crown can touch is a safe-deposit box, and the ratified design already says
+holding ground should cost something — breadth breeds defection, friction-capped, *pirate not
+emperor*. A crown that can eventually come for you is the same idea arriving from outside instead of
+from within.
+
+**What it obliges:** a haven's defences have to *matter*, so `[HC-59]`'s garrison model is now
+load-bearing for player safety and not only for target selection. And the reputation layer needs to
+decide what makes a crown come — being worth the blood is the whole spine.
+
+**Open, and the human's call when it arrives:** whether a haven you have *developed* is harder to
+take than one you merely hold, and whether there is any way to make a crown decide you are not worth
+it short of beating them. Neither blocks anything today. Spec: `world-simulation.md` `[HC-51a]`.
+
+---
+
 ### 2026-09-10 (second) — Content lives in data. We are not building a mod system.
 
 Raised by the human, drawn to how Factorio ships its own expansions through its modding seam. He

@@ -70,6 +70,13 @@ the ticket back after posting.
   neither.** Re-read the issue to confirm they landed — the same lesson as above.
 
 ## Commit ↔ ticket link
+- **A merged branch closes its tickets in the SAME pass.** Added 2026-09-10, after KAN-98 sat at
+  `To Do` for several merges while being a declared blocker on two other stories — so the board
+  misreported the queue the whole time. The merge and the closing note are one unit of work.
+- **Do not close a ticket you cannot record the outcome of.** If the findings are missing, get them
+  first; a ticket closed with no account of what it found is worse than one left open, because it
+  looks finished. *(This is the rule that caught the KAN-98 gap — an agent correctly refused.)*
+
 - Reference the ticket key in the commit message so the board and git history stay
   linked (one ticket ⇄ one commit).
 - Commit only when asked; branch off `main` first if on the default branch.
