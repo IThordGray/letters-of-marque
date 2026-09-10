@@ -8,8 +8,13 @@
 // SAMPLES — every claim below outlives it, because every claim below is a rule
 // the world's cut has to satisfy too.
 //
+// KAN-98 DID IT, and the promise held: the SAMPLES line below is the only line
+// in this file that changed. Every claim beneath it now stands against ground
+// the world CUT rather than ground a town rolled, and every one of them is a
+// rule the cut has to satisfy too — which is what the fixture rule is for.
+//
 // So: nothing here asserts a coast constant, a region budget, a cay count or a
-// harbour chance. Those are the doomed producer's dials. What is asserted is the
+// harbour chance. Those were the dead producer's dials. What is asserted is the
 // partition ([HC-70] R1), contiguity, reproducibility ([HC-11]), and the one
 // readability rule [HC-73] keeps alive — that open water lies in the southern arc
 // of the town's own frame, which is a DRAWING convention and not a claim about
@@ -17,18 +22,19 @@
 
 import { describe, it, expect } from "vitest";
 import type { Land } from "./land";
-import { provisionalGround, isWater, isDead } from "./land";
+import { isWater, isDead } from "./land";
+import { generateWorld } from "../overworld/worldgen";
+import { groundAt } from "../overworld/ground";
 import type { Axial } from "./hex";
 import { CENTRE, key, neighbours, southness, toPixel, axialOf, bearingOf, BEARING_ORDER, disc } from "./hex";
 import { foundTown } from "./sim";
 import { reg } from "./fixtures";
 
-// One world, forty places on it. The world seed is arbitrary and nothing below
-// depends on its value — only on the same seed giving the same answer.
-const WORLD = 1660;
-const PLACES: number[] = [];
-for (let id = 1; id <= 40; id++) PLACES.push(id);
-const SAMPLES: Land[] = PLACES.map((id) => provisionalGround(WORLD, id));
+// One world, and the ground under every place on it. The world seed is
+// arbitrary and nothing below depends on its value — only on the same seed
+// giving the same answer.
+const WORLD = generateWorld(1660);
+const SAMPLES: Land[] = WORLD.places.map((p) => groundAt(WORLD, p));
 
 const hexesOf = (g: Land) => [...g.land, ...g.water];
 const workable = (g: Land) => g.regions.filter((r) => !isWater(r.terrain));
@@ -98,15 +104,17 @@ describe("a town's ground, however the world supplied it", () => {
 
   it("gives the same world the same ground twice over, so a history can be replayed", () => {
     // [HC-11]: reproducible means the whole history, and it starts here.
-    for (const id of PLACES.slice(0, 8)) {
-      expect(provisionalGround(WORLD, id)).toEqual(provisionalGround(WORLD, id));
+    for (const p of WORLD.places.slice(0, 8)) {
+      expect(groundAt(WORLD, p)).toEqual(groundAt(WORLD, p));
     }
   });
 
   it("gives a different world different ground, from one number", () => {
-    const here = provisionalGround(WORLD, 1);
-    const elsewhere = provisionalGround(WORLD + 1, 1);
-    expect(elsewhere.land.map(key)).not.toEqual(here.land.map(key));
+    const elsewhere = generateWorld(1661);
+    const here = groundAt(WORLD, WORLD.places[0]);
+    const there = groundAt(elsewhere, elsewhere.places[0]);
+    // Not merely different hexes: different COASTS. One number changed.
+    expect(there.regions.map((r) => r.terrain)).not.toEqual(here.regions.map((r) => r.terrain));
   });
 });
 

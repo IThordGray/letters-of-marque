@@ -29,6 +29,7 @@ export const CHANNEL = {
   storm: 3, // whether an event forms, and where it tracks
   nation: 4, // a crown's tie-breaks
   worldgen: 5, // coastlines, positions, names
+  place: 6, // a place's OWN stream — the seed it founds and rolls on
 } as const;
 
 export type Channel = (typeof CHANNEL)[keyof typeof CHANNEL];

@@ -67,10 +67,15 @@ describe("the calendar", () => {
 });
 
 describe("stored time", () => {
-  it("stores one integer and derives the rest, so no two readings can disagree", () => {
+  it("stores one integer of time and derives the rest, so no two readings can disagree", () => {
+    // The world grew onto the clock (KAN-98) rather than beside it — [HC-9] says
+    // there is ONE clock and it lives in world state, so the struct that holds
+    // the clock holds the world. What must stay true is not that the struct is
+    // small but that its TIME is one integer: `day`, and nothing else.
     const w = runDays(1234);
-    expect(Object.keys(w).sort()).toEqual(["day", "seed"]);
     expect(Number.isInteger(w.day)).toBe(true);
+    const timeBearing = Object.keys(w).filter((k) => /year|season|month|week|date|time|day/i.test(k));
+    expect(timeBearing).toEqual(["day"]);
 
     // The three readings must reconstruct the day they came from.
     const elapsed =

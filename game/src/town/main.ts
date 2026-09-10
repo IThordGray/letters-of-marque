@@ -6,34 +6,47 @@
 // and chronicle are KAN-75; the investment slider and the steer are KAN-72.
 
 import type { Town } from "./types";
-import { foundTown, derive, summarise, year, prosperityWord, wealthWord } from "./sim";
-import { provisionalGround } from "./land";
+import { derive, summarise, year, prosperityWord, wealthWord } from "./sim";
+import { generateWorld, foundPlace, describeWorld } from "../overworld/worldgen";
+import type { Place } from "../overworld/places";
 import { stepTownSeason, stepTownYears, wants } from "./governor";
 import { renderHexMap, landCaption } from "./hexmap";
 import { renderPlan } from "./planview";
 import { planTown, describePlan } from "./plan";
 import { SEASONS_PER_YEAR } from "./constants";
 
-// One world seed, and three places on it. THE HARNESS SUPPLIES THE GROUND — the
-// towns no longer roll their own coasts ([HC-19], KAN-103), and this is the
-// stand-in until KAN-98's generator cuts each place's land from the real map.
-// Nothing here is hand-placed; what changed is only WHO hands it over.
+// ONE WORLD SEED, AND NOTHING ELSE HAND-PICKED (KAN-98). The generator draws the
+// coastlines, sites the ports, decides their size, purpose and faction, names
+// them out of their holders' own pools, and cuts each one's ground from the map
+// at its position ([HC-19]). Every number this harness used to carry — a town's
+// name, its seed, its archetype, its patron, its governor, its grant — is now a
+// reading of the world, and `town.seed` in particular is DERIVED from the world
+// seed rather than hand-picked (§10.4).
+//
+// [HC-21] The step-buttons stay here. This is the single-town harness and it is
+// how the ledger is tested; the world sim gets the running clock, elsewhere.
 const WORLD_SEED = 1660;
+const world = generateWorld(WORLD_SEED);
 
-// Three towns on three different patrons' money.
-function seedTowns(): Town[] {
-  return [
-    foundTown({ name: "San Bartolomé", seed: 2, archetype: "colony", governor: "Don Alonso Sarmiento",
-      patron: { kind: "crown", name: "Spain", owns: true }, grant: 6, population: 90 },
-      provisionalGround(WORLD_SEED, 1)),
-    foundTown({ name: "Puerto Seco", seed: 5, archetype: "royalOutpost", governor: "Capitán Reyes",
-      patron: { kind: "crown", name: "Spain", owns: true }, grant: 22, population: 90 },
-      provisionalGround(WORLD_SEED, 2)),
-    foundTown({ name: "Gallows Bay", seed: 1, archetype: "pirateHaven", governor: "Quartermaster Roche",
-      patron: { kind: "player", name: "you", owns: true }, grant: 0, population: 90 },
-      provisionalGround(WORLD_SEED, 3)),
-  ];
+// Fifty cards would be a wall. Three, chosen to be unalike, are a test: the
+// greatest port the world designated, a garrison on somebody's frontier, and a
+// place that answers to no crown.
+function showcase(): Place[] {
+  const pick = (want: (p: Place) => boolean) => world.places.find(want);
+  const chosen = [
+    pick((p) => p.size === "city"),
+    pick((p) => p.purpose === "military"),
+    pick((p) => !world.nations[p.faction].crown),
+  ].filter((p): p is Place => p !== undefined);
+  const seen = new Set(chosen.map((p) => p.id));
+  for (const p of world.places) {
+    if (chosen.length >= 3) break;
+    if (!seen.has(p.id)) chosen.push(p);
+  }
+  return chosen.slice(0, 3);
 }
+
+const seedTowns = (): Town[] => showcase().map((p) => foundPlace(world, p));
 
 let towns = seedTowns();
 let journal: string[][] = towns.map(() => []);
@@ -107,6 +120,7 @@ function render() {
   const t0 = towns[0];
   app.innerHTML =
     `<p class="clock">Year <b>${year(t0)}</b> · season ${(t0.season % SEASONS_PER_YEAR) + 1} of ${SEASONS_PER_YEAR}</p>` +
+    `<p class="dim caption">${describeWorld(world)}</p>` +
     towns.map(card).join("");
 }
 

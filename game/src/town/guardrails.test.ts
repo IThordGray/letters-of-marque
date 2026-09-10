@@ -139,10 +139,11 @@ describe("the exception list only ever shrinks", () => {
 // survived KAN-103, and it survives only while nothing in the simulation treats
 // seaward-ness as a fact about the world.
 describe("the sea lying south is a drawing convention, not a geographic claim", () => {
-  // `land.ts` is the one exception and it is a dated one: it holds the temporary
-  // provider that stands in for the world generator (KAN-98). When that dies,
-  // this set is empty and no simulation file reads the seaward axis at all.
-  const PROVISIONAL = ["land.ts"];
+  // **PROVISIONAL IS EMPTY, as of KAN-98.** Its one entry was `land.ts`, which
+  // held the dated stand-in for the world generator. The generator exists, the
+  // stand-in is gone, and no file in the town simulation reads the seaward axis
+  // at all any more.
+  const PROVISIONAL: string[] = [];
 
   for (const f of TOWN_SIM.filter((x) => !PROVISIONAL.includes(x))) {
     it(`${f} decides nothing by which way the sea lies`, () => {
@@ -150,8 +151,30 @@ describe("the sea lying south is a drawing convention, not a geographic claim", 
     });
   }
 
-  it("still has exactly one dated exception, which KAN-98 takes with it", () => {
-    // Fails when `land.ts` stops rolling ground: shorten PROVISIONAL to nothing.
-    for (const f of PROVISIONAL) expect(code(`town/${f}`)).toMatch(/\bsouthness\b/);
+  it("has no dated exception left, because KAN-98 took the last one with it", () => {
+    expect(PROVISIONAL).toEqual([]);
+  });
+
+  // WHERE THE AXIS WENT, and why this is a stronger guard than the list it
+  // replaces. [HC-73] splits one fact in two: the world holds a place's TRUE
+  // coastal bearing, and a town's local views are drawn in a frame whose south
+  // is seaward. Something has to carry the world into that frame, and exactly
+  // one file may: `overworld/ground.ts`, where the cut is made. Anywhere else,
+  // seaward-ness would be a claim about the world rather than about the page.
+  const CUT = "overworld/ground.ts";
+
+  it("leaves exactly one file that knows which way the sea lies, and it is the one that cuts the frame", () => {
+    const world = readdirSync(join(SRC, "overworld")).filter(isSource).map((f) => `overworld/${f}`);
+    const readers = [...world, ...TOWN_SIM.map((f) => `town/${f}`)].filter((f) => /\bsouthness\b/.test(code(f)));
+    expect(readers).toEqual([CUT]);
+  });
+
+  it("keeps that file honest: it rotates the world in, it does not assume the answer", () => {
+    // The rotation is built from the place's own stored bearing. If `groundAt`
+    // ever stopped reading `place.sx`/`place.sy`, the local frame would be a
+    // guess and [HC-19] would be back to being a comment.
+    const src = code(CUT);
+    expect(src).toMatch(/place\.sx/);
+    expect(src).toMatch(/place\.sy/);
   });
 });
