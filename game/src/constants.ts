@@ -121,7 +121,10 @@ export const DEPLOY = {
   crewPool: 24, // unnamed pirates available to land
   officerRoster: 5, // named officers on the roster to choose among
   officerSpread: 0.2, // rolled officer stats vary this far around the base
-  garrison: 14, // enemy defenders (grown for the asymmetric feel — see S5)
+  // `garrison: 14` was here and is DELETED (KAN-109). It was the number the deploy
+  // screen previewed, and it was grade-blind — a picket fields 9, a fortress 22. The
+  // watch is now reckoned once in `spawn.ts` and both the preview and the spawner read
+  // it, so there is no second number to drift. Do not reintroduce a garrison size here.
 };
 
 // ---- Raid scenario — objective / extraction / alarm ------------------------

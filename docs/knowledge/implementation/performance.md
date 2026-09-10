@@ -86,7 +86,11 @@ and never reorder a summation as a "tidy-up".** Order-sensitive phases sort by a
 id tie-break first.
 
 **`[P-10]` Every `sort` comparator must be a consistent total order with an explicit id tie-break.**
-Sort stability is guaranteed since ES2019; an inconsistent comparator is not.
+Sort stability is guaranteed since ES2019; an inconsistent comparator is not. **An explicit
+tie-break needs a stated DIRECTION, not merely a total order** — and for anything in a town's
+local frame the direction is **seaward** (`[HC-73]`), because south *is* seaward in every local
+view and what a bearing names is usually a coast. *(Earned on KAN-111, where a tie resolved by
+array order described water lying due east as "to the north-east".)*
 
 **`[P-11]` Never read a clock.** `Date.now`, `performance.now`, and anything derived from them are
 banned in simulation code. The simulation's only time is the tick (`[HC-4]`).
@@ -97,6 +101,22 @@ stored bit pattern.
 **`[P-13]` Prefer exact integers for anything that must not drift** — coin, population, stock counts.
 Integers are exact in a double up to 2⁵³ for free. This is a *modelling* decision that removes a
 class of drift bugs; it is not a speed decision.
+
+### Two structural rules that keep the derived/stored line honest
+
+Not determinism rules, but they live here because both were found by chasing one.
+
+**`[P-47]` A derived quantity must never be previewed, summarised or reported from a second
+number.** One function answers both *"what happens"* and *"how much of it"*, and both readers
+call it. Where the spec says **derived** (`[HC-59]`, `[HC-14]`), any second path to the same
+value is a bug waiting for a rename. *(Earned on KAN-109: the deploy screen previewed 15
+defenders from a hardcoded constant while the spawner fielded 9 — and because the preview took
+no grade at all, it could not have been right for more than one of three.)*
+
+**`[P-48]` If a loop condition encodes a rule, the rule is in the wrong place.** The clamp on
+how many sentry posts a grade could field lived inside the spawner's loop conditions, where no
+other reader could see it — which is *why* `[P-47]` was violated. Hoist the limit to where both
+sides can read it.
 
 ---
 

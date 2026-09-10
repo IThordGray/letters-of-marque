@@ -209,6 +209,30 @@ It is cheaper than a review argument and it is repeatable. **A test that survive
 mutation of the thing it claims to test is worth keeping; one that does not is a
 decoration.**
 
+**A mutation that fails nothing can be evidence rather than a gap — if you predicted it.**
+On KAN-111 the bearing tie-break has a second sort key that no mutation could disturb,
+because only *adjacent* bearings ever tie for the win. That survivor confirmed the
+measurement rather than indicting the test, and a companion claim guards the precondition:
+if a non-adjacent tie ever appears, that claim fails and the second key starts mattering.
+**A predicted survivor validates a precondition; only an unpredicted one indicts a test.**
+
+### Enumerate before you generalise
+
+**The sibling rule, and it has now been earned twice on the same function.** Where a claim
+is about *which cases exist* — which inputs tie, which values collide, which seeds break an
+invariant — **enumerate them; do not derive them.**
+
+- The argument for removing `Math.hypot` from `bearingOf` was that all six bearing vectors
+  are the same length. Mathematically true, **not bit-identically true**, and exact ties were
+  not covered by the argument at all.
+- The brief for fixing that function's tie-break then named **two** tie families. Measurement
+  found **six** — one on every boundary between adjacent bearings — including pairs involving
+  N and S, which the ULP difference did *not* save.
+
+Both times the reasoning was directionally right and incomplete at the edge, and both times
+**ten lines of brute force settled it in about a minute**. Enumerating first would also have
+produced the better fix straight away: one generalised rule rather than two special cases.
+
 > **And a caution about confident reasoning, recorded because it nearly bit.** The
 > argument for removing `Math.hypot` from `bearingOf` was that all six bearing vectors
 > have the same length, so dividing every candidate by the same constant cannot change
