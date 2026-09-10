@@ -76,6 +76,9 @@ the ticket back after posting.
 - **Do not close a ticket you cannot record the outcome of.** If the findings are missing, get them
   first; a ticket closed with no account of what it found is worse than one left open, because it
   looks finished. *(This is the rule that caught the KAN-98 gap — an agent correctly refused.)*
+- **Name the DEPENDENCY, never the queue position.** A ticket that says "nothing in the current front
+  of the queue waits on this" dates itself the moment the queue moves, and then the two halves of the
+  ticket disagree. Write *"KAN-99 sits on top of this"*, which stays true.
 
 - Reference the ticket key in the commit message so the board and git history stay
   linked (one ticket ⇄ one commit).

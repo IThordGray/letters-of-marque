@@ -10,6 +10,44 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-10 (fourth) — Report the criterion that fails; never tune until it passes
+
+A working principle, recorded because it is now the single biggest source of spec improvement in the
+project and it happened four times in three days without anyone naming it.
+
+**The rule: when built work cannot satisfy a ratified criterion, it reports the failure and the
+measurement. It does not adjust a number until the criterion passes.** A tuned pass hides a design
+problem inside a constant, where it is invisible and will be rediscovered later by someone with less
+context. A reported failure is a decision brought back to the people who can make it.
+
+**Every one of these was a spec change that came from a build refusing to make the spec look right:**
+
+| What was reported | What it changed |
+|---|---|
+| A per-**event** cap on storm destruction is unreachable without a code path that knows an event happened — which `[HC-33]` forbids. Measured residue: 25 of 457 pairs took two works, never three. | `[HC-35]` reworded to **per contact**, with the tension between the two constraints ratified rather than papered over. |
+| Three spec lines disagreed about whether a neutral place can be invaded. | `[HC-51a]`, and a design fact about the player's haven that had never been stated. |
+| A city written at 200 souls **measurably shrank to 108**, because the ledger settles at ~50–210 with no trade layer. | `[HC-22]` became a **founding rule** rather than a check, and KAN-99 inherited a named constraint instead of a surprise. |
+| A shuffle **cannot** catch a first-come-first-served clearing — it would be perfectly reproducible and still wrong. | `[HC-7]`'s acceptance criterion was **weaker than the rule it protected**; pro-rata now has its own claim. |
+
+Two more arrived the same way without changing a rule: `[HC-87]` is **not statable at world scale**
+until `access` reads routes rather than works, and `[HC-14]`'s "three numbers" needed clarifying to
+mean *no stored **derived** quantity* rather than *no fourth field*.
+
+**Two corollaries worth keeping:**
+- **Constraints that are each individually correct can still generate a broken world where they
+  meet.** `[HC-22a]` and `[HC-22b]` are both interaction bugs, not rule bugs — a neutral city would
+  have been an unpromotable great port, and strict nearest-seat assignment left France holding only
+  its capital.
+- **Say which statistic a criterion means.** Weather's rates are bimodal by design (exposure
+  compounds with the zone's regime), so mean and median differ by 3× on rare events, and "a
+  representative place" is not a number.
+
+*Why:* the human's standing instruction has been *questions, not guesses* since the beginning. This
+is the same instruction pointed at the build rather than at the brief — **a criterion that cannot be
+met is a question, and tuning it is a guess.**
+
+---
+
 ### 2026-09-10 (third) — A crown can come for your haven
 
 Not a decision taken deliberately so much as one **discovered by building**, and it is a design fact
