@@ -10,6 +10,97 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-10 — The spec outranks the shipped module; three manager's calls ratified
+
+**The precedence rule, and it is the important half of this entry.** Asked to unpark the town suite
+first, the human raised the right objection:
+
+> "I'm nervous of writing town tests as the existing module is not 100% aligning to what we
+> discussed. What we discussed now via the spec should take precedence. We can add tests to the
+> ratified behaviour in the town module. As long as the spec wins out, and as long as what we're
+> initially building towards gets completed."
+
+Three rules follow, and they govern every piece of work from here:
+
+1. **`world-simulation.md` outranks the shipped code.** Where the town module and the spec disagree,
+   **the spec is right and the code is wrong** — the module predates the world layer. This joins the
+   existing precedence chain: human edits > the spec > a ticket > the code.
+2. **A test may pin only behaviour the spec RATIFIES.** Not "behaviour that currently exists". This
+   is what makes unparking safe rather than a repeat of the churn that caused the park: the failure
+   mode last time was pinning a design still being argued, and pinning code the spec is about to
+   replace is the same mistake wearing different clothes.
+3. **The milestone still has to land.** Testing is in service of the world simulation, not a
+   detour before it. If the safe-to-pin set turns out to be small, that is a *good* outcome — write
+   those, and move on.
+
+*Why:* the park's exit condition was "the design locks", and it has — but the design that locked is
+the **spec**, not the module. Testing the module as it stands would pin the pre-spec design just as
+the post-spec one arrives.
+
+**And three manager's calls are now ratified**, so the spec no longer flags them as overrulable:
+
+- **`[HC-3]` the 360-day year** — four seasons of exactly 90, no real calendar.
+- **`[HC-60]` the defence ladder is `picket · garrison · fortress`** — clearing its collision with the
+  *settlement → town → city* size class. The rename must land before either ladder is extended.
+- **`[HC-56]` a pirate haven's purpose is `trade`** — its character comes from being a neutral
+  *faction*, not from a fourth purpose. **Accepted "for now"; the human has reserved pirate havens for
+  a later pass.** Build against `trade` and expect this one back.
+
+**The audit that followed, and four contradictions it found.** The shipped town module was read
+against the spec to separate what is safe to pin from what the spec replaces. Result: **`[HC-70]`
+fences off most of the ledger, the auction, the works ladder and the footprint** — roughly nineteen
+pinnable design claims, none blocked by a refactor. **Unparking is purely additive.** What the spec
+replaces is concentrated in `land.ts` and in the `archetype` / `tier` / `yield` seams.
+
+Four places where the **code contradicts a rule rather than merely lagging it.** These are
+bugs-in-waiting, not pending work — all four verified in the code:
+
+1. **`sim.ts:101` — the population floor is unconditional, so `Abandoned` is unreachable.**
+   `Math.max(POP.floor, …)` applies every season with no condition, so a place razed to nothing
+   repopulates to the floor on the next tick. `[HC-67]` is explicit that **the floor requires
+   survivors** — that single condition is the whole mechanism by which abandonment sticks, and
+   `[HC-18]`, `[HC-50]` and `[HC-66]` all stand on it. **Testing consequence:** the hamlet-floor test
+   must claim *"a stripped town feeds and houses itself again"*, **never** *"population never falls
+   below the floor"* — the obvious test would pin the bug.
+2. **The town owns a private clock.** `town.season++` (`sim.ts:103`), and the devolution ladder is
+   denominated in it (`works.ts:241,252` — `town.season − w.idleSince`). Against `[HC-9]` (*no system
+   carries its own clock*) and `[HC-3]` (all stored time is one integer of days since world epoch).
+   Two places founded in different years cannot currently be compared on one timeline.
+3. **The ladder collision is THREE-way and reaches outside the town module.** `game/src/types.ts:13`
+   — `SettlementTier = settlement | town | capital` — welds size and garrison hardness onto, in its
+   own words, *"a single size axis"*, and its comment plans a militarised `outpost` as a future tier.
+   That contradicts `[HC-54]` and `[HC-59]` (the axes are independent — which is the whole reason a
+   military settlement can outfight a bigger town), `[HC-55]` (*outpost is a reading, not a class*)
+   and `[HC-60]`. Note the three value sets overlap **differently**: world `settlement·town·city`,
+   town `outpost·town·capital`, raid layer `settlement·town·capital`.
+   **The rename has FIVE reader locations, not three** — `game/src/types.ts:13` (the type),
+   `game/src/spawn.ts:157,264` (the default), `game/src/world.ts:80`, `game/src/town/sim.ts:53`
+   (`tierOf`), and **`game/src/constants.ts:172`** (the `TIER` record of garrison stat bands, which
+   is where the numbers actually live). And **the retired "militarised outpost as a future tier"
+   plan is written down twice** — `types.ts:13` and `constants.ts:169-170` — so fixing only the type
+   would leave the contradicted plan alive in the file that holds the bands. Ticket **KAN-104**
+   (widened).
+4. **`decayed` is a dead end that sterilises its ground.** `allocateLabour` admits only
+   `working | idle` (`works.ts:224`) and revives only `idle` (`works.ts:237`), while a decayed work
+   still holds its hex and its `max` slot until it rots to `ruin`. So a town whose battery decays can
+   neither re-man it nor rebuild it until its own defences finish falling down. Against
+   `town-economy.md` §3's *"recoverable grades … each is reversible"*, which `[HC-70]` has just
+   re-ratified.
+
+**Two consequences nobody had named:** `[HC-57]`/`[HC-58]` make the works **vocabulary** size-gated,
+where today `CHOOSABLE` offers the same twelve works to every place — that belongs on the
+archetype-retirement work, not to be discovered later. And **`chronicle[]` does not exist in shipped
+code** though `town-economy.md` §1 persists it and §10.4 calls it the home for every `[HC-16]` reason;
+the reasons currently live in the harness's DOM-side journal, which is not good enough for a rule
+stated as a *testability* requirement.
+
+**One thing the audit confirmed rather than found:** the sea-lies-south split is clean in code.
+`southness` reaches the simulation only inside `rollLand`; every other consumer is presentation. So
+`[HC-73]`'s *"generation dies, drawing convention lives"* costs `land.ts` and nothing else, exactly as
+`[HC-73]` claims. (`hex.ts:74`'s `isSeaward` is dead code and can go with it.)
+
+---
+
 ### 2026-09-09 (second) — Six ratified lines moved; abandonment finally gets a cause
 
 Ratified by the human *after* the fourteen forks below were settled. He deliberately deferred these

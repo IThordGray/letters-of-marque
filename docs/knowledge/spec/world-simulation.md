@@ -74,8 +74,8 @@ The spine. Everything else in this document assumes it.
 is the atom of weather and travel; a season is the atom of economy, governors and nations. Anything
 tempted to run "every week" or "every few days" rounds to one of these.
 
-**`[HC-3]` The year is 360 days: four seasons of exactly 90.** No real calendar, no leap years, no
-month. Nothing in the design needs a true date, and clean arithmetic makes every derived value
+**`[HC-3]` The year is 360 days: four seasons of exactly 90.** *Ratified 2026-09-10.* No real
+calendar, no leap years, no month. Nothing in the design needs a true date, and clean arithmetic makes every derived value
 cheap. A place stores a single integer — **days since world epoch** — and year, season and
 day-of-season are all derived from it.
 
@@ -711,11 +711,11 @@ place *is*; if it drifted, the axes would describe nothing. *(A crown deliberate
 place is a plausible later addition. **Deliberately not built** — do not add it as a side effect of
 something else.)*
 
-**Manager's default, flagged:** a **pirate haven's purpose is `trade`** — it lives on what comes over
-the beach and sells it. Its character comes from its **faction** being neutral, not from a fourth
-purpose. This was raised in docket one as *"drinking and whoring is a fourth purpose or a faction
-trait"* and never explicitly settled; defaulting to faction keeps the axes closed. **Overrule
-freely.**
+**Ratified 2026-09-10, with a reservation:** a **pirate haven's purpose is `trade`** — it lives on
+what comes over the beach and sells it. Its character comes from its **faction** being neutral, not
+from a fourth purpose, which keeps the axes closed. Raised in docket one as *"drinking and whoring is
+a fourth purpose or a faction trait"*; the human accepted `trade` **"for now"** and reserved pirate
+havens for a later pass. **Build against `trade`; expect this one to be revisited.**
 
 #### §9.2 What each axis actually does
 
@@ -741,11 +741,10 @@ several things.** This is a derived reading of the two axes, never a fourth axis
 military purpose multiplying. This is what makes `[HC-54]`'s independence pay off: **a military
 settlement can outfight a civilian town twice its size**, and neither needs a special rule.
 
-**`[HC-60]` The two ladders stay separate and the defence one gets renamed.** Size class is
-*settlement → town → city*. The shipped `outpost / town / capital` ladder measures **how hard the
-garrison is** and shares two words with the size class by accident. Manager's proposal for the
-replacement: **`picket · garrison · fortress`** — overrule freely, but **the collision must be gone
-before either ladder is extended.**
+**`[HC-60]` The two ladders stay separate and the defence one is renamed `picket · garrison ·
+fortress`.** *Ratified 2026-09-10.* Size class is *settlement → town → city*. The shipped
+`outpost / town / capital` ladder measures **how hard the garrison is** and shared two words with the
+size class by accident. **The collision must be gone before either ladder is extended.**
 
 #### §9.3 The asymmetry that carries the fiction
 

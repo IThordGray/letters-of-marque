@@ -92,6 +92,55 @@ class of bug that is otherwise miserable to chase.
 > Keep `--passWithNoTests` until the first test lands, then **remove it** — it was added so a parked
 > suite would not read as a failing one (`cd9b6e9`), which was correct while parked and becomes a
 > blindfold once it is not.
+>
+> **THE RULE THAT MAKES UNPARKING SAFE (ratified 2026-09-10).** The design that locked is
+> [`../spec/world-simulation.md`](../spec/world-simulation.md), **not the module** — and the module
+> predates it. So:
+>
+> **A test may pin only behaviour the spec RATIFIES — never merely behaviour that currently
+> exists.** Where the code and the spec disagree, the spec is right and the code is wrong.
+>
+> Pinning code the spec is about to replace is the same mistake that caused the park in the first
+> place, wearing different clothes: last time it was a design still being argued, this time it would
+> be a design already superseded. `[HC-70]` is the warrant for what is safe — it names what the world
+> layer explicitly does **not** reopen. If the safe set turns out small, write it and move on; the
+> suite exists to protect the world simulation, not to delay it.
+>
+> **It is not small.** An audit against the spec (2026-09-10) found ~19 pinnable design claims and no
+> refactor blocking any of them. **Unparking is purely additive** — see the two rules below.
+
+### The fixture rule — build towns by hand, never through the generator
+
+**Build test towns with `makeTown()` plus hand-written region objects. Never through
+`foundTown()` / `rollLand()`.** The land generator is scheduled to be replaced by the world's cut
+(`[HC-19]`, `[HC-73]`), so a fixture that goes through it inherits an expiry date; a fixture built
+against the struct does not. This is what buys the safe list its immunity, and it generalises:
+**pin behaviour against the struct, never against a producer that is scheduled to move.**
+
+### The starting set, expanded by the audit
+
+The four claims named further down still lead. The audit added five more, all safe under `[HC-70]`
+and all cheap:
+
+- **"wealth is the budget gate, not a term"** — the ranking `wants()` returns is identical for a rich
+  and a broke town; only affordability differs. The cheapest test in the suite, and it guards a rule
+  that is very easy to break by accident.
+- **"fear outbids revenue after a burning"** — §8.6 cites this town behaviour by name as the model
+  the *nation* auction must copy, so it is load-bearing twice over.
+- **"the explanation IS the score"** — assert **clause membership**, never prose text.
+- **"growth eats its own cause"** — claim the hex under a working sawpit and it idles, and the
+  region's capacity falls with it.
+- **"claiming is permanent"** — across a century of growth *and* decline, claimed ground never
+  shrinks.
+
+> **One trap, found by the audit and worth the warning.** Do **not** write the hamlet-floor test as
+> *"population never falls below the floor"*. `sim.ts:101` applies that floor unconditionally, which
+> is itself a bug against `[HC-67]` — the floor is supposed to require survivors. The correct claim
+> is behavioural: **"a stripped town feeds and houses itself again"**. The obvious test would pin the
+> bug.
+>
+> Related: express elapsed time as **seasons stepped**, never as `town.season` arithmetic — the
+> town's private clock is also on the contradiction list.
 
 The rest of this section is kept for the record — it explains why the park was right at the time.
 
