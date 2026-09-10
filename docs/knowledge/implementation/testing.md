@@ -216,6 +216,27 @@ measurement rather than indicting the test, and a companion claim guards the pre
 if a non-adjacent tie ever appears, that claim fails and the second key starts mattering.
 **A predicted survivor validates a precondition; only an unpredicted one indicts a test.**
 
+### Write the oracle out independently
+
+**A test that asks the code under test what the answer should be cannot catch a term added to it.**
+Found on KAN-105: the reach test computed its expected passage by calling `passageDays` — the very
+function it was testing — so a deliberately planted "neglect modifier" *inside* `passageDays` sailed
+straight through the test that was named for it. It failed five other tests incidentally, which is
+luck, not cover.
+
+**Where a claim is about a formula, spell the formula out in the test.** `ceil(nm / DAY_RUN_NM)`
+written by hand catches what `passageDays(nm)` cannot.
+
+### Anchor fixtures off-origin, and asymmetrically
+
+Also KAN-105, also found by mutation rather than by reading: a fixture whose crown seat sat at the
+origin **could not tell "plotted from the seat" from "plotted from nowhere"**, because both are
+`(0,0)`. A second fixture left a neutral faction seatless, so the guard that refuses a *neutral*
+sender was never exercised — a different guard refused it first, and the test was a decoration.
+
+**A fixture's coordinates should be deliberately off-origin and asymmetric**, for the same reason a
+tie-break needs a stated direction: symmetry hides the difference between right and nearly-right.
+
 ### Enumerate before you generalise
 
 **The sibling rule, and it has now been earned twice on the same function.** Where a claim

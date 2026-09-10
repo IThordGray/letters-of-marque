@@ -665,6 +665,26 @@ abandoned town is a landmark rather than a statistic.
 navy, no charters, no invasions, no expansion — *"an abbey has no reason to try expand."* The neutral
 set is fixed at world generation, so **the neutral share of the map can only shrink.**
 
+**`[HC-51a]` A neutral place receives no dispatch of SUPPORT, but can receive an invasion.**
+*Resolved 2026-09-10, after KAN-105 found the contradiction while building the dispatch.* Three
+lines disagreed: §8.7 says the neutral share "can only shrink" (which requires neutral places to be
+takeable), the acceptance criteria said *no neutral place ever receives a dispatch* (an arriving
+invasion force **is** a dispatch received), and §8.6 makes invasions available "between the
+belligerents" (a neutral is never at war). The coherent reading, and the one that keeps all three
+rules doing their jobs:
+
+- **Support cannot arrive** — no treasury, no reinforcements, no charter. A neutral has no patron
+  (`[HC-52]`) and can never be chartered (`[HC-65]`), so there is nobody to send them. This is what
+  the acceptance criterion was actually protecting.
+- **An invasion can.** Taking a neutral place is not a war action against another crown, so it needs
+  no belligerency — which is precisely *how* the neutral share shrinks, and the only way `[HC-51]`
+  is anything but decorative.
+
+**Consequence, named rather than discovered later: this puts the player's own haven in reach of a
+crown.** A haven is a neutral place, so a crown may come for it. That is a feature — it is the
+threat that makes a haven worth defending — but it means a haven's defences have to matter, and
+`[HC-59]`'s garrison model is what will decide whether they do.
+
 **`[HC-52]` Neutral places still run the full ledger, with an inward agenda.** They are not scenery.
 What they lack is a patron: **no grant, and therefore no safety net** — a neutral place lives on
 exactly what comes over its beach. The hamlet floor is all that stands under it.
@@ -715,7 +735,8 @@ On a headless two-hundred-year run of a fresh world:
   city-by-proxy chain of §8.5, observed rather than asserted.
 - **Distant holdings are measurably worse-funded than near ones**, with no rule saying so
   (`[HC-45]` plus reach).
-- **No neutral place ever receives a dispatch, expands, or takes a strategic action.**
+- **No neutral place ever receives a dispatch OF SUPPORT, expands, or takes a strategic action.**
+  *(Narrowed 2026-09-10 — the unqualified version contradicted `[HC-51]`; see `[HC-51a]`.)*
 - **No nation stores a holdings list** (`[HC-39]`).
 - **Determinism:** same seed, same wars, on the same days, at any speed.
 - **Abandoned towns are landmarks, not statistics** — across the run, razing by war stays rare enough
