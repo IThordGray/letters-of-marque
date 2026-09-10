@@ -40,7 +40,7 @@ export function derive(town: Town): Derived {
     yield: trade + town.grant - upkeep,
     security,
     hands: { needed: sum(working, (w) => w.hands), available: town.population * WORKS.labourShare },
-    tier: tierOf(town, security),
+    garrison: garrisonOf(town, security),
     needs: unmetNeeds(town),
   };
 }
@@ -60,7 +60,7 @@ export function derive(town: Town): Derived {
 // purpose do not exist as fields yet. This stays the value that should eventually replace
 // the hand-set GarrisonGrade in the land module (spec §9, deferred — deliberately not
 // wired up by KAN-104).
-function tierOf(town: Town, security: number): Derived["tier"] {
+function garrisonOf(town: Town, security: number): Derived["garrison"] {
   const size = (Math.min(town.population, SECURITY.fullSizePop) / SECURITY.fullSizePop) * 100;
   const importance = security * SECURITY.securityShare + size * (1 - SECURITY.securityShare);
   return importance >= SECURITY.fortressAt ? "fortress" : importance >= SECURITY.garrisonAt ? "garrison" : "picket";
@@ -178,7 +178,7 @@ export function summarise(town: Town): string {
   return (
     `${town.name}, ${year(town)} — a town of ${Math.round(town.population)} souls, ${prosperityWord(town)}.` +
     `${land} ${cap(wealthWord(town))}. ${makes}. ` +
-    `${article(d.tier)} ${d.tier} watch.`
+    `${article(d.garrison)} ${d.garrison} watch.`
   );
 }
 

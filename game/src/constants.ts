@@ -138,7 +138,7 @@ export const RAID = {
     muster: 85,
   },
   musterPoint: { x: WORLD.width / 2, y: 230 }, // the landward gate / barracks the muster pours from
-  // (reinforcement-wave sizes now scale with the garrison grade — see TIER below)
+  // (reinforcement-wave sizes now scale with the garrison grade — see GARRISON below)
   lootRange: 30, // a raider this close to a building can work it over
   lootTime: 3, // seconds to plunder a building
   pickupRange: 24, // a free raider this close to a dropped load takes it up
@@ -172,7 +172,7 @@ export const RAID = {
 // HARDNESS, not size, and shares no word with the size class settlement → town → city. The
 // old "militarised `outpost` is a future tier" plan (decisions.md 2026-09-07) is STRUCK:
 // [HC-55] settles that an outpost is a *reading* of size × purpose, never a rung here.
-export const TIER: Record<
+export const GARRISON: Record<
   GarrisonGrade,
   {
     troop: { morale: number; ferocity: number; marks: number };

@@ -71,7 +71,7 @@ function card(t: Town, i: number): string {
           <tr><th>prosperity</th><td>${n(t.prosperity, 1)} — ${prosperityWord(t)}</td></tr>
           <tr><th class="sep">food / mouths</th><td class="sep">${n(d.food)} / ${n(d.mouths)}</td></tr>
           <tr><th>yield</th><td>${n(d.yield, 1)} per season</td></tr>
-          <tr><th>security</th><td>${n(d.security)} → a ${d.tier} watch</td></tr>
+          <tr><th>security</th><td>${n(d.security)} → a ${d.garrison} watch</td></tr>
           <tr><th>hands</th><td>${n(d.hands.needed)} needed of ${n(d.hands.available)}</td></tr>
           <tr><th>wants</th><td>${unmet(d.needs)}</td></tr>
         </table>

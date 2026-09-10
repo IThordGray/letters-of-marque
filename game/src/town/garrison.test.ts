@@ -19,8 +19,8 @@ import type { Town, Derived } from "./types";
 import type { GarrisonGrade } from "../types";
 
 // Softest first — the ordering IS the claim, so grades are compared by position on it.
-const LADDER: Derived["tier"][] = ["picket", "garrison", "fortress"];
-const rung = (t: Town): number => LADDER.indexOf(derive(t).tier);
+const LADDER: Derived["garrison"][] = ["picket", "garrison", "fortress"];
+const rung = (t: Town): number => LADDER.indexOf(derive(t).garrison);
 
 // Every gun a mixed-ground town's land will bear: two batteries on its bluff, a palisade
 // round it, a barracks behind. Nothing else in the catalogue adds defence.
@@ -34,9 +34,17 @@ const armToTheTeeth = (t: Town): Town => {
 
 describe("the garrison grade", () => {
   it("is never stored, so it cannot drift from the guns that explain it", () => {
-    // [HC-59], verbatim: the garrison is derived, never stored. A `tier` on the struct
-    // would be a number that could disagree with the works ledger under it.
-    expect(Object.keys(makeTown({ name: "Test", seed: 1 }))).not.toContain("tier");
+    // [HC-59], verbatim: the garrison is derived, never stored. A grade held on the
+    // struct would be a value that could disagree with the works ledger under it.
+    //
+    // Guards the live name, not a dead one: this asserted `"tier"` until KAN-110
+    // renamed the field, at which point it guarded a word that existed nowhere and
+    // could never fail.
+    const stored = Object.keys(makeTown({ name: "Test", seed: 1 }));
+    expect(stored).not.toContain("garrison");
+    expect(stored).not.toContain("tier");
+    // ...and it really is on the derived side.
+    expect(Object.keys(derive(mixedTown({ population: 300 })))).toContain("garrison");
   });
 
   it("does not make a fortress of a place just because it is full of guns", () => {
@@ -48,7 +56,7 @@ describe("the garrison grade", () => {
     const bare = mixedTown({ population: 90 });
 
     expect(derive(presidio).security).toBeGreaterThan(derive(bare).security * 4); // it IS hard
-    expect(derive(presidio).tier).not.toBe("fortress"); // ...and still not a fortress
+    expect(derive(presidio).garrison).not.toBe("fortress"); // ...and still not a fortress
   });
 
   it("lets a hard little place outgrade a soft place twice its size", () => {
@@ -93,7 +101,7 @@ describe("the garrison grade", () => {
 
   it("grades a stripped, emptied place at the bottom of the ladder and not below it", () => {
     const ruined = mixedTown({ population: 1, wealth: 0 });
-    expect(derive(ruined).tier).toBe(LADDER[0]);
+    expect(derive(ruined).garrison).toBe(LADDER[0]);
   });
 
   it("grades every place on this ladder and never on the size class", () => {
@@ -105,8 +113,8 @@ describe("the garrison grade", () => {
       armToTheTeeth(mixedTown({ population: 800 })),
     ];
     for (const t of spread) {
-      expect(LADDER).toContain(derive(t).tier);
-      expect(["settlement", "city"]).not.toContain(derive(t).tier);
+      expect(LADDER).toContain(derive(t).garrison);
+      expect(["settlement", "city"]).not.toContain(derive(t).garrison);
     }
   });
 
@@ -115,9 +123,9 @@ describe("the garrison grade", () => {
     // fails `tsc` the moment either ladder drifts, which is how the three-way overlap
     // (world `settlement·town·city`, town `outpost·town·capital`, raid
     // `settlement·town·capital`) went unnoticed in the first place.
-    const fromTheLedger: Derived["tier"] = derive(mixedTown({ population: 300 })).tier;
+    const fromTheLedger: Derived["garrison"] = derive(mixedTown({ population: 300 })).garrison;
     const asTheRaidSeesIt: GarrisonGrade = fromTheLedger;
-    const andBack: Derived["tier"] = asTheRaidSeesIt;
+    const andBack: Derived["garrison"] = asTheRaidSeesIt;
 
     expect(andBack).toBe(fromTheLedger);
     expect(LADDER).toContain(asTheRaidSeesIt);

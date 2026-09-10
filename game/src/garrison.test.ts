@@ -12,7 +12,7 @@
 // default. Never a band's value: every number in `constants.ts` is a starting guess.
 
 import { describe, it, expect } from "vitest";
-import { TIER } from "./constants";
+import { GARRISON } from "./constants";
 import { makeWorld } from "./world";
 import { populateBattle } from "./spawn";
 import type { GarrisonGrade } from "./types";
@@ -29,7 +29,7 @@ const party: PartySpec = { squads: [{ officer: null, pirates: 4, weapon: "musket
 
 // Every defender the grade puts on the field, standing watch or walking a street.
 const watchmen = (g: GarrisonGrade): number => {
-  const w = TIER[g].watch;
+  const w = GARRISON[g].watch;
   return w.plazaGuard + w.sentryPosts * 2 + w.patrols * w.patrolSize;
 };
 
@@ -42,18 +42,18 @@ describe("the garrison ladder", () => {
   it("grades how hard a place is, and borrows no word from how big it is", () => {
     // The whole point of KAN-104. If a rung ever reads `town` again, the two axes have
     // been welded back together and a wiring mistake between them becomes invisible.
-    expect([...Object.keys(TIER)].sort()).toEqual([...LADDER].sort());
-    for (const grade of Object.keys(TIER)) expect(SIZE_CLASS).not.toContain(grade);
+    expect([...Object.keys(GARRISON)].sort()).toEqual([...LADDER].sort());
+    for (const grade of Object.keys(GARRISON)) expect(SIZE_CLASS).not.toContain(grade);
   });
 
   it("puts harder men on every rung above the one below", () => {
     // The spine is break-the-will, so morale is the rung's sharpest edge — the men, and
     // the officer who steadies them, both stiffen as the ladder climbs.
     for (const [soft, hard] of rungs()) {
-      expect(TIER[hard].troop.morale).toBeGreaterThan(TIER[soft].troop.morale);
-      expect(TIER[hard].troop.ferocity).toBeGreaterThan(TIER[soft].troop.ferocity);
-      expect(TIER[hard].troop.marks).toBeGreaterThan(TIER[soft].troop.marks);
-      expect(TIER[hard].officer.morale).toBeGreaterThan(TIER[soft].officer.morale);
+      expect(GARRISON[hard].troop.morale).toBeGreaterThan(GARRISON[soft].troop.morale);
+      expect(GARRISON[hard].troop.ferocity).toBeGreaterThan(GARRISON[soft].troop.ferocity);
+      expect(GARRISON[hard].troop.marks).toBeGreaterThan(GARRISON[soft].troop.marks);
+      expect(GARRISON[hard].officer.morale).toBeGreaterThan(GARRISON[soft].officer.morale);
     }
   });
 
@@ -65,8 +65,8 @@ describe("the garrison ladder", () => {
 
   it("musters a deeper answer to the alarm the harder the place is", () => {
     for (const [soft, hard] of rungs()) {
-      const s = TIER[soft].reinforce;
-      const h = TIER[hard].reinforce;
+      const s = GARRISON[soft].reinforce;
+      const h = GARRISON[hard].reinforce;
       expect(h.wave2 + h.wave3).toBeGreaterThan(s.wave2 + s.wave3);
     }
   });
@@ -75,8 +75,8 @@ describe("the garrison ladder", () => {
     // A picket is a thin militia watch: it can rouse once and then it is spent. That is
     // what makes it a raid worth taking, and it is the bottom of the ladder in the one
     // way a raider feels — nobody else comes.
-    expect(TIER[LADDER[0]].reinforce.wave3).toBe(0);
-    for (const g of LADDER.slice(1)) expect(TIER[g].reinforce.wave3).toBeGreaterThan(0);
+    expect(GARRISON[LADDER[0]].reinforce.wave3).toBe(0);
+    for (const g of LADDER.slice(1)) expect(GARRISON[g].reinforce.wave3).toBeGreaterThan(0);
   });
 });
 
@@ -85,11 +85,11 @@ describe("a raid on a graded town", () => {
     // The playable town is meant to read as winnable against a seasoned band.
     const world = makeWorld();
     populateBattle(world, party);
-    expect(world.tier).toBe(LADDER[0]);
+    expect(world.garrison).toBe(LADDER[0]);
   });
 
   it("starts every world somewhere on this ladder and nowhere else", () => {
-    expect(LADDER).toContain(makeWorld().tier);
+    expect(LADDER).toContain(makeWorld().garrison);
   });
 
   it("fields a deeper watch against a fortress than against a picket", () => {

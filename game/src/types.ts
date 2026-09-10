@@ -20,7 +20,7 @@ export type Stance = "aggressive" | "holdGround" | "ceaseFire";
 //   - the garrison itself is derived from population × size × purpose ([HC-59]), which is
 //     why a hard little place can outgrade a soft big one.
 // The retired "militarised outpost as a future tier" plan is therefore struck, here and
-// in the TIER bands in constants.ts.
+// in the GARRISON bands in constants.ts.
 export type GarrisonGrade = "picket" | "garrison" | "fortress";
 
 export interface Unit {

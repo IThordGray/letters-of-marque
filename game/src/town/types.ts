@@ -207,6 +207,6 @@ export interface Derived {
   // settlement → town → city. The two unions are kept separate structs, not one import,
   // because the world drives the ledger and never the other way ([HC-71]); a test pins
   // that they stay the same three words.
-  tier: "picket" | "garrison" | "fortress";
+  garrison: "picket" | "garrison" | "fortress";
   needs: Record<Need, number>; // 0..1 UNMET — a governor input, never a player gauge
 }

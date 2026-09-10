@@ -1,7 +1,7 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType, Stance, BuildingKind, GarrisonGrade } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, TIER, PLAYER_CREW } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, GARRISON, PLAYER_CREW } from "./constants";
 
 // A figure's three combat stats — the shape a garrison grade's bands come in.
 type Stats = { morale: number; ferocity: number; marks: number };
@@ -155,7 +155,7 @@ function spawnPatrol(world: World, route: { x: number; y: number }[], n: number,
 // streets. Both its strength (stat bands) and its depth (headcounts) scale with the town's
 // garrison grade — a picket is a thin, brittle watch; a fortress, a deep one.
 function spawnEnemyGarrison(world: World, grade: GarrisonGrade) {
-  const t = TIER[grade];
+  const t = GARRISON[grade];
   spawnPlainBand(world, "enemy", 1200, 700, t.watch.plazaGuard, "musket", "holdGround", t.troop, t.officer);
   const posts = [
     { x: 1050, y: 1680 }, // seaward approach, west
@@ -184,7 +184,7 @@ export function enemyGarrisonSize(): number {
 // aggressive (they come to hunt, not to hold), at the defended town's garrison grade; the AI
 // directs them from there.
 export function spawnReinforcementWave(world: World, pirates: number) {
-  const t = TIER[world.tier];
+  const t = GARRISON[world.garrison];
   spawnPlainBand(world, "enemy", RAID.musterPoint.x, RAID.musterPoint.y, pirates, "musket", "aggressive", t.troop, t.officer);
   signal(world, "Fresh defenders pour in from the town!");
 }
@@ -264,7 +264,7 @@ function seedTown(world: World) {
 // The grade says nothing about how big the town is ([HC-60]): a picket can be a large trading
 // town that never armed itself, and a fortress can be ninety souls behind stone.
 export function populateBattle(world: World, party: PartySpec, grade: GarrisonGrade = "picket") {
-  world.tier = grade;
+  world.garrison = grade;
   seedTown(world);
   deriveTerrain(world);
   world.navGrid = buildNavGrid(world);

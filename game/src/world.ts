@@ -77,7 +77,7 @@ export interface World {
   patrols: Patrol[]; // enemy patrols walking routes while dormant
   aiNextAt: number; // sim time of the enemy AI's next decision
   raid: RaidState; // the raid scenario (objective, extraction, alarm)
-  tier: GarrisonGrade; // how hard the defence is — scales garrison strength & depth, NOT the town's size
+  garrison: GarrisonGrade; // how hard the defence is — scales garrison strength & depth, NOT the town's size
 }
 
 export function makeWorld(): World {
@@ -96,6 +96,6 @@ export function makeWorld(): World {
     patrols: [],
     aiNextAt: 0,
     raid: { extraction: null, alarm: 0, alarmHeat: 0, haul: 0, loads: [], prisoners: [], joined: 0, ransomed: 0, result: null },
-    tier: "garrison", // the middle rung; populateBattle sets the real grade for the battle
+    garrison: "garrison", // the middle rung; populateBattle sets the real grade for the battle
   };
 }
