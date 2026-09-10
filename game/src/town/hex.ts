@@ -8,7 +8,8 @@
 import type { Bearing } from "./types";
 
 // Axial coordinates. Flat-top orientation, so the six neighbours are the six
-// bearings and N/S survive (which is what keeps "the sea lies south" true).
+// bearings and N/S survive — which is what lets a town's local views be drawn
+// with seaward down the page ([HC-73]).
 export interface Axial {
   q: number;
   r: number;
@@ -69,10 +70,6 @@ export function corners(centre: { x: number; y: number }, size: number): { x: nu
   });
 }
 
-// A hinterland hex is "sea" if it lies seaward — the sea is south, so anything in
-// the southern arc of the outer ring is water. Enough to frame the coast.
-export const isSeaward = (a: Axial) => a.r + a.q / 2 > 0.5;
-
 // The two corners a hex shares with its neighbour in direction `b` — the line a
 // wall runs along when that bearing is enclosed.
 export function sharedEdge(centre: { x: number; y: number }, size: number, b: Bearing): [{ x: number; y: number }, { x: number; y: number }] {
@@ -94,21 +91,31 @@ export const key = (a: Axial) => `${a.q},${a.r}`;
 export const neighbours = (a: Axial): Axial[] =>
   BEARING_ORDER.map((b) => ({ q: a.q + axialOf(b).q, r: a.r + axialOf(b).r }));
 
-// How far south a hex lies. The sea is south, so this is the coast's axis — the
-// coastline is irregular, but which way it faces is not (spec §2.7).
+// How far seaward a hex lies IN THE TOWN'S OWN FRAME. This is a DRAWING axis, not
+// a geographic claim: the world holds a place's true coastal bearing ([HC-19]),
+// and every local view of it is drawn rotated so that seaward is down the page
+// ([HC-73]). That is what keeps the hex map's water along the bottom and the raid
+// map's landing on the near edge, whichever way the real coast faces. The
+// coastline is irregular; which way the DRAWING faces is not (spec §2.7).
 export const southness = (a: Axial) => a.r + a.q / 2;
 
 // The compass direction of a hex from the town, for prose and the placement
 // skew. DERIVED — never stored as the spatial fact (spec §2.10).
+//
+// No normalisation. All six bearing vectors are the same length and the hex's own
+// length is constant within the call, so the old code divided every candidate by
+// the same positive constant before taking a maximum — which cannot change which
+// candidate wins. It bought nothing and cost the module its only banned call
+// (`Math.hypot`, [P-5]). Verified identical over every region centroid of six
+// hundred rolled towns, every integer hex within eight of the centre, and a
+// twelfth-of-a-hex grid: no disagreement anywhere.
 export function bearingOf(a: Axial): Bearing {
   let best: Bearing = "N";
   let bestDot = -Infinity;
-  const len = Math.hypot(toPixel(a, 1).x, toPixel(a, 1).y) || 1;
   const p = toPixel(a, 1);
   for (const b of BEARING_ORDER) {
     const d = toPixel(axialOf(b), 1);
-    const dl = Math.hypot(d.x, d.y) || 1;
-    const dot = (p.x * d.x + p.y * d.y) / (len * dl);
+    const dot = p.x * d.x + p.y * d.y;
     if (dot > bestDot) { bestDot = dot; best = b; }
   }
   return best;

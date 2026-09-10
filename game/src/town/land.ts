@@ -10,11 +10,27 @@
 // hexes. Few draws, high variance, high resolution.
 //
 // See docs/knowledge/spec/town-economy.md §2.
+//
+// WHAT DIED HERE (KAN-103). A town no longer rolls its own coast. [HC-19] makes
+// the world map the single source of geography, so a place's ground is CUT from
+// the map at its position and handed to `foundTown` — see the closed list of
+// external inputs a place accepts, [HC-72]. Everything below the "Rolling the
+// land" heading is therefore a STAND-IN with a date on it, kept only so the town
+// harness has ground to stand on until KAN-98's generator exists.
+//
+// WHAT SURVIVED, and why it is not a contradiction. `southness` still decides
+// which way this stand-in's water lies, and the hex map and ground plan still
+// draw water to the south. That is a DRAWING convention, not a geographic claim
+// ([HC-73]): the world holds a place's true coastal bearing, and a town's local
+// views are drawn in a local frame whose south is seaward. A rotation into that
+// frame preserves the readability rule exactly, whichever way the real coast
+// faces — which is why the reading half outlives the rolling half.
 
 import type { Region, TerrainKind, Produce, Suit, Bearing, Town } from "./types";
 import type { Axial } from "./hex";
 import type { Rng } from "../rng";
-import { nextFloat } from "../rng";
+import { makeRng, nextFloat } from "../rng";
+import { seedFor, CHANNEL } from "../overworld/chance";
 import { CENTRE, disc, neighbours, key, southness, bearingOf, centroid, distance } from "./hex";
 import { LAND } from "./constants";
 
@@ -83,6 +99,9 @@ export interface Land {
   regions: Region[];
 }
 
+// TEMPORARY (KAN-103, executed by KAN-98). Nothing in the simulation calls this
+// any more — only the harness does, through `provisionalGround` below. It invents
+// a coast, which is precisely the job [HC-19] gives the world.
 export function rollLand(rng: Rng): Land {
   const cells = disc(LAND.radius);
   // One random value per hex, drawn once, so the outline is organic but stable.
@@ -117,6 +136,16 @@ export function rollLand(rng: Rng): Land {
     if (neighbours(c).every((n) => land.has(key(n)))) land.add(key(c));
   }
 
+  // A landing is guaranteed: at least one water hex seaward of the town itself,
+  // or there is nowhere to come ashore and no quay to draw. Where the growth left
+  // none, one hex is taken back off the land — and it must leave the land BEFORE
+  // the land is snapshotted, or it ends up in both lists and therefore in two
+  // regions, which breaks R1's partition.
+  const landing = neighbours(CENTRE).some((n) => southness(n) > 0 && !land.has(key(n)))
+    ? null
+    : { q: 0, r: 1 };
+  if (landing) land.delete(key(landing));
+
   const landCells = cells.filter((c) => land.has(key(c)));
   const at = (h: Axial) => landCells.find((c) => c.q === h.q && c.r === h.r);
 
@@ -126,13 +155,7 @@ export function rollLand(rng: Rng): Land {
   for (const c of landCells) {
     for (const n of neighbours(c)) if (!land.has(key(n)) && !dry(n)) waterSet.set(key(n), n);
   }
-  // A landing is guaranteed: at least one water hex south of the town itself.
-  const southOfTown = neighbours(CENTRE).filter((n) => southness(n) > 0 && !land.has(key(n)));
-  if (!southOfTown.length) {
-    const s = { q: 0, r: 1 };
-    land.delete(key(s));
-    waterSet.set(key(s), s);
-  }
+  if (landing) waterSet.set(key(landing), landing);
   // A cay or two, detached from the shore. Cheap, and they make it a coast.
   const cays: Axial[] = [];
   for (let i = 0; i < LAND.cays && nextFloat(rng) < 0.6; i++) {
@@ -219,6 +242,21 @@ export function rollLand(rng: Rng): Land {
 }
 
 const seawardMost = (hexes: Axial[]) => hexes.reduce((a, b) => (southness(b) > southness(a) ? b : a));
+
+// ---- TEMPORARY: the ground the harness stands on ---------------------------
+//
+// KAN-103 inverted who supplies a town's land — `foundTown` no longer rolls its
+// own coast. But the world generator does not exist yet, so `town.html` would
+// have nothing to stand on. This is the stopgap, and **KAN-98 IS ITS
+// EXECUTIONER**: when the world map exists, a place's ground is cut from it at
+// its position ([HC-19]) and this function dies together with `rollLand` above.
+//
+// The one part that survives is the seed. It comes through the sanctioned bridge
+// ([HC-10], `seedFor`): one world seed, one channel, one place id — never a
+// shared sequential stream, so adding a fifty-first place cannot rewrite the
+// other fifty's ground.
+export const provisionalGround = (worldSeed: number, placeId: number): Land =>
+  rollLand(makeRng(seedFor(worldSeed, CHANNEL.land, placeId)));
 
 // Two touching stretches of the same ground are one region, not two. Without this
 // the map reads as a quilt of slivers rather than a place with a shape.
