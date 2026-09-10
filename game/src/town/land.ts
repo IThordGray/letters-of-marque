@@ -4,35 +4,29 @@
 // much of the ground is cane), the dominant region (what the place is for), and
 // shape (which way it runs and what it touches).
 //
-// Dilution is caused by INDEPENDENT PER-TILE SAMPLING, not by tile count —
-// twenty tiles rolled independently converge on the same average. Clustering
-// breaks the independence: we draw four regions and paint them across two dozen
-// hexes. Few draws, high variance, high resolution.
-//
 // See docs/knowledge/spec/town-economy.md §2.
 //
-// WHAT DIED HERE (KAN-103). A town no longer rolls its own coast. [HC-19] makes
-// the world map the single source of geography, so a place's ground is CUT from
-// the map at its position and handed to `foundTown` — see the closed list of
-// external inputs a place accepts, [HC-72]. Everything below the "Rolling the
-// land" heading is therefore a STAND-IN with a date on it, kept only so the town
-// harness has ground to stand on until KAN-98's generator exists.
+// WHAT DIED HERE, and when (KAN-103 inverted it, KAN-98 executed it). A town no
+// longer rolls its own coast, and as of KAN-98 it no longer has a stand-in that
+// does either. [HC-19] makes the world map the single source of geography, so a
+// place's ground is CUT from the map at its position by
+// `overworld/ground.ts` and handed to `foundTown` — one row of the closed list
+// of external inputs a place accepts, [HC-72]. Gone with the generator:
+// `rollLand`, `provisionalGround`, the terrain-produce table (now the world's,
+// in `overworld/climate.ts`), the vocation and support tables, and every mention
+// of `southness` in the simulation.
 //
-// WHAT SURVIVED, and why it is not a contradiction. `southness` still decides
-// which way this stand-in's water lies, and the hex map and ground plan still
-// draw water to the south. That is a DRAWING convention, not a geographic claim
-// ([HC-73]): the world holds a place's true coastal bearing, and a town's local
-// views are drawn in a local frame whose south is seaward. A rotation into that
-// frame preserves the readability rule exactly, whichever way the real coast
-// faces — which is why the reading half outlives the rolling half.
+// WHAT SURVIVED, and why it is not a contradiction. The hex map and the ground
+// plan still draw water to the south. That is a DRAWING convention, not a
+// geographic claim ([HC-73]): the world holds a place's true coastal bearing,
+// and the cut rotates the world into a town-local frame whose south is seaward.
+// A rotation preserves the readability rule exactly, whichever way the real
+// coast faces — which is why the reading half of this file outlived the rolling
+// half.
 
 import type { Region, TerrainKind, Produce, Suit, Bearing, Town } from "./types";
 import type { Axial } from "./hex";
-import type { Rng } from "../rng";
-import { makeRng, nextFloat } from "../rng";
-import { seedFor, CHANNEL } from "../overworld/chance";
-import { CENTRE, disc, neighbours, key, southness, bearingOf, centroid, distance } from "./hex";
-import { LAND } from "./constants";
+import { key } from "./hex";
 
 // ---- What the ground is ----------------------------------------------------
 
@@ -41,270 +35,13 @@ export const isDead = (t: TerrainKind) => t === "marsh" || t === "scrub" || t ==
 // Ground the town can build houses on. Never mangrove, never water.
 export const isBuildable = (t: TerrainKind) => !isWater(t) && t !== "marsh";
 
-// The profile supplier: what each terrain CAN bear, best first. The roll decides
-// this town's actual grades (below). THIS FUNCTION IS THE CLIMATE SEAM — later a
-// climate(latitude, rainfall, elevation) model fills `bears` instead, and nothing
-// downstream changes.
-const TERRAIN_PRODUCE: Record<TerrainKind, Produce[]> = {
-  timberedHills: ["timber", "stone"],
-  caneFlats: ["cane", "cotton", "grain"],
-  tilledGround: ["grain", "food", "cotton"],
-  cottonGround: ["cotton", "grain"],
-  rockyGround: ["stone"],
-  saltPans: ["salt"],
-  bluff: [], // a defensive gift, not a living
-  reef: ["fish"],
-  roadstead: [], // sited works only — a harbour is not a crop
-  marsh: [],
-  scrub: [],
-  openSea: [],
-};
-
-// Which terrains a town can be built ON — a vocation is what the place is for.
-const VOCATIONS: { terrain: TerrainKind; weight: number }[] = [
-  { terrain: "caneFlats", weight: 3 },
-  { terrain: "timberedHills", weight: 3 },
-  { terrain: "tilledGround", weight: 3 },
-  { terrain: "cottonGround", weight: 2 },
-  { terrain: "rockyGround", weight: 1 },
-  { terrain: "saltPans", weight: 1 },
-];
-
-// What plausibly lies alongside what.
-const SUPPORTING: Partial<Record<TerrainKind, TerrainKind[]>> = {
-  caneFlats: ["tilledGround", "timberedHills", "scrub"],
-  timberedHills: ["rockyGround", "tilledGround", "bluff"],
-  tilledGround: ["caneFlats", "cottonGround", "timberedHills"],
-  cottonGround: ["tilledGround", "scrub", "saltPans"],
-  rockyGround: ["timberedHills", "bluff", "scrub"],
-  saltPans: ["marsh", "scrub", "tilledGround"],
-};
-
-const DEAD_LAND: TerrainKind[] = ["scrub", "scrub", "marsh", "bluff"];
-
-// ---- Rolling the land ------------------------------------------------------
-
-const pick = <T,>(rng: Rng, xs: T[]): T => xs[Math.floor(nextFloat(rng) * xs.length)];
-
-function pickWeighted(rng: Rng, xs: { terrain: TerrainKind; weight: number }[]): TerrainKind {
-  const total = xs.reduce((s, x) => s + x.weight, 0);
-  let r = nextFloat(rng) * total;
-  for (const x of xs) if ((r -= x.weight) <= 0) return x.terrain;
-  return xs[xs.length - 1].terrain;
-}
-
+// ---- The struct the world hands over ---------------------------------------
+// Everything a place is given about its ground, and the whole of it. The town
+// stores it and never asks the world anything else ([HC-71]).
 export interface Land {
   land: Axial[];
   water: Axial[];
   regions: Region[];
-}
-
-// TEMPORARY (KAN-103, executed by KAN-98). Nothing in the simulation calls this
-// any more — only the harness does, through `provisionalGround` below. It invents
-// a coast, which is precisely the job [HC-19] gives the world.
-export function rollLand(rng: Rng): Land {
-  const cells = disc(LAND.radius);
-  // One random value per hex, drawn once, so the outline is organic but stable.
-  const noise = new Map<string, number>(cells.map((c) => [key(c), nextFloat(rng)]));
-  // Where the shore lies in each column, jittered — this is what makes the coast
-  // a coast and not an arc.
-  const shore = new Map<number, number>();
-  for (let q = -LAND.radius; q <= LAND.radius; q++) {
-    shore.set(q, LAND.coast + (nextFloat(rng) - 0.5) * LAND.coastJitter);
-  }
-  const dry = (h: Axial) => southness(h) <= (shore.get(h.q) ?? LAND.coast);
-
-  // Grow the land greedily outward from the town: best-scoring frontier hex first.
-  const land = new Set<string>([key(CENTRE)]);
-  const frontier = new Map<string, Axial>();
-  const consider = (h: Axial) => {
-    if (!noise.has(key(h)) || land.has(key(h)) || !dry(h)) return;
-    frontier.set(key(h), h);
-  };
-  neighbours(CENTRE).forEach(consider);
-  const score = (h: Axial) => (noise.get(key(h)) ?? 0) - distance(h, CENTRE) * LAND.compactness;
-  while (land.size < LAND.hexes && frontier.size) {
-    let best: Axial | null = null;
-    for (const h of frontier.values()) if (!best || score(h) > score(best)) best = h;
-    frontier.delete(key(best!));
-    land.add(key(best!));
-    neighbours(best!).forEach(consider);
-  }
-  // Cleanup: a hex ringed by land is land, however the growth missed it.
-  for (const c of cells) {
-    if (land.has(key(c)) || !dry(c)) continue;
-    if (neighbours(c).every((n) => land.has(key(n)))) land.add(key(c));
-  }
-
-  // A landing is guaranteed: at least one water hex seaward of the town itself,
-  // or there is nowhere to come ashore and no quay to draw. Where the growth left
-  // none, one hex is taken back off the land — and it must leave the land BEFORE
-  // the land is snapshotted, or it ends up in both lists and therefore in two
-  // regions, which breaks R1's partition.
-  const landing = neighbours(CENTRE).some((n) => southness(n) > 0 && !land.has(key(n)))
-    ? null
-    : { q: 0, r: 1 };
-  if (landing) land.delete(key(landing));
-
-  const landCells = cells.filter((c) => land.has(key(c)));
-  const at = (h: Axial) => landCells.find((c) => c.q === h.q && c.r === h.r);
-
-  // Only the water that touches the land is drawn at all — and only on the SEAWARD
-  // side. Inland the map simply ends; it is never ringed with ocean.
-  const waterSet = new Map<string, Axial>();
-  for (const c of landCells) {
-    for (const n of neighbours(c)) if (!land.has(key(n)) && !dry(n)) waterSet.set(key(n), n);
-  }
-  if (landing) waterSet.set(key(landing), landing);
-  // A cay or two, detached from the shore. Cheap, and they make it a coast.
-  const cays: Axial[] = [];
-  for (let i = 0; i < LAND.cays && nextFloat(rng) < 0.6; i++) {
-    const seaward = [...waterSet.values()].filter((w) => southness(w) > 0.5);
-    if (!seaward.length) break;
-    const from = pick(rng, seaward);
-    const out = pick(rng, neighbours(from).filter((n) => !land.has(key(n)) && !waterSet.has(key(n))));
-    if (out) { waterSet.set(key(out), out); cays.push(out); }
-  }
-  const water = [...waterSet.values()];
-
-  // ---- Regions ----
-  const assigned = new Map<string, number>();
-  const regions: Region[] = [];
-  let nextId = 1;
-
-  // Grow a region of `terrain` from a seed, up to `budget` hexes, over unassigned
-  // land only. Contiguity is guaranteed by construction.
-  const grow = (terrain: TerrainKind, seed: Axial, budget: number): Region | null => {
-    if (assigned.has(key(seed))) return null;
-    const hexes: Axial[] = [];
-    const queue = [seed];
-    while (hexes.length < budget && queue.length) {
-      const h = queue.shift()!;
-      if (assigned.has(key(h)) || !land.has(key(h))) continue;
-      assigned.set(key(h), nextId);
-      hexes.push(at(h)!);
-      const open = neighbours(h).filter((n) => land.has(key(n)) && !assigned.has(key(n)));
-      // A little disorder, so regions are not perfect discs.
-      if (open.length > 1 && nextFloat(rng) < 0.5) open.reverse();
-      queue.push(...open);
-    }
-    if (!hexes.length) return null;
-    const r = makeRegion(rng, nextId++, terrain, hexes);
-    regions.push(r);
-    return r;
-  };
-
-  const openLand = () => landCells.filter((c) => !assigned.has(key(c)));
-  const budget = (lo: number, hi: number) => lo + Math.floor(nextFloat(rng) * (hi - lo + 1));
-
-  // The dominant region: what the place is FOR. Roughly a third of the ground.
-  const vocation = pickWeighted(rng, VOCATIONS);
-  const seedPool = landCells.filter((c) => distance(c, CENTRE) >= 1);
-  grow(vocation, pick(rng, seedPool.length ? seedPool : landCells), budget(LAND.dominant.lo, LAND.dominant.hi));
-
-  // One or two supporting regions, seeded on what is left.
-  const supports = SUPPORTING[vocation] ?? DEAD_LAND;
-  for (let i = 0; i < 1 + (nextFloat(rng) < 0.6 ? 1 : 0); i++) {
-    const open = openLand();
-    if (!open.length) break;
-    grow(pick(rng, supports), pick(rng, open), budget(LAND.support.lo, LAND.support.hi));
-  }
-  // ...and the rest is whatever the coast happens to offer, much of it worthless.
-  let guard = 12;
-  while (openLand().length && guard-- > 0) {
-    const open = openLand();
-    const kind = nextFloat(rng) < LAND.deadShare ? pick(rng, DEAD_LAND) : pickWeighted(rng, VOCATIONS);
-    grow(kind, pick(rng, open), budget(LAND.minor.lo, LAND.minor.hi));
-  }
-  // Anything still loose joins whatever it touches, rather than becoming a sliver.
-  for (const c of openLand()) {
-    const host = neighbours(c).map((n) => assigned.get(key(n))).find((id) => id !== undefined);
-    const r = host !== undefined ? regions.find((x) => x.id === host) : undefined;
-    if (r) { r.hexes.push(c); assigned.set(key(c), r.id); }
-  }
-  mergeAdjacent(regions);
-
-  // Water regions: the anchorage the town actually uses, banks worth fishing, and
-  // open sea for the rest.
-  const inshore = water.filter((w) => distance(w, CENTRE) <= 2 && !cays.some((c) => key(c) === key(w)));
-  const harbour = inshore.length && nextFloat(rng) < LAND.harbourChance ? [pick(rng, inshore)] : [];
-  if (harbour.length) regions.push(makeRegion(rng, nextId++, "roadstead", harbour));
-  const banks = water.filter((w) => !harbour.some((h) => key(h) === key(w)) && nextFloat(rng) < LAND.reefShare);
-  if (banks.length) regions.push(makeRegion(rng, nextId++, "reef", banks));
-  const rest = water.filter(
-    (w) => !harbour.some((h) => key(h) === key(w)) && !banks.some((b) => key(b) === key(w)),
-  );
-  if (rest.length) regions.push(makeRegion(rng, nextId++, "openSea", rest));
-  // The sea lies south, whatever a centroid over a wrapping coastline would say.
-  for (const r of regions) if (isWater(r.terrain)) r.bearing = bearingOf(seawardMost(r.hexes));
-
-  return { land: landCells, water, regions };
-}
-
-const seawardMost = (hexes: Axial[]) => hexes.reduce((a, b) => (southness(b) > southness(a) ? b : a));
-
-// ---- TEMPORARY: the ground the harness stands on ---------------------------
-//
-// KAN-103 inverted who supplies a town's land — `foundTown` no longer rolls its
-// own coast. But the world generator does not exist yet, so `town.html` would
-// have nothing to stand on. This is the stopgap, and **KAN-98 IS ITS
-// EXECUTIONER**: when the world map exists, a place's ground is cut from it at
-// its position ([HC-19]) and this function dies together with `rollLand` above.
-//
-// The one part that survives is the seed. It comes through the sanctioned bridge
-// ([HC-10], `seedFor`): one world seed, one channel, one place id — never a
-// shared sequential stream, so adding a fifty-first place cannot rewrite the
-// other fifty's ground.
-export const provisionalGround = (worldSeed: number, placeId: number): Land =>
-  rollLand(makeRng(seedFor(worldSeed, CHANNEL.land, placeId)));
-
-// Two touching stretches of the same ground are one region, not two. Without this
-// the map reads as a quilt of slivers rather than a place with a shape.
-function mergeAdjacent(regions: Region[]) {
-  let merged = true;
-  while (merged) {
-    merged = false;
-    outer: for (let i = 0; i < regions.length; i++) {
-      for (let j = i + 1; j < regions.length; j++) {
-        if (regions[i].terrain !== regions[j].terrain) continue;
-        const touches = regions[i].hexes.some((a) => neighbours(a).some((n) => regions[j].hexes.some((b) => key(b) === key(n))));
-        if (!touches) continue;
-        regions[i].hexes.push(...regions[j].hexes);
-        regions[i].bearing = bearingOf(centroid(regions[i].hexes));
-        regions.splice(j, 1);
-        merged = true;
-        break outer;
-      }
-    }
-  }
-}
-
-// A region's grades are ROLLED, not fixed per terrain: the terrain sets the
-// shortlist and the odds, the roll sets THIS town's profile. That is what makes
-// two cotton towns different without a separate `quality` axis.
-function rollBears(rng: Rng, terrain: TerrainKind): Partial<Record<Produce, Suit>> {
-  const shortlist = [...TERRAIN_PRODUCE[terrain]];
-  const arable = terrain === "caneFlats" || terrain === "tilledGround" || terrain === "cottonGround";
-  if (arable && shortlist.length > 1 && nextFloat(rng) < LAND.upsetChance) {
-    [shortlist[0], shortlist[1]] = [shortlist[1], shortlist[0]];
-  }
-  const bears: Partial<Record<Produce, Suit>> = {};
-  shortlist.forEach((p, i) => (bears[p] = i === 0 ? "ideal" : i === 1 ? "fair" : "poor"));
-  return bears;
-}
-
-function makeRegion(rng: Rng, id: number, terrain: TerrainKind, hexes: Axial[]): Region {
-  const nearest = Math.min(...hexes.map((h) => distance(h, CENTRE)));
-  return {
-    id,
-    terrain,
-    hexes,
-    bears: rollBears(rng, terrain),
-    // The best of it — why the boiling house stands where it does.
-    sweetSpot: hexes.length > 2 && !isDead(terrain) ? pick(rng, hexes) : null,
-    reach: nearest > LAND.atHandWithin ? "far" : "atHand",
-    bearing: bearingOf(centroid(hexes)),
-  };
 }
 
 // ---- Reading the land back -------------------------------------------------
