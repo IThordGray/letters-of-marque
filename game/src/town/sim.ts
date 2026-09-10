@@ -9,6 +9,7 @@ import type { Land } from "./land";
 import { describeLand } from "./land";
 import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
+import { commerceOf, makeMarket, payImports, dependencyWord } from "./trade";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, SEASONS_PER_YEAR, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -31,17 +32,30 @@ export function derive(town: Town): Derived {
     100,
   );
 
+  // WEALTH IS EARNED, NOT EMITTED. `trade` stopped being coin a work produced
+  // and became what it sends to the quay; the coin is what someone paid for it:
+  //
+  //     yield = SUM(sold x price x access) + grant - imports paid - upkeep
+  //
+  // [HC-78] puts `imports paid` inside the flow rather than beside it — bread
+  // before batteries — so a town that spends all it makes on corn never reaches
+  // the governor with anything to spend.
+  const commerce = commerceOf(town, working, food, security);
+
   return {
     food,
     mouths,
     surplus: food - mouths,
     trade,
     upkeep,
-    yield: trade + town.grant - upkeep,
+    yield: commerce.earned + town.grant - town.market.paid - upkeep,
     security,
     hands: { needed: sum(working, (w) => w.hands), available: town.population * WORKS.labourShare },
     garrison: garrisonOf(town, security),
-    needs: unmetNeeds(town),
+    needs: unmetNeeds(town, commerce.dependency),
+    commerce,
+    access: commerce.access,
+    dependency: commerce.dependency,
   };
 }
 
@@ -66,11 +80,21 @@ function garrisonOf(town: Town, security: number): Derived["garrison"] {
   return importance >= SECURITY.fortressAt ? "fortress" : importance >= SECURITY.garrisonAt ? "garrison" : "picket";
 }
 
-// What the land can feed, held below that ceiling when the place is miserable.
-// The food comes entirely from works — including the free subsistence ones, which
-// is what stops a sacked town from dying.
+// What the town can feed, held below that ceiling when the place is miserable.
+//
+// THE ~450-SOUL CEILING IS GONE (§3.5.6). It used to be the town's own fields
+// and nothing else, so no place could outgrow the ground it farmed. Bought bread
+// counts here now, and the four limits that replace the old cap are all already
+// in the model: COIN (a town that cannot pay does not eat), ACCESS (no quay, no
+// grain), GROUND FOR HOUSES (the footprint) and HANDS (`labourShare`).
+//
+// [HC-87] The new ceiling is FRAGILE BY DESIGN, and that is not a side effect:
+//         ceiling and raid consequence are the SAME MECHANISM. A trade-fed town
+//         of 1,500 falls back toward 450 the season its quay burns, because the
+//         bought half of this sum simply stops arriving.
 export function carryingCapacity(town: Town): number {
-  const foodCap = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food) / FOOD.perHead;
+  const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food);
+  const foodCap = (grown + town.market.bought[0]) / FOOD.perHead;
   const { min, fullAt } = POP.prosperityPull;
   const pull = min + (1 - min) * clamp(town.prosperity / fullAt, 0, 1);
   return Math.max(POP.floor, foodCap * pull);
@@ -78,11 +102,19 @@ export function carryingCapacity(town: Town): number {
 
 // Where prosperity is HEADING. The town only ever moves a fraction of the way
 // there each season — see stepSeason.
+//
+// [HC-74] `surplus/head` used to be scored POSITIVELY here, and it had to go: a
+//         place fed from the sea has negative surplus BY DESIGN, so every large
+//         town would have read as "on its knees" the moment imports existed.
+//         Dependency replaces it as a MILD negative, and luxury goes short for a
+//         milder one still — [HC-79] warns that scoring an appetite hard turns
+//         it into a second prosperity meter.
 export function prosperityTarget(town: Town, d: Derived): number {
   const heads = Math.max(town.population, 1);
   return clamp(
-    PROSPERITY.base +
-      (d.surplus / heads) * PROSPERITY.perSurplusHead +
+    PROSPERITY.base -
+      d.commerce.dependency * PROSPERITY.dependencyWeight -
+      d.commerce.luxuryShort * PROSPERITY.luxuryWeight +
       (d.yield / heads) * PROSPERITY.perYieldHead +
       d.security * PROSPERITY.securityWeight,
     0,
@@ -91,10 +123,32 @@ export function prosperityTarget(town: Town, d: Derived): number {
 }
 
 // ---- The season tick -------------------------------------------------------
-export function stepSeason(town: Town): void {
-  // The ledger first: subsistence raises itself, hands are allotted, the untended
-  // rots. Everything below reads the ledger as it stands after that.
+//
+// SPLIT IN TWO, and the split is [HC-7]'s. The world's seasonal tick has five
+// phases and trade clears GLOBALLY between the first and the third: every place
+// produces, then the whole map's surpluses and shortfalls meet at once, then
+// every place settles from its post-trade position. A town stepped on its own
+// runs both halves back to back and clears against nothing, which is the same
+// town the module shipped with.
+
+// Phase 1 — PRODUCE. Subsistence raises itself, hands are allotted, the untended
+// rots. Nothing here reads another place, so the order places are visited in
+// cannot matter.
+export function produceSeason(town: Town): void {
   stepWorks(town, year(town));
+}
+
+// Phase 3 — SETTLE. Imports are paid FIRST out of what the season made ([HC-78]:
+// bread before batteries), wealth is the remainder, prosperity lags toward its
+// target, population drifts toward what the town can now feed.
+export function settleSeason(town: Town): void {
+  const before = derive(town);
+
+  // The purse the quay is paid out of: coin on hand, plus what this season's
+  // exports fetched, plus the crown's standing grant. What it cannot cover it
+  // simply goes without — and going without bread is what makes the new ceiling
+  // fragile rather than a bigger number.
+  payImports(town, Math.max(0, town.wealth + before.commerce.earned + town.grant));
 
   const d = derive(town);
 
@@ -107,10 +161,16 @@ export function stepSeason(town: Town): void {
   town.prosperity = clamp(town.prosperity + (prosperityTarget(town, d) - town.prosperity) * PROSPERITY.lag, 0, 100);
 
   // Population drifts toward what the town can feed and hold. Kept as a float so
-  // the drift is smooth; only ever shown rounded.
+  // the drift is smooth; only ever shown rounded. POP.drift is also what damps
+  // the oscillation §3.5.8 warns about — [HC-75] makes that a test, not a hope.
   town.population = Math.max(POP.floor, town.population + (carryingCapacity(town) - town.population) * POP.drift);
 
   town.season++;
+}
+
+export function stepSeason(town: Town): void {
+  produceSeason(town);
+  settleSeason(town);
 }
 
 export function stepYears(town: Town, years: number): void {
@@ -135,6 +195,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     footprint: makeFootprint(),
     governor: "",
     grant: 0,
+    market: makeMarket(),
     nextWorkId: 1,
     lastThreat: null,
     ...init,
@@ -177,7 +238,7 @@ export function summarise(town: Town): string {
   const land = town.regions.length ? ` Set among ${describeLand(town)}.` : "";
   return (
     `${town.name}, ${year(town)} — a town of ${Math.round(town.population)} souls, ${prosperityWord(town)}.` +
-    `${land} ${cap(wealthWord(town))}. ${makes}. ` +
+    `${land} ${cap(wealthWord(town))}, ${dependencyWord(d.dependency)}. ${makes}. ` +
     `${article(d.garrison)} ${d.garrison} watch.`
   );
 }

@@ -1,4 +1,5 @@
 import type { Axial } from "./hex";
+import type { Commerce, MarketState } from "./trade";
 
 // Entity data for the TOWN module — a settlement that grows, specialises and decays
 // on its own. Plain data only; behaviour lives in pure systems (sim.ts), never on the
@@ -182,6 +183,11 @@ export interface Town {
   governor: string; // who runs the place. KAN-73 gives him competence and temperament.
 
   grant: number; // standing coin per season from the patron (KAN-72 makes this archetypal)
+  // WHAT THE SHIPPING BROUGHT — [HC-72]'s "cleared trade" row, written by the
+  // world in the seasonal clear and by settlement afterwards. Stored for the
+  // same reason `grant` is: it does not come off the ledger, it ARRIVES. It is
+  // not a goods inventory and holds no stock — see trade.ts.
+  market: MarketState;
   nextWorkId: number;
 
   // The season the town was last frightened — a raid, a bombardment. Feeds the
@@ -209,4 +215,10 @@ export interface Derived {
   // that they stay the same three words.
   garrison: "picket" | "garrison" | "fortress";
   needs: Record<Need, number>; // 0..1 UNMET — a governor input, never a player gauge
+  // What it sells, what it buys, and the difference — the trading engine's whole
+  // surface on the ledger (§3.5.3: "derive() gains a commerce block computed
+  // from the ledger exactly as food and trade are today").
+  commerce: Commerce;
+  access: number; // 0..1 — what reaches the quay, both ways ([HC-85])
+  dependency: number; // 0..1 — how much of its bread is not off its own ground
 }

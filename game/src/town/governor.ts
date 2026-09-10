@@ -12,6 +12,7 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
 import { compass, LABEL } from "./land";
+import { DEPENDENCY_CLAUSE, canBuild, fetchOf } from "./trade";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
@@ -34,6 +35,15 @@ export interface Want {
   cost: number;
   affordable: boolean; // the coffers can pay for it today
   manned: boolean; // ...and there are spare hands to work it. "Money and no men."
+  // ...and there is timber and stone to raise it with (§3.5.3). A THIRD gate of
+  // the same kind as the other two: it says nothing about what the town wants,
+  // only about what it can start. A stone-poor island with full coffers and idle
+  // hands still cannot rebuild its wall.
+  supplied: boolean;
+  // ...and it is a thing a place of this purpose would ever raise (§11.3). A
+  // military settlement wishes for a farm, publishes the wish, and never builds
+  // one — which is the whole of what purpose changes.
+  permitted: boolean;
 }
 
 // ---- The clauses each term can write ---------------------------------------
@@ -48,8 +58,12 @@ const SUIT_CLAUSE: Record<Suit, (ground: string) => string> = {
   poor: (g) => `the ${g} grudge it — it would pay a fraction`,
 };
 
+// `food` no longer says "there is not enough to eat", and the change is the
+// point (§3.5.4): the term rebased from HUNGER to DEPENDENCY, so it is heard from
+// a town with full bellies whose bread is bought. This is the clause that keeps
+// the wish for a farm alive in a place that imports ([HC-81]).
 const NEED_CLAUSE: Record<Need, string> = {
-  food: "there is not enough to eat",
+  food: DEPENDENCY_CLAUSE,
   drink: "the men have nowhere to drink",
   shelter: "people are sleeping rough",
   worship: "there is nowhere to pray",
@@ -89,6 +103,25 @@ export const AGENDA: Record<Archetype, Partial<Record<WorkKind, number>>> = {
   },
 };
 
+// WHAT A PLACE'S PURPOSE PUTS OUT OF REACH — §11.3, and the cheaper of the two
+// readings of Q7. [HC-81] says dependency is scored IDENTICALLY for every place,
+// whatever its purpose, so that "importing never silences the wish for a farm"
+// survives verbatim. What purpose changes is what the governor may DO about it:
+// a farm is simply not in a military settlement's vocabulary.
+//
+// So the wish stays VISIBLE — the wants-list publishes it, clause and all, and
+// the town card still reads "too much of their bread comes off a ship" — and it
+// is PERMANENTLY UNFULFILLED. That is the whole implementation: no per-purpose
+// scoring anywhere, and one line of vocabulary here.
+export const OUT_OF_VOCABULARY: Record<Archetype, Partial<Record<WorkKind, true>>> = {
+  colony: {},
+  royalOutpost: { provisionGround: true }, // it buys its bread with the crown's grant
+  pirateHaven: {},
+};
+
+export const permits = (town: Town, kind: WorkKind): boolean =>
+  OUT_OF_VOCABULARY[town.archetype][kind] !== true;
+
 // ---- Scoring ---------------------------------------------------------------
 
 export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): Term[] {
@@ -118,9 +151,15 @@ export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): T
     });
   }
 
-  // 3. THE MARKET WANTS IT — it earns, and more sharply, something downstream is
-  //    waiting on it.
-  const earns = def.trade / PLAN.tradeScale;
+  // 3. THE MARKET WANTS IT — it earns WHAT IT WOULD ACTUALLY FETCH HERE, and
+  //    more sharply, something downstream is waiting on it.
+  //
+  //    §3.5.4's second edit to the auction: `trade x priceOf x access` rather
+  //    than a flat constant. It is what turns this term from a fact about the
+  //    catalogue into an argument about this place — the same sawpit is worth
+  //    raising where timber is dear and not where it is cheap, and a port whose
+  //    quay has burned has no market argument for anything at all.
+  const earns = fetchOf(town, kind, d.access) / PLAN.tradeScale;
   const starved = starvedFor(town, kind) ? PLAN.starvedBonus : 0;
   if (earns + starved > 0) {
     terms.push({
@@ -170,6 +209,7 @@ function whereFor(town: Town, kind: WorkKind): string {
 export function wants(town: Town, limit = 3): Want[] {
   const d = derive(town);
   const spare = Math.max(0, d.hands.available - d.hands.needed);
+  const supplied = canBuild(d.commerce);
   const out: Want[] = [];
   for (const kind of CHOOSABLE) {
     if (!buildable(town, kind)) continue;
@@ -187,6 +227,8 @@ export function wants(town: Town, limit = 3): Want[] {
       cost: def.cost,
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
+      supplied,
+      permitted: permits(town, kind),
     });
   }
   out.sort((a, b) => b.score - a.score);
@@ -212,7 +254,11 @@ export function governorTurn(town: Town, year: number): Built | null {
   // He will not raise what nobody can work. A town with money and no men simply
   // waits — and building anyway would just leave a shed to rot, which is exactly
   // the loop this guard exists to prevent.
-  const achievable = ranked.filter((w) => w.manned);
+  //
+  // Nor will he raise what there is nothing to raise it WITH. Timber and stone
+  // gate construction outright (§3.5.3), which is what makes razing the quay of a
+  // stone-poor island a lasting act rather than a season's inconvenience.
+  const achievable = ranked.filter((w) => w.manned && w.supplied && w.permitted);
   if (!achievable.length) return null;
 
   const best = achievable[0]; // what he actually wants

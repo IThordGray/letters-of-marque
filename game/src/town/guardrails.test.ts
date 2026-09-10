@@ -26,7 +26,7 @@ const SIM_DIRS = ["overworld"];
 
 // `src/town` is mixed — the ledger simulates, the plan draws. So it is listed
 // rather than discovered, and the roster below must account for every file.
-const TOWN_SIM = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts", "types.ts", "land.ts"];
+const TOWN_SIM = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts", "types.ts", "land.ts", "trade.ts"];
 const TOWN_PRESENTATION = ["plan.ts", "planview.ts", "hexmap.ts", "main.ts"];
 
 // `hex.ts` is mixed WITHIN ONE FILE, which is why it is on neither roster. The
