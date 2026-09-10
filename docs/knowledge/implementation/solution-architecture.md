@@ -35,6 +35,11 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
   they're headless-testable; the DOM/canvas layer only runs in a browser.
 - **Verified with Vitest** — `npm test`. Pure systems are pinned by a real suite that
   is kept, not a throwaway smoke. Rules and rationale: [testing.md](testing.md).
+- **`src/overworld/` is the world layer** — the ~50-port sea, its clock and its
+  derived randomness. **Named `overworld` deliberately:** `src/world.ts` already
+  exists and is the *raid layer's* battlefield, so a sibling `world/` directory
+  would make imports ambiguous. Every world-layer file goes here; **do not create
+  a `world/` directory and do not fold world state into `src/world.ts`.**
 - **Two entry points.** `index.html` → the land raid; `town.html` → the standalone
   **town module** (`src/town/`), the living-town economy built as its own startup file
   and deliberately not wired into the raid yet (epic KAN-67).

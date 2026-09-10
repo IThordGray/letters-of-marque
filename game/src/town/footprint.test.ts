@@ -131,3 +131,13 @@ describe("the wall is frozen where it was raised", () => {
     expect(describeFootprint(town)).toContain("outside the gate");
   });
 });
+
+describe("reproducibility", () => {
+  it("claims the same ground from the same start and the same steps", () => {
+    const a = mixedTown({ population: 400, wealth: 20000 });
+    const b = mixedTown({ population: 400, wealth: 20000 });
+    stepTownYears(a, 150);
+    stepTownYears(b, 150);
+    expect(b.footprint).toEqual(a.footprint);
+  });
+});

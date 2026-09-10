@@ -77,21 +77,25 @@ Sim systems are deterministic by construction — a seeded PRNG in world state
 same seed and same steps produce the same result. It is one assertion and it catches an entire
 class of bug that is otherwise miserable to chase.
 
-## Parked: the town module (2026-09-08) — **the park is spent as of 2026-09-09**
+## The town module was parked (2026-09-08) — **UNPARKED and the suite is back (2026-09-10)**
 
-> **THE EXIT CONDITION BELOW HAS BEEN MET.** This section says *"the suite comes back when the design
-> locks."* On **2026-09-09 the design locked** — the world layer was ratified in full and the town's
-> own open questions (failure states, purpose, import classes, the outpost's ceiling) were all
-> answered. The reshaping that justified the park has stopped.
+> **CLOSED.** The exit condition below was *"the suite comes back when the design locks."* The
+> design locked on 2026-09-09, and the suite came back on 2026-09-10 (**KAN-102**, commit
+> `0ff8352`): **47 tests** across `sim`, `works`, `governor` and `footprint`, plus hand-built
+> fixtures. `--passWithNoTests` is **gone** from `game/package.json` — it was right while parked
+> and a blindfold once not.
 >
-> **So: the suite comes back, and it comes back before the world simulation is stacked on the
-> ledger** — a fifty-place, two-hundred-year run over untested sim code is exactly the situation the
-> reproducibility test exists for. The named starting set below is still the right one. Ticket
-> **KAN-102**.
+> The suite pins only behaviour the spec **ratifies** (`[HC-70]`), per the precedence rule below.
+> Deliberately absent, because the spec replaces them: the land and coast generation, anything keyed
+> off `archetype`, `tierOf`, the flat per-work `trade` term, the ~450 food ceiling,
+> `prosperityTarget`'s `surplus/head` term, and the `food` need being rebased to dependency.
 >
-> Keep `--passWithNoTests` until the first test lands, then **remove it** — it was added so a parked
-> suite would not read as a failing one (`cd9b6e9`), which was correct while parked and becomes a
-> blindfold once it is not.
+> **Consequence worth carrying: the two front tickets change code the suite deliberately does not
+> cover.** `land.ts` (KAN-103) and `tierOf` (KAN-104) are both on that absent list, so **a green
+> suite will not prove either change is safe.** "An equivalent town behaves identically" and
+> "garrison behaviour is unchanged" have to be checked deliberately.
+>
+> The rest of this section is kept because it explains why the park was right at the time.
 >
 > **THE RULE THAT MAKES UNPARKING SAFE (ratified 2026-09-10).** The design that locked is
 > [`../spec/world-simulation.md`](../spec/world-simulation.md), **not the module** — and the module
@@ -109,7 +113,9 @@ class of bug that is otherwise miserable to chase.
 > **It is not small.** An audit against the spec (2026-09-10) found ~19 pinnable design claims and no
 > refactor blocking any of them. **Unparking is purely additive** — see the two rules below.
 
-### The fixture rule — build towns by hand, never through the generator
+### The fixture rule — pin against the struct, never against a producer
+
+**Generalised from the town case, and it is a house rule now, not a KAN-102 detail.**
 
 **Build test towns with `makeTown()` plus hand-written region objects. Never through
 `foundTown()` / `rollLand()`.** The land generator is scheduled to be replaced by the world's cut

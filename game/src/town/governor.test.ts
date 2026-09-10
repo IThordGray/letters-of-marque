@@ -7,7 +7,7 @@
 // twice over.
 
 import { describe, it, expect } from "vitest";
-import { scoreWork, reasonFrom, wants, governorTurn, stepTownSeason } from "./governor";
+import { scoreWork, reasonFrom, wants, governorTurn, stepTownSeason, stepTownYears } from "./governor";
 import { CHOOSABLE } from "./works";
 import { stepYears } from "./sim";
 import { PLAN } from "./constants";
@@ -180,5 +180,16 @@ describe("a season of a town", () => {
     const town = mixedTown({ population: 300, wealth: 6000 });
     expect(() => stepYears(town, 100)).not.toThrow();
     expect(town.season).toBeGreaterThan(0);
+  });
+});
+
+describe("reproducibility", () => {
+  it("makes the same decisions from the same start and the same steps", () => {
+    const a = mixedTown({ population: 350, wealth: 5000 });
+    const b = mixedTown({ population: 350, wealth: 5000 });
+    const seasonsA = stepTownYears(a, 150);
+    const seasonsB = stepTownYears(b, 150);
+    expect(seasonsB.map((s) => s.built?.sentence ?? "")).toEqual(seasonsA.map((s) => s.built?.sentence ?? ""));
+    expect(b).toEqual(a);
   });
 });

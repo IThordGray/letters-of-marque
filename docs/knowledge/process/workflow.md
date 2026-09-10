@@ -26,6 +26,11 @@ Every unit of work is tracked as a Jira ticket and lands as a matching commit.
   the ticket existed, say so in the description rather than pretending otherwise.
 - **One ticket = one commit.** If the work needs separate commits (e.g. a refactor,
   then the feature on top), each commit gets its own smaller ticket.
+- **Knowledge-base commits are EXEMPT and need no ticket** (added 2026-09-10, after the
+  gap was spotted on the board). A commit touching only `docs/` — ratifying a decision,
+  amending a spec, recording a standard — is neither a feature nor a bug, and inventing
+  a Task for each one adds noise without adding tracking. **The moment a commit touches
+  code, it needs a ticket.** A mixed docs-and-code commit is a smell: split it.
 - **Every ticket carries a description** — what and why (see the template below).
 - **AI-created tickets are tagged.** Every ticket created by an agent or the manager
   gets an `ai` label (working name — change here if you prefer another) so
@@ -57,6 +62,12 @@ the ticket back after posting.
 - Keep headings at the top level; use **bold** for emphasis inside a quote.
 - **Read a ticket back after posting anything structurally unusual.** The write succeeding is not
   evidence the content survived.
+- A milder second quirk, found 2026-09-10: **bold that wraps or abuts an inline-code span at the
+  start of a list item gets re-flowed** and loses its emphasis. Cosmetic only — nothing is dropped,
+  unlike the heading-in-blockquote case — but don't spend time wondering whether you imagined it.
+- **The `ai` label and `parent` both go through `additional_fields` on create**
+  (`{"labels": ["ai"], "parent": {"key": "KAN-96"}}`), and **the create response echoes back
+  neither.** Re-read the issue to confirm they landed — the same lesson as above.
 
 ## Commit ↔ ticket link
 - Reference the ticket key in the commit message so the board and git history stay

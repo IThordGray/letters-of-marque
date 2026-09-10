@@ -226,3 +226,29 @@ describe("what the town wants", () => {
     }
   });
 });
+
+describe("reproducibility", () => {
+  // testing.md: "Every module gets a reproducibility test: same seed and same
+  // steps produce the same result." Not box-ticking — this is what catches a
+  // hidden clock read, a Set/Map iteration dependency, or an accumulation whose
+  // order changed under a refactor ([P-9]).
+  it("gives the same ledger from the same start and the same steps", () => {
+    const a = mixedTown({ population: 350, wealth: 5000 });
+    const b = mixedTown({ population: 350, wealth: 5000 });
+    for (let i = 0; i < 200; i++) { stepSeason(a); stepSeason(b); }
+    expect(b).toEqual(a);
+  });
+
+  it("does not depend on the order the works were entered in the ledger", () => {
+    const build = (reversed: boolean) => {
+      const t = mixedTown({ population: 600, wealth: 20000 });
+      raise(t, "sawpit", 1650);
+      raise(t, "caneField", 1650);
+      raise(t, "tavern", 1650);
+      if (reversed) t.works.reverse();
+      for (let i = 0; i < 40; i++) stepSeason(t);
+      return t.works.map((w) => `${w.kind}:${w.condition}`).sort();
+    };
+    expect(build(true)).toEqual(build(false));
+  });
+});
