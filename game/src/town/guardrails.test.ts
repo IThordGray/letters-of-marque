@@ -29,21 +29,28 @@ const SIM_DIRS = ["overworld"];
 const TOWN_SIM = ["sim.ts", "works.ts", "governor.ts", "footprint.ts", "constants.ts", "types.ts", "land.ts"];
 const TOWN_PRESENTATION = ["plan.ts", "planview.ts", "hexmap.ts", "main.ts"];
 
+// `hex.ts` is mixed WITHIN ONE FILE, which is why it is on neither roster. The
+// half the simulation reads — `southness`, `distance`, `toPixel`, `centroid`,
+// `bearingOf` — is clean as of KAN-103. The other half is pen-and-ink
+// (`corners`, `sharedEdge`) and uses trigonometry quite legitimately: nothing
+// stored ever depends on it. If the simulation ever needs more of this file, the
+// drawing helpers should move to their own module so the guard can cover it.
+const HEX = "town/hex.ts";
+
 // Known exceptions, each with a reason. This list must only ever SHRINK — the
 // last test fails if a file here has become clean.
 //
-// NOTE ON REACH: the guard is source-level, not transitive. `land.ts` is guarded
-// and is clean by its own text, but it calls `bearingOf` in `hex.ts`, which is
-// not. Transitive contamination is tracked against the file that owns the
-// offending call. A guard that chased imports would have to model the whole
+// NOTE ON REACH: the guard is source-level, not transitive. A file is guarded by
+// its own text, so transitive contamination is tracked against the file that owns
+// the offending call. A guard that chased imports would have to model the whole
 // graph; naming the owner is enough to stop the list growing, which is the job.
-const EXCEPTIONS: Record<string, string> = {
-  // bearingOf() calls Math.hypot twice per iteration to normalise dot products
-  // by a constant that cannot change which bearing wins — a banned function
-  // doing nothing at all. Dies with the land rework ([HC-19], [HC-73]); the
-  // replacement must not reintroduce it.
-  "town/hex.ts": "Math.hypot in bearingOf — pointless normalisation, dies with the land rework",
-};
+//
+// **The list is EMPTY, as of KAN-103.** Its one entry was `town/hex.ts`, for the
+// `Math.hypot` that `bearingOf` used to normalise dot products by a constant that
+// could not change which bearing wins. It bought nothing; it is gone, and with it
+// the module's last cross-engine determinism hazard. Nothing goes back on this
+// list without a decision.
+const EXCEPTIONS: Record<string, string> = {};
 
 // ECMA-262 §21.3.2: "The behaviour of the functions acos, acosh, asin, asinh,
 // atan, atanh, atan2, cbrt, cos, cosh, exp, expm1, hypot, log, log1p, log2,
@@ -104,6 +111,10 @@ describe("the simulation reads no clock and does no approximated maths", () => {
 });
 
 describe("the exception list only ever shrinks", () => {
+  it("has nothing left on it, and nothing goes back on without a decision", () => {
+    expect(Object.keys(EXCEPTIONS)).toEqual([]);
+  });
+
   for (const [rel, why] of Object.entries(EXCEPTIONS)) {
     it(`${rel} is still excepted — ${why}`, () => {
       // When this fails, the file is clean: delete it from EXCEPTIONS. A
@@ -111,4 +122,36 @@ describe("the exception list only ever shrinks", () => {
       expect(violations(rel).length).toBeGreaterThan(0);
     });
   }
+
+  it("keeps the bearing a town's regions are read off free of approximated maths", () => {
+    // The exception that went was `Math.hypot` in `bearingOf`, and `bearingOf`
+    // writes into stored state through the land. `hex.ts` as a whole still draws
+    // with trigonometry, so the file cannot be guarded wholesale — but the
+    // function the simulation reads can be, and is.
+    const src = code(HEX);
+    const fn = src.slice(src.indexOf("export function bearingOf"));
+    expect(fn.slice(0, fn.indexOf("\n}") + 2)).not.toMatch(/\bMath\.(hypot|pow|sin|cos|atan2|sqrt)\b/);
+  });
+});
+
+// [HC-73]. The world holds a place's TRUE coastal bearing; a town's local views
+// are DRAWN in a frame whose south is seaward. That split is the whole of what
+// survived KAN-103, and it survives only while nothing in the simulation treats
+// seaward-ness as a fact about the world.
+describe("the sea lying south is a drawing convention, not a geographic claim", () => {
+  // `land.ts` is the one exception and it is a dated one: it holds the temporary
+  // provider that stands in for the world generator (KAN-98). When that dies,
+  // this set is empty and no simulation file reads the seaward axis at all.
+  const PROVISIONAL = ["land.ts"];
+
+  for (const f of TOWN_SIM.filter((x) => !PROVISIONAL.includes(x))) {
+    it(`${f} decides nothing by which way the sea lies`, () => {
+      expect(code(`town/${f}`)).not.toMatch(/\bsouthness\b/);
+    });
+  }
+
+  it("still has exactly one dated exception, which KAN-98 takes with it", () => {
+    // Fails when `land.ts` stops rolling ground: shorten PROVISIONAL to nothing.
+    for (const f of PROVISIONAL) expect(code(`town/${f}`)).toMatch(/\bsouthness\b/);
+  });
 });

@@ -7,22 +7,31 @@
 
 import type { Town } from "./types";
 import { foundTown, derive, summarise, year, prosperityWord, wealthWord } from "./sim";
+import { provisionalGround } from "./land";
 import { stepTownSeason, stepTownYears, wants } from "./governor";
 import { renderHexMap, landCaption } from "./hexmap";
 import { renderPlan } from "./planview";
 import { planTown, describePlan } from "./plan";
 import { SEASONS_PER_YEAR } from "./constants";
 
-// Three towns on three different patrons' money. The land is whatever their seed
-// rolled — nothing here is hand-placed.
+// One world seed, and three places on it. THE HARNESS SUPPLIES THE GROUND — the
+// towns no longer roll their own coasts ([HC-19], KAN-103), and this is the
+// stand-in until KAN-98's generator cuts each place's land from the real map.
+// Nothing here is hand-placed; what changed is only WHO hands it over.
+const WORLD_SEED = 1660;
+
+// Three towns on three different patrons' money.
 function seedTowns(): Town[] {
   return [
     foundTown({ name: "San Bartolomé", seed: 2, archetype: "colony", governor: "Don Alonso Sarmiento",
-      patron: { kind: "crown", name: "Spain", owns: true }, grant: 6, population: 90 }),
+      patron: { kind: "crown", name: "Spain", owns: true }, grant: 6, population: 90 },
+      provisionalGround(WORLD_SEED, 1)),
     foundTown({ name: "Puerto Seco", seed: 5, archetype: "royalOutpost", governor: "Capitán Reyes",
-      patron: { kind: "crown", name: "Spain", owns: true }, grant: 22, population: 90 }),
+      patron: { kind: "crown", name: "Spain", owns: true }, grant: 22, population: 90 },
+      provisionalGround(WORLD_SEED, 2)),
     foundTown({ name: "Gallows Bay", seed: 1, archetype: "pirateHaven", governor: "Quartermaster Roche",
-      patron: { kind: "player", name: "you", owns: true }, grant: 0, population: 90 }),
+      patron: { kind: "player", name: "you", owns: true }, grant: 0, population: 90 },
+      provisionalGround(WORLD_SEED, 3)),
   ];
 }
 

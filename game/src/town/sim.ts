@@ -5,8 +5,8 @@
 // and reports in prose when someone looks.
 
 import type { Town, Derived, Patron } from "./types";
-import { makeRng } from "../rng";
-import { rollLand, describeLand } from "./land";
+import type { Land } from "./land";
+import { describeLand } from "./land";
 import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, SEASONS_PER_YEAR, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
@@ -141,16 +141,18 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
   };
 }
 
-// Found a town: roll its land from the seed, then let it be what that land allows.
-// The Rng is NOT kept on the town — the seed is enough to reproduce the roll, and
-// keeping the struct free of engine state keeps it plain data.
-export function foundTown(init: Partial<Town> & { name: string; seed: number }): Town {
-  const town = makeTown(init);
-  const rolled = rollLand(makeRng(init.seed));
-  town.land = rolled.land;
-  town.water = rolled.water;
-  town.regions = rolled.regions;
-  return town;
+// Found a town on ground the world GIVES it, then let it be what that ground
+// allows. The town does not roll its own coast: [HC-19] makes the world map the
+// single source of geography, so a place's land arrives as an argument like every
+// other external input on [HC-72]'s closed list — and `ground` is that list's
+// "its land" row, nothing more.
+//
+// Note what this costs the caller: the ground is no longer a function of
+// `init.seed`. Two towns founded on the same seed can stand on quite different
+// land, which is the whole point — the seed is the town's own stream, not a
+// licence to invent geography.
+export function foundTown(init: Partial<Town> & { name: string; seed: number }, ground: Land): Town {
+  return makeTown({ ...init, land: ground.land, water: ground.water, regions: ground.regions });
 }
 
 // ---- Reading it back -------------------------------------------------------
