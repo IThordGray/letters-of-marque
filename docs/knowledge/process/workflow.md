@@ -47,6 +47,17 @@ The fields a ticket must fill in — deliberately small; extend as needs arise.
 **Why:**  <the behaviour / fix / goal it serves>
 ```
 
+## Writing ticket bodies — one silent trap
+
+**Do not nest a heading inside a blockquote.** Jira converts ticket bodies to ADF, and a heading
+inside a blockquote is **dropped silently** — no error, no warning; the section simply is not there.
+Discovered 2026-09-10 when a correction notice vanished from a ticket and was only caught by reading
+the ticket back after posting.
+
+- Keep headings at the top level; use **bold** for emphasis inside a quote.
+- **Read a ticket back after posting anything structurally unusual.** The write succeeding is not
+  evidence the content survived.
+
 ## Commit ↔ ticket link
 - Reference the ticket key in the commit message so the board and git history stay
   linked (one ticket ⇄ one commit).
