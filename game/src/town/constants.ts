@@ -67,6 +67,58 @@ export const FOOD = {
   perHead: 1, // mouths: food one soul eats per season
 };
 
+// ---- Trade -----------------------------------------------------------------
+// The three classes, and what a soul takes of each. ONE RULE FOR EVERY PLACE
+// ([HC-76]) — a hamlet and a city obey the same line and fail at different
+// heights. Victuals are counted in the `food` column; materials and luxury in
+// the `trade` column, which [HC-83] makes literal ("what a work sends to the
+// quay"), so a sawpit's 14 is fourteen units of materials.
+export const TRADE = {
+  materialsPerHead: 0.04, // timber and stone to keep a town standing
+  luxuryPerHead: 0.02, // ...and a little comfort at the top of the pyramid
+  // Base prices, in coin per unit. Materials and luxury sit at par because the
+  // catalogue's `trade` numbers are already value-weighted; victuals are cheap
+  // and bulky, which is what makes a city fed from the sea expensive to keep.
+  basePrice: [0.25, 1.0, 1.2],
+  // How far a cleared ratio may move a price either way ([HC-82]: the ratio sets
+  // the local price). A glut halves it, a famine trebles it, and nothing on the
+  // map ever reads a price it did not sail to.
+  priceFloor: 0.35,
+  priceCeiling: 3.0,
+  // Damping for a thin market: a neighbourhood with almost nothing on either
+  // side of the scale must not swing to the ceiling on a bushel of corn.
+  thin: 12,
+  // What share of a season's export revenue a town will put into bread rather
+  // than into works. It is the appetite, not the payment order — [HC-78] still
+  // pays the quay before the governor sees a coin. A governor who spent every
+  // penny on corn would never raise anything again.
+  growthShare: 0.6,
+  // How nearly a tier must be covered to count as SECURE and let a place reach
+  // one rung higher ([HC-77]). Not zero, because a place a bushel short of its
+  // own corn is not a place in famine.
+  secureSlack: 1,
+};
+
+// A beach and a longboat move some cargo; a quay and a garrison move all of it.
+// [HC-85] gates participation BOTH WAYS on this, so it is also the whole of why
+// burning a warehouse is an economic act — and [HC-87]'s fragile ceiling.
+// NO BASE TERM, and its absence is the rule rather than a tuning choice:
+// [HC-85] says "no quay, no security -> nothing moves either way", so a place
+// with neither must come out at exactly zero. A single fishing shack is enough
+// to open it, which is why it needs no threshold to say so.
+export const ACCESS = {
+  perQuay: 0.3, // each working waterfront work — shacks, warehouse, customs, shipway
+  securityWeight: 0.45, // ...and a place nobody dares call at moves nothing either
+};
+
+// The town card's one word for how much of its bread comes off a ship.
+export const DEPENDENCY_BANDS: { at: number; word: string }[] = [
+  { at: 0.66, word: "fed from the sea" },
+  { at: 0.4, word: "leans on the shipping" },
+  { at: 0.12, word: "mostly feeds itself" },
+  { at: 0, word: "self-feeding" },
+];
+
 export const POP = {
   drift: 0.06, // share of the gap to carrying capacity closed per season — slow
   floor: 12, // a town never quite empties; Abandoned is a deliberate end-state (KAN-74)
@@ -74,8 +126,9 @@ export const POP = {
   // place is miserable: people drift away from a sinking town. A town that is
   // merely DOING WELL fills its land — contentment is not a cap. So the pull
   // reaches its ceiling at `fullAt` (a steady, unremarkable town) and only bites
-  // below that. Growing PAST your own land needs bought grain, which belongs to
-  // the trade half (KAN-54) and is deliberately not here yet.
+  // below that. Growing PAST its own land is BOUGHT GRAIN, and as of KAN-91 the
+  // capacity counts it: the ~450-soul ceiling is gone, and the four limits that
+  // replace it are coin, access, ground for houses, and hands (§3.5.6).
   prosperityPull: { min: 0.5, fullAt: 55 }, // 0.5 at prosperity 0, 1.0 from 55 up
 };
 
@@ -89,11 +142,18 @@ export const WEALTH = {
 // Prosperity is stored ONLY because it must LAG. Torch a warehouse and yield
 // falls this instant, but the town's standing should sag over seasons — without
 // the lag it whipsaws and reads as a spreadsheet instead of a place.
+// [HC-74] `surplus/head` is GONE from this table, and its removal is the point.
+// A place fed from the sea has negative surplus BY DESIGN, so the moment imports
+// existed every large town read as "on its knees". Dependency replaces it as a
+// MILD negative — mild because [HC-79] warns that an appetite scored hard turns
+// into a second prosperity meter, and every well-fed town then reads as
+// miserable for want of silk.
 export const PROSPERITY = {
   lag: 0.12, // share of the gap to target closed per season (~2 years to settle)
-  base: 22, // a bare subsistence hamlet sits here: "getting by"
-  perSurplusHead: 26, // how much food surplus per head lifts it
-  perYieldHead: 55, // ...and coin surplus per head
+  base: 30, // a bare subsistence hamlet sits here: "getting by"
+  dependencyWeight: 9, // ...and leaning on the shipping costs it a little standing
+  luxuryWeight: 5, // going without comforts costs it a little more. MILD ([HC-79])
+  perYieldHead: 55, // coin surplus per head
   securityWeight: 0.18, // a defended town is a confident one
   start: 30,
 };

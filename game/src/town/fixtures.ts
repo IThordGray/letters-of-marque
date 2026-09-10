@@ -73,6 +73,21 @@ export function bareTown(init: Partial<Town> = {}): Town {
   return townOf([reg(0, "tilledGround", RING1, { bears: { food: "ideal" } })], init);
 }
 
+// A place that CANNOT feed itself: timber to sell, a roadstead to sell it over,
+// and not one acre that will bear food or one fathom that will bear fish. Its
+// bread comes off a ship or it does not come — which is the whole subject of the
+// trading engine, and impossible to state with ground that feeds itself.
+export function seaTown(init: Partial<Town> = {}): Town {
+  return townOf(
+    [
+      reg(0, "timberedHills", RING1.slice(0, 3), { bears: { timber: "ideal" } }),
+      reg(1, "roadstead", RING1.slice(3, 6)),
+      reg(2, "scrub", RING2.slice(0, 6)),
+    ],
+    init,
+  );
+}
+
 // Two towns that differ in exactly one respect — the shape most of these claims
 // need, because the house rule is to assert relationships, never constants.
 export function pair<T extends Partial<Town>>(build: (init: Partial<Town>) => Town, a: T, b: T): [Town, Town] {

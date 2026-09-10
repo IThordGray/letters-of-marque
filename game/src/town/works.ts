@@ -7,6 +7,7 @@
 
 import type { Town, Work, WorkKind, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
 import type { Axial } from "./hex";
+import type { TradeClass } from "./trade";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
 import { isDead } from "./land";
@@ -27,6 +28,12 @@ export interface WorkDef {
   requires: WorkKind | null; // the dependency edges — exactly two in this slice
   food: number;
   trade: number;
+  // WHICH CLASS A WORK'S `trade` IS CARGO IN — the reframing [HC-83] asks for:
+  // `trade` stopped being coin a work emitted and became "what it sends to the
+  // quay", so it needs a name for what is in the barrel. `null` means the work
+  // takes a cut of the traffic rather than filling a hold — a tavern, a customs
+  // house, a market — and its earnings ride on `access` alone.
+  exports: TradeClass | null;
   defence: number;
   hands: number;
   serves: Need | null;
@@ -44,43 +51,43 @@ export interface WorkDef {
 export const CATALOGUE: Record<WorkKind, WorkDef> = {
   // --- subsistence: free, self-raising, and the reason a sacked town survives
   dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
+    food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
   gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null, requires: null,
-    food: 30, trade: 0, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
+    food: 30, trade: 0, exports: null, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
   fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, produces: "fish", needsGround: null, requires: null,
-    food: 22, trade: 2, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
+    food: 22, trade: 2, exports: null, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
   well: { label: "a well", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
+    food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
   chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
+    food: 0, trade: 0, exports: null, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
   market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 3, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
+    food: 0, trade: 3, exports: null, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
 
   // --- capital: the twelve the governor weighs against each other
   sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null, requires: null,
-    food: 0, trade: 14, defence: 0, hands: 10, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
+    food: 0, trade: 14, exports: "materials", defence: 0, hands: 10, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
   shipway: { label: "shipways", cls: "capital", cost: 900, produces: null, needsGround: "roadstead", requires: "sawpit",
-    food: 0, trade: 34, defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
+    food: 0, trade: 34, exports: "materials", defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
   caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null, requires: null,
-    food: 0, trade: 10, defence: 0, hands: 16, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
+    food: 0, trade: 10, exports: "luxury", defence: 0, hands: 16, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
   boilingHouse: { label: "a boiling house", cls: "capital", cost: 700, produces: null, needsGround: null, requires: "caneField",
-    food: 0, trade: 30, defence: 0, hands: 14, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
+    food: 0, trade: 30, exports: "luxury", defence: 0, hands: 14, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
   provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null, requires: null,
-    food: 90, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 90, max: 9, zone: "beyondThePale" },
+    food: 90, trade: 0, exports: null, defence: 0, hands: 18, serves: "food", servesFor: 90, max: 9, zone: "beyondThePale" },
   warehouse: { label: "a warehouse", cls: "capital", cost: 320, produces: null, needsGround: "roadstead", requires: null,
-    food: 0, trade: 12, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
+    food: 0, trade: 12, exports: null, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
   customsHouse: { label: "a customs house", cls: "capital", cost: 480, produces: null, needsGround: "roadstead", requires: null,
-    food: 0, trade: 16, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
+    food: 0, trade: 16, exports: null, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
   battery: { label: "a stone battery", cls: "capital", cost: 620, produces: null, needsGround: "bluff", requires: null,
-    food: 0, trade: 0, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
+    food: 0, trade: 0, exports: null, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
   palisade: { label: "a palisade", cls: "capital", cost: 240, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
+    food: 0, trade: 0, exports: null, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
   barracks: { label: "a barracks", cls: "capital", cost: 420, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
+    food: 0, trade: 0, exports: null, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
   tavern: { label: "a tavern", cls: "capital", cost: 200, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 4, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
+    food: 0, trade: 4, exports: null, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
   church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null, requires: null,
-    food: 0, trade: 0, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
+    food: 0, trade: 0, exports: null, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
 };
 
 export const CHOOSABLE = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => CATALOGUE[k].cls === "capital");
@@ -261,10 +268,21 @@ function devolve(town: Town): void {
 
 // How badly each want goes unmet, 0 (satisfied) to 1 (nothing at all). A GOVERNOR
 // INPUT — never a bar the player is expected to tend.
-export function unmetNeeds(town: Town): Record<Need, number> {
+//
+// `food` IS THE EXCEPTION, and deliberately (§3.5.4, the line that spec calls
+// load-bearing): it is rebased from HUNGER to DEPENDENCY. It scores the share of
+// the town's bread that did not come off its own ground, so a town buying a third
+// of its corn scores 0.33 WITH FULL BELLIES. That is why importing never silences
+// the wish for a farm ([HC-81]) — and it is scored identically for every place,
+// whatever its purpose; what purpose changes is what the governor may do about it.
+export function unmetNeeds(town: Town, dependency = 0): Record<Need, number> {
   const out: Record<Need, number> = { food: 0, drink: 0, shelter: 0, worship: 0, order: 0 };
   const souls = Math.max(town.population, 1);
   for (const need of Object.keys(out) as Need[]) {
+    if (need === "food") {
+      out.food = dependency < 0 ? 0 : dependency > 1 ? 1 : dependency;
+      continue;
+    }
     const supply = town.works
       .filter((w) => w.condition === "working" && w.serves === need)
       .reduce((s, w) => s + w.servesFor, 0);

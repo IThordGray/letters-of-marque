@@ -12,6 +12,7 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
 import { compass, LABEL } from "./land";
+import { DEPENDENCY_CLAUSE } from "./trade";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
@@ -48,8 +49,12 @@ const SUIT_CLAUSE: Record<Suit, (ground: string) => string> = {
   poor: (g) => `the ${g} grudge it — it would pay a fraction`,
 };
 
+// `food` no longer says "there is not enough to eat", and the change is the
+// point (§3.5.4): the term rebased from HUNGER to DEPENDENCY, so it is heard from
+// a town with full bellies whose bread is bought. This is the clause that keeps
+// the wish for a farm alive in a place that imports ([HC-81]).
 const NEED_CLAUSE: Record<Need, string> = {
-  food: "there is not enough to eat",
+  food: DEPENDENCY_CLAUSE,
   drink: "the men have nowhere to drink",
   shelter: "people are sleeping rough",
   worship: "there is nowhere to pray",
