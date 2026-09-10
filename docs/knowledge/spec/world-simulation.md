@@ -187,6 +187,14 @@ them is the whole of how a player tips a war. There are only ever a dozen or so 
 derived on demand, every tick. This is what makes fifty places and a two-hundred-year fast-forward
 possible at all.
 
+> **What this forbids, stated exactly, because "three numbers" was being read too literally.** The
+> rule bans **storing a DERIVED quantity** — anything recomputable from the ledger, which could then
+> drift away from the sentence that explains it. It does **not** ban a place holding state that
+> *arrives from outside*: `grant` was always stored, and so is the cleared-trade block (price,
+> allotted, bought, paid), because both are `[HC-72]` input rows rather than ledger derivations.
+> Neither holds *stock*, so the ban on an in-town goods inventory survives untouched. The test to
+> apply is **"could this have been recomputed?"** — not "how many fields are there?".
+
 **`[HC-15]` Nothing pairwise.** See `[HC-7]`. Any design that compares every place to every other
 place is wrong, however cheap it looks at fifty.
 
@@ -1135,6 +1143,18 @@ partner existed only so the engine could be built before the world was; the worl
 the abstraction is now pure cost. `priceOf` reads a neighbourhood; `access` reads real routes and
 blockades. **Do not build the placeholder.**
 
+**`[HC-87a]` A place's growth appetite is the GREATER of what its own fields feed and what its
+cargo revenue can buy bread for — never the sum.** *(Measured on KAN-91.)* Under a sum, every place
+on the map wants more grain than it grows, nobody has corn spare, and **the victuals market clears
+empty every season: 48 places, 0 sellers.** The max is also §3.5.6's literal formula.
+
+**`[HC-87b]` Materials are wanted by BUILDINGS; victuals and luxury are wanted by PEOPLE.** A place
+with nothing raised needs no stone to keep it standing. Keyed to population instead, the standing
+bill exists before any supply does and **the whole map deadlocks on day one.**
+
+**`[HC-87c]` The materials build-gate fires at "cannot GET them", never at "is a little short".**
+Measured at zero tolerance: the world loses a third of its works and two thirds of its largest town.
+
 #### §11.6 The fragile ceiling
 
 Bought food lifts the old food cap, and the replacement limits are already ratified: **coin ·
@@ -1143,6 +1163,17 @@ access · ground for houses · hands.**
 **`[HC-87]` The new ceiling is FRAGILE by design, and ceiling and raid consequence are the same
 mechanism.** A trade-fed town of 1,500 falls back toward 450 when its quay burns. Nothing separate
 implements "raiding hurts" — it is this.
+
+> **Holds at town scale; NOT yet statable at world scale, and the reason is structural.** KAN-91
+> built it and reported the limit rather than claiming the criterion. A sea-fed town of 640 does fall
+> below 130 when its quay stops — but **`access` built from works alone cannot express a blockade**,
+> because the waterfront works that carry it are *subsistence*: they raise themselves again, free,
+> every season (the hamlet floor, `[HC-67]`, working exactly as ratified). Burning them is a season's
+> inconvenience, not a siege.
+>
+> So §3.5.2's *"`access` reads real routes and blockades"* is **not an upgrade — it is the thing that
+> makes `[HC-87]` true of the world** rather than of one town. Until it lands, the fragile ceiling is
+> a proven mechanism with no world-scale demonstration.
 
 ### How it impacts the game
 
@@ -1172,6 +1203,12 @@ On a headless two-hundred-year run:
 - **A place short of victuals registers no demand for materials or luxury** (`[HC-77]`).
 - **Clearing is order-independent** — shuffling the iteration order of places produces identical
   results. This is the single most important test in the document.
+- **And pro-rata allocation needs its OWN claim, because the shuffle cannot catch it.** *(Added
+  2026-09-10 by KAN-91, which found the gap.)* A first-come-first-served clearing that walks a fixed
+  member order is **perfectly reproducible and still wrong** — the lowest id would eat first for two
+  centuries and the shuffle would never notice. `[HC-7]`'s stated rationale (history depending on
+  iteration order) is **narrower than the rule it protects**: what is actually required is that
+  nobody gets served ahead of anybody, not merely that the answer is stable.
 - **Prices differ between neighbourhoods** for the same good, persistently (`[HC-82]`).
 - **Cost scales linearly** with place count — doubling the places roughly doubles the clearing time,
   never quadruples it.
