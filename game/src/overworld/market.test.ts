@@ -7,14 +7,17 @@
 import { describe, it, expect } from "vitest";
 import { generateWorld, foundAll } from "./worldgen";
 import {
-  MARKET, clearSeason, describeMarkets, makeMarkets, noWars, priceFor, runYears,
+  MARKET, atWar, clearSeason, declareWar, describeMarkets, makeMarkets, noWars, priceFor, runYears,
   type Markets, type Wars,
 } from "./market";
 import { derive, produceSeason, settleSeason, year } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { TRADE } from "../town/constants";
+import { mixedTown, seaTown } from "../town/fixtures";
+import { raise } from "../town/works";
 import type { Town } from "../town/types";
+import type { Place } from "./places";
 import type { World } from "./clock";
 
 const SEED = 20260910;
@@ -60,6 +63,16 @@ function shuffled(n: number, salt: number): number[] {
     out[j] = t;
   }
   return out;
+}
+
+// A hand-built map, for the claims that need a market of a known shape. Only
+// position and faction are ever read by the clearing, but every field is present
+// because there is one factory per kind of thing ([P-26]).
+function placeAt(id: number, x: number, faction = 0): Place {
+  return {
+    id, name: `P${id}`, governor: "", x, y: 0, sx: 0, sy: 1, zone: 0, shelter: 0.5,
+    size: "town", purpose: "trade", faction, seed: id + 1, population: 100, wealth: 100,
+  };
 }
 
 describe("a market is a neighbourhood, not a pair", () => {
@@ -171,6 +184,113 @@ describe("prices are local", () => {
     runYears(world, towns, markets, wars, 25);
     const seen = new Set(towns.map((t) => t.market.price[0].toFixed(5)));
     expect(seen.size).toBeGreaterThan(5);
+  });
+});
+
+describe("the pyramid, and its gate", () => {
+  // [HC-77] is not a modifier: it decides whether a demand EXISTS AT ALL. A
+  // place short of bread registers NO demand for materials or luxury, HOWEVER
+  // RICH IT IS — which is what makes the three classes a pyramid and not a list.
+  //
+  // The same starving port is put in two different markets: one with nobody to
+  // sell it corn, one with a farming neighbour. Nothing about the port changes.
+  // A port with a quay, a fat treasury, no acre that will bear corn and no
+  // timber of its own. It wants both, and its bread is the lower rung.
+  function hungryPort(): Town {
+    const t = seaTown({ population: 60, wealth: 200000 });
+    raise(t, "warehouse", 1650);
+    raise(t, "customsHouse", 1650);
+    return t;
+  }
+
+  // ...and a neighbour with corn and timber to spare.
+  function farmingNeighbour(): Town {
+    const t = mixedTown({ population: 120, wealth: 500 });
+    raise(t, "warehouse", 1650);
+    raise(t, "provisionGround", 1650);
+    raise(t, "sawpit", 1650);
+    produceSeason(t);
+    return t;
+  }
+
+  it("registers no demand for timber in a place that cannot get bread, however rich", () => {
+    const places = [placeAt(0, 0), placeAt(1, 40)];
+    const markets = makeMarkets(places);
+
+    const hungry = [hungryPort(), hungryPort()]; // neither has an acre of corn
+    clearSeason(markets, places, hungry, noWars(3));
+    const c = derive(hungry[0]).commerce;
+    expect(c.want[0]).toBeGreaterThan(0);
+    expect(c.want[1]).toBeGreaterThan(0); // it wants timber...
+    expect(hungry[0].market.allotted[0]).toBe(0); // ...but there is no bread to be had
+    expect(hungry[0].market.allotted[1]).toBe(0); // ...so it registers no demand for it
+  });
+
+  it("reaches for the next tier the moment the one below is covered", () => {
+    const places = [placeAt(0, 0), placeAt(1, 40)];
+    const markets = makeMarkets(places);
+
+    const fed = [hungryPort(), farmingNeighbour()];
+    clearSeason(markets, places, fed, noWars(3));
+    expect(fed[0].market.allotted[0]).toBeGreaterThan(0);
+    expect(fed[0].market.allotted[1]).toBeGreaterThan(0);
+  });
+});
+
+describe("war is a filter on the pool, never on a place", () => {
+  // [HC-84]. A place draws only on supply from factions it is not at war with,
+  // so a war impoverishes towns on both sides that never see a soldier — and it
+  // is a small fixed faction mask, so the clearing stays linear.
+  it("costs a port its bread when the crown that grew it is at war with its own", () => {
+    const places = [placeAt(0, 0, 0), placeAt(1, 40, 1)];
+    const markets = makeMarkets(places);
+
+    const build = () => {
+      const port = seaTown({ population: 300, wealth: 200000 });
+      raise(port, "warehouse", 1650);
+      raise(port, "customsHouse", 1650);
+      const farm = mixedTown({ population: 60, wealth: 500 });
+      raise(farm, "warehouse", 1650);
+      raise(farm, "provisionGround", 1650);
+      raise(farm, "provisionGround", 1650);
+      produceSeason(farm);
+      return [port, farm];
+    };
+
+    const peace = build();
+    clearSeason(markets, places, peace, noWars(3));
+
+    const war = build();
+    const wars = noWars(3);
+    declareWar(wars, 0, 1);
+    clearSeason(markets, places, war, wars);
+
+    expect(peace[0].market.allotted[0]).toBeGreaterThan(0);
+    expect(war[0].market.allotted[0]).toBe(0);
+    expect(atWar(wars, 0, 1)).toBe(true);
+    expect(atWar(wars, 0, 0)).toBe(false); // nobody is ever at war with himself
+  });
+
+  it("costs the seller too — a war is felt on both sides of it", () => {
+    const places = [placeAt(0, 0, 0), placeAt(1, 40, 1)];
+    const markets = makeMarkets(places);
+
+    const price = (wars: Wars) => {
+      const port = seaTown({ population: 300, wealth: 200000 });
+      raise(port, "warehouse", 1650);
+      const farm = mixedTown({ population: 60, wealth: 500 });
+      raise(farm, "warehouse", 1650);
+      raise(farm, "provisionGround", 1650);
+      produceSeason(farm);
+      const towns = [port, farm];
+      clearSeason(markets, places, towns, wars);
+      return farm.market.price[0];
+    };
+
+    const wars = noWars(3);
+    declareWar(wars, 0, 1);
+    // With its only customer cut off, the farmer's corn is worth less.
+    expect(price(wars)).toBeLessThan(price(noWars(3)));
   });
 });
 

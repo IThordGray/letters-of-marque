@@ -106,6 +106,10 @@ export interface Commerce {
   access: number;
   earned: number; // SUM(sold x price) — the first term of the equation
   dependency: number; // 0..1 — the share of its bread that is not off its own ground
+  // 0..1 — how far short of timber and stone it is. A town that cannot get them
+  // CANNOT BUILD, however full its coffers (§3.5.3), which is why razing the quay
+  // of a stone-poor island stops it rebuilding its wall.
+  materialsShort: number;
   luxuryShort: number; // 0..1 — a need with teeth, and a MILD weight ([HC-79])
 }
 
@@ -136,14 +140,31 @@ export function quaysideOf(working: Work[]): number {
   return out;
 }
 
-// What the town's own people take off it before anything is spare. One rule for
-// every place ([HC-76]): a town needs timber and stone and a little comfort in
-// proportion to how much town there is, exactly as it needs bread.
-export const consumedOf = (population: number): number[] => [
+// What the town's own take off it before anything is spare. ONE RULE FOR EVERY
+// PLACE ([HC-76]) — a hamlet and a city obey the same three lines and fail at
+// different heights.
+//
+// Note WHAT each class is keyed to, because the difference is the model and not
+// a convenience. Bread and comforts are wanted by PEOPLE. Timber and stone are
+// wanted by BUILDINGS — a place with nothing raised needs no stone to keep it
+// standing, which is also what stops the whole map deadlocking on day one, when
+// not one sawpit exists anywhere and a materials bill keyed to population would
+// have made the first one unbuildable.
+//
+// Subsistence works are deliberately not counted: people roof their own houses
+// out of whatever is to hand, and the hamlet floor must not be gated on trade or
+// a sacked town could never crawl back.
+export const consumedOf = (population: number, capitalWorks: number): number[] => [
   population * FOOD.perHead,
-  population * TRADE.materialsPerHead,
+  capitalWorks * TRADE.materialsPerWork,
   population * TRADE.luxuryPerHead,
 ];
+
+export function capitalWorksOf(working: Work[]): number {
+  let n = 0;
+  for (let i = 0; i < working.length; i++) if (CATALOGUE[working[i].kind].cls === "capital") n++;
+  return n;
+}
 
 // The full commerce block, from the ledger plus whatever the last clearing left.
 export function commerceOf(
@@ -154,7 +175,7 @@ export function commerceOf(
 ): Commerce {
   const access = accessOf(working, security);
   const produced = producedOf(working, food);
-  const consumed = consumedOf(town.population);
+  const consumed = consumedOf(town.population, capitalWorksOf(working));
   const m = town.market;
 
   const offer: number[] = [0, 0, 0];
@@ -208,9 +229,19 @@ export function commerceOf(
     access,
     earned,
     dependency: dependencyOf(produced[0], consumed[0]),
+    materialsShort: shortfallOf(produced[1] + m.bought[1], consumed[1]),
     luxuryShort: shortfallOf(produced[2] + m.bought[2], consumed[2]),
   };
 }
+
+// Whether the town can raise anything new at all. A hard gate, and deliberately:
+// "a town that cannot get timber and stone CANNOT BUILD, however rich it is."
+// Its coffers may be full; it simply cannot get the stone.
+export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.buildGate;
+
+// The clause that goes with the refusal, so [HC-16] holds even for a decision
+// that comes to nothing.
+export const NO_MATERIALS_CLAUSE = "there is no timber or stone to be had";
 
 // ---- Prices, and what a work would fetch -----------------------------------
 //

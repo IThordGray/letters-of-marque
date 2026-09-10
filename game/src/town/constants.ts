@@ -74,8 +74,18 @@ export const FOOD = {
 // the `trade` column, which [HC-83] makes literal ("what a work sends to the
 // quay"), so a sawpit's 14 is fourteen units of materials.
 export const TRADE = {
-  materialsPerHead: 0.04, // timber and stone to keep a town standing
-  luxuryPerHead: 0.02, // ...and a little comfort at the top of the pyramid
+  // Timber and stone are wanted by BUILDINGS, not by people — a place with
+  // nothing raised needs no stone to keep it standing. Subsistence works are not
+  // counted: people roof their own houses, and the hamlet floor is never gated.
+  materialsPerWork: 0.9,
+  // How short of timber and stone a place must be before it CANNOT BUILD at all.
+  // Not zero, and the difference matters: at zero the whole map deadlocks the
+  // moment anyone raises a first capital work, because the standing bill appears
+  // before any supply does and no sawpit can then be raised anywhere (measured:
+  // 48 places, median works 20 -> 14, largest town 1,070 -> 327). §3.5.3's rule
+  // is "cannot GET timber and stone", not "is a little short of them".
+  buildGate: 0.75,
+  luxuryPerHead: 0.02, // a little comfort at the top of the pyramid, wanted by people
   // Base prices, in coin per unit. Materials and luxury sit at par because the
   // catalogue's `trade` numbers are already value-weighted; victuals are cheap
   // and bulky, which is what makes a city fed from the sea expensive to keep.

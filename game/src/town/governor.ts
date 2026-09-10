@@ -12,7 +12,7 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
 import { compass, LABEL } from "./land";
-import { DEPENDENCY_CLAUSE, fetchOf } from "./trade";
+import { DEPENDENCY_CLAUSE, canBuild, fetchOf } from "./trade";
 import { derive, stepSeason, year } from "./sim";
 import { PLAN, SEASONS_PER_YEAR } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
@@ -35,6 +35,11 @@ export interface Want {
   cost: number;
   affordable: boolean; // the coffers can pay for it today
   manned: boolean; // ...and there are spare hands to work it. "Money and no men."
+  // ...and there is timber and stone to raise it with (§3.5.3). A THIRD gate of
+  // the same kind as the other two: it says nothing about what the town wants,
+  // only about what it can start. A stone-poor island with full coffers and idle
+  // hands still cannot rebuild its wall.
+  supplied: boolean;
 }
 
 // ---- The clauses each term can write ---------------------------------------
@@ -181,6 +186,7 @@ function whereFor(town: Town, kind: WorkKind): string {
 export function wants(town: Town, limit = 3): Want[] {
   const d = derive(town);
   const spare = Math.max(0, d.hands.available - d.hands.needed);
+  const supplied = canBuild(d.commerce);
   const out: Want[] = [];
   for (const kind of CHOOSABLE) {
     if (!buildable(town, kind)) continue;
@@ -198,6 +204,7 @@ export function wants(town: Town, limit = 3): Want[] {
       cost: def.cost,
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
+      supplied,
     });
   }
   out.sort((a, b) => b.score - a.score);
@@ -223,7 +230,11 @@ export function governorTurn(town: Town, year: number): Built | null {
   // He will not raise what nobody can work. A town with money and no men simply
   // waits — and building anyway would just leave a shed to rot, which is exactly
   // the loop this guard exists to prevent.
-  const achievable = ranked.filter((w) => w.manned);
+  //
+  // Nor will he raise what there is nothing to raise it WITH. Timber and stone
+  // gate construction outright (§3.5.3), which is what makes razing the quay of a
+  // stone-poor island a lasting act rather than a season's inconvenience.
+  const achievable = ranked.filter((w) => w.manned && w.supplied);
   if (!achievable.length) return null;
 
   const best = achievable[0]; // what he actually wants

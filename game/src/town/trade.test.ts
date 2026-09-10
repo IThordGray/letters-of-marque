@@ -12,7 +12,7 @@ import { derive, stepSeason, stepYears, carryingCapacity, prosperityTarget } fro
 import { raise } from "./works";
 import { accessOf, dependencyOf, dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE } from "./constants";
-import { scoreWork } from "./governor";
+import { governorTurn, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
 
@@ -274,6 +274,92 @@ describe("dependency", () => {
     stepYears(town, 4);
     expect(derive(town).dependency).toBe(0);
     expect(dependencyWord(0)).toBe("self-feeding");
+  });
+});
+
+describe("materials gate construction", () => {
+  // §3.5.3, and it is what makes the second class worth having: a town that
+  // cannot get timber and stone CANNOT BUILD, however rich it is. Razing the
+  // quay of a stone-poor island stops it rebuilding its wall. Its coffers may be
+  // full; it simply cannot get the stone.
+  function stonePoor(): Town {
+    const t = seaTown({ population: 200, wealth: 200000 });
+    raise(t, "warehouse", 1650);
+    raise(t, "customsHouse", 1650);
+    stepSeason(t);
+    return t;
+  }
+
+  it("stops a town with full coffers and idle hands raising anything at all", () => {
+    const town = stonePoor();
+    expect(town.wealth).toBeGreaterThan(100000);
+    expect(wants(town, 12).every((w) => !w.supplied)).toBe(true);
+    expect(governorTurn(town, 1700)).toBeNull();
+  });
+
+  it("lets it build again the season the timber arrives", () => {
+    const town = stonePoor();
+    const before = town.works.length;
+    town.market.bought[1] = 100; // a shipload of planks
+    expect(wants(town, 12).some((w) => w.supplied)).toBe(true);
+    governorTurn(town, 1700);
+    expect(town.works.length).toBeGreaterThan(before);
+  });
+
+  it("never gates the hamlet floor — people roof their own houses", () => {
+    // The floor must survive a total blockade or a sacked town could not crawl
+    // back, which is the one thing the whole ledger is built to guarantee.
+    const town = seaTown({ population: 200, wealth: 0 });
+    stepYears(town, 6);
+    expect(town.works.some((w) => w.kind === "dwellings")).toBe(true);
+  });
+
+  it("says nothing about what the town WANTS, only about what it can start", () => {
+    // The same shape as the affordable and manned gates: wealth is not a term,
+    // and neither is this. The ranking must be identical either way.
+    const poor = stonePoor();
+    const supplied = stonePoor();
+    supplied.market.bought[1] = 100;
+    expect(wants(supplied, 12).map((w) => w.kind)).toEqual(wants(poor, 12).map((w) => w.kind));
+  });
+});
+
+describe("luxury is a need with teeth", () => {
+  it("goes short without it, and says so as a number rather than a shrug", () => {
+    const town = open(mixedTown({ population: 300, wealth: 3000 }));
+    stepSeason(town);
+    expect(derive(town).commerce.luxuryShort).toBe(1); // no cane, no sugar, no silk
+  });
+
+  it("is answered by cargo, and only by cargo", () => {
+    // [HC-80]: luxury is TRADE CARGO, never the default plunder payout. The only
+    // way a place gets any is to grow it or to buy it.
+    const grown = open(mixedTown({ population: 300, wealth: 9000 }));
+    raise(grown, "caneField", 1650);
+    raise(grown, "boilingHouse", 1650);
+    stepSeason(grown);
+    expect(derive(grown).commerce.produced[2]).toBeGreaterThan(0);
+
+    const bought = open(mixedTown({ population: 300, wealth: 9000 }));
+    stepSeason(bought);
+    bought.market.bought[2] = 100;
+    expect(derive(bought).commerce.luxuryShort).toBe(0);
+  });
+
+  it("costs a town its comfort, and nothing like its life ([HC-79])", () => {
+    // MILD, or the original objection comes back and every well-fed town reads as
+    // miserable for want of silk.
+    const without = open(mixedTown({ population: 300, wealth: 3000 }));
+    const with_ = open(mixedTown({ population: 300, wealth: 3000 }));
+    stepSeason(without);
+    stepSeason(with_);
+    with_.market.bought[2] = 100;
+
+    const dw = derive(without);
+    const dh = derive(with_);
+    const gap = prosperityTarget(with_, dh) - prosperityTarget(without, dw);
+    expect(gap).toBeGreaterThan(0);
+    expect(gap).toBeLessThan(10);
   });
 });
 
