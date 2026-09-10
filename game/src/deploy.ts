@@ -1,8 +1,8 @@
 import type { PartySpec, SquadSpec } from "./spawn";
 import type { OfficerProfile, Roster } from "./roster";
-import type { WeaponType } from "./types";
+import type { WeaponType, GarrisonGrade } from "./types";
 import { makeRoster } from "./roster";
-import { enemyGarrisonSize } from "./spawn";
+import { enemyGarrisonSize, DEFAULT_GRADE } from "./spawn";
 import { UNIT, CARRY, PRESENCE } from "./constants";
 
 // Weapon choices — matches the WEAPON table. Compact labels for the per-squad picker.
@@ -42,7 +42,10 @@ function buildSpec(state: DeployState, roster: Roster): PartySpec {
 // The pre-battle deploy screen — a one-time "load the boats" decision. Bring officers,
 // hand each a share of the finite crew, and arm each squad. No cap beyond the crew you
 // actually have.
-export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
+//
+// `grade` is the garrison grade the battle will be fought at — pass whatever is passed to
+// `populateBattle`, so the preview counts the men the raid will actually meet (KAN-109).
+export function showDeployScreen(onConfirm: (spec: PartySpec) => void, grade: GarrisonGrade = DEFAULT_GRADE) {
   const roster = makeRoster();
   const state: DeployState = { chosen: new Set<string>(), counts: {}, weapons: {} };
   for (const o of roster.officers) {
@@ -75,7 +78,7 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
   // --- the garrison you face (informs the choice — this is an asymmetric raid) ---
   const garrison = document.createElement("div");
   garrison.className = "deploy-garrison";
-  garrison.textContent = `The garrison holds ~${enemyGarrisonSize()} defenders, dug in. You'll be outnumbered — break their will, don't try to outlast them.`;
+  garrison.textContent = `The garrison holds ~${enemyGarrisonSize(grade)} defenders, dug in. You'll be outnumbered — break their will, don't try to outlast them.`;
   card.append(garrison);
 
   // --- crew readout (allocation is per-squad; this tracks the shared pool) ---
@@ -214,7 +217,7 @@ export function showDeployScreen(onConfirm: (spec: PartySpec) => void) {
     const officers = state.chosen.size;
     const p = used();
     const yours = officers + p;
-    const g = enemyGarrisonSize();
+    const g = enemyGarrisonSize(grade);
     const ready = officers >= 1 && p >= 1;
     summary.textContent = ready
       ? `Your raid — ${p} pirates under ${officers} officer${officers === 1 ? "" : "s"} in ${officers} squad${officers === 1 ? "" : "s"} · ${yours} ashore vs ~${g} defenders${yours < g ? " — outnumbered" : ""}`

@@ -1,7 +1,7 @@
 import type { World } from "./world";
 import type { Side, UnitKind, WeaponType, Stance, BuildingKind, GarrisonGrade } from "./types";
 import type { OfficerProfile } from "./roster";
-import { WORLD, SPAWN, UNIT, WEAPON, DEPLOY, RAID, LOOT, GARRISON, PLAYER_CREW } from "./constants";
+import { WORLD, SPAWN, UNIT, WEAPON, RAID, LOOT, GARRISON, PLAYER_CREW } from "./constants";
 
 // A figure's three combat stats — the shape a garrison grade's bands come in.
 type Stats = { morale: number; ferocity: number; marks: number };
@@ -150,34 +150,65 @@ function spawnPatrol(world: World, route: { x: number; y: number }[], n: number,
   world.patrols.push({ members, route, idx: 1 });
 }
 
+// The town's fixed stations — the ground the watch holds, whoever is holding it. Module
+// level because the *count* of them is a clamp on the grade's ask: a watch that calls for
+// three patrols in a town with two cross-streets fields two. Both the spawner and the
+// deploy screen's preview have to clamp the same way or the screen lies.
+const SENTRY_POSTS: { x: number; y: number }[] = [
+  { x: 1050, y: 1680 }, // seaward approach, west
+  { x: 1350, y: 1680 }, // seaward approach, east
+];
+const SENTRY_POST_SIZE = 2; // a pair holds a post
+
+const PATROL_ROUTES: { x: number; y: number }[][] = [
+  [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], // upper cross-street
+  [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], // lower cross-street
+  [{ x: 780, y: 1610 }, { x: 1620, y: 1610 }], // quay approach (fortresses only)
+];
+
+// The watch a grade actually fields, station by station — and, from the same reckoning,
+// how many figures that comes to. ONE function answers both "who stands where" and "how
+// many are there", so the deploy screen's preview and the men on the field are the same
+// arithmetic and cannot drift apart (KAN-109). The garrison is a reading of the grade
+// ([HC-59]) — anything that previews it without the grade cannot be right for three of
+// them, which is what the old hardcoded preview was.
+function watchOf(grade: GarrisonGrade) {
+  const t = GARRISON[grade];
+  const posts = SENTRY_POSTS.slice(0, t.watch.sentryPosts);
+  const routes = PATROL_ROUTES.slice(0, t.watch.patrols);
+  return {
+    troop: t.troop,
+    officer: t.officer,
+    plazaGuard: t.watch.plazaGuard,
+    patrolSize: t.watch.patrolSize,
+    posts,
+    routes,
+    // The plaza guard is a LED band, so its officer is a defender too — that is the `+ 1`.
+    figures: t.watch.plazaGuard + 1 + posts.length * SENTRY_POST_SIZE + routes.length * t.watch.patrolSize,
+  };
+}
+
 // The garrison, distributed like a town's watch rather than one blob: the main guard holds
 // the plaza (the prize), sentries hold the seaward approach, and patrols walk the cross-
 // streets. Both its strength (stat bands) and its depth (headcounts) scale with the town's
 // garrison grade — a picket is a thin, brittle watch; a fortress, a deep one.
 function spawnEnemyGarrison(world: World, grade: GarrisonGrade) {
-  const t = GARRISON[grade];
-  spawnPlainBand(world, "enemy", 1200, 700, t.watch.plazaGuard, "musket", "holdGround", t.troop, t.officer);
-  const posts = [
-    { x: 1050, y: 1680 }, // seaward approach, west
-    { x: 1350, y: 1680 }, // seaward approach, east
-  ];
-  for (let i = 0; i < t.watch.sentryPosts && i < posts.length; i++) {
-    spawnPost(world, posts[i].x, posts[i].y, 2, t.troop);
-  }
-  const routes = [
-    [{ x: 780, y: 1050 }, { x: 1620, y: 1050 }], // upper cross-street
-    [{ x: 1620, y: 1330 }, { x: 780, y: 1330 }], // lower cross-street
-    [{ x: 780, y: 1610 }, { x: 1620, y: 1610 }], // quay approach (fortresses only)
-  ];
-  for (let i = 0; i < t.watch.patrols && i < routes.length; i++) {
-    spawnPatrol(world, routes[i], t.watch.patrolSize, t.troop);
-  }
+  const w = watchOf(grade);
+  spawnPlainBand(world, "enemy", 1200, 700, w.plazaGuard, "musket", "holdGround", w.troop, w.officer);
+  for (const p of w.posts) spawnPost(world, p.x, p.y, SENTRY_POST_SIZE, w.troop);
+  for (const r of w.routes) spawnPatrol(world, r, w.patrolSize, w.troop);
 }
 
-// The garrison's strength (defenders + their officer) — surfaced so the deploy screen
-// can preview what the raid faces, straight from the same source it spawns from.
-export function enemyGarrisonSize(): number {
-  return DEPLOY.garrison + 1;
+// The grade the current playable town defends at — the SOFTEST rung, so the raid reads as
+// winnable against a seasoned band. Exported so the deploy screen previews the grade the
+// battle will actually be fought at instead of holding a second opinion about it.
+export const DEFAULT_GRADE: GarrisonGrade = "picket";
+
+// The garrison's strength at a grade (defenders + the plaza guard's officer) — surfaced so
+// the deploy screen can preview what the raid faces. It takes the grade the way the spawner
+// does, and reads it through the same `watchOf`, so the preview IS the spawn plan counted.
+export function enemyGarrisonSize(grade: GarrisonGrade): number {
+  return watchOf(grade).figures;
 }
 
 // A reinforcement wave that musters from the town gate when the alarm climbs. Spawns
@@ -263,7 +294,7 @@ function seedTown(world: World) {
 // SOFTEST rung — so the raid reads as winnable against a seasoned band (tune by playtest).
 // The grade says nothing about how big the town is ([HC-60]): a picket can be a large trading
 // town that never armed itself, and a fortress can be ninety souls behind stone.
-export function populateBattle(world: World, party: PartySpec, grade: GarrisonGrade = "picket") {
+export function populateBattle(world: World, party: PartySpec, grade: GarrisonGrade = DEFAULT_GRADE) {
   world.garrison = grade;
   seedTown(world);
   deriveTerrain(world);
