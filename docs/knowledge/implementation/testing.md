@@ -62,7 +62,7 @@ change in precisely the way this project needs to change it.
 ```
 ✅  expect(worked.population).toBeGreaterThan(bare.population * 2)
 ✅  expect(moved).toBeLessThan(gap * 0.5)
-✅  expect(derive(t).tier).not.toBe("capital")
+✅  expect(derive(t).tier).not.toBe("fortress")
 ❌  expect(t.population).toBe(38.04)
 ❌  expect(PROSPERITY.lag).toBe(0.12)
 ```
@@ -89,6 +89,11 @@ class of bug that is otherwise miserable to chase.
 > Deliberately absent, because the spec replaces them: the land and coast generation, anything keyed
 > off `archetype`, `tierOf`, the flat per-work `trade` term, the ~450 food ceiling,
 > `prosperityTarget`'s `surplus/head` term, and the `food` need being rebased to dependency.
+>
+> **`tierOf` has since come OFF that list** (KAN-104): it carries 9 behavioural claims,
+> warranted by `town-economy.md` §1 and `[HC-59]` rather than by its arithmetic, and no
+> test pins a band value. `land.ts` also gained 15 claims about the *land struct* — not
+> about the generator that is being replaced (KAN-103).
 >
 > **Consequence worth carrying: the two front tickets change code the suite deliberately does not
 > cover.** `land.ts` (KAN-103) and `tierOf` (KAN-104) are both on that absent list, so **a green
@@ -184,6 +189,34 @@ nobody can man, and a reproducibility test per module.
 
 Verification while parked is by **headless inspection** — run the sim forward and read the output —
 which is how every design problem in this module has actually been found.
+
+### When a green suite cannot prove it — mutate and count
+
+**Earned on KAN-103/104, 2026-09-10, and it is now the house answer.** Where a change
+touches code the suite deliberately does not cover, a passing run proves nothing about
+the change and nothing about the new tests either. So **break the thing you just
+changed and count the failures.**
+
+- Swapping two rungs of the garrison ladder's stat bands failed **5** claims; dropping
+  the size term from the importance calculation failed **both halves** of the presidio
+  rule. That proved 7 of 18 new claims non-vacuous.
+- On the same day, `bearingOf`'s de-normalisation was verified by brute force rather
+  than by argument — 5,067 real region centroids, a 17×17 integer block and a 145×145
+  fractional grid, 0 disagreements — which was the right call, because the reasoning
+  behind it was *almost* sound and needed evidence at the edge (see below).
+
+It is cheaper than a review argument and it is repeatable. **A test that survives the
+mutation of the thing it claims to test is worth keeping; one that does not is a
+decoration.**
+
+> **And a caution about confident reasoning, recorded because it nearly bit.** The
+> argument for removing `Math.hypot` from `bearingOf` was that all six bearing vectors
+> have the same length, so dividing every candidate by the same constant cannot change
+> which one wins. Mathematically true. **Not bit-identically true:** N/S square to
+> 2.9999999999999996 and the others to 3.0, so the divisor really did vary by an ULP,
+> and exact ties were not covered by the argument at all. The conclusion held — but it
+> held *empirically*, not by the reasoning given for it. **When a determinism argument
+> rests on two floats being equal, check that they are.**
 
 ## When a test is required
 

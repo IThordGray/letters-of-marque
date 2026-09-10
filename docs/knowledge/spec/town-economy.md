@@ -247,6 +247,18 @@ and the new line to defend — **the player never chooses which hex the town cla
 
 ### 2.9 Acceptance tests for the land
 
+> **NARROWED 2026-09-10 (KAN-103), because the broad version is false.** Test 3 below asserts that
+> **every** region is contiguous. That holds for **workable ground** and does **not** hold for water,
+> by this spec's own design: cays are detached (§2.2) and banks lie where the banks lie. Measured on
+> the shipped generator: **926 of 1,593 water regions are scattered.** So the claim to hold anything
+> to is *"each workable region is one contiguous stretch"* — which is also the only version that is
+> load-bearing, because **area is capacity** and capacity is about ground a town can work.
+>
+> Also recorded: tests 1–8 here were written against the **founding roll**, which `[HC-19]` replaces
+> with the world's cut. **Do not transcribe them wholesale** — most of them test a producer that is
+> being deleted. The surviving claims are about the *land struct* and are pinned in
+> `game/src/town/land.test.ts`.
+
 1. In 20 rolled towns, the **dominant region holds at least a third of the workable land in at
    least 15**. *(Guards the uniform-region failure — the one that would silently rebuild the mush.)*
 2. **No town's land bears more than five live terrain kinds.** *(Guards "access to everything".)*
