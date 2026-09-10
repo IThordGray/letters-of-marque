@@ -1,0 +1,133 @@
+// The built-up ground — growth that eats its own cause, claiming that never
+// retreats, and a wall frozen where it was raised.
+//
+// [HC-70] keeps the footprint out of the world layer's reach. The claims here are
+// scoped to `nextHex` rather than `stepFootprint` where the spread TEMPERAMENT is
+// involved: that gate reads `archetype`, which is retired as a taxonomy ([HC-55])
+// and must not be pinned.
+
+import { describe, it, expect } from "vitest";
+import { nextHex, walledGround, isClaimed, describeFootprint } from "./footprint";
+import { raise, roomFor } from "./works";
+import { capacityOf } from "./land";
+import { stepSeason, stepYears } from "./sim";
+import { stepTownYears } from "./governor";
+import { key } from "./hex";
+import { mixedTown, townOf, reg, RING1, RING2 } from "./fixtures";
+
+describe("growth eats its own cause", () => {
+  it("stops the ground producing the moment the town builds over it", () => {
+    const town = mixedTown({ population: 500, wealth: 9000 });
+    const pit = raise(town, "sawpit", 1650)!;
+    stepSeason(town);
+    expect(pit.condition).toBe("working");
+
+    town.footprint.claimed.push({ ...pit.hex! }); // the town spreads over it
+    stepSeason(town);
+
+    expect(pit.condition).toBe("idle"); // ground the town built over carries nothing
+  });
+
+  it("costs the region its capacity, and the town its room to grow", () => {
+    const town = townOf([reg(0, "timberedHills", RING1, { bears: { timber: "ideal" } })], {
+      population: 500,
+      wealth: 9000,
+    });
+    const region = town.regions[0];
+    const capacityBefore = capacityOf(town, region);
+    const roomBefore = roomFor(town, "sawpit");
+
+    town.footprint.claimed.push({ ...region.hexes[0] });
+
+    expect(capacityOf(town, region)).toBe(capacityBefore - 1);
+    expect(roomFor(town, "sawpit")).toBe(roomBefore - 1);
+  });
+});
+
+describe("claimed ground is permanent", () => {
+  it("never gives ground back, through growth or decline", () => {
+    const town = mixedTown({ population: 400, wealth: 20000 });
+    let high = town.footprint.claimed.length;
+
+    for (let i = 0; i < 100; i++) {
+      stepTownYears(town, 1);
+      expect(town.footprint.claimed.length).toBeGreaterThanOrEqual(high);
+      high = town.footprint.claimed.length;
+    }
+
+    town.works = []; // ruin it utterly
+    town.wealth = 0;
+    stepYears(town, 50);
+
+    expect(town.footprint.claimed.length).toBeGreaterThanOrEqual(high);
+  });
+
+  it("claims a hex once, and only once", () => {
+    const town = mixedTown({ population: 400, wealth: 20000 });
+    stepTownYears(town, 80);
+    const seen = town.footprint.claimed.map(key);
+    expect(new Set(seen).size).toBe(seen.length);
+  });
+});
+
+describe("which way a town grows", () => {
+  it("builds over its worthless ground before its own living", () => {
+    // Scoped to nextHex: the decision of WHERE, not the temperament of WHETHER.
+    const town = townOf(
+      [
+        reg(0, "scrub", RING1.slice(0, 3)),
+        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { cane: "ideal" } }),
+      ],
+      { population: 300, wealth: 9000 },
+    );
+
+    const taken = nextHex(town, false)!;
+    const region = town.regions.find((r) => r.hexes.some((h) => key(h) === key(taken)))!;
+    expect(region.terrain).toBe("scrub");
+  });
+
+  it("never builds on water, and never on marsh", () => {
+    const town = townOf(
+      [
+        reg(0, "marsh", RING1.slice(0, 3)),
+        reg(1, "roadstead", RING1.slice(3, 6), { bears: { fish: "ideal" } }),
+      ],
+      { population: 300, wealth: 9000 },
+    );
+    expect(nextHex(town, false)).toBeNull(); // there is nowhere it may go
+  });
+
+  it("grows outward from itself rather than in patches", () => {
+    // A hex must touch the town to be taken.
+    const town = townOf([reg(0, "scrub", RING2)], { population: 300, wealth: 9000 });
+    expect(nextHex(town, false)).toBeNull(); // ring 2 touches nothing claimed yet
+  });
+});
+
+describe("the wall is frozen where it was raised", () => {
+  it("never re-extends its circuit as the town grows", () => {
+    const town = mixedTown({ population: 500, wealth: 20000 });
+    const wall = raise(town, "palisade", 1650)!;
+    const circuitAtRaising = wall.circuit!.length;
+
+    stepTownYears(town, 60);
+
+    expect(wall.circuit!.length).toBe(circuitAtRaising);
+  });
+
+  it("leaves anything claimed afterwards outside the gate", () => {
+    const town = mixedTown({ population: 500, wealth: 20000 });
+    stepTownYears(town, 10);
+    const wall = raise(town, "palisade", 1660)!;
+    const walled = walledGround(town);
+
+    // Force the town onto ground it had not taken when the wall went up.
+    const outside = town.land.find((h) => !isClaimed(town, h) && !walled.has(key(h)));
+    if (!outside) return;
+    town.footprint.claimed.push({ ...outside });
+
+    expect(walledGround(town).has(key(outside))).toBe(false);
+    expect(wall.circuit!.some((h) => key(h) === key(outside))).toBe(false);
+    expect(describeFootprint(town)).toContain("outside the gate");
+  });
+});
