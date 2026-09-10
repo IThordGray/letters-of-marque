@@ -1,0 +1,319 @@
+# Performance — how code earns its place
+
+**Layer:** HOW (implementation) · **Scope:** `game/` — the durable build · **Authority:** human edits win.
+
+The standing instruction from the human, 2026-09-10, and the reason this file exists:
+
+> *"This is TypeScript. A single threaded language. Everything needs to be super performant. If
+> something is not needed, it shouldn't get instantiated. Every bit of code that runs needs to solve
+> a problem at that particular time, and be released as soon as possible. **It needs to fight to be
+> there.** … Everything needs to be as light as it can be."*
+
+Researched from pre-abundance game development (8-bit through ~2000) and from how a 2026 JIT actually
+behaves, then **measured against this project's own code**. Rules are numbered `[P-n]` and are meant
+to be cited in review.
+
+---
+
+## §0. The one rule, and the budget
+
+**`[P-1]` Do less. Everything below is a way of doing less; nothing below is a way of doing the same
+work faster.** Factorio's whole optimisation philosophy compresses to those two words, and it is the
+right lens here.
+
+**`[P-2]` Judge cost as complexity × tick rate, never complexity alone.** An O(N²) pass over 50 towns
+is 2,500 operations — trivial once a season, ruinous once a day. The two beats (`[HC-2]`) are the
+axis every performance decision turns on.
+
+### What the workload actually costs today
+
+Measured on Node 24 / V8 13.6, this machine, on the shipped town module:
+
+| | |
+|---|---|
+| One town, 200 years, ledger only | **5.6 ms** |
+| One town, 200 years, with the governor | **40.7 ms** |
+| Projected 50 towns × 200 years | **~2.0 s** |
+| One auction (`wants()`) | **16.75 µs** |
+
+And a modelled daily tick — 73,000 days × 50 places, a seeded draw and three multiply-accumulates
+per sample — costs **11 ms for the whole two centuries** in plain objects and plain `for` loops.
+
+**Read those two facts together, because they are the most important thing in this document.** The
+tick *mechanics* are nearly free. The **governor costs seven times the ledger it advises**. The
+expense is not loop shape, allocation style or data layout — it is **work that did not need to
+happen**. That is where the effort goes.
+
+**`[P-3]` Legibility and determinism outrank speed unless a profile says otherwise.** A two-second
+fast-forward is not in trouble. This file exists to keep it that way as six more systems land, not to
+justify contorting code today.
+
+---
+
+## §1. Determinism — correctness rules, not performance rules
+
+`[HC-11]` requires the same seed to give the same two hundred years, at any speed, on any machine.
+These rules are what make that true. **They are not negotiable and they are not trade-offs.**
+
+**`[P-4]` Use plain `number`. Do NOT hand-roll fixed-point arithmetic.** `+ − * / %` on doubles are
+*exactly specified* by ECMA-262 as IEEE-754 binary64 — one correctly-rounded result, no latitude — so
+they are already bit-identical everywhere. Fixed point existed because the 386 had no FPU; measured
+here it is **3.7× slower** than plain double arithmetic, and it adds an overflow-bug class for
+nothing. *This reverses the classic pre-2000 doctrine, deliberately.*
+
+**`[P-5]` These `Math` functions are BANNED in simulation code:** `sin cos tan asin acos atan atan2
+sinh cosh tanh asinh acosh atanh exp expm1 log log1p log2 log10 cbrt hypot pow random`. ECMA-262
+§21.3.2 calls them **implementation-approximated** — engines are *permitted* to differ, and do. This
+is not theoretical: V8 changed `Math.tanh` in Chrome 148 to defer to the host libm, so the same call
+now returns different values on Windows, macOS and Linux; `Math.pow` and `Math.tanh` results have
+also changed between Node versions. **A save file would diverge on a Node upgrade.**
+
+**`[P-6]` Never use the `**` operator.** `Number::exponentiate` is on the same approximated list.
+Write `x * x`.
+
+**`[P-7]` These are exactly specified and safe:** `abs ceil floor round trunc sign sqrt min max fround
+imul clz32`.
+
+**`[P-8]` All randomness comes from the project's seeded PRNG, keyed by a hash of `(world seed, tick,
+entity id, channel)` — never a shared sequential stream.** A single global stream couples every
+consumer to every other consumer's *call order*, so adding one new roll anywhere shifts every
+subsequent roll in the world. Hashed per-purpose streams are a pure function, and therefore survive
+refactoring, reordering, staggering and LOD — all of which we will want. `Math.random` is unseedable
+and banned by `[P-5]`.
+
+**`[P-9]` Float addition is not associative. Fix every iteration and accumulation order explicitly,
+and never reorder a summation as a "tidy-up".** Order-sensitive phases sort by a total order with an
+id tie-break first.
+
+**`[P-10]` Every `sort` comparator must be a consistent total order with an explicit id tie-break.**
+Sort stability is guaranteed since ES2019; an inconsistent comparator is not.
+
+**`[P-11]` Never read a clock.** `Date.now`, `performance.now`, and anything derived from them are
+banned in simulation code. The simulation's only time is the tick (`[HC-4]`).
+
+**`[P-12]` Never hash or checksum a `NaN` through a typed-array view** — the spec does not fix the
+stored bit pattern.
+
+**`[P-13]` Prefer exact integers for anything that must not drift** — coin, population, stock counts.
+Integers are exact in a double up to 2⁵³ for free. This is a *modelling* decision that removes a
+class of drift bugs; it is not a speed decision.
+
+---
+
+## §2. Doing less — where the wins actually are
+
+Ranked. `[P-14]` is worth more than everything in §3 and §4 combined.
+
+**`[P-14]` Never iterate a collection in order to skip most of it. If a thing has nothing to do,
+remove it from the list the loop walks.** Presence in the array *is* the flag. `for (t of towns) if
+(!t.dirty) continue;` still pays the iteration, the load and often a mispredict — a branch is not a
+skip. Factorio took idle roboports from 1 ms to 0.025 ms per tick — **40×** — purely by not visiting
+them.
+
+**`[P-15]` Anything that becomes true on a known future tick is filed into that tick's bucket, never
+polled.** A ring of buckets indexed by day gives O(1) schedule and O(1) per-tick work.
+
+**`[P-16]` An entity with a known trajectory has no present.** A dispatch travelling for eleven days
+does not need eleven position updates: store departure and arrival, derive position when someone
+asks. This is `[HC-44]`'s dispatch and `[HC-13]`'s far-ring traffic, and it is the single largest
+saving available in the daily tick.
+
+**`[P-17]` Anything that is a pure function of `(identity, time, seed)` is computed on demand, never
+stepped and never stored.** This is exactly `[HC-30]` — ambient weather is derived per zone per day,
+never stored per place. State that is stepped must be visited; state that is derived is visited only
+when read.
+
+**`[P-18]` Compute an invariant once per scope, not once per use.** See §7 for the live example in
+our own code: an auction that rebuilds the same `Set` thirty-six times.
+
+**`[P-19]` Coarsen simulation detail only on criteria derived from simulation state — never on the
+camera, the player's attention, or the speed setting.** This is `[HC-12]` and `[HC-26]` restated as a
+performance rule: an LOD keyed on where someone is looking destroys bit-identity by construction.
+
+**`[P-20]` Stagger updates only by a pure function of `(entity id, tick)`.** `id % 7 === tick % 7` is
+fine and deterministic. Staggering by frame rate or wall-clock is not. And never stagger something
+whose cadence is a *rule* rather than an arbitrary convenience.
+
+**`[P-21]` Prefer an active-set to a dirty flag where both would work.** "Not in the list" is much
+harder to get subtly wrong than "flag not set", and a missed invalidation in a deterministic
+simulation is a silent corruption that compounds for two hundred years.
+
+---
+
+## §3. Allocation — and the doctrine that reversed
+
+**`[P-22]` Do NOT write object pools.** A short-lived object that does not escape is **scalar-replaced
+by V8 and costs 0.83 ns** — measured; pooling the same object was **1.57× slower**. Worse, a pool is
+long-lived, so its objects are promoted to old space where every major GC scans them forever and any
+young object they reference adds remembered-set traffic. *This reverses near-universal pre-2000
+doctrine, and the reversal is measured, not asserted.*
+
+**`[P-23]` Allocate temporaries freely; be careful what you RETAIN.** Collection cost is proportional
+to *survivors*, not allocations. 3 million non-escaping objects left the heap at 5 MB with zero
+collections; 3 million *retained* objects cost 174 ms and 316 MB. The thing that causes major GC pain
+is a growing live set — an unbounded cache, a retained world graph — not churn.
+
+**`[P-24]` Keep allocation out of the daily tick anyway.** Not for GC cost, but because an allocation
+in the fast path is nearly always a symptom of `[P-14]` or `[P-18]` — work that should not be
+happening at all. Treat a `new` in a daily loop as a design smell to investigate, not a crime to
+optimise.
+
+**`[P-25]` Do not create escaping closures in hot loops** (~14 ns each, 17× a plain call). A closure
+that stays local and gets inlined is ~2 ns and is fine.
+
+---
+
+## §4. Shapes, arrays, and the cliffs worth knowing
+
+These are cheap to follow and protect against sharp, invisible edges.
+
+**`[P-26]` Build every object of a kind in one factory, with every field present, in the same order,
+with the same value type.** Never add a property later.
+
+**`[P-27]` Never `delete` a property on a simulation object.** It moves the object to dictionary mode
+**permanently** — measured **3.8× slower** property reads, forever. Assign `undefined` or a sentinel,
+which is free.
+
+**`[P-28]` Initialise a field that will hold a float with a float**, not `0` — a Smi→Double field
+transition is a shape change.
+
+**`[P-29]` Keep a hot call site to four object shapes or fewer.** The fifth tips it megamorphic:
+**0.76 → 5.12 ns** on a property load, **1.21 → 7.67 ns** on a method call. Note the shape of this
+rule — two, three and four shapes are *free*. **Do not contort code chasing monomorphism.**
+
+**`[P-30]` Never let an array go holey.** Build with `[]` + `push`, or `new Array(n).fill(0)`.
+**`new Array(n)` followed by indexed writes produces a holey array**, and holey is permanent — even
+after you fill it. The direct cost is only ~1.2×; the reason for the rule is that it is invisible and
+irreversible.
+
+**`[P-31]` Never read past `length`.** `i <= a.length` measured **3.83×** slower — the read falls off
+the end into a prototype-chain lookup and poisons the site.
+
+**`[P-32]` In a hot loop, use an indexed `for`.** `for…of`, `forEach`, `map`, `filter` and `reduce`
+carry **~10–20 ns per element** of iteration overhead — 12–25× an indexed loop on a trivial body.
+**Outside hot loops, use whichever reads best**; where the body costs microseconds the overhead is
+noise, and legibility wins. This is a hot/cold distinction, not a global ban.
+
+**`[P-33]` Never chain `map().filter().reduce()` over a large array inside a tick** — measured 12×,
+plus hundreds of megabytes of transient intermediates. Fuse into one loop.
+
+**`[P-34]` Object destructuring is free. Array destructuring and rest/spread are not.** `const {x, y}
+= o` compiles to property loads; `const [x, y] = a` and `f(...xs)` go through the iterator protocol
+and cost **10.9×** and **7.4×**. Keep the second kind out of hot loops.
+
+**`[P-35]` Use arrays-of-objects at current scale.** At 50 towns, AoS beat structure-of-arrays for the
+entire 200-year run (11 ms vs 12 ms) — the whole working set is in L1 either way. SoA is ~10× at
+200,000 records, so reach for it for **per-tile world data or large fleets**, never for towns. *The
+C++ data-oriented instinct is wrong at this scale; adopt SoA when the entity count earns it.*
+
+**`[P-36]` Use typed arrays for fixed-size numeric buffers — for the guarantees, not the speed.** They
+cannot go holey, cannot box, are not GC-scanned, and can be byte-hashed for save-state and
+determinism checks. A packed plain array is equally fast.
+
+**`[P-37]` Prefer integer handles to object references in world state**, and never key a `Map` or
+`Set` by object in a hot path. Handles serialise by copying arrays, give O(1) identity, and keep
+iteration order from depending on discovery order.
+
+**`[P-38]` No strings inside the simulation.** Intern to integer ids. String building in a per-tick
+path is an allocation you will pay for 3.6 million times — and see §7, where it is already happening.
+
+---
+
+## §5. False economies — techniques that sound right and are not
+
+Recorded explicitly, because each is something a well-meaning developer would otherwise "helpfully"
+apply, and several are folklore repeated for a decade after they stopped being true.
+
+| Technique | Verdict |
+|---|---|
+| **Time-slicing work across frames** | **Buys nothing on a fast-forward.** It is a *latency* technique — one 40 ms spike becomes eight 5 ms slices for the same or slightly more total work. Only relevant when the sim shares a frame with a UI at real-time speed. Not to be confused with `[P-20]` staggering, which genuinely reduces work. |
+| **Fixed-point for speed** | Dead. See `[P-4]` — measured 3.7× *slower*. |
+| **`\|0` / `>>>0` for cheap integer maths** | Slower unless every intermediate stays inside ~±2³⁰, and `\|0` is a **correctness trap**: it is ToInt32, so `(2**53+1)\|0 === 0` silently. Use `Math.trunc`. |
+| **Bit twiddling as arithmetic** | `x >> 1` for `/2`, XOR swap, Duff's device, manual unrolling. Neutral at best, deoptimising at worst, and it costs readability for nothing measurable. |
+| **Lookup tables** | Largely inverted — memory is now the slow thing, and a table that leaves cache loses to recomputation. Reliably worth it only at **one cache line or smaller**. The one legitimate use here: replacing a banned transcendental (`[P-5]`) with a small exact table. |
+| **Linked lists** | The era's default and a modern anti-pattern; you cannot prefetch in JavaScript at all. Dense arrays with swap-remove. |
+| **Memoising cheap pure functions** | The `Map` lookup, the key construction (often a string, i.e. an allocation) and the staleness risk usually cost more than the arithmetic saved. |
+| **Threads / Web Workers in sim code** | Banned. Parallelism is the most effective way to destroy bit-identity, and Factorio's own attempt at threading a memory-bound system made throughput *worse*. |
+| **Avoiding `try`/`catch`** | **Stale.** Optimised since V8 5.3 / Node 7; measured 1.03×. The canonical source for this advice — the Bluebird "optimization killers" wiki — now carries its own disclaimer saying it is historical. Also dead from that list: `for…of` deoptimising, generators, compound `let`/`const`, and the 128-case `switch` limit. |
+| **Contorting code to reach one shape** | See `[P-29]` — up to four is free. |
+
+---
+
+## §6. Measurement
+
+**`[P-39]` No performance change lands without a before/after measurement on the full-length run**, not
+a microbenchmark. Cache and GC effects are amortised and appear somewhere other than where they were
+caused.
+
+**`[P-40]` A measurement is not trusted unless:** warm-up; at least seven repetitions reporting the
+minimum; **one variant per process**; inputs varied per pass to defeat common-subexpression
+elimination; the result consumed by a printed sink; and a sanity check against a hardware lower bound.
+*Three of the benchmarks behind this document were wrong until they met that bar* — one reported a
+loop running faster than the FP-add latency floor, which is physically impossible and meant the
+compiler had deleted the work.
+
+**`[P-41]` Prefer an assertion to a timing.** Under `--allow-natives-syntax`, `%HasFastProperties`,
+`%HasHoleyElements`, `%HaveSameMap` and `%GetOptimizationStatus` state a fact; a benchmark states a
+noisy number. `--trace-deopt` says what actually deoptimised and why.
+
+**`[P-42]` Profile the whole tick with `node --cpu-prof`, and optimise only what the profile names.**
+
+**`[P-43]` Profile allocation rate alongside elapsed time.** Allocation cost is billed later, to the
+wrong function.
+
+---
+
+## §7. Two findings in our own code
+
+Kept here because they are the clearest available illustrations of `[P-1]`, and because both were
+found by applying this file to code that already shipped.
+
+### The auction rebuilds an invariant thirty-six times per decision
+
+`wants()` walks twelve work kinds. For each it calls `buildable` → `roomFor` → `takenHexes`, then
+`scoreWork` → `groundFor` → `takenHexes`, then `whereFor` → `groundFor` → `takenHexes`. **Each
+`takenHexes` allocates a fresh `Set` of every claimed and occupied hex; each `regionsFor` allocates an
+array and sorts it.** None of it can change while the auction runs.
+
+That is **≥36 Sets and ≥36 sorted arrays per town-season** — about 1.4 million of each across a
+200-year, 50-town run — for a value that was already correct the first time. It is why the governor
+costs seven times the ledger. **This is `[P-18]`, and it is a ticket, not a licence to refactor now.**
+
+### `bearingOf` runs a banned function to no effect
+
+[`hex.ts`](../../../game/src/town/hex.ts) `bearingOf()` calls `Math.hypot` — banned by `[P-5]` — twice
+per iteration, and writes its result into stored state via the land generator. But it normalises every
+candidate dot product by `len * dl`, where **all six bearing vectors have the same length and `len` is
+constant within the call**. It divides every candidate by the same positive constant before taking the
+maximum. **The division cannot change which bearing wins.**
+
+So it costs time, introduces the only cross-engine determinism hazard in the module, and changes
+nothing. It did not fight to be there. *(The land generator is being replaced by the world's cut,
+`[HC-19]` — the point is that the replacement must not reintroduce it.)*
+
+---
+
+## §8. How this is enforced
+
+A rule nobody checks is a wish.
+
+- **`[P-44]` The determinism rules in §1 are enforced by a test that scans simulation source**, not by
+  vigilance. Adding a banned call fails the suite.
+- **`[P-45]` Cite the rule number in review.** "`[P-30]` — this goes holey" is a fact; "this feels
+  slow" is not.
+- **`[P-46]` Every agent working in `game/` is handed this file.** It is listed in the delegation
+  protocol in `CLAUDE.md` for that reason.
+
+---
+
+## Sources
+
+The research behind this file, worth reading before proposing an exception:
+
+- **Data-oriented design:** [Mike Acton, CppCon 2014](https://www.youtube.com/watch?v=rX0ItVEVjHc) · [Richard Fabian, *Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook.pdf) · [Nystrom, *Game Programming Patterns* — Data Locality](https://gameprogrammingpatterns.com/data-locality.html), [Dirty Flag](https://gameprogrammingpatterns.com/dirty-flag.html)
+- **Doing less, at scale:** [Factorio FFF-148 "do less"](https://www.factorio.com/blog/post/fff-148) · [FFF-421 Optimizations 2.0](https://www.factorio.com/blog/post/fff-421) · [FFF-204 prefetching](https://www.factorio.com/blog/post/fff-204) · [Dwarf Fortress optimisation](https://www.gamedeveloper.com/programming/how-tarn-adams-upgraded-and-optimized-dwarf-fortress-for-its-official-steam-release)
+- **Determinism:** [Bettner & Terrano, "1500 Archers on a 28.8"](https://www.gamedeveloper.com/programming/1500-archers-on-a-28-8-network-programming-in-age-of-empires-and-beyond) · [Fiedler, Floating Point Determinism](https://gafferongames.com/post/floating_point_determinism/) · ECMA-262 §21.3.2 · [V8 `Math.tanh` divergence across OSes](https://scrapfly.dev/posts/browser-math-os-fingerprint/) · [Math keeps changing](https://macwright.com/2020/02/14/math-keeps-changing.html)
+- **V8 reality:** [Elements kinds](https://v8.dev/blog/elements-kinds) · [Fast properties](https://v8.dev/blog/fast-properties) · [Trash talk: Orinoco GC](https://v8.dev/blog/trash-talk) · [Maglev](https://v8.dev/blog/maglev) · [Pointer compression](https://v8.dev/blog/pointer-compression) · [Shapes and Inline Caches](https://mathiasbynens.be/notes/shapes-ics) · [Egorov, What's up with monomorphism?](https://mrale.ph/blog/2015/01/11/whats-up-with-monomorphism.html) · [Microbenchmarks are experiments](https://mrale.ph/blog/2024/11/27/microbenchmarks-are-experiments.html)
+- **Stale advice, cited as stale:** [Bluebird "Optimization killers"](https://github.com/petkaantonov/bluebird/wiki/Optimization-killers) — now self-disclaimed
+- **Scheduling:** [Varghese & Lauck, Hashed and Hierarchical Timing Wheels](https://www.cs.columbia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf)
+- **Judgement:** [Abrash, "The Best Optimizer Is between Your Ears"](https://www.phatcode.net/res/224/files/html/ch01/01-01.html) · ["Assume Nothing"](https://www.phatcode.net/res/224/files/html/ch03/03-01.html) · [You (Probably) Shouldn't use a Lookup Table](https://specbranch.com/posts/lookup-tables/)

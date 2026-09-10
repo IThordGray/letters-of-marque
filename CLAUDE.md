@@ -47,6 +47,12 @@ durable is committed. Full detail:
   knowledge/spec files to read first, **(c)** the scope guardrail, **(d)** an
   instruction to end its report with **"Knowledge to capture:"** — anything the
   manager should persist.
+- **Any agent that will write code in `game/` is handed
+  [implementation/performance.md](docs/knowledge/implementation/performance.md) as
+  required reading, without exception.** The standing instruction from the human:
+  *"every bit of code that runs needs to solve a problem at that particular time…
+  it needs to fight to be there."* The determinism half of that file is enforced by
+  `guardrails.test.ts`; the rest binds by being read.
 - When an agent reports back, the **manager** integrates the result and writes any
   captured knowledge into the knowledge base. **Agents propose; the manager records.**
 - If no specialist fits, use a generic agent (general-purpose · Explore · Plan) or
@@ -75,7 +81,7 @@ tool choices; never mix the two in one file.
 - **Canonical spec (WHAT):** [docs/design-doc.md](docs/design-doc.md) (v0.17) — THE game design.
 - **WHAT** — [spec/](docs/knowledge/spec/README.md): behaviour, rules, requirements, data-to-persist, algorithm specs · [spec/design-references.md](docs/knowledge/spec/design-references.md) (Cutthroats heritage + comparable-game patterns).
 - **Process** — [process/workflow.md](docs/knowledge/process/workflow.md): tickets & commits (Jira, 1 ticket = 1 commit, `ai` tag).
-- **HOW** — [implementation/solution-architecture.md](docs/knowledge/implementation/solution-architecture.md) (stack, layout) · [implementation/coding-rules.md](docs/knowledge/implementation/coding-rules.md) (code rules).
+- **HOW** — [implementation/solution-architecture.md](docs/knowledge/implementation/solution-architecture.md) (stack, layout) · [implementation/coding-rules.md](docs/knowledge/implementation/coding-rules.md) (code rules) · **[implementation/performance.md](docs/knowledge/implementation/performance.md) — how code earns its place. Hand this to ANY agent touching `game/`.**
 - **Cross-cutting** — [decisions.md](docs/knowledge/decisions.md): ratified decisions, rationale, design pillars.
 
 **Governance (two rules):**
