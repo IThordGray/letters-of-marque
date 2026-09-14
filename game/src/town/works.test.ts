@@ -21,9 +21,12 @@ const presidio = (init: Partial<Town> = {}): Town => mixedTown({ archetype: "roy
 describe("the hamlet floor", () => {
   it("crawls back to a hamlet rather than dying", () => {
     // NOTE: the claim is behavioural, deliberately. Do NOT write this as
-    // "population never falls below the floor" — sim.ts:101 applies that floor
-    // unconditionally, which is itself a bug against [HC-67] (the floor is meant
-    // to require survivors). Pinning it would pin the bug.
+    // "population never falls below the floor". There is no floor CONSTANT any
+    // more — KAN-106 deleted it, because a constant floor does not enforce
+    // [HC-67], it conceals whether [HC-67] holds. The floor that remains is
+    // emergent and is a LABOUR one: gardenPlots.hands / WORKS.labourShare, or
+    // 10.91 souls, below which the cheapest food work cannot be manned at all.
+    // Asserting that number here would assert the catalogue back at itself.
     const town = mixedTown({ population: 200, wealth: 5000 });
     stepYears(town, 20);
 
