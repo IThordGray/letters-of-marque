@@ -112,8 +112,10 @@ export type WorkKind =
   | "church";
 
 // The devolution ladder — decay comes in RECOVERABLE grades, never straight to
-// death. A work with no hands or no supplier goes idle and can resume instantly;
-// left that way it rots.
+// death, and THE GRADES DIFFER IN WHAT COMING BACK COSTS. A work with no hands or
+// no supplier goes `idle` and resumes the season they return, free. Left that way
+// it `decayed`s, and a decayed work comes back one rung for COIN — a governor's
+// decision, priced at a fraction of raising it new. `ruin` is terminal.
 export type WorkCondition = "working" | "idle" | "decayed" | "ruin";
 
 export interface Work {

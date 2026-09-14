@@ -52,10 +52,18 @@ export const WORKS = {
 };
 
 // The devolution ladder, in seasons idle. Decay is recoverable at every step
-// until the last — a work rots, it does not vanish.
+// until the last — a work rots, it does not vanish. Both thresholds are counted
+// from the season the work went idle, so a work is DECAYED for the difference
+// between them (four years) before it is past saving.
 export const DECAY = {
   idleToDecayed: 12, // three years untended
   decayedToRuin: 28, // ...and seven before it is past saving
+  // What it costs to put a rotted work back in order, as a share of raising the
+  // same work new. WELL UNDER 1, and that is the whole reason anyone mends
+  // rather than rebuilds — it is also what keeps `decayed` a rung on a ladder
+  // rather than a slower way of dying. Wealth stays the BUDGET GATE (§5.1): this
+  // decides what a governor can start, never what the town wants.
+  repairShare: 0.4,
 };
 
 // ---- Food & population -----------------------------------------------------

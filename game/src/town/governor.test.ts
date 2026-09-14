@@ -7,11 +7,29 @@
 // twice over.
 
 import { describe, it, expect } from "vitest";
+import type { Town } from "./types";
 import { scoreWork, reasonFrom, wants, governorTurn, stepTownSeason, stepTownYears } from "./governor";
-import { CHOOSABLE } from "./works";
-import { stepYears } from "./sim";
-import { PLAN } from "./constants";
+import { CHOOSABLE, CATALOGUE, raise } from "./works";
+import { stepYears, stepSeason } from "./sim";
+import { PLAN, DECAY, SEASONS_PER_YEAR } from "./constants";
 import { mixedTown, townOf, reg, RING1, RING2 } from "./fixtures";
+
+// §5.6's own example — "a presidio of ninety souls". SPRAWL.royalOutpost never
+// spills, so the town claims no new ground and no work of its is ever built over:
+// what is under test below is the mend decision and nothing else.
+const presidio = (init: Partial<Town> = {}): Town => mixedTown({ archetype: "royalOutpost", ...init });
+
+// A presidio with one sawpit, already rotted down to `decayed`. Set directly
+// rather than starved down the ladder, because what these claims are about is the
+// decision to mend it, not the ladder that got it there (works.test.ts covers that).
+function withRottedSawpit(init: Partial<Town> = {}) {
+  const town = presidio({ population: 400, wealth: 9000, ...init });
+  const pit = raise(town, "sawpit", 1650)!;
+  stepSeason(town);
+  pit.condition = "decayed";
+  pit.idleSince = town.season;
+  return { town, pit };
+}
 
 describe("the explanation is the score", () => {
   it("says the two things that actually decided it", () => {
@@ -131,6 +149,147 @@ describe("there is money and no men", () => {
   });
 });
 
+describe("he mends what he can still save", () => {
+  // KAN-108. A decayed work is recoverable and recovery costs coin — the spec says
+  // every grade is reversible, and a grade that came back for free would make the
+  // ladder's middle rung mean nothing. Wealth stays the BUDGET GATE (§5.1): it is
+  // asked whether he can start, never whether the town wants it.
+
+  it("puts a rotted work back in order, and says so in its own words", () => {
+    const { town, pit } = withRottedSawpit({ governor: "Sarmiento" });
+    const done = governorTurn(town, 1660);
+    expect(done).not.toBeNull();
+    expect(done!.want).toBeNull(); // a mend has no auction behind it
+    expect(done!.work).toBe(pit);
+    expect(done!.sentence).toContain("Sarmiento");
+    expect(done!.sentence).toContain(pit.name);
+    expect(done!.sentence).toContain("back in order");
+  });
+
+  it("pays a fraction of what raising the same work anew would cost", () => {
+    // The oracle is spelled out rather than asked of `repairCost`, so a term
+    // quietly added inside it cannot sail through the test named for it.
+    const { town } = withRottedSawpit();
+    const before = town.wealth;
+    governorTurn(town, 1660);
+    const spent = before - town.wealth;
+    expect(spent).toBe(CATALOGUE.sawpit.cost * DECAY.repairShare);
+    expect(spent).toBeGreaterThan(0);
+    expect(spent).toBeLessThan(CATALOGUE.sawpit.cost);
+  });
+
+  it("will not mend what nobody can work — money and no men", () => {
+    const { town, pit } = withRottedSawpit();
+    const before = town.wealth;
+    town.population = 3; // the coffers are full and the place is empty
+
+    expect(governorTurn(town, 1660)).toBeNull();
+    expect(pit.condition).toBe("decayed"); // still rotting...
+    expect(town.wealth).toBe(before); // ...and not a coin spent on it
+  });
+
+  it("will not mend what he cannot pay for", () => {
+    const { town, pit } = withRottedSawpit();
+    town.wealth = 0; // hands enough, and nothing to pay them with
+
+    expect(governorTurn(town, 1660)).toBeNull();
+    expect(pit.condition).toBe("decayed");
+    expect(town.wealth).toBe(0); // and it does not go into debt to try
+  });
+
+  it("will not mend a work whose supplier is gone", () => {
+    // "The shipways want planks" cuts both ways: mending shipways that have no
+    // sawpit buys a shed that idles the same season and rots again.
+    const town = presidio({ population: 900, wealth: 90000 });
+    const pit = raise(town, "sawpit", 1650)!;
+    const ways = raise(town, "shipway", 1650)!;
+    stepSeason(town);
+    pit.condition = "ruin"; // the planks stop for good
+    ways.condition = "decayed";
+    ways.idleSince = town.season;
+
+    const done = governorTurn(town, 1660);
+    expect(done?.work).not.toBe(ways);
+    expect(ways.condition).toBe("decayed");
+  });
+
+  it("will not mend a work the town has built over", () => {
+    // CLAIMED GROUND IS PERMANENT and the footprint never retreats, so a buried
+    // work is not rotting — it is finished. Paying to mend it would be the §5.6
+    // loop with a different shed in it.
+    const { town, pit } = withRottedSawpit();
+    town.footprint.claimed.push({ ...pit.hex! });
+
+    const done = governorTurn(town, 1660);
+    expect(done?.work).not.toBe(pit);
+    expect(pit.condition).toBe("decayed");
+  });
+
+  it("cannot mend what there is no timber or stone to mend it with", () => {
+    // §3.5.3, and the spec's own example of that gate is a REPAIR: "razing the
+    // quay of a stone-poor island stops it rebuilding its wall." A mend is
+    // construction and the same gate holds it.
+    const { town, pit } = withRottedSawpit();
+    raise(town, "tavern", 1650); // something standing, to want timber and stone
+    stepSeason(town);
+
+    expect(governorTurn(town, 1660)).toBeNull();
+    expect(pit.condition).toBe("decayed"); // full coffers, hands to spare, no planks
+
+    town.market.bought[1] = 100; // a shipload of them
+    expect(governorTurn(town, 1660)?.work).toBe(pit);
+  });
+
+  it("buys a repair and not immunity — a mended work rots again if the hands go", () => {
+    const { town, pit } = withRottedSawpit();
+    expect(governorTurn(town, 1660)!.work).toBe(pit);
+    expect(pit.condition).toBe("idle");
+
+    for (let i = 0; i < DECAY.idleToDecayed + 2; i++) {
+      town.population = 3; // and the men walk away again
+      stepSeason(town);
+    }
+    expect(pit.condition).toBe("decayed"); // the clock restarted; it did not stop
+  });
+
+  it("mends before he raises anything new", () => {
+    // A governor who raised a fourth sawpit while the third rotted is a governor
+    // nobody would keep — and mending takes the season's one decision, so the two
+    // genuinely compete for what is scarce.
+    const { town, pit } = withRottedSawpit({ wealth: 90000 });
+    expect(wants(town, CHOOSABLE.length).some((w) => w.affordable && w.manned)).toBe(true);
+
+    const done = governorTurn(town, 1660);
+    expect(done!.want).toBeNull();
+    expect(done!.work).toBe(pit);
+  });
+
+  it("does not spend sixty years of coin on a shed nobody can man", () => {
+    // §5.6's playtest pathology in new clothes — mend, rot, mend, rot — and the
+    // measurement that says it did not reappear. The labour gate closes this loop
+    // exactly as it closes the original one it was written for.
+    const run = (souls: number) => {
+      const { town, pit } = withRottedSawpit();
+      let mends = 0;
+      for (let i = 0; i < 60 * SEASONS_PER_YEAR; i++) {
+        town.population = souls; // a presidio that never grows...
+        town.wealth = 90000; // ...and never wants for coin
+        const s = stepTownSeason(town);
+        if (s.built && s.built.want === null) mends++;
+      }
+      return { mends, condition: pit.condition };
+    };
+
+    const starved = run(6);
+    expect(starved.mends).toBe(0); // sixty years, not one coin
+    expect(starved.condition).toBe("ruin"); // it still rots all the way down
+
+    const manned = run(400);
+    expect(manned.mends).toBe(1); // saved once, and once is all it took
+    expect(manned.condition).toBe("working");
+  });
+});
+
 describe("holding out for the better thing", () => {
   it("waits rather than buying the cheapest thing to hand", () => {
     // He only settles for a lesser want he can afford if it is nearly as good.
@@ -162,7 +321,8 @@ describe("holding out for the better thing", () => {
     town.wealth = Math.min(...goodEnough.map((w) => w.cost));
     const built = governorTurn(town, 1650);
     expect(built).not.toBeNull();
-    expect(built!.want.score).toBeGreaterThanOrEqual(bar);
+    expect(built!.want).not.toBeNull(); // he raised something; there was nothing to mend
+    expect(built!.want!.score).toBeGreaterThanOrEqual(bar);
   });
 });
 
@@ -171,8 +331,11 @@ describe("a season of a town", () => {
     const town = mixedTown({ population: 500, wealth: 20000 });
     const season = stepTownSeason(town);
     if (season.built) {
-      expect(season.built.sentence).toContain(season.built.want.reason);
       expect(season.built.sentence.length).toBeGreaterThan(0);
+      // A raise says the auction's own two reasons; a mend has no auction behind
+      // it and says its own.
+      if (season.built.want) expect(season.built.sentence).toContain(season.built.want.reason);
+      else expect(season.built.sentence).toContain("back in order");
     }
   });
 
