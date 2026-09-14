@@ -12,7 +12,16 @@ import { describeWorld, foundAll, foundPlace, generateWorld } from "./worldgen";
 import { FACTIONS } from "./factions";
 import { SIZES } from "./places";
 import { derive, stepSeason } from "../town/sim";
-import { SEASONS_PER_YEAR, POP } from "../town/constants";
+import { CATALOGUE } from "../town/works";
+import { SEASONS_PER_YEAR, WORKS } from "../town/constants";
+
+// THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
+// being a second number laid over the floor the catalogue already raises, so the
+// threshold is spelled out here from what a garden plot costs and what a soul
+// supplies: the fewest souls who can man the cheapest food work. Below it the
+// plot goes idle, the place feeds nobody, and it empties — so this is the line
+// [HC-18] is really about, and it moves if either number is tuned.
+const SOULS_TO_WORK_THE_GROUND = CATALOGUE.gardenPlots.hands / WORKS.labourShare;
 
 const SEED = 1660;
 const WORLD = generateWorld(SEED);
@@ -105,7 +114,9 @@ describe("founding a place on what the world gave it", () => {
       const town = foundPlace(WORLD, p);
       const d = derive(town);
       expect(town.population, `${p.name} was founded hungry`).toBeLessThanOrEqual(d.food + 0.5);
-      expect(town.population, `${p.name} was founded empty`).toBeGreaterThanOrEqual(POP.floor);
+      expect(town.population, `${p.name} was founded too small to work its own ground`).toBeGreaterThan(
+        SOULS_TO_WORK_THE_GROUND,
+      );
       expect(town.population, `${p.name} exceeds its class`).toBeLessThanOrEqual(SIZES[p.size].population[1] + 0.001);
     }
   });
@@ -132,9 +143,14 @@ describe("the cheapest test of the whole generator", () => {
     for (let i = 0; i < YEARS * SEASONS_PER_YEAR; i++) stepSeason(t);
   }
 
-  it("leaves no place on the hamlet floor after twenty years", () => {
+  it("leaves every place able to work its own ground after twenty years", () => {
+    // [HC-18] as the generator's problem rather than the ledger's: decline alone
+    // may never empty a place, and since KAN-106 the only thing standing between
+    // a place and nothing is whether it can still man a garden plot. A place the
+    // generator sites on ground too thin to sustain the hands that farm it dies
+    // by ordinary decline, which no hand deliberately did.
     for (let i = 0; i < towns.length; i++) {
-      expect(towns[i].population, `${towns[i].name} collapsed`).toBeGreaterThan(POP.floor);
+      expect(towns[i].population, `${towns[i].name} collapsed`).toBeGreaterThan(SOULS_TO_WORK_THE_GROUND);
     }
   });
 

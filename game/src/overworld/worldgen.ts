@@ -18,7 +18,6 @@
 import type { Archetype, Town } from "../town/types";
 import { carryingCapacity, foundTown } from "../town/sim";
 import { stepWorks } from "../town/works";
-import { POP } from "../town/constants";
 import { makeWorld, yearOf, type World } from "./clock";
 import { makeZones, CLIMATES } from "./climate";
 import { FACTIONS, makeNations } from "./factions";
@@ -115,7 +114,7 @@ function settleOpening(town: Town, allowed: number): void {
   for (let pass = 0; pass < 3; pass++) {
     stepWorks(town, town.founded);
     const canFeed = carryingCapacity(town);
-    town.population = Math.max(POP.floor, Math.min(allowed, canFeed));
+    town.population = Math.min(allowed, canFeed);
   }
 }
 

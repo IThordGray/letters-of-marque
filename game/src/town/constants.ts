@@ -135,7 +135,14 @@ export const DEPENDENCY_BANDS: { at: number; word: string }[] = [
 
 export const POP = {
   drift: 0.06, // share of the gap to carrying capacity closed per season — slow
-  floor: 12, // a town never quite empties; Abandoned is a deliberate end-state (KAN-74)
+  // `floor: 12` was here and is DELETED (KAN-106). It was a second number sitting on
+  // top of the hamlet floor the catalogue already raises, and it overrode it: applied
+  // unconditionally in `carryingCapacity` and again in `settleSeason`, it bounced a
+  // place razed to nothing back to twelve souls the next season, so `Abandoned` could
+  // not be reached by anything ([HC-67], [HC-50]). The floor REQUIRES SURVIVORS, and
+  // it is not a constant — it is `raiseSubsistence` wanting `ceil(population/autoPer)`
+  // of works that cost nothing, which at nobody wants nothing. Do not reintroduce a
+  // population floor here; if a place must not empty, give it ground that feeds someone.
   // Carrying capacity is what the food can feed, held BELOW that ceiling when the
   // place is miserable: people drift away from a sinking town. A town that is
   // merely DOING WELL fills its land — contentment is not a cap. So the pull

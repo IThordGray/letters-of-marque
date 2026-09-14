@@ -92,12 +92,18 @@ function garrisonOf(town: Town, security: number): Derived["garrison"] {
 //         ceiling and raid consequence are the SAME MECHANISM. A trade-fed town
 //         of 1,500 falls back toward 450 the season its quay burns, because the
 //         bought half of this sum simply stops arriving.
+//
+// AND THERE IS NO FLOOR UNDER IT (KAN-106). This used to end
+// `Math.max(POP.floor, …)`, which meant a place razed to nothing was feeding
+// twelve souls it did not have — `Abandoned` could not be reached by anything,
+// against [HC-67] and [HC-50]. The hamlet floor is real but it is EMERGENT: what
+// people raise for themselves out of the catalogue, and nobody raises anything.
 export function carryingCapacity(town: Town): number {
   const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food);
   const foodCap = (grown + town.market.bought[0]) / FOOD.perHead;
   const { min, fullAt } = POP.prosperityPull;
   const pull = min + (1 - min) * clamp(town.prosperity / fullAt, 0, 1);
-  return Math.max(POP.floor, foodCap * pull);
+  return foodCap * pull;
 }
 
 // Where prosperity is HEADING. The town only ever moves a fraction of the way
@@ -163,7 +169,12 @@ export function settleSeason(town: Town): void {
   // Population drifts toward what the town can feed and hold. Kept as a float so
   // the drift is smooth; only ever shown rounded. POP.drift is also what damps
   // the oscillation §3.5.8 warns about — [HC-75] makes that a test, not a hope.
-  town.population = Math.max(POP.floor, town.population + (carryingCapacity(town) - town.population) * POP.drift);
+  //
+  // No floor here either (KAN-106): a place with nothing to feed anybody has a
+  // capacity of zero, and this line then drifts it toward zero and leaves it
+  // there. Growth needs survivors because CAPACITY needs them — every food work
+  // in the catalogue costs hands, and hands come only from souls.
+  town.population = town.population + (carryingCapacity(town) - town.population) * POP.drift;
 
   town.season++;
 }
@@ -226,6 +237,55 @@ function band(v: number, bands: { at: number; word: string }[]): string {
 
 export const prosperityWord = (town: Town) => band(town.prosperity, PROSPERITY_BANDS);
 export const wealthWord = (town: Town) => band(town.wealth, WEALTH_BANDS);
+
+// Low without a second number: the bottom two rungs of the same bands the town
+// card already reads from — `struggling` or `on its knees`, `short of coin` or
+// `the coffers are bare`. [P-47]: a quantity the ledger already words does not
+// get a threshold of its own to drift from.
+const bottomTwo = (v: number, bands: { at: number; word: string }[]) => v < bands[bands.length - 3].at;
+
+// The three failure states (spec §9.5). [HC-66]: NONE OF THEM IS STORED — all
+// three are readings of the ledger, answered when someone asks and never kept.
+// A stored one could drift from the ledger that justifies it, and a sticky one
+// would demote a place by the back door, which [HC-17] forbids.
+//
+// `null` is the ordinary case. A place is not obliged to be failing.
+export type Failure = "poor" | "ruined" | "abandoned";
+
+export function failureWord(town: Town): Failure | null {
+  let standing = 0; // anything that is not yet a ruin
+  let trades = 0; // capital works still working
+  let wrecks = 0; // ...and capital works past reviving
+  for (let i = 0; i < town.works.length; i++) {
+    const w = town.works[i];
+    if (w.condition !== "ruin") standing++;
+    if (CATALOGUE[w.kind].cls !== "capital") continue;
+    if (w.condition === "working") trades++;
+    else if (w.condition !== "idle") wrecks++; // decayed or ruin
+  }
+
+  // ABANDONED — no people and no works, and it never comes back. [HC-67] is the
+  // whole mechanism and it needs nothing of its own: subsistence raises
+  // `ceil(population / autoPer)` of itself, which at nobody is nothing, and every
+  // food work in the catalogue costs hands that only souls supply. Razing removes
+  // the people, and with them the floor.
+  if (town.population < 1 && standing === 0) return "abandoned";
+
+  // RUINED — sitting on the hamlet floor: nothing but subsistence working, and the
+  // wreck of what the place was still on the ground. "Only with substantial outside
+  // help" is not a separate rule either — `allocateLabour` revives an IDLE work and
+  // nothing in the ledger revives a decayed one.
+  //
+  // The wreck is what tells a fallen town from a young hamlet, and it is why a
+  // place that never rose reads as neither: [HC-66] means the reading can only see
+  // the ledger, so the ruins ARE the memory.
+  if (trades === 0 && wrecks > 0) return "ruined";
+
+  // POOR — the works still work; it is the coin and the standing that are low.
+  if (bottomTwo(town.prosperity, PROSPERITY_BANDS) && bottomTwo(town.wealth, WEALTH_BANDS)) return "poor";
+
+  return null;
+}
 
 // A one-line read of the place. The full town card and chronicle are KAN-75 —
 // this is the minimum needed to see the sim working.
