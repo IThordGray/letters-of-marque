@@ -10,6 +10,40 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-14 — Three seams were specced, built on both sides, and never connected
+
+Found by a scope pass on the world map view (KAN-100), and recorded because the pattern matters more
+than the three instances: **a system can be fully built, fully tested, and have no caller.** Nothing
+in the suite fails, because every piece genuinely works. The *wire* is what is missing, and a green
+suite has nothing to say about a wire that was never drawn.
+
+| Seam | Both ends exist | What connects them |
+|---|---|---|
+| §2.2's daily tick | `stepWeather`, `stepDispatches`, `stepDay` | Nothing. `runYears` (`overworld/market.ts`) steps days and clears seasons and calls neither. The four daily phases are assembled **only inside `weather.test.ts`**. |
+| Weather → the ledger | `contactAt`/`feltAt` answer what a place felt; `[HC-6]` splits damage (an event) from yield (a modifier) | Nothing. `contactAt` has no caller outside its own test. `Town` has no field to accumulate a season's yield modifier into, and `produceSeason` takes no such argument. |
+| Dispatches → the world | `sendDispatch`, `positionOf`, four payloads, `[P-16]` proven | Nothing. `sendDispatch` is called only from `dispatch.test.ts`. **No dispatch has ever existed at runtime.** |
+
+**The consequence, as arithmetic rather than opinion.** The ratified one-line picture of success for
+the world view is *"fifty dots that grow, shrink and change colour, with storms crawling across
+them"* (2026-09-09). Colour is faction; faction changes only by invasion; an invasion is a dispatch;
+no dispatch has ever been sent. Size class changes only on a charter's arrival (`[HC-8]`), and a
+charter is also a dispatch. So built today, the dots grow and shrink and the storms crawl, and
+**nothing ever changes colour or class across the whole century** — two thirds of that sentence is
+unreachable until KAN-101.
+
+**Decided 2026-09-14:** build the view **and** wire the weather seam — the daily tick composed, storms
+reaching works and harvests — so that *"how the weather impacts areas"* is true when you look at it.
+Nations acting stays out of this pass; frozen factions are accepted and named rather than discovered
+later.
+
+*Why this is worth a log entry.* The project already holds that **"a green suite proves nothing over
+code the suite deliberately skips."** This is its sharper cousin, and it is worse, because here the
+suite skips nothing and covers both ends of every seam. **Coverage of two components is not evidence
+that anything calls either one.** The check that finds it is a reachability question, not a coverage
+question: *who calls this, outside a test?* Worth running against any system declared finished.
+
+---
+
 ### 2026-09-10 (fourth) — Report the criterion that fails; never tune until it passes
 
 A working principle, recorded because it is now the single biggest source of spec improvement in the

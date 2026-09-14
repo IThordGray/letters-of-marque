@@ -263,6 +263,28 @@ produced the better fix straight away: one generalised rule rather than two spec
 > held *empirically*, not by the reasoning given for it. **When a determinism argument
 > rests on two floats being equal, check that they are.**
 
+### Ask who calls it — coverage is not reachability
+
+**Found 2026-09-14, on three systems at once.** `stepWeather`, `contactAt` and `sendDispatch` were
+all fully built, fully tested and **had no caller outside their own test files**. The suite was green
+and told the truth: every component worked. Nothing in it could notice that §2.2's daily tick had
+never been assembled anywhere except inside `weather.test.ts`, that no storm had ever reached a
+ledger, or that **no dispatch had ever existed at runtime.**
+
+This is the harder sibling of *"a green suite proves nothing over code the suite deliberately
+skips."* There, the gap is visible in what is absent from the suite. Here **there is no gap in the
+suite at all** — both ends of every seam are covered — and the missing thing is the call between
+them, which no unit test is even shaped to look for.
+
+- **The check is one question, and it is cheap:** *who calls this, outside a test?* Run it over any
+  system about to be declared finished. A function whose only callers are `*.test.ts` is a component,
+  not a feature.
+- **A seam wants an integration claim, and it belongs to whoever builds the second end.** The claim
+  is not *"weather damages works"* (a unit claim, and it passed) but *"running the world a year makes
+  something in a ledger different from running it with the weather removed."*
+- **Corollary for briefs:** when a story's acceptance criteria are all expressible against one
+  module, that is a signal the story delivers a component. Ask what would observe it from outside.
+
 ## When a test is required
 
 - **Every story with acceptance criteria** turns those criteria into tests — that is what "done"
