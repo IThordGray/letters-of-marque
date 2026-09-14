@@ -9,8 +9,8 @@
 // decides what it can start now. Keeping those separate is what makes an
 // investment slider mean something.
 
-import type { Town, Work, WorkKind, Need, Archetype, Suit } from "./types";
-import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor } from "./works";
+import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived } from "./types";
+import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf } from "./works";
 import { compass, LABEL } from "./land";
 import { DEPENDENCY_CLAUSE, canBuild, fetchOf } from "./trade";
 import { derive, stepSeason, year } from "./sim";
@@ -206,9 +206,9 @@ function whereFor(town: Town, kind: WorkKind): string {
 // ---- The wants-list --------------------------------------------------------
 // Published so the sim is INSPECTABLE WITHOUT BEING CONTROLLABLE. Raising the
 // investment reorders and lengthens this list, which is the whole demo.
-export function wants(town: Town, limit = 3): Want[] {
-  const d = derive(town);
-  const spare = Math.max(0, d.hands.available - d.hands.needed);
+export function wants(town: Town, limit = 3, derived = derive(town)): Want[] {
+  const d = derived;
+  const spare = spareHands(d);
   const supplied = canBuild(d.commerce);
   const out: Want[] = [];
   for (const kind of CHOOSABLE) {
@@ -239,9 +239,81 @@ export function wants(town: Town, limit = 3): Want[] {
 
 export interface Built {
   work: Work;
-  want: Want;
+  // `null` when he MENDED rather than raised. A repair has no auction behind it:
+  // the town is not choosing what it wants, it is keeping what it already has.
+  want: Want | null;
   year: number;
   sentence: string;
+}
+
+// ---- Mending what is rotting (the devolution ladder, spec §3) ---------------
+//
+// A DECAYED WORK IS RECOVERABLE, AND RECOVERY COSTS COIN. The spec says every
+// grade is reversible; a decayed work that came back for free the way an idle one
+// does would leave the ladder's middle rung meaning nothing, and "each step is
+// legible" would be a claim about nothing.
+//
+// WHY IT LIVES HERE AND NOT IN THE LEDGER'S OWN UPKEEP, which is the real reason
+// `works.ts` cannot mend anything by itself:
+//   - [HC-78] IMPORTS ARE PAID BEFORE CONSTRUCTION — bread before batteries.
+//     `stepWorks` runs in phase 1 (PRODUCE) and the quay is not paid until phase 3
+//     (SETTLE), so coin spent there would come out of the purse the town buys its
+//     corn with. Every other priced decision — raising a work, densifying the core
+//     — is taken after settlement, and mending is one of them.
+//   - A capital work needs money or a patron to be SAVED for the same reason it
+//     needed one to be RAISED. Subsistence works never rot because people keep
+//     their own roofs on; nobody keeps a shipway's roof on for nothing.
+//
+// It takes the season's ONE decision, so mending genuinely competes with building
+// for the thing that is actually scarce, and a governor never raises a fourth
+// sawpit while the third rots.
+const MEND_CLAUSE = "it was rotting, and mending costs less than raising anew";
+
+// The spare hands a town has. ONE FUNCTION ([P-47]) so §5.6's labour gate is the
+// same number whether he is raising a work or saving one.
+const spareHands = (d: Derived): number => Math.max(0, d.hands.available - d.hands.needed);
+
+// §5.6, applied to the same verb it was written for. The pathology it was written
+// against — raise a shed, nobody mans it, it rots, the slot frees, raise it again —
+// has an exact twin in mend/rot/mend, and the same gate closes both. A repair is
+// only ever bought when the work would ACTUALLY GO BACK TO WORK: hands for it,
+// its supplier standing, its ground not built over, timber and stone to be had.
+//
+// [P-14] note: this walks the ledger rather than a kept set of rotting works. An
+// active set would need maintaining by `devolve`, by this function and by every
+// future raid that damages a work, to save a property compare on ~20 works once a
+// season. It has not earned that; the loop's first test is a single compare.
+function mendTurn(town: Town, d: Derived, year: number): Built | null {
+  if (!canBuild(d.commerce)) return null; // no timber, no stone, no repairs either
+  const spare = spareHands(d);
+
+  let best: Work | null = null;
+  let bestWorth = 0;
+  for (const w of town.works) {
+    if (!mendable(town, w)) continue;
+    if (w.hands > spare) continue; // "he will not mend what nobody can work"
+    if (town.wealth < repairCost(w.kind)) continue; // ...nor what he cannot pay for
+    const v = worthOf(w);
+    // Food first, then guns, then coin — and the elder work on a tie ([P-10]).
+    if (best === null || v > bestWorth || (v === bestWorth && w.id < best.id)) {
+      best = w;
+      bestWorth = v;
+    }
+  }
+  if (best === null) return null;
+
+  town.wealth -= repairCost(best.kind);
+  // ONE RUNG UP, to the foot of the ladder. The hands take the last step next
+  // season, through the allocator, which stays the only thing that ever writes
+  // `working` — a governor buys the repair, he does not conjure the men.
+  best.condition = "idle";
+  best.idleSince = town.season;
+  return { work: best, want: null, year, sentence: describeMend(town, best) };
+}
+
+function describeMend(town: Town, w: Work): string {
+  const who = town.governor?.trim() ? town.governor : "The governor";
+  return `${who} puts ${w.name} back in order — ${MEND_CLAUSE}.`;
 }
 
 // One decision per season. The governor builds the best thing he can afford —
@@ -249,7 +321,18 @@ export interface Built {
 // option, which is what lets money change what a town becomes and not merely how
 // fast it gets there.
 export function governorTurn(town: Town, year: number): Built | null {
-  const ranked = wants(town, CHOOSABLE.length);
+  // Derived once and handed on ([P-18]): the mend gate and the auction ask the
+  // same town the same question, and asking twice is how the two answers start
+  // disagreeing.
+  const d = derive(town);
+
+  // He puts his own house in order before he raises a new one. Mending is cheaper
+  // than building, so this is not a generosity — it is what a governor who could
+  // count would do, and it is what keeps the ladder's middle rung a rung.
+  const mended = mendTurn(town, d, year);
+  if (mended) return mended;
+
+  const ranked = wants(town, CHOOSABLE.length, d);
 
   // He will not raise what nobody can work. A town with money and no men simply
   // waits — and building anyway would just leave a shed to rot, which is exactly

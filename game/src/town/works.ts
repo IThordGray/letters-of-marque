@@ -225,21 +225,44 @@ function raiseSubsistence(town: Town, year: number): void {
   }
 }
 
+// Feed the town first, then defend it, then earn — a governor's order of nature.
+// HOISTED OUT OF THE ALLOCATOR ([P-48]): the same order decides who gets the last
+// hands and which rotting work gets mended first, so it is one function rather
+// than two that happen to agree today ([P-47]).
+export const worthOf = (w: Work): number => w.food * 3 + w.defence * 2 + w.trade;
+
+// Everything except hands that stands between a work and working again: its
+// supplier, and the ground under it. ALSO HOISTED OUT OF THE ALLOCATOR'S LOOP
+// CONDITION ([P-48]) — a governor must read exactly this rule before he pays to
+// mend anything, or he buys a shipway that has no sawpit, or a sawpit the town
+// has built over, and buys it again every few years for ever (§5.6).
+function workableNow(town: Town, w: Work): boolean {
+  const req = CATALOGUE[w.kind].requires;
+  if (req && !working(town, req)) return false; // "the shipways stand idle for want of planks"
+  // Ground the town has built over carries nothing any more, and CLAIMED GROUND
+  // IS PERMANENT — so this one is not a setback, it is the end of that work.
+  if (w.hex && town.footprint.claimed.some((c) => key(c) === key(w.hex!))) return false;
+  return true;
+}
+
 // Hands are finite. A work nobody can man goes idle — the labour ceiling made
 // visible rather than asserted ("there is money and no men").
+//
+// `decayed` is deliberately absent from the set hands are allotted to, and it is
+// not an oversight: a rotted work must be PUT BACK IN ORDER before anyone can
+// work it, and that is a priced decision, so it belongs to the governor and not
+// to the ledger's own upkeep. See `mendable` below.
 function allocateLabour(town: Town): void {
   const live = town.works.filter((w) => w.condition === "working" || w.condition === "idle");
-  // Feed the town first, then defend it, then earn — a governor's order of nature.
-  const worth = (w: Work) => w.food * 3 + w.defence * 2 + w.trade;
-  live.sort((a, b) => worth(b) - worth(a));
+  // [P-10]: an explicit tie-break, and its direction is the ELDER WORK FIRST —
+  // the sawpits that have stood since '54 keep their men before the ones cut
+  // last spring. Without it, two works of equal worth are ordered by however the
+  // ledger happens to be arranged.
+  live.sort((a, b) => worthOf(b) - worthOf(a) || a.id - b.id);
 
   let hands = town.population * WORKS.labourShare;
   for (const w of live) {
-    const req = CATALOGUE[w.kind].requires;
-    const supplied = !req || working(town, req); // "the shipways stand idle for want of planks"
-    // Ground the town has built over carries nothing any more.
-    const buried = !!w.hex && town.footprint.claimed.some((c) => key(c) === key(w.hex!));
-    if (hands >= w.hands && supplied && !buried) {
+    if (hands >= w.hands && workableNow(town, w)) {
       hands -= w.hands;
       if (w.condition === "idle") w.condition = "working";
       w.idleSince = null;
@@ -250,8 +273,38 @@ function allocateLabour(town: Town): void {
   }
 }
 
-// The devolution ladder: working -> idle -> decayed -> ruin, recoverable at each
-// step. Subsistence works never rot — people keep their own roofs on.
+// ---- Coming back UP the ladder ---------------------------------------------
+//
+// THE GRADES DIFFER IN WHAT COMING BACK COSTS, never in whether it is possible
+// (spec §3: "each step is legible and each is reversible").
+//
+//   idle    -> working   the hands return. Free, instant, and the allocator above
+//                        does it without anyone deciding anything.
+//   decayed -> idle      ONE RUNG, and it costs COIN. A capital work "needs money
+//                        or a patron" to be saved exactly as it did to be raised;
+//                        the hands then decide the last step like any other idle
+//                        work. Priced, so the decision is the governor's.
+//   ruin    -> nothing   past saving is past saving.
+//
+// Until KAN-108 this was a comment and not a mechanism: `decayed` was in no set
+// anyone allotted hands to, so its idle clock was never cleared and every decayed
+// work was guaranteed to reach `ruin`. Four rungs, and only the first of the three
+// below `working` could be climbed.
+
+// What it costs to put a rotted work back in order. ONE PATH TO THE NUMBER
+// ([P-47]): the gate that asks whether he can afford it and the charge that takes
+// the coin are the same call, so they cannot drift apart.
+export const repairCost = (kind: WorkKind): number => CATALOGUE[kind].cost * DECAY.repairShare;
+
+// Is this work worth a governor's coin? Only if mending it would actually put it
+// back to work: `ruin` never returns, and neither does a work whose supplier is
+// gone or whose ground the town has built over. Wealth is NOT asked about here —
+// it is the budget gate (§5.1) and it is asked separately, by the governor.
+export const mendable = (town: Town, w: Work): boolean =>
+  w.condition === "decayed" && workableNow(town, w);
+
+// The devolution ladder going DOWN: working -> idle -> decayed -> ruin.
+// Subsistence works never rot — people keep their own roofs on.
 function devolve(town: Town): void {
   for (const w of town.works) {
     if (CATALOGUE[w.kind].cls === "subsistence") continue;

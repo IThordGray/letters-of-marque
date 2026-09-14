@@ -5,9 +5,18 @@
 // moves works down THIS ladder, one grade at a time).
 
 import { describe, it, expect } from "vitest";
+import type { Town } from "./types";
 import { derive, stepYears, stepSeason } from "./sim";
-import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, CATALOGUE } from "./works";
+import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, mendable, repairCost, CATALOGUE } from "./works";
+import { stepTownSeason } from "./governor";
+import { DECAY, SEASONS_PER_YEAR } from "./constants";
 import { mixedTown, bareTown, townOf, reg, RING1 } from "./fixtures";
+
+// A presidio. It is §5.6's own example — "a presidio of ninety souls" — and it is
+// the right fixture for a claim about the LADDER, because SPRAWL.royalOutpost
+// never spills: the town claims no new ground, so no work of its is ever built
+// over and nothing but decay is under test.
+const presidio = (init: Partial<Town> = {}): Town => mixedTown({ archetype: "royalOutpost", ...init });
 
 describe("the hamlet floor", () => {
   it("crawls back to a hamlet rather than dying", () => {
@@ -88,6 +97,106 @@ describe("the devolution ladder", () => {
     town.population = 400;
     stepSeason(town);
     expect(pit.condition).toBe("working");
+  });
+});
+
+describe("coming back up the ladder", () => {
+  // KAN-108. The ladder was DOCUMENTED as recoverable at every grade and was not:
+  // hands were only ever allotted to `working` and `idle`, so a decayed work was
+  // in no set anyone looked at, its idle clock was never cleared, and every one of
+  // them was guaranteed to reach `ruin`. Three rungs below working and one
+  // direction past the first.
+  //
+  // The suite above covers the ladder going DOWN and nobody had written a claim
+  // about it coming back up, which is exactly why a false comment survived. These
+  // are that claim.
+
+  it("puts a rotted work back to work when someone pays for it", () => {
+    const town = presidio({ population: 400, wealth: 9000 });
+    const pit = raise(town, "sawpit", 1650)!;
+    stepSeason(town);
+    expect(pit.condition).toBe("working");
+
+    town.population = 4; // the hands walk away, and it rots two rungs
+    for (let i = 0; i < DECAY.idleToDecayed + 1; i++) stepSeason(town);
+    expect(pit.condition).toBe("decayed");
+
+    // They come back, and so does the coin.
+    town.population = 400;
+    town.wealth = 9000;
+    const mended = stepTownSeason(town);
+    expect(mended.built?.work).toBe(pit);
+    expect(pit.condition).toBe("idle"); // the coin buys ONE RUNG, not the men
+
+    stepTownSeason(town);
+    expect(pit.condition).toBe("working"); // ...and the hands take the last step
+  });
+
+  it("costs coin to mend, and less coin than raising the same work anew", () => {
+    // A step that costs nothing is not a step: mending for free would erase the
+    // difference between `idle` and `decayed` and leave the ladder's middle rung
+    // meaning nothing. Cheaper than building is the whole reason anyone mends.
+    for (const kind of ["sawpit", "warehouse", "battery"] as const) {
+      expect(repairCost(kind)).toBeGreaterThan(0);
+      expect(repairCost(kind)).toBeLessThan(CATALOGUE[kind].cost);
+    }
+  });
+
+  it("is past saving once it is a ruin, however rich the town and however long it waits", () => {
+    const town = presidio({ population: 600, wealth: 9000 });
+    const pit = raise(town, "sawpit", 1650)!;
+    stepSeason(town);
+    pit.condition = "ruin";
+    pit.idleSince = town.season;
+
+    expect(mendable(town, pit)).toBe(false);
+    for (let i = 0; i < 60 * SEASONS_PER_YEAR; i++) {
+      town.wealth = 90000; // never short of coin for a single season of it
+      town.population = 600;
+      stepTownSeason(town);
+    }
+    expect(pit.condition).toBe("ruin");
+  });
+
+  it("holds its ground and its place in the ledger while it rots, and gives both back when it ruins", () => {
+    // Pinning the REAL behaviour, because it is easy to state wrongly. A decayed
+    // work does NOT sterilise its ground: it holds one hex and one slot against
+    // `def.max`, and a ruin holds neither.
+    const town = townOf([reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" } })], {
+      population: 900,
+      wealth: 90000,
+    });
+    const pit = raise(town, "sawpit", 1650)!;
+    expect(roomFor(town, "sawpit")).toBe(1);
+
+    pit.condition = "decayed";
+    expect(countOf(town, "sawpit")).toBe(1); // still on the books
+    expect(roomFor(town, "sawpit")).toBe(1); // still standing on its hex
+
+    pit.condition = "ruin";
+    expect(countOf(town, "sawpit")).toBe(0); // off the books
+    expect(roomFor(town, "sawpit")).toBe(2); // and the ground is free again
+  });
+
+  it("holds that ground for the whole of its decay — a hold, not a sterilising", () => {
+    // The oracle is written out rather than asked of the code ([testing.md]): the
+    // gap between the two thresholds IS how long the ground is held, so this
+    // moves when the ladder is tuned and breaks when the ladder is rewired.
+    const town = presidio({ population: 400, wealth: 4000 });
+    const pit = raise(town, "sawpit", 1650)!;
+    stepSeason(town);
+
+    town.population = 4;
+    let decayedAt = -1;
+    let ruinedAt = -1;
+    for (let i = 0; i < 2 * DECAY.decayedToRuin; i++) {
+      stepSeason(town);
+      if (decayedAt < 0 && pit.condition === "decayed") decayedAt = town.season;
+      if (ruinedAt < 0 && pit.condition === "ruin") ruinedAt = town.season;
+    }
+    expect(decayedAt).toBeGreaterThan(0);
+    expect(ruinedAt).toBeGreaterThan(decayedAt);
+    expect(ruinedAt - decayedAt).toBe(DECAY.decayedToRuin - DECAY.idleToDecayed);
   });
 });
 
@@ -182,6 +291,29 @@ describe("ground out of the town's way", () => {
 
     expect(overTheRidge.hands).toBeGreaterThan(atHand.hands);
     expect(overTheRidge.trade).toBeLessThan(atHand.trade);
+  });
+
+  it("gives the last hands to the elder of two equal works, whichever way the ledger is written", () => {
+    // [P-10]: two sawpits on the same ground are worth exactly the same, so
+    // without an explicit tie-break which of them keeps its men is decided by
+    // however the ledger happens to be arranged. The stated direction is the
+    // ELDER WORK FIRST.
+    const run = (reversed: boolean) => {
+      const town = townOf([reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" } })], {
+        population: 400,
+        wealth: 9000,
+      });
+      const elder = raise(town, "sawpit", 1650)!;
+      const younger = raise(town, "sawpit", 1650)!;
+      if (reversed) town.works.reverse();
+      town.population = 22; // hands enough for one of them, and not for two
+      stepSeason(town);
+      return { elder: elder.condition, younger: younger.condition };
+    };
+
+    expect(run(true)).toEqual(run(false));
+    expect(run(false).elder).toBe("working");
+    expect(run(false).younger).toBe("idle");
   });
 
   it("is the first to go idle when hands are short", () => {
