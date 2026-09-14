@@ -877,11 +877,39 @@ fortification, none of which is size class.
 | **Ruined** | Sitting on the hamlet floor — subsistence works only, the rest decayed or ruin | **Only with substantial outside help** |
 | **Abandoned** | No people and no works | **Never** |
 
+> **Two clarifications the implementation needed (KAN-106), because the table as written was not
+> quite implementable.** *Abandoned* requires **both** halves of its clause: subsistence works never
+> rot, so the huts outlive the people and *"no people"* alone is not it. *Ruined* requires the
+> **wreck** — "the rest decayed or ruin" presupposes there was a rest, and it is the only thing that
+> tells a fallen town from a young hamlet that never had more. That distinction is load-bearing
+> precisely because `[HC-66]` stores nothing: **the ruins are the memory.** An *idle* work is
+> deliberately not a wreck — the devolution ladder already encodes this table's recovery column,
+> since idle revives for free and decayed does not.
+
 **`[HC-67]` The hamlet floor requires survivors.** Subsistence works cost no wealth, so any place with
 people crawls back — which is why *ruined* recovers and why it needs no new field. **Razing to nothing
 removes the people, and with them the floor.** That single condition is the whole mechanism by which
 abandonment sticks, and it is why `[HC-18]` holds without a sticky flag: there is nobody left to raise
 a hut.
+
+> **Sharpened by KAN-106, which built it: the floor is a LABOUR floor, not a food floor.**
+> "Survivors" has a number, and the number is **10.91 souls** — `gardenPlots.hands /
+> WORKS.labourShare`. A lone survivor does *raise* a garden plot; he cannot **man** it. Below the
+> threshold the cheapest food work in the catalogue stands idle, feeds nobody, and the place empties
+> on its own. Measured on ideal ground: openings of 1, 2, 4, 8, 10 and 10.5 souls all fall to **zero**;
+> 11 and up recover to 27. The mechanism `[HC-67]` describes was already implemented — a constant
+> floor of 12 was sitting on top of it, overriding it, and is now deleted.
+>
+> **And a criterion that fails, reported rather than tuned.** On `poor` food ground one garden plot
+> feeds **10.5 mouths** and takes **10.91 souls** to man. A town with nothing but poor food ground
+> therefore **cannot sustain the hands that work it**: each step down idles another plot and the
+> place spirals to nothing by ordinary decline, which is `[HC-18]` violated. Measured: **163 → 0 in
+> about forty years** with no hand laid on it. `fair` (21 mouths) and `ideal` (39) are both stable.
+>
+> **Latent, not live.** The generator gives every place several food regions plus fishing; 387 places
+> across 8 seeds ran 200 years with **0 emptied** and the smallest at 40.6 souls. The old constant
+> was *hiding* this, not preventing it. Two candidate fixes, neither taken — see `decisions.md`
+> (2026-09-14, second).
 
 **`[HC-68]` Reviving a ruined place is ONE decision, never a grind.** It resolves as a dispatch
 arriving (`[HC-44]`) — a crown's cost-versus-benefit action, generally led by a show of force, or the

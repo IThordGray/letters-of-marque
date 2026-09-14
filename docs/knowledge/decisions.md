@@ -10,6 +10,48 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-14 (second) — The hamlet floor is a labour floor, and poor ground cannot pay for itself
+
+KAN-106 deleted `POP.floor` and let the floor emerge from subsistence works, which is what the
+constant's own comment three lines above it had claimed all along. Two things came out of building
+it, and the second needs a decision.
+
+**1. "Survivors" has a number, and it is 10.91 souls.** Not a food threshold — a **labour** one:
+`gardenPlots.hands / WORKS.labourShare`. A lone survivor raises a garden plot and then cannot man it,
+so it idles, feeds nobody, and the place empties. Measured on ideal ground: openings of 1, 2, 4, 8,
+10 and 10.5 all fall to **zero**; 11 and up recover to 27. Recorded on `[HC-67]`.
+
+**2. A criterion that fails, and it is open.** On `poor` food ground one garden plot feeds **10.5
+mouths** and costs **10.91 souls** of labour, so a town on nothing but poor ground **cannot sustain
+the hands that work it**. Each step down idles another plot and it cascades: measured **163 → 0 in
+about forty years**, by ordinary decline, with no hand laid on it — which is `[HC-18]` violated.
+`fair` (21) and `ideal` (39) are both stable.
+
+**It is latent, not live**, and worth being precise about why: the generator gives every place
+several food regions plus fishing, and 387 places across 8 seeds ran two centuries with **0 emptied**,
+the smallest at 40.6 souls. But 22 of 46 places in the sample seed have only *poor* as their best food
+grade, and `ground.test.ts` only ever asserts that a place bears food at all — never at what grade.
+**The deleted constant was hiding this, not preventing it.**
+
+Two candidate fixes, neither taken, because this is a design call and not a tuning one:
+- **Strengthen `[HC-22]`** so the ground generator must give every place at least *fair* food. Keeps
+  the catalogue honest; makes the generator carry the guarantee.
+- **Make subsistence hand costs scale with yield**, so a plot always feeds its own workers whatever
+  the ground. Keeps the generator free; makes the rule true by construction rather than by supply.
+
+*Why this is logged rather than fixed:* the ratified working principle is **report the criterion that
+fails; never tune until it passes** (2026-09-10, fourth). This is its fifth instance, and the first
+where the failing criterion was *invisible while a constant propped it up*. Which is the sharper
+lesson: **a floor written as a constant does not enforce the rule it is named after — it conceals
+whether the rule holds.**
+
+**A third finding, recorded because nothing else says it.** Growth eats its own cause. A town fed fat
+on bought bread builds over its own garden plots, so when the shipping stops it falls back to *less*
+than the twin that never traded — 131.4 against 140.8, measured. That is `[HC-87]`'s fragile ceiling
+being sharper than `[HC-87]` says: a raid does not merely remove the bought half, it finds a town that
+has already demolished the grown half.
+
+---
 ### 2026-09-14 — Three seams were specced, built on both sides, and never connected
 
 Found by a scope pass on the world map view (KAN-100), and recorded because the pattern matters more

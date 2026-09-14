@@ -144,14 +144,23 @@ and all cheap:
 - **"claiming is permanent"** — across a century of growth *and* decline, claimed ground never
   shrinks.
 
-> **One trap, found by the audit and worth the warning.** Do **not** write the hamlet-floor test as
-> *"population never falls below the floor"*. `sim.ts:101` applies that floor unconditionally, which
-> is itself a bug against `[HC-67]` — the floor is supposed to require survivors. The correct claim
-> is behavioural: **"a stripped town feeds and houses itself again"**. The obvious test would pin the
-> bug.
+> **One trap, found by the audit — and it had already caught somebody.** Do **not** write the
+> hamlet-floor test as *"population never falls below the floor"*. Until 2026-09-14 `sim.ts` applied
+> that floor unconditionally, so the obvious test would have pinned the bug and made the eventual fix
+> look like a regression.
+>
+> **It had in fact already happened, and sat green for days.** `worldgen.test.ts` asserted
+> `population >= POP.floor` against a generator that applied that same floor two lines earlier — a
+> tautology with no power to fail. KAN-106 deleted the constant and rewrote the assertion in terms of
+> the two definitions it actually depends on (`gardenPlots.hands / WORKS.labourShare`), written out
+> rather than read back.
+>
+> The correct claim is behavioural — **"a stripped town feeds and houses itself again"** — and the
+> general rule is *Write the oracle out independently*, below: **an assertion that reads its own
+> threshold out of the code under test asserts nothing.**
 >
 > Related: express elapsed time as **seasons stepped**, never as `town.season` arithmetic — the
-> town's private clock is also on the contradiction list.
+> town's private clock is still on the contradiction list (KAN-107).
 
 The rest of this section is kept for the record — it explains why the park was right at the time.
 
