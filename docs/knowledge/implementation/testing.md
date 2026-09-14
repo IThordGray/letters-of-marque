@@ -294,6 +294,24 @@ them, which no unit test is even shaped to look for.
 - **Corollary for briefs:** when a story's acceptance criteria are all expressible against one
   module, that is a signal the story delivers a component. Ask what would observe it from outside.
 
+### Claim a reversible process in BOTH directions
+
+**Found 2026-09-14, KAN-108.** `works.test.ts` covered the devolution ladder thoroughly — going
+**down**. Nobody ever wrote a claim about a work coming back **up**, so when labour allocation
+quietly excluded `decayed` from the set it allotted hands to, nothing failed. Every decayed work in
+the game was guaranteed to reach `ruin`.
+
+The false statement survived in **three places at once** — the type's *"decay comes in RECOVERABLE
+grades"*, the function's *"recoverable at each step"*, and the spec's *"each step is reversible"* —
+for the same reason in each case: **the comment was the only thing asserting that half.**
+
+- **Where a name or a comment claims a process is reversible, recoverable, undoable, toggleable or
+  symmetric, the suite needs a claim in EACH direction.** One direction tested and the other merely
+  described is not coverage; it is a comment with a test standing next to it.
+- The same goes for any pair the code names as opposites — open/close, claim/release, enter/exit,
+  raise/demolish. **The expensive half is nearly always the return**, which is exactly why it is the
+  half that gets written in prose and not in a claim.
+
 ## When a test is required
 
 - **Every story with acceptance criteria** turns those criteria into tests — that is what "done"

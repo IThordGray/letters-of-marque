@@ -431,6 +431,28 @@ simulate.
 Works decay in **recoverable grades** — `working → idle → decayed → ruin` — not straight to
 death. Each step is legible and each is reversible.
 
+> **Built and sharpened by KAN-108 (2026-09-14), because "reversible" was not true below the first
+> rung.** The grades differ in **what coming back COSTS**, not in whether it is possible:
+>
+> | Step | What it costs | Who takes it |
+> |---|---|---|
+> | `idle → working` | **Hands.** Free — no coin, no decision. | The ledger, in labour allocation |
+> | `decayed → idle` | **One rung, and coin** — a fraction of raising the work new (`DECAY.repairShare`) | The governor, as a priced decision |
+> | `ruin` | — | Nobody. Terminal. |
+>
+> A mend buys a rung, never a jump: it returns a work to `idle`, and hands take the last step, so
+> **labour allocation remains the only thing that ever writes `working`.** That is what stops a
+> priced mend from quietly bypassing the labour ceiling.
+>
+> **Why coin at all.** A free mend would erase the difference between `idle` and `decayed` and leave
+> a ladder whose middle rung meant nothing — and a step that costs nothing is not "legible", which
+> is what this section claims each step is. Subsistence works never rot because people keep their
+> own roofs on; nobody keeps a shipway's roof on for nothing.
+>
+> **And correct the record where a stronger claim is written:** a decayed work does **not** sterilise
+> its ground. It holds one hex and one `max` slot for `decayedToRuin − idleToDecayed` — four years on
+> today's numbers — then ruins and gives both back. Measured. It is a hold, not a sterilising.
+
 ---
 
 ## 3.5 The trading engine — wealth is EARNED, not emitted
@@ -636,6 +658,21 @@ budget gate. The score decides *what the town wants most*; wealth decides *what 
 | **Fear** (security deficit vs. recent threat) | *"since the burning, the town wants guns"* |
 | **The patron's agenda** (crown / company / **you**) | *"the Governor of Cartagena wants a customs house here"* |
 
+> **A structural limit on this auction, found by KAN-108 and worth knowing before the next ticket
+> tries.** **The five terms score a KIND, not an INSTANCE.** The land term reads the best *free*
+> ground for a kind; the market term reads the catalogue's trade figure. A standing work has neither
+> — its ground is underneath it, and its trade is already scaled by that ground's suit and reach.
+>
+> So anything about a *specific standing work* — repair, upgrade, demolition — cannot be scored by
+> these terms without opening a **second path to a value the instance already holds**, which is
+> `[P-47]`. Worse, the auction cannot always see the want at all: while a decayed work holds its hex,
+> `roomFor` is reduced and its kind may drop out of the wants-list entirely — **the thing that
+> creates the need to mend is the thing that hides it from the auction.**
+>
+> Instance-level verbs therefore sit **beside** the auction, competing for the season's one decision,
+> rather than inside it. Mending is priced below raising, so a governor who can mend does so first.
+
+
 ### 5.2 The explanation IS the score
 
 The one-line reason is **assembled from the top two contributing terms** — never written
@@ -758,6 +795,25 @@ So a want carries two separate gates, and they read differently:
 
 Both are surfaced on the published wants-list, so the reason a town is *not* building is as
 legible as the reason it is.
+
+> **The gate generalises, and any new verb that spends coin on a work needs it (KAN-108, 2026-09-14).**
+> *raise → rot → raise* and *mend → rot → mend* are the same pathology wearing different clothes. The
+> general form: **never buy a state change unless the work would actually go back to work.** Four
+> conditions, and they are the allocator's own — hands spare, supplier standing, materials in the
+> market, and **ground not built over**.
+>
+> The buried case is the sharpest, because claimed ground is permanent (§2.5): a work the footprint
+> has claimed can *never* be worked again, so paying to mend one is an unbounded leak by construction,
+> not merely a waste. Measured on a presidio with ninety thousand coin and six souls: **0 mends in
+> sixty years** — the gates bite before the money does.
+
+> **And a constraint on WHERE a priced decision may live, which is general and was not written down.**
+> `[HC-78]` pays imports before construction, and the works ledger (`stepWorks`) runs in **phase 1,
+> PRODUCE** — before the quay is paid in phase 3, SETTLE. So **nothing in phase 1 may spend coin**:
+> it would come out of the purse the town buys its corn with, which is bread-before-batteries
+> inverted. Every priced decision in this module therefore sits with the governor, after settlement.
+> **The ledger cannot mend anything by itself, and that is structural rather than stylistic.**
+
 
 ### 5.7 Cadence
 

@@ -10,6 +10,58 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-14 (third) — A ladder rung that costs nothing is not a rung
+
+KAN-108 found that the devolution ladder — `working → idle → decayed → ruin`, documented in three
+separate files as recoverable at every grade — was **one-way below the first rung**. Labour
+allocation only ever considered `working` and `idle` works, so a decayed work could never be
+re-manned and **every one of them was guaranteed to reach `ruin`.**
+
+**Ratified: the grades differ in what coming back COSTS, not in whether it is possible.**
+`idle → working` costs hands and is free, taken by the ledger. `decayed → idle` costs one rung **and
+coin** — a fraction of raising the work new — and is the governor's priced decision. `ruin` is
+terminal. A mend buys a **rung, never a jump**, so labour allocation stays the only thing that ever
+writes `working`, and a priced mend cannot bypass the labour ceiling.
+
+*Why it had to cost something:* a free mend erases the difference between `idle` and `decayed` and
+leaves a middle rung that means nothing. **A step that costs nothing is not "legible", which is what
+the spec claims each step is.**
+
+**Three findings worth more than the fix:**
+
+**1. Where a priced decision may live is structural, not stylistic.** `[HC-78]` pays imports before
+construction and the works ledger runs in **phase 1, PRODUCE** — before the quay is paid in phase 3.
+So **nothing in phase 1 may spend coin**; it would come out of the purse the town buys its corn with.
+The obvious contained fix — put the repair in the works ledger — was therefore *not available*, and
+the reason is a ratified rule rather than a preference. **The ledger cannot mend anything by itself.**
+
+**2. The auction's five terms score a KIND, not an INSTANCE**, which is a permanent limit on what can
+ever be put into it. The land term reads the best *free* ground; the market term reads the catalogue.
+A standing work has neither — its ground is under it, its trade already scaled by suit and reach. So
+repair, upgrade and demolition cannot be scored by those terms without a second path to a value the
+instance already holds (`[P-47]`). And the auction cannot always *see* the want: while a decayed work
+holds its hex, its kind may drop out of the wants-list entirely — **the thing that creates the need
+to mend is the thing that hides it from the auction.**
+
+**3. §5.6's labour gate has a general form, and every future verb that spends coin on a work needs
+it.** *raise → rot → raise* and *mend → rot → mend* are one pathology: **never buy a state change
+unless the work would actually go back to work.** The sharpest case is a work the footprint has built
+over — claimed ground is permanent, so paying to mend one is an unbounded leak *by construction*.
+Measured: a presidio with ninety thousand coin and six souls made **0 mends in sixty years**; with
+men, exactly **1**, and it stuck.
+
+**A judgement call, confirmed rather than merely accepted.** Purpose's vocabulary gate is **not**
+applied to a mend — a governor may mend a work his purpose would not let him raise. This is correct
+and cannot misfire: `[HC-56]` says a place's purpose never changes and `[HC-49]` says an invasion
+leaves the ledger intact, so a standing work was always raised under the place's own vocabulary.
+A guard that cannot fire is `[P-1]`'s to refuse.
+
+**The ticket's own description was overstated, and the record is corrected.** A decayed work does not
+sterilise its ground; it holds one hex and one slot for four years and then ruins and gives both back.
+Measured. *(Second time in two days a recorded bug's description was stronger than the bug —
+worth noticing that a ticket written from reading code inherits the confidence of the reader.)*
+
+---
 ### 2026-09-14 (second) — The hamlet floor is a labour floor, and poor ground cannot pay for itself
 
 KAN-106 deleted `POP.floor` and let the floor emerge from subsistence works, which is what the
