@@ -69,6 +69,22 @@ the ticket back after posting.
   (`{"labels": ["ai"], "parent": {"key": "KAN-96"}}`), and **the create response echoes back
   neither.** Re-read the issue to confirm they landed — the same lesson as above.
 
+## Delegated work commits as it goes
+
+**Added 2026-09-15, after an interrupted session nearly cost ~700 lines of finished work.** An agent
+had completed KAN-107 in its worktree — the refactor, the tests, a new module, a clean typecheck —
+and had **committed none of it** when the session ended. It survived only because an uncommitted
+worktree happens to persist on disk, which is luck, not a process.
+
+- **Every delegated brief tells the agent to commit incrementally**: a first WIP commit as soon as
+  anything compiles, and again at each checkpoint. History can be tidied at the end with a soft
+  reset; work that was never written down cannot be recovered.
+- **One ticket = one commit still holds** — it is a rule about the *final* history, not a reason to
+  leave hours of work uncommitted in a working tree.
+- **When a run is interrupted, check the worktree before assuming the work is lost.** `git -C
+  <worktree> status --short` and a `tsc`/test run will tell you in a minute whether you are
+  recovering or restarting. In this case the work was complete and only needed committing.
+
 ## Commit ↔ ticket link
 - **A merged branch closes its tickets in the SAME pass.** Added 2026-09-10, after KAN-98 sat at
   `To Do` for several merges while being a declared blocker on two other stories — so the board
