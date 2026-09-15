@@ -10,6 +10,65 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-15 (fourth) — The clamp is the rule: a fix that raises a threshold to lower one is a net loss
+
+Both weather fixes landed. The subsistence one produced **the most transferable finding of the
+week**, and it was found by measurement rather than by reasoning.
+
+**The obvious form of the fix is wrong.** "Subsistence hands scale with yield" reads as
+`hands = def.hands × q`, symmetric in both directions. Built that way it **fixed the one place that
+dies and emptied three that stand** — across five seeds. The cause: unclamped, well-suited ground
+asks **7.8 men where the catalogue writes 6**, so the *manning threshold rises on good ground* — and
+**good ground is where nearly every place actually lives.**
+
+**The shipped form is `hands = def.hands × min(q, 1) × walk`, and the clamp is the rule, not a
+detail.** It makes the change **monotone**: it can only ever ask *fewer* men, so no place's threshold
+can rise. Above 1 it does not scale, because good ground does not take more men — **it repays the
+same men better**, which is exactly what the yield half already says and what §2.5 means by terrain
+*biasing* a crop.
+
+> **The general form, worth carrying well past this ticket: a storm-battered place lives near the
+> BOTTOM of its margin, not the top of it. So any change that buys headroom at the bad end by
+> spending it at the good end is a net loss, however symmetric it looks.** Check the sign of a
+> proposed fix at *both* ends of its range before believing it.
+
+**The margin needed no new constant.** A place mans its work while `food · pull · labourShare ≥
+hands`, and the worst `pull` the model permits is `POP.prosperityPull.min = 0.5` — so the required
+ratio is **2**, and a place may lose half its people to a shock and still work its ground. The
+catalogue already cleared it (garden plots 2.75, fishing shacks 3.03; over the ridge 2.04 and 2.24).
+**The breach was wider than recorded: far ground was under water at EVERY grade**, not only `poor`.
+
+**`[HC-67]`'s 10.91 souls is no longer a world constant — the floor is now per place**, running 3.82
+souls (poor, at hand) to 14.73 (well suited, over the ridge). Two test oracles still spell out the
+old figure; they keep their teeth as strong bars but their comments were corrected, because 10.91 is
+now neither the cheapest case nor the dearest.
+
+**Measured end to end, which neither agent could do alone** (200 years, seeds 20260910 / 1660 / 7 / 99):
+
+| | 20260910 | 1660 | 7 | 99 |
+|---|---|---|---|---|
+| population, no weather | 10,654 | 12,147 | 8,807 | 9,945 |
+| population, before both fixes | 6,477 | 7,979 | 5,566 | 6,932 |
+| **population, both fixes** | **7,326** | **8,834** | **5,841** | **6,742** |
+| **wealth, both fixes** | **495k** | **419k** | **633k** | **474k** |
+| **ruins, both fixes** | **499** | **550** | **584** | **612** |
+
+**Weather now costs about 30% of population and 40–50% of wealth over two centuries**, and ruins land
+near 11 per place per 200 years — inside §7's own *"roughly once a generation"*. Seed 99's population
+came out slightly *below* the maintenance-only run, which is a real interaction rather than noise:
+freed labour raises more works, more standing fabric draws bigger maintenance bills. Recorded, not
+tuned.
+
+**Two smaller findings kept:**
+- **A stability claim needs a liveness guard.** *"It stands still rather than sliding on"* is also
+  satisfied by a town of nobody, so every mutation that killed the place outright sailed straight
+  through the claim named for stability. **Where a claim says something stopped moving, it must also
+  say the thing is still there.** Now in `testing.md`.
+- **`provisionGround` — the capital food work — has a margin of 0.9625 on poor ground** and cannot pay
+  its own wages there. That is the governor's problem by design and cannot empty a place, but it is
+  the only food work in the catalogue still under water anywhere. Recorded, not fixed.
+
+---
 ### 2026-09-15 (third) — A tuning table that has never met a ledger is not tuned
 
 The weather seam landed and storms reached towns for the first time. Over 200 years the world moved

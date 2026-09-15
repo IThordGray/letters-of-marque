@@ -18,9 +18,19 @@ import { WORKS } from "../town/constants";
 // THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
 // being a second number laid over the floor the catalogue already raises, so the
 // threshold is spelled out here from what a garden plot costs and what a soul
-// supplies: the fewest souls who can man the cheapest food work. Below it the
-// plot goes idle, the place feeds nobody, and it empties — so this is the line
-// [HC-18] is really about, and it moves if either number is tuned.
+// supplies. Below it the plot goes idle, the place feeds nobody, and it empties
+// — so this is the line [HC-18] is really about, and it moves if either number
+// is tuned.
+//
+// CORRECTED 2026-09-15: this is no longer one number for the whole world.
+// Subsistence hands now scale with the ground — `def.hands * min(q, 1) * walk` —
+// so a garden plot's threshold runs 3.82 souls (poor, at hand) to 14.73 (well
+// suited, over the ridge), with the figure below being the well-suited plot
+// close to home. It is therefore NEITHER the cheapest nor the dearest case, and
+// the old comment calling it "the cheapest food work" described a quantity that
+// no longer exists. The claim still has teeth — it is a deliberately strong bar
+// that every generated place clears — but read it as one representative
+// threshold, not as the floor.
 const SOULS_TO_WORK_THE_GROUND = CATALOGUE.gardenPlots.hands / WORKS.labourShare;
 
 const SEED = 1660;

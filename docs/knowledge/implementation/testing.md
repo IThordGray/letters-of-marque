@@ -291,6 +291,21 @@ The general rule: **before writing a claim, ask what input would distinguish the
 the plausible one.** If no input in the fixture can, the claim is decoration however carefully it is
 worded — and a mutation survivor is how you find out.
 
+### A stability claim needs a liveness guard
+
+**Found 2026-09-15 by an unpredicted mutation survivor**, exactly as the section above predicts.
+A claim named *"stands still rather than sliding on a century later"* is **also satisfied by a town
+of nobody** — so every mutation that killed the place outright sailed straight through the one claim
+written to protect its stability.
+
+- **Where a claim says something stopped moving, it must also say the thing is still there.** The
+  fixed form asserts the town stands still **at a living size**, with the threshold written out from
+  the catalogue rather than read back from the sim.
+- The same trap waits under any claim phrased as an absence or a non-change — *"no longer grows"*,
+  *"stops oscillating"*, *"never exceeds"*. **Zero satisfies almost all of them.**
+- This is the sibling of *a fixture must be able to tell the cases apart*: there the fixture could not
+  distinguish the answers, here the assertion could not.
+
 ### Enumerate before you generalise
 
 **The sibling rule, and it has now been earned twice on the same function.** Where a claim

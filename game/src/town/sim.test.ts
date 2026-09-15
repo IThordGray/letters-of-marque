@@ -190,9 +190,14 @@ describe("only a deliberate hand empties a town", () => {
   });
 
   it("keeps enough souls to work its own ground, which is what the floor now is", () => {
-    // The floor is no longer a number: it is the fewest souls who can man the
-    // cheapest food work. Spelled out from the catalogue rather than read back
-    // from the sim, so a tune to either number moves the claim with it.
+    // The floor is no longer a number: it is the fewest souls who can man a food
+    // work. Spelled out from the catalogue rather than read back from the sim, so
+    // a tune to either number moves the claim with it.
+    //
+    // CORRECTED 2026-09-15: since subsistence hands scale with the ground, the
+    // threshold is PER PLACE — 3.82 souls on poor ground at hand, 14.73 on well
+    // suited ground over the ridge. The line below is the well-suited plot close
+    // to home, 10.91, which is a strong bar rather than the floor itself.
     const needed = CATALOGUE.gardenPlots.hands / WORKS.labourShare;
     const town = bareTown({ population: 300, wealth: 0 });
     stepYears(town, 120);
