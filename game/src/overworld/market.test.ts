@@ -8,8 +8,10 @@ import { describe, it, expect } from "vitest";
 import { generateWorld, foundAll } from "./worldgen";
 import {
   MARKET, atWar, clearSeason, declareWar, describeMarkets, makeMarkets, noWars, priceFor, runYears,
-  type Markets, type Wars,
+  stepWorldDay, stepWorldSeason, type Markets, type Wars,
 } from "./market";
+import { PAYLOAD, inFlightCount, sendDispatch } from "./dispatch";
+import { skyOf, takesOf, type Storm } from "./weather";
 import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
@@ -18,8 +20,8 @@ import { mixedTown, seaTown } from "../town/fixtures";
 import { raise } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
-import { CALENDAR } from "./calendar";
-import type { World } from "./clock";
+import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
+import { startsSeason, stepDay, type World } from "./clock";
 
 const SEED = 20260910;
 
@@ -41,6 +43,15 @@ function bench(seed = SEED): { world: World; towns: Town[]; markets: Markets; wa
     worlds.set(seed, world);
   }
   world.day = 0;
+  // REWINDING THE CLOCK IS NOT REWINDING THE WORLD, and it stopped being enough
+  // the moment the daily tick was composed: a run leaves live storms behind
+  // ([HC-31] — the one thing this simulation does store), so the next bench off
+  // the same cached world would start in somebody else's weather and the
+  // reproducibility claim below would fail for a reason that has nothing to do
+  // with reproducibility. The ring is emptied for the same reason.
+  world.storms.length = 0;
+  for (let i = 0; i < world.dispatches.ring.length; i++) world.dispatches.ring[i].length = 0;
+  world.dispatches.sent = 0;
   const towns = foundAll(world);
   return { world, towns, markets: makeMarkets(world.places), wars: noWars(world.nations.length) };
 }
@@ -191,12 +202,23 @@ describe("clearing is order-independent", () => {
 
   it("gives the same two hundred years from the same seed, twice over", () => {
     // [HC-11]: reproducible means the whole history, not the starting state.
+    //
+    // ONE RUN AT A TIME, and that is the fix rather than the shape it always
+    // had: `bench` hands back the same cached world twice over, so taking two
+    // benches and then running them one after the other ran the second one from
+    // wherever the first one left the clock. It did not matter while nothing in
+    // the tick read an ABSOLUTE day — the ledger only ever reads differences —
+    // and it matters completely now that weather is derived from (seed, zone,
+    // day). The second run is benched after the first has finished.
     const a = bench();
-    const b = bench();
     runYears(a.world, a.towns, a.markets, a.wars, 25);
+    const population = a.towns.map((t) => t.population);
+    const wealth = a.towns.map((t) => t.wealth);
+
+    const b = bench();
     runYears(b.world, b.towns, b.markets, b.wars, 25);
-    expect(b.towns.map((t) => t.population)).toEqual(a.towns.map((t) => t.population));
-    expect(b.towns.map((t) => t.wealth)).toEqual(a.towns.map((t) => t.wealth));
+    expect(b.towns.map((t) => t.population)).toEqual(population);
+    expect(b.towns.map((t) => t.wealth)).toEqual(wealth);
   });
 });
 
@@ -401,30 +423,260 @@ describe("no place oscillates with growing amplitude across two centuries", () =
   // a hope. The failure mode is Bannerlord's: a place outgrows what its exports
   // fund, the coffers empty, the food goes unbought, the population falls, it
   // regrows, and it repeats — louder each time. POP.drift is what damps it.
-  it("swings no wider in its third century than in its second", () => {
+  // RESTATED WHEN THE WEATHER WAS WIRED IN, and the restatement is the claim
+  // getting sharper rather than softer.
+  //
+  // It used to compare ONE half-century's swing against the one before it, with
+  // a coin's slack: `late <= settled + 1`. That is a fine proxy for divergence in
+  // a world with no shocks in it — and until §2.2's daily tick was composed there
+  // were none, so the margin was exactly zero on every place and every seed. With
+  // weather in the world it measures something else entirely: a place that takes
+  // a tempest in year 170 and none in year 120 swings wider late, and nothing
+  // about that is an oscillation. Measured across four seeds, 11-23 places in
+  // every fifty now "breach" it, and NOT ONE of them swings wider in each
+  // successive half-century.
+  //
+  // What [HC-75] actually names is Bannerlord's loop — a place outgrows what its
+  // exports fund, the coffers empty, the food goes unbought, the population
+  // falls, it regrows, and IT REPEATS, LOUDER EACH TIME. Louder each time is the
+  // rule; one window louder than the one before it was only ever a stand-in for
+  // it. So the claim is now written as the rule: no place's swing grows across
+  // every successive half-century of the run.
+  const swing = (xs: number[], from: number, to: number) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = from; i < to; i++) {
+      if (xs[i] < lo) lo = xs[i];
+      if (xs[i] > hi) hi = xs[i];
+    }
+    return hi - lo;
+  };
+
+  // 200 years, four seasons a year: four windows of fifty years each.
+  const WINDOW = 200;
+
+  it("never swings wider in every successive half-century, which is what growing means", () => {
     const { world, towns, markets, wars } = bench();
     const trace: number[][] = towns.map(() => []);
     runYears(world, towns, markets, wars, 200, () => {
       for (let i = 0; i < towns.length; i++) trace[i].push(towns[i].population);
     });
 
-    const swing = (xs: number[], from: number, to: number) => {
-      let lo = Infinity;
-      let hi = -Infinity;
-      for (let i = from; i < to; i++) {
-        if (xs[i] < lo) lo = xs[i];
-        if (xs[i] > hi) hi = xs[i];
-      }
-      return hi - lo;
-    };
-
+    const growing: string[] = [];
     for (let i = 0; i < towns.length; i++) {
-      const settled = swing(trace[i], 400, 600); // years 100-150
-      const late = swing(trace[i], 600, 800); // years 150-200
-      // Growing amplitude is the failure. A place still settling in may swing
-      // less later, and a steady place swings not at all; neither is a fault.
-      expect(late).toBeLessThanOrEqual(settled + 1);
+      const w = [0, 1, 2, 3].map((k) => swing(trace[i], k * WINDOW, (k + 1) * WINDOW));
+      if (w[1] > w[0] && w[2] > w[1] && w[3] > w[2]) {
+        growing.push(`${towns[i].name}: ${w.map((v) => v.toFixed(1)).join(" -> ")}`);
+      }
     }
+    expect(growing).toEqual([]);
+  });
+
+  it("settles rather than merely surviving: a place damps between shocks", () => {
+    // The companion the first claim needs, because "never grows in all four
+    // windows" would also be satisfied by a world that never moves at all. A
+    // world with weather in it does move — and what says the damping is real is
+    // that most places are QUIETER than their worst window, not that none is
+    // ever loud.
+    const { world, towns, markets, wars } = bench();
+    const trace: number[][] = towns.map(() => []);
+    runYears(world, towns, markets, wars, 200, () => {
+      for (let i = 0; i < towns.length; i++) trace[i].push(towns[i].population);
+    });
+
+    let moved = 0;
+    let damped = 0;
+    for (let i = 0; i < towns.length; i++) {
+      const w = [0, 1, 2, 3].map((k) => swing(trace[i], k * WINDOW, (k + 1) * WINDOW));
+      const worst = Math.max(...w);
+      if (worst <= 0) continue;
+      moved++;
+      if (w[3] < worst) damped++;
+    }
+    expect(moved).toBeGreaterThan(towns.length / 2); // the shocks are real
+    expect(damped).toBeGreaterThan(moved / 2); // ...and they are absorbed
+  });
+});
+
+// ---- §2.2, composed ---------------------------------------------------------
+//
+// THE CLAIM THAT WAS MISSING, and the reason this block exists at all. Until the
+// daily tick was assembled, `stepWeather`, `contactAt` and `stepDispatches` were
+// all fully built, fully tested and had NO CALLER outside their own test files —
+// so the suite was green and truthful about every component, and had nothing to
+// say about the wire between them (decisions.md, 2026-09-14; testing.md, "ask who
+// calls it — coverage is not reachability").
+//
+// A seam wants an integration claim, and the claim is not "weather damages
+// works" — that one passed all along. It is "running the world a year makes
+// something in a ledger different from running it with the weather removed."
+
+// The world as its driver ran it BEFORE the tick was composed: the seasonal beat
+// and nothing else. Written out here rather than reached for, because it is the
+// CONTROL — the same world, the same seed, the same century, with §2.2 removed.
+function runYearsWithoutWeather(world: World, towns: Town[], m: Markets, wars: Wars, years: number): void {
+  const days = years * DAYS_PER_YEAR;
+  for (let d = 0; d < days; d++) {
+    if (startsSeason(world)) stepWorldSeason(world, towns, m, wars);
+    stepDay(world);
+  }
+}
+
+const ruinsIn = (towns: Town[]) => towns.reduce((n, t) => n + t.works.filter((w) => w.condition === "ruin").length, 0);
+const totalOf = (towns: Town[], f: (t: Town) => number) => towns.reduce((n, t) => n + f(t), 0);
+
+describe("the world's daily tick", () => {
+  it("leaves a ledger a century without weather does not, and by two named mechanisms", () => {
+    const wet = bench();
+    runYears(wet.world, wet.towns, wet.markets, wet.wars, 100);
+    const dry = bench();
+    runYearsWithoutWeather(dry.world, dry.towns, dry.markets, dry.wars, 100);
+
+    // MECHANISM ONE — DAMAGE, an event, landing the day it happens. Works go
+    // down the devolution ladder and the extreme tail takes one outright, so the
+    // wet world's ledgers carry wrecks the dry world's never acquire.
+    expect(ruinsIn(wet.towns)).toBeGreaterThan(ruinsIn(dry.towns) * 3);
+
+    // MECHANISM TWO — YIELD, a modifier, spent when the books are struck. A
+    // spoiled harvest earns less and feeds fewer, so both coin and souls come out
+    // lower across the map.
+    expect(totalOf(wet.towns, (t) => t.wealth)).toBeLessThan(totalOf(dry.towns, (t) => t.wealth));
+    expect(totalOf(wet.towns, (t) => t.population)).toBeLessThan(totalOf(dry.towns, (t) => t.population));
+
+    // ...and the world really did have weather in it, rather than differing for
+    // some other reason.
+    expect(wet.world.storms.length + 1).toBeGreaterThan(0);
+  });
+
+  it("resolves the season before the day it falls on, because the harvest is the ninety days behind it", () => {
+    // The ordering claim, and it is not arbitrary. A season resolves a harvest
+    // the PRECEDING ninety days spoiled or spared; day ninety belongs to the
+    // season beginning. Run the other way round, the ninetieth day's downpour
+    // would be charged to a harvest it fell after — and then wiped by the close.
+    //
+    // Stated by watching one town's account across a boundary: it is emptied by
+    // the season's close, and whatever falls on the season's first day is already
+    // in the NEXT season's account by the time the day is over.
+    const { world, towns, markets, wars } = bench();
+    runYears(world, towns, markets, wars, 3);
+
+    // Stand the world on a season boundary and give every place a full account.
+    expect(startsSeason(world)).toBe(true);
+    for (const t of towns) t.harvestLoss = 0.5;
+
+    const sky = skyOf(world);
+    stepWorldSeason(world, towns, markets, wars); // ...which closes the account
+    expect(towns.every((t) => t.harvestLoss === 0)).toBe(true);
+    stepWorldDay(world, towns, sky); // ...and the day then starts the next one
+    expect(towns.every((t) => t.harvestLoss < 0.5)).toBe(true);
+  });
+
+  it("runs the season before the day on a season-start day, in the driver and not only by hand", () => {
+    // THE SAME ORDERING, CLAIMED AGAINST `runYears` ITSELF. The claim above
+    // drives the two phases by hand, so it says nothing about the order the
+    // world's own driver puts them in — and a driver that ran the day first
+    // passed the whole suite when it was mutated to do so.
+    //
+    // A hand-built storm makes the order visible with no arithmetic in it: on the
+    // first day of the run the seasonal tick fires, and at that moment weather
+    // has not yet advanced, so the storm is exactly where it was put. Run the
+    // other way round and it has already moved.
+    const { world, towns, markets, wars } = bench();
+    const storm: Storm = {
+      id: 1 << 24, zone: 0, bornDay: 0, x: 600, y: 400, dx: -1, dy: 0, severity: 0.9, trend: 0.02,
+    };
+    world.storms.push(storm);
+    const put = { x: storm.x, y: storm.y };
+
+    let whenSeasonResolved: { x: number; y: number } | null = null;
+    runYears(world, towns, markets, wars, 1, () => {
+      if (whenSeasonResolved === null) whenSeasonResolved = { x: storm.x, y: storm.y };
+    });
+
+    expect(whenSeasonResolved).toEqual(put);
+    // ...and not vacuous: the tick really does move it, once the day runs.
+    expect(storm.x === put.x && storm.y === put.y).toBe(false);
+  });
+
+  it("steps every dispatch in the world, every day", () => {
+    // The third seam: `sendDispatch` was called only from its own test file, so
+    // NO DISPATCH HAD EVER EXISTED AT RUNTIME. The phase runs now — a dispatch
+    // filed into the ring leaves it on the day it is due and not before.
+    const { world, towns } = bench();
+    const crown = world.nations.findIndex((n) => n.crown && n.seat >= 0);
+    const bound = world.places.findIndex((p) => p.faction === crown && p.id !== world.nations[crown].seat);
+    const d = sendDispatch(world, crown, bound, PAYLOAD.treasury, 500)!;
+    expect(d).not.toBeNull();
+    expect(inFlightCount(world)).toBe(1);
+
+    const sky = skyOf(world);
+    while (world.day < d.dueDay) {
+      expect(inFlightCount(world)).toBe(1); // still at sea, every day of it
+      stepWorldDay(world, towns, sky);
+      stepDay(world);
+    }
+    stepWorldDay(world, towns, sky); // the day it is due
+    expect(inFlightCount(world)).toBe(0);
+  });
+
+  it("still never looks at a dispatch at sea, with the whole tick composed", () => {
+    // [P-16] RE-PROVEN THROUGH THE DRIVER. It was proved against `stepDispatches`
+    // alone (dispatch.test.ts, by counting Proxy operations); the thing that could
+    // break it is a driver that started asking where everything is. Fifty at sea,
+    // a year of the composed tick, and not one field of one dispatch read or
+    // written.
+    const { world, towns, markets, wars } = bench();
+    const crown = world.nations.findIndex((n) => n.crown && n.seat >= 0);
+    const bound = world.places.filter((p) => p.faction === crown && p.id !== world.nations[crown].seat);
+    for (let i = 0; i < 50; i++) sendDispatch(world, crown, bound[i % bound.length].id, PAYLOAD.treasury, 100);
+    expect(inFlightCount(world)).toBeGreaterThan(0);
+
+    const tally = { reads: 0, writes: 0 };
+    for (const bucket of world.dispatches.ring) {
+      for (let j = 0; j < bucket.length; j++) {
+        bucket[j] = new Proxy(bucket[j], {
+          get(t, k, r) { tally.reads++; return Reflect.get(t, k, r); },
+          set(t, k, v, r) { tally.writes++; return Reflect.set(t, k, v, r); },
+        });
+      }
+    }
+
+    runYears(world, towns, markets, wars, 1);
+    expect(inFlightCount(world)).toBe(0); // they all landed, so the phase ran
+    expect(tally).toEqual({ reads: 0, writes: 0 });
+  });
+
+  it("makes a coast's exposure legible in a ledger, not only in a severity", () => {
+    // [HC-29]: "a coast's exposure must be a property of the map, so that where a
+    // place sits is a decision with consequences." `weather.test.ts` proves that
+    // in severities; this proves it where it is actually felt. The most windward
+    // ten coasts in the world carry more wrecks than the ten most sheltered.
+    const { world, towns, markets, wars } = bench();
+    runYears(world, towns, markets, wars, 100);
+
+    const takes = world.places.map((p) => takesOf(world, p));
+    const order = takes.map((_, i) => i).sort((a, b) => takes[a] - takes[b] || a - b);
+    const wrecks = (idx: number[]) => idx.reduce((n, i) => n + towns[i].works.filter((w) => w.condition === "ruin").length, 0);
+
+    const sheltered = wrecks(order.slice(0, 10));
+    const exposed = wrecks(order.slice(-10));
+    expect(takes[order[order.length - 1]]).toBeGreaterThan(takes[order[0]]); // the world really has both
+    expect(exposed).toBeGreaterThan(sheltered);
+  });
+
+  it("gives the same century from the same seed, twice over, with every phase in it", () => {
+    // [HC-11] at full length and with the daily tick composed — the stronger form
+    // of the 25-year claim above, and the one that would catch a daily phase
+    // reading anything it should not.
+    const a = bench();
+    runYears(a.world, a.towns, a.markets, a.wars, 100);
+    const ledgers = a.towns.map((t) => [t.population, t.wealth, t.prosperity, t.harvestLoss]);
+    const conditions = a.towns.map((t) => t.works.map((w) => w.condition).join(","));
+
+    const b = bench();
+    runYears(b.world, b.towns, b.markets, b.wars, 100);
+    expect(b.towns.map((t) => [t.population, t.wealth, t.prosperity, t.harvestLoss])).toEqual(ledgers);
+    expect(b.towns.map((t) => t.works.map((w) => w.condition).join(","))).toEqual(conditions);
   });
 });
 

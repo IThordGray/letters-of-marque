@@ -40,9 +40,10 @@
 //
 // WHAT IS NOT HERE, deliberately: the town ledger. §7.4's bands say what a
 // severity is WORTH, and this file computes that — but applying it to a place is
-// a [HC-72] row that a later ticket wires, and [HC-6] splits it in two when it
-// does: damage is an EVENT and lands the day it happens, yield is a MODIFIER
-// that accumulates into the season. Nothing here touches a town.
+// a [HC-72] row, and [HC-6] splits it in two: damage is an EVENT and lands the
+// day it happens, yield is a MODIFIER that accumulates into the season. Nothing
+// here touches a town; `market.ts`'s daily tick is the wire, and the ledger
+// takes the two rows in its own vocabulary (`takeWeather`).
 
 import { CALENDAR, DAYS_PER_YEAR, seasonOfDay, type Season } from "./calendar";
 import type { World } from "./clock";
@@ -393,7 +394,11 @@ function alive(w: World, s: Storm): boolean {
 // along its track and its severity moves along the spectrum — building or
 // spending itself. Systems form and dissipate per the climate's rules."
 //
-// Call it after `stepDay`, which is what makes `w.day` the day being simulated.
+// THE INVARIANT IS `w.day`, NOT A CALL ORDER: whatever else a driver does, the
+// world's day must already BE the day being simulated when this runs. `runYears`
+// holds that by simulating day `d` with `world.day === d` and stepping the clock
+// at the foot of the loop, so the whole tick — seasonal and daily — agrees on
+// which day it is standing on.
 export function stepWeather(w: World): void {
   for (let i = 0; i < w.storms.length; i++) advance(w, w.storms[i]);
   // Struck off in place: no allocation in the daily tick ([P-24]) and the
@@ -418,8 +423,11 @@ export function stepWeather(w: World): void {
 // event whose footprint covers that position". The severity of the SEA at a
 // position — what a ship in the open feels, and the raw number a coast then
 // takes its own share of.
-export function severityAt(w: World, x: number, y: number): number {
-  let worst = ambientAt(w, zoneAt(w.zones, x, y), w.day);
+// The ambient half arrives as an argument, because the daily tick reads it once
+// per ZONE and not once per place ([P-18]) — see `Sky` below. There is still one
+// definition of "the greater of the two"; this is it.
+export function severityWith(w: World, x: number, y: number, ambient: number): number {
+  let worst = ambient;
   for (let i = 0; i < w.storms.length; i++) {
     const s = w.storms[i];
     const v = s.severity * coverageOf(s, x, y);
@@ -427,6 +435,9 @@ export function severityAt(w: World, x: number, y: number): number {
   }
   return worst;
 }
+
+export const severityAt = (w: World, x: number, y: number): number =>
+  severityWith(w, x, y, ambientAt(w, zoneAt(w.zones, x, y), w.day));
 
 export const EXPOSURE = {
   lee: 0.65, // what a coast in the lee of its own island still takes
@@ -451,10 +462,59 @@ export function takesOf(w: World, p: Place): number {
   return (EXPOSURE.lee + (1 - EXPOSURE.lee) * windward) * (1 - EXPOSURE.shelterRelief * p.shelter);
 }
 
+// ---- What the daily tick may hoist, and nothing else ([P-18]) --------------
+//
+// [P-2] is complexity x TICK RATE, and §2.2 phase 2 is the highest-rate loop in
+// the game: fifty places, every one of seventy-three thousand days. Two of the
+// numbers it reads per place per day do not vary per place per day at all:
+//
+//   · `takes` — how much of the sea's weather a coast is owed. A pure function
+//     of the place's bearing and its zone's regime, and climate is IMMUTABLE
+//     ([HC-27]) while positions never move. It is therefore fixed FOR THE RUN,
+//     and `takesOf` runs `stormTrack` three times and two reductions to say so.
+//   · `ambient` — the zone's own weather today. Per ZONE per day, and there are
+//     four to eight zones against fifty places, so computing it per place pays
+//     the same fbm six times over.
+//
+// This is [P-18] (an invariant computed once per scope) and NOT the memoising
+// §5 calls a false economy: there is no key, no lookup and no staleness — the
+// scope is the run for one array and the day for the other, and both are
+// refilled from the same pure functions everything else reads. It is also why
+// this is a scratch the DRIVER owns rather than world state: nothing here is
+// stored ([HC-30]), it is only held still for the length of a loop.
+export interface Sky {
+  takes: Float64Array; // per place, in place order — fixed for the whole run
+  ambient: Float64Array; // per zone — refilled once a day
+}
+
+// [P-30]: a typed array cannot go holey, and [P-36] says reach for one where the
+// buffer is fixed-size and numeric. Built once, before the first day.
+export function skyOf(w: World): Sky {
+  const takes = new Float64Array(w.places.length);
+  for (let i = 0; i < w.places.length; i++) takes[i] = takesOf(w, w.places[i]);
+  return { takes, ambient: new Float64Array(w.zones.length) };
+}
+
+// The day's ambient, once per zone. Call it on the day being simulated, before
+// anything reads a contact.
+export function readSky(w: World, sky: Sky): void {
+  for (let z = 0; z < w.zones.length; z++) sky.ambient[z] = ambientAt(w, z, w.day);
+}
+
 // The severity felt AT A PLACE, on the day the world is standing on. This is the
 // sampling [HC-32] describes and the only number an effect is ever allowed to
 // read.
-export const feltAt = (w: World, p: Place): number => severityAt(w, p.x, p.y) * takesOf(w, p);
+//
+// ONE DEFINITION, two ways in ([P-47]). Handed a `Sky` it reads the two hoisted
+// numbers; handed none it computes them, which is what every reader outside the
+// daily loop wants. A place's stored `zone` IS `zoneAt(p.x, p.y)` — the
+// generator writes it from that call and a claim in `places.test.ts` holds it
+// there — so the two paths cannot disagree.
+export function feltAt(w: World, p: Place, sky: Sky | null = null): number {
+  const ambient = sky === null ? ambientAt(w, zoneAt(w.zones, p.x, p.y), w.day) : sky.ambient[p.zone];
+  const takes = sky === null ? takesOf(w, p) : sky.takes[p.id];
+  return severityWith(w, p.x, p.y, ambient) * takes;
+}
 
 // ---- §7.4 The bands — what severity actually does --------------------------
 //
@@ -565,9 +625,22 @@ export function effectOf(severity: number, roll: number): Weather {
 // [P-14]: most days are Fair and warrant nothing at all. A daily loop should ask
 // `bandAt(feltAt(...)) > 0` and only call this when the answer is yes.
 const CONTACT_SLOT = 1 << 16; // disjoint from the ambient field's ids on this channel
+const PICK_SLOT = 1 << 17; // ...and disjoint from the contact's own roll
 
-export const contactAt = (w: World, p: Place): Weather =>
-  effectOf(feltAt(w, p), rollOf(w.seed, CHANNEL.weather, CONTACT_SLOT + p.id, w.day));
+export const contactAt = (w: World, p: Place, sky: Sky | null = null): Weather =>
+  effectOf(feltAt(w, p, sky), rollOf(w.seed, CHANNEL.weather, CONTACT_SLOT + p.id, w.day));
+
+// A SECOND derived roll on the same contact, for the one thing the sampled
+// severity cannot answer: which work the sea found. It is deliberately not the
+// contact's own roll — reusing that number would tie *which* work is taken to
+// *whether* one is, and a storm that always took the same shed on the same kind
+// of day is not random and singular ([HC-35]).
+//
+// It is not an input to `effectOf` and never can be: that signature is [HC-33]
+// stated as a type, and a roll for choosing among works says nothing about
+// whether a storm was overhead.
+export const pickAt = (w: World, p: Place): number =>
+  rollOf(w.seed, CHANNEL.weather, PICK_SLOT + p.id, w.day);
 
 // ---- Reading it back -------------------------------------------------------
 

@@ -1,4 +1,6 @@
-// The clearing — where fifty towns' surpluses and shortfalls meet.
+// The clearing — where fifty towns' surpluses and shortfalls meet — and, at the
+// foot of the file, THE WORLD'S DRIVER: §2.2's daily tick and §2.3's seasonal
+// one, which is where every other system is actually called from.
 //
 // This is S7's engine and the last core system. The town knows what it made and
 // what it lacks (../town/trade.ts); this file is the only thing that knows who
@@ -26,11 +28,13 @@
 import type { Town } from "../town/types";
 import { CLASS_COUNT } from "../town/trade";
 import { TRADE } from "../town/constants";
-import { derive, produceSeason, settleSeason } from "../town/sim";
+import { closeHarvest, derive, produceSeason, settleSeason, takeWeather } from "../town/sim";
 import { governorTurn, type Season as TownSeason } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { DAYS_PER_YEAR } from "./calendar";
 import { startsSeason, stepDay, type World } from "./clock";
+import { stepDispatches } from "./dispatch";
+import { bandAt, contactAt, feltAt, pickAt, readSky, skyOf, stepWeather, type Sky } from "./weather";
 import { DAY_RUN_NM, distanceNm } from "./shape";
 import type { Place } from "./places";
 
@@ -331,13 +335,80 @@ export function stepWorldSeason(world: World, towns: Town[], m: Markets, wars: W
   for (let i = 0; i < towns.length; i++) {
     const grew = stepFootprint(towns[i]);
     seasons.push({ day, built: governorTurn(towns[i], day), grew });
+    // ...and the books are struck, so the weather's account against THIS
+    // harvest is closed with them ([HC-6]). It is closed here rather than in
+    // phase 1 or 3 because every one of the four phases above has to read the
+    // same harvest: a governor who advised on an unspoiled crop the settlement
+    // before him had already been paid for would be reading two different
+    // seasons at once.
+    closeHarvest(towns[i]);
   }
   // 5 · RULE — nations acting is KAN-101 and is deliberately not here.
   return { day, seasons };
 }
 
+// ---- The daily tick --------------------------------------------------------
+//
+// §2.2's four phases, IN ORDER, every simulated day. They were specced, both
+// ends of each were built and tested, and until now nothing assembled them
+// anywhere except inside `weather.test.ts` — so no storm had ever reached a
+// ledger and no dispatch had ever existed at runtime (decisions.md, 2026-09-14).
+//
+//   1. WEATHER ADVANCES       every live event moves along its track and its
+//                             severity walks the spectrum; events form and
+//                             dissipate per the climate's rules.
+//   2. CONTACT RESOLVES       severity is sampled at each place, at its position,
+//                             now — and [HC-6] splits what that is worth in two.
+//   3. OBJECTS MOVE           and a dispatch does not, because it has no present
+//                             ([P-16]): its course was settled the day it sailed.
+//   4. INTERCEPTION RESOLVES  nothing in this milestone — there is no player to
+//                             take anything — but the PHASE EXISTS, so that
+//                             adding it later reorders nothing. Both 3 and 4 are
+//                             `stepDispatches`, in that order, inside it.
+//
+// [P-2] is complexity x TICK RATE and this is the highest-rate loop in the game:
+// it runs 360 times for every turn of the seasonal one. So the hoistable numbers
+// are hoisted into `Sky` ([P-18]) and nothing is allocated here at all ([P-24]).
+export function stepWorldDay(world: World, towns: Town[], sky: Sky): void {
+  // 1 · WEATHER ADVANCES
+  stepWeather(world);
+
+  // 2 · CONTACT RESOLVES. The day's ambient, once per zone rather than once per
+  // place, and then one sample per place — [HC-32]'s "at the place and the
+  // moment of contact, and nowhere else".
+  readSky(world, sky);
+  for (let i = 0; i < towns.length; i++) {
+    const p = world.places[i];
+    // [P-14] IN ITS ONLY AVAILABLE FORM HERE. Every place has to be SAMPLED —
+    // that is the work, and a place cannot be taken out of the list because its
+    // weather is fair today and foul tomorrow. What is skipped is the effect,
+    // which on most days is nothing at all: there is no object built, no roll
+    // drawn and no ledger touched for an ordinary day's weather.
+    if (bandAt(feltAt(world, p, sky)) === 0) continue;
+    takeWeather(towns[i], world.day, contactAt(world, p, sky), pickAt(world, p));
+  }
+
+  // 3 · OBJECTS MOVE · 4 · INTERCEPTION RESOLVES
+  //
+  // Nothing sends a dispatch yet — nations acting is KAN-101 — so nothing is
+  // ever due and this reads one bucket's length and touches nothing ([P-15]).
+  // Crediting an arrival belongs with the crown that sent it and is deliberately
+  // not invented here; what this ticket owes is that the PHASE runs on the right
+  // day, in the right order, every day.
+  stepDispatches(world);
+}
+
 // Run the world forward, day by day, clearing on every seasonal boundary. The
 // day is the atom ([HC-2], [HC-4]); the season is what the economy beats on.
+//
+// THE SEASONAL PHASES RUN BEFORE THE DAILY ONES ON A SEASON-START DAY, and the
+// order is not arbitrary. The season resolves a harvest that the PRECEDING
+// ninety days spoiled or spared; day 90 belongs to the season beginning, not to
+// the one being closed. Run the other way round, every ninetieth day's downpour
+// would be charged to a harvest it fell after — and `closeHarvest` would then
+// wipe it before the season it actually belongs to could count it. So: strike the
+// books, close the weather's account against them, and only then let the new
+// day's weather begin filling the next one.
 export function runYears(
   world: World,
   towns: Town[],
@@ -347,11 +418,13 @@ export function runYears(
   onSeason?: (s: WorldSeason) => void,
 ): void {
   const days = years * DAYS_PER_YEAR;
+  const sky = skyOf(world);
   for (let d = 0; d < days; d++) {
     if (startsSeason(world)) {
       const s = stepWorldSeason(world, towns, m, wars);
       if (onSeason) onSeason(s);
     }
+    stepWorldDay(world, towns, sky);
     stepDay(world);
   }
 }

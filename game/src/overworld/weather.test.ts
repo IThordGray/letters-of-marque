@@ -21,7 +21,7 @@ import { generateWorld } from "./worldgen";
 import {
   AMBIENT, BANDS, DAMAGE, EXPOSURE, STORM,
   ambientAt, bandAt, bandIdAt, contactAt, coverageOf, describeStorm, effectOf,
-  feltAt, passageDays, prevailingAt, radiusOf, severityAt, stepWeather,
+  feltAt, passageDays, pickAt, prevailingAt, radiusOf, readSky, severityAt, skyOf, stepWeather,
   takesOf, windAt, type Storm,
 } from "./weather";
 
@@ -646,6 +646,63 @@ describe("the rates read as a coast a person could live on", () => {
 });
 
 // ---- No place stores weather ----------------------------------------------
+
+// ---- What the daily tick hoists ([P-18]) -----------------------------------
+
+describe("the sky a daily loop holds still answers exactly what the long way round answers", () => {
+  // [P-47]: one definition of "what this place felt", with two ways in. The
+  // hoisted path reads a coast's share out of an array filled once and the
+  // zone's ambient out of one refilled once a day; the long path computes both.
+  // If those ever disagreed, the world the tick simulates would not be the world
+  // every other reader sees — and nothing else in the suite would notice.
+
+  it("agrees with it for every place, on every day of a year", () => {
+    const w = generateWorld(SEED);
+    const sky = skyOf(w);
+    for (let d = 0; d < DAYS_PER_YEAR; d++) {
+      stepDay(w);
+      stepWeather(w);
+      readSky(w, sky);
+      for (const p of w.places) expect(feltAt(w, p, sky)).toBe(feltAt(w, p));
+    }
+  });
+
+  it("holds a coast's share still because the map holds it still", () => {
+    // The precondition the hoist rests on, asserted rather than assumed: climate
+    // is immutable ([HC-27]) and positions never move, so `takesOf` is a fact
+    // about the world and not about the day.
+    const w = generateWorld(SEED);
+    const first = w.places.map((p) => takesOf(w, p));
+    for (let d = 0; d < DAYS_PER_YEAR * 3; d += 17) {
+      w.day = d;
+      stepWeather(w);
+      expect(w.places.map((p) => takesOf(w, p))).toEqual(first);
+    }
+  });
+
+  it("draws the work the sea takes from a different stream than whether it takes one", () => {
+    // Two rolls on one contact, and they must be independent: reusing the
+    // contact's own number would tie WHICH work goes down to WHETHER one does,
+    // and the same shed would go every time the same kind of day came round.
+    const w = generateWorld(SEED);
+    let same = 0;
+    for (let d = 0; d < 400; d++) {
+      w.day = d;
+      for (const p of w.places) {
+        if (pickAt(w, p) === contactAt(w, p).severity) same++;
+      }
+    }
+    expect(same).toBe(0);
+
+    // ...and it is a roll, not a constant: it moves with the place and the day.
+    const spread = new Set<number>();
+    for (let d = 0; d < 50; d++) {
+      w.day = d;
+      for (const p of w.places.slice(0, 5)) spread.add(pickAt(w, p));
+    }
+    expect(spread.size).toBe(250);
+  });
+});
 
 describe("weather costs a place no stored field, however long the world runs", () => {
   it("leaves every place with exactly the fields it was generated with", () => {

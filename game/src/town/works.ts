@@ -307,6 +307,81 @@ export const repairCost = (kind: WorkKind): number => CATALOGUE[kind].cost * DEC
 export const mendable = (town: Town, w: Work): boolean =>
   w.condition === "decayed" && workableNow(town, w);
 
+// ---- The weather coming down the same ladder --------------------------------
+//
+// [HC-6] DAMAGE IS AN EVENT AND APPLIES THE DAY IT HAPPENS. It is the other half
+// of the weather's two output paths, and the two must not be mixed: the yield a
+// storm spoils waits for the season's books, the shed it knocks down does not.
+//
+// [HC-34] Damage moves works down the EXISTING ladder, one grade at a time, and
+//         it never skips to ruin. So a drop stops at `decayed`: the only thing
+//         that ever writes `ruin` from the weather is the extreme tail below,
+//         which is capped at one work. Ordinary neglect still carries a decayed
+//         work the last rung, on the clock `devolve` keeps.
+// [HC-35] The extreme tail destroys exactly ONE work PER CONTACT, never a sweep.
+//         Razing is deliberate and wholesale; the storm is random and singular —
+//         a town can lose its quay to the sea, it cannot lose its town to it.
+//
+// KAN-108 made the ladder two-way, and that interaction is the point rather than
+// a side effect: a work the weather knocks down is at worst `decayed`, so it has
+// a repair path and a governor who can pay for it. A work the sea DESTROYS is a
+// `ruin` and `mendable` refuses it. That is the whole difference between damage
+// and destruction, stated in the two conditions rather than in prose.
+
+// One rung down, and the idle clock restarts at the new grade — it has been idle
+// since the storm, not since whenever it last wanted hands.
+function dropOne(w: Work, day: number): void {
+  w.condition = w.condition === "working" ? "idle" : "decayed";
+  w.idleSinceDay = day;
+}
+
+// [HC-72]'s "damage events on named works" row. WHICH work is the one question
+// the sampled severity cannot answer, so it is answered by a derived roll and a
+// fixed walk: the sea takes what it finds, and then what stands next to it on
+// the ledger. Works are appended and never spliced, so the ledger's order is id
+// order — a total order with an explicit direction ([P-10]), and one that cannot
+// depend on how the world walked its places.
+//
+// Ruins are skipped because there is nothing left to take, and a decayed work is
+// skipped by a DROP for the same reason: the rung below it is `ruin`, and the
+// weather does not write that except through the tail.
+export function damageWorks(town: Town, dropped: number, destroyed: number, pick: number, day: number): void {
+  const n = town.works.length;
+  if (n === 0) return;
+  let at = Math.floor(pick * n);
+  if (at >= n) at = n - 1; // a roll is [0, 1), but never read past `length` ([P-31])
+  // [HC-35], as a clamp rather than a trust — and in ONE place, so mutating it
+  // actually sweeps. It was written twice at first, here and again in the loop
+  // body, and a rule stated twice is a rule no test can break ([P-1]).
+  let toDestroy = destroyed > 0 ? 1 : 0;
+  let toDrop = dropped;
+  for (let step = 0; step < n && (toDestroy > 0 || toDrop > 0); step++) {
+    const w = town.works[(at + step) % n];
+    if (w.condition === "ruin") continue;
+    if (toDestroy > 0) {
+      w.condition = "ruin";
+      w.idleSinceDay = day;
+      toDestroy--;
+      continue;
+    }
+    if (w.condition === "decayed") continue;
+    dropOne(w, day);
+    toDrop--;
+  }
+}
+
+// ---- What came off the ground this season ----------------------------------
+
+// [HC-6]'s MODIFIER half, as ONE number with ONE definition ([P-47]). Everything
+// that counts a season's harvest — the food a place grew, the cargo it sends to
+// the quay, the mouths it can therefore feed — reads the share here, so none of
+// them can be scaled while another is not.
+//
+// At `harvestLoss` of nothing this is exactly 1, and multiplying a double by 1 is
+// exact, so a place no weather has touched books the identical harvest it booked
+// before this existed.
+export const harvestShare = (town: Town): number => 1 - town.harvestLoss;
+
 // The devolution ladder going DOWN: working -> idle -> decayed -> ruin.
 // Subsistence works never rot — people keep their own roofs on.
 function devolve(town: Town, day: number): void {

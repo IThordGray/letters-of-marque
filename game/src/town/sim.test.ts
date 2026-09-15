@@ -5,7 +5,7 @@
 // that nothing derived is kept. See spec/world-simulation.md §10.1.
 
 import { describe, it, expect } from "vitest";
-import { derive, stepSeason, stepSeasons, stepYears, makeTown, carryingCapacity, failureWord } from "./sim";
+import { derive, stepSeason, stepSeasons, stepYears, makeTown, carryingCapacity, failureWord, takeWeather } from "./sim";
 import { stepTownYears } from "./governor";
 import { raise, CATALOGUE } from "./works";
 import { mixedTown, bareTown } from "./fixtures";
@@ -307,6 +307,119 @@ describe("the three failure states are readings, never fields", () => {
     town.population = 0;
     town.works = [];
     expect(failureWord(town)).toBe("abandoned");
+  });
+});
+
+describe("the weather has two output paths, and they must not be mixed", () => {
+  // [HC-6], which is the whole design of this seam: DAMAGE is an event and lands
+  // the day it happens; YIELD is a modifier that accumulates into the current
+  // season's harvest and is spent ONCE, when the books are struck. A downpour
+  // does not reach into a ledger that has not been struck yet.
+  //
+  // Nothing here knows a storm exists. `takeWeather` is handed four numbers, and
+  // that is [HC-33] stated as a signature rather than as a rule to remember.
+
+  const fair = { yieldLoss: 0, wealthLoss: 0, worksDropped: 0, worksDestroyed: 0 };
+
+  it("takes the coin and the shed on the day, not at the season", () => {
+    const town = mixedTown({ population: 400, wealth: 4000 });
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
+    const purse = town.wealth;
+    const standing = town.works.filter((w) => w.condition === "working").length;
+
+    takeWeather(town, DAY0 + 1, { ...fair, wealthLoss: 0.1, worksDropped: 1 }, 0);
+
+    // TODAY. No season has turned and no phase has run.
+    expect(town.wealth).toBeLessThan(purse);
+    expect(town.works.filter((w) => w.condition === "working").length).toBe(standing - 1);
+  });
+
+  it("leaves the harvest alone until the books are struck", () => {
+    // The MODIFIER half, and the sentence it is written from. A downpour on day
+    // one of a season must not reach a ledger that is not struck until day
+    // ninety — so what changes today is the account, and not the harvest.
+    const town = mixedTown({ population: 400, wealth: 4000 });
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
+    const purse = town.wealth;
+
+    takeWeather(town, DAY0 + 1, { ...fair, yieldLoss: 0.4 }, 0);
+
+    expect(town.harvestLoss).toBeCloseTo(0.4, 12);
+    expect(town.wealth).toBe(purse); // not a coin, and not a grade
+    expect(town.works.every((w) => w.condition === "working")).toBe(true);
+  });
+
+  it("charges a spoiled harvest against the season that spoiled it, and once", () => {
+    // The oracle is written out rather than read back: a harvest short by a
+    // third earns a third less, so the season's gain is smaller. Two identical
+    // towns, one rained on for ninety days, one not.
+    const dry = mixedTown({ population: 400, wealth: 4000 });
+    const wet = mixedTown({ population: 400, wealth: 4000 });
+    for (const t of [dry, wet]) {
+      raise(t, "sawpit", DAY0);
+      raise(t, "caneField", DAY0);
+      stepSeason(t, DAY0);
+    }
+    expect(wet.wealth).toBe(dry.wealth);
+
+    for (let d = 1; d < 90; d++) takeWeather(wet, DAY0 + d, { ...fair, yieldLoss: 0.004 }, 0);
+    const spoiled = wet.harvestLoss;
+    expect(spoiled).toBeGreaterThan(0.3);
+
+    // The books are struck. Food, cargo and the mouths the place can keep all
+    // come off the same share.
+    expect(derive(wet).food).toBeCloseTo(derive(dry).food * (1 - spoiled), 9);
+    expect(carryingCapacity(wet)).toBeCloseTo(carryingCapacity(dry) * (1 - spoiled), 9);
+    expect(derive(wet).commerce.produced[1]).toBeCloseTo(derive(dry).commerce.produced[1] * (1 - spoiled), 9);
+
+    stepSeason(wet, DAY0 + SEASON);
+    stepSeason(dry, DAY0 + SEASON);
+    expect(wet.wealth).toBeLessThan(dry.wealth);
+    expect(wet.population).toBeLessThan(dry.population);
+  });
+
+  it("closes the weather's account with the books, so no downpour is charged twice", () => {
+    // "A modifier that carries across seasons is a bug." The season that resolves
+    // spends the account and puts it back to nothing; the next ninety days start
+    // from zero whatever fell in the last ninety.
+    const town = mixedTown({ population: 400, wealth: 4000 });
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
+
+    takeWeather(town, DAY0 + 1, { ...fair, yieldLoss: 0.5 }, 0);
+    expect(town.harvestLoss).toBe(0.5);
+
+    stepSeason(town, DAY0 + SEASON);
+    expect(town.harvestLoss).toBe(0);
+
+    // ...and the season after the storm books a full harvest again.
+    const clear = mixedTown({ population: town.population, wealth: town.wealth });
+    raise(clear, "sawpit", DAY0);
+    stepSeason(clear, DAY0);
+    expect(derive(town).food).toBeCloseTo(derive(clear).food, 9);
+  });
+
+  it("never takes more than all of it, however long it rains", () => {
+    const town = mixedTown({ population: 400, wealth: 4000 });
+    stepSeason(town, DAY0);
+    for (let d = 1; d < 90; d++) takeWeather(town, DAY0 + d, { ...fair, yieldLoss: 0.2 }, 0);
+    expect(town.harvestLoss).toBe(1);
+    expect(derive(town).food).toBe(0);
+    expect(carryingCapacity(town)).toBe(0);
+  });
+
+  it("changes nothing at all on a fair day", () => {
+    // The identity that lets the daily tick be composed without moving a single
+    // existing result: a share of nothing is nothing, and a double times one is
+    // the same double.
+    const town = mixedTown({ population: 400, wealth: 4000 });
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
+    const before = structuredClone(town);
+    takeWeather(town, DAY0 + 1, fair, 0.5);
+    expect(town).toEqual(before);
   });
 });
 
