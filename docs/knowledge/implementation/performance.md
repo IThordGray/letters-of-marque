@@ -118,6 +118,21 @@ how many sentry posts a grade could field lived inside the spawner's loop condit
 other reader could see it — which is *why* `[P-47]` was violated. Hoist the limit to where both
 sides can read it.
 
+**`[P-49]` A rate must name its denominator, in the type.** `wealthLoss: number // a share of coin on
+hand` was a wrong model wearing a label, and everything downstream reasoned about it correctly — from
+the wrong premise. Renamed `maintenanceShare` when the base changed, because **a field whose name
+states the wrong model will be reasoned about wrongly**, however good the comment beside it is. This
+is the same rule that renamed `founded` → `foundedDay` (KAN-107): a name that asserts a unit or a
+base is load-bearing, and a stale one is a lie the compiler cannot catch.
+
+> **And its companion: "derived" is not one thing — ask what it is derived FROM.** `Derived.upkeep`
+> reads as *"what the town costs itself to run"* and looks like the town's maintenance liability. It
+> is `population × upkeepPerHead` and nothing else: it prices **souls, not fabric**. Two towns with
+> the same population and wildly different works have identical `upkeep`. **A sentence in a doc
+> comment is not a specification of a field's axis** — read the arithmetic before building on it.
+> *(Found 2026-09-15: `upkeep` was the obvious base for a storm's maintenance bill and would have
+> made "more works means a bigger bill" literally unwritable as a test.)*
+
 ---
 
 ## §2. Doing less — where the wins actually are

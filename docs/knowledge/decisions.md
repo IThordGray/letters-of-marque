@@ -43,6 +43,33 @@ decline. Chosen over "the generator must guarantee fair food ground" because it 
 **by construction** rather than by the generator's luck, and leaves world generation free to site
 thin, marginal places.
 
+**What it measured once built (2026-09-15), and two problems it uncovered.** The bill is priced
+against `standingValue` — the standing works at what the catalogue charges to raise them. Over 200
+years across four seeds wealth went **121k → 438k**, against an **851k** no-weather control. The
+burden inverted as intended: the richest town now pays **0.17–0.36%** of its purse a year, a
+near-broke one **38%** of what little it has; before, both paid 18.56% *by construction*.
+
+- **Ruins went UP ~5–10%, and that is correct.** Towns can now afford to build, so there is more
+  fabric standing for a storm to find. A measurement moving the "wrong" way is not automatically a
+  regression.
+- **`Derived.upkeep` was rejected as the base**, and the reason generalises — see `[P-49]`'s
+  companion note. It reads as the town's maintenance liability and is `population × upkeepPerHead`:
+  it prices souls, not fabric.
+- **The common band dominates the coin under per-day charging.** Blows are **107× as frequent** as
+  tempests, so they carry **74%** of all weather-driven coin loss even after tempests were made 33×
+  dearer. Any future band tuning must reckon with frequency before severity.
+
+**TWO OPEN PROBLEMS, recorded so they are not rediscovered:**
+
+1. **Nothing bounds a treasury.** With the proportional drain gone, **weather was the only thing
+   stopping wealth accumulating without limit**, and nothing else in the model does. If total wealth
+   reads too high, the answer is a **wealth sink**, not a bigger storm. Wants a decision.
+2. **`bandFloorShare` puts a sawtooth at every band boundary, in every column.** At 0.35, the
+   *bottom* of a gale costs less than the *top* of a blow (0.0007 against 0.001). Monotonicity holds
+   row-to-row but not across the boundary. **Pre-existing, affects yield as well as maintenance, and
+   never examined.** Reported, not tuned.
+
+
 **The general lesson, and it is the sharper cousin of this week's reachability rule.** *"Who calls
 this, outside a test?"* finds unwired code. This finds something worse: **code that is wired, tested,
 green — and whose numbers have never been exercised by anything.** `BANDS` had unit tests. Every one
