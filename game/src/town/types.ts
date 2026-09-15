@@ -234,7 +234,15 @@ export interface Town {
 // form of that rule is a type through which the fact cannot arrive ([P-17b]).
 export interface WeatherDay {
   yieldLoss: number; // a share of the season's harvest, accumulated ([HC-6])
-  wealthLoss: number; // a share of coin on hand, lost today ([HC-36])
+  // A SHARE OF WHAT THE TOWN'S STANDING WORKS COST TO RAISE, billed in coin
+  // today — never a share of the coffers. It was `wealthLoss: a share of coin on
+  // hand` until 2026-09-15, and the name was the bug wearing a label: a town with
+  // a million paid a thousand times more to mend the same fence than a town with
+  // a thousand, so "a small maintenance cost" was really a proportional ceiling
+  // on wealth. Priced against the WORKS, the same storm sends the same bill to
+  // both, and only the share of the purse it takes differs ([HC-36] unchanged:
+  // still a wealth loss, still no stockpile to deduct from).
+  maintenanceShare: number;
   worksDropped: number; // grades down the ladder, today ([HC-34])
   worksDestroyed: number; // zero or one, never a sweep ([HC-35])
 }

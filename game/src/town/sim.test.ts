@@ -10,7 +10,7 @@ import { stepTownYears } from "./governor";
 import { raise, CATALOGUE } from "./works";
 import { mixedTown, bareTown } from "./fixtures";
 import { WORKS } from "./constants";
-import type { Town } from "./types";
+import type { Town, WorkKind } from "./types";
 import { CALENDAR, DAYS_PER_YEAR, yearOfDay } from "../overworld/calendar";
 
 // The town keeps no clock (KAN-107), so a test that steps one plays the world and
@@ -319,7 +319,7 @@ describe("the weather has two output paths, and they must not be mixed", () => {
   // Nothing here knows a storm exists. `takeWeather` is handed four numbers, and
   // that is [HC-33] stated as a signature rather than as a rule to remember.
 
-  const fair = { yieldLoss: 0, wealthLoss: 0, worksDropped: 0, worksDestroyed: 0 };
+  const fair = { yieldLoss: 0, maintenanceShare: 0, worksDropped: 0, worksDestroyed: 0 };
 
   it("takes the coin and the shed on the day, not at the season", () => {
     const town = mixedTown({ population: 400, wealth: 4000 });
@@ -328,7 +328,7 @@ describe("the weather has two output paths, and they must not be mixed", () => {
     const purse = town.wealth;
     const standing = town.works.filter((w) => w.condition === "working").length;
 
-    takeWeather(town, DAY0 + 1, { ...fair, wealthLoss: 0.1, worksDropped: 1 }, 0);
+    takeWeather(town, DAY0 + 1, { ...fair, maintenanceShare: 0.1, worksDropped: 1 }, 0);
 
     // TODAY. No season has turned and no phase has run.
     expect(town.wealth).toBeLessThan(purse);
@@ -420,6 +420,155 @@ describe("the weather has two output paths, and they must not be mixed", () => {
     const before = structuredClone(town);
     takeWeather(town, DAY0 + 1, fair, 0.5);
     expect(town).toEqual(before);
+  });
+});
+
+// ---- What a storm's bill is priced against ---------------------------------
+//
+// Ratified 2026-09-15. The maintenance cost used to be `wealth * share` — a
+// share of the TREASURY — so a town with a million paid a thousand times more to
+// mend the same fence than a town with a thousand, and §7.4's "small maintenance
+// cost" was really a proportional ceiling on wealth (measured: about a fifth of
+// every treasury in the world, every year, for ever).
+//
+// A FENCE COSTS WHAT A FENCE COSTS; what varies between two towns is how much
+// fence there is. So the bill is priced against the town's STANDING WORKS, and
+// these claims are the rule — the first of them could not be written at all
+// against the old model, which is the whole point of the change.
+
+describe("a storm bills a town for what it has to maintain, not for what it has", () => {
+  const fair = { yieldLoss: 0, maintenanceShare: 0, worksDropped: 0, worksDestroyed: 0 };
+  const blow = { ...fair, maintenanceShare: 0.001 };
+
+  // THE ORACLE, WRITTEN OUT INDEPENDENTLY (testing.md, KAN-105): the expected
+  // bill is computed from the catalogue here, never by asking `standingValue`
+  // what it thinks — a test that reads its answer out of the code under test
+  // cannot catch a term added to that code.
+  const fabric = (t: Town) =>
+    t.works.reduce((c, w) => (w.condition === "ruin" ? c : c + CATALOGUE[w.kind].cost), 0);
+
+  // A town standing on hand-built ground with named works on it, and NOT ONE
+  // COIN of its wealth spent raising them — `raise` mints a work, the governor
+  // pays for it. That is what lets two towns hold identical works and different
+  // purses, which is the fixture the first claim needs and cannot do without.
+  function worked(init: Partial<Town>, kinds: WorkKind[]): Town {
+    const t = mixedTown(init);
+    for (const k of kinds) expect(raise(t, k, DAY0)).not.toBeNull();
+    return t;
+  }
+
+  // What one contact actually took out of the purse.
+  function billed(t: Town, w: typeof fair): number {
+    const before = t.wealth;
+    takeWeather(t, DAY0 + 1, w, 0);
+    return before - t.wealth;
+  }
+
+  const TRIO: WorkKind[] = ["sawpit", "warehouse", "tavern"];
+
+  it("sends the same bill to a rich town and a poor one with the same works", () => {
+    // THE RULE, and the claim that was impossible to write before the change.
+    const rich = worked({ population: 400, wealth: 1_000_000 }, TRIO);
+    const poor = worked({ population: 400, wealth: 1_000 }, TRIO);
+
+    const richPaid = billed(rich, blow);
+    const poorPaid = billed(poor, blow);
+
+    // Nine places and not twelve, for a reason that is arithmetic rather than
+    // slack: a bill of 0.78 read as the difference of two numbers near a million
+    // loses the bottom of itself to cancellation. The two bills agree to eleven
+    // significant figures; any change to WHAT the bill is priced against moves it
+    // by orders of magnitude, so the claim keeps all the power it needs.
+    expect(richPaid).toBeCloseTo(poorPaid, 9);
+    // ...and it is the works that set it: sawpit + warehouse + tavern, at the
+    // blow's share of what raising them cost.
+    expect(richPaid).toBeCloseTo((260 + 320 + 200) * 0.001, 9);
+    expect(richPaid).toBeCloseTo(fabric(rich) * 0.001, 9);
+  });
+
+  it("charges a town with more standing works more than one with fewer, in the same weather", () => {
+    const few = worked({ population: 400, wealth: 50_000 }, ["sawpit"]);
+    const many = worked({ population: 400, wealth: 50_000 }, [...TRIO, "customsHouse"]);
+    expect(fabric(many)).toBeGreaterThan(fabric(few));
+
+    const fewPaid = billed(few, blow);
+    const manyPaid = billed(many, blow);
+
+    expect(manyPaid).toBeGreaterThan(fewPaid);
+    // The bill is in PROPORTION to the fabric and to nothing else — the two towns
+    // hold the same coin, the same souls and the same ground.
+    expect(manyPaid / fewPaid).toBeCloseTo(fabric(many) / fabric(few), 9);
+  });
+
+  it("still falls harder on the poor town, because the same bill is a larger share of a smaller purse", () => {
+    // What the change must NOT do is make a storm painless for a struggling
+    // place. Stated as a ratio: the burden ratio is exactly the inverse of the
+    // purse ratio — a town with a hundredth of the coin feels it a hundred times
+    // as hard, where before it felt it exactly as hard, which was the bug.
+    const rich = worked({ population: 400, wealth: 200_000 }, TRIO);
+    const poor = worked({ population: 400, wealth: 2_000 }, TRIO);
+    const richPurse = rich.wealth;
+    const poorPurse = poor.wealth;
+
+    const richBurden = billed(rich, blow) / richPurse;
+    const poorBurden = billed(poor, blow) / poorPurse;
+
+    expect(poorBurden).toBeGreaterThan(richBurden);
+    expect(poorBurden / richBurden).toBeCloseTo(richPurse / poorPurse, 6);
+  });
+
+  it("bills a town for what coin built, and never for the thatch people raise themselves", () => {
+    // Subsistence works cost no wealth to raise because the people raise them —
+    // and by the same rule they re-thatch them. The town's COIN bill is for what
+    // coin built, so a place on the hamlet floor is not taxed by the weather
+    // while it crawls back ([HC-67]).
+    const hamlet = mixedTown({ population: 60, wealth: 400 });
+    stepSeason(hamlet, DAY0);
+    expect(hamlet.works.length).toBeGreaterThan(0);
+    expect(hamlet.works.every((w) => CATALOGUE[w.kind].cls === "subsistence")).toBe(true);
+    expect(fabric(hamlet)).toBe(0);
+
+    expect(billed(hamlet, { ...fair, maintenanceShare: 0.5 })).toBe(0);
+
+    // ...and adding subsistence to a town that DOES hold capital works adds
+    // nothing to its bill either, which is the same rule said where it could be
+    // got wrong by accident.
+    const a = worked({ population: 400, wealth: 50_000 }, TRIO);
+    const b = worked({ population: 400, wealth: 50_000 }, TRIO);
+    stepSeason(b, DAY0);
+    expect(b.works.length).toBeGreaterThan(a.works.length);
+    expect(billed(b, blow)).toBeCloseTo(billed(a, blow), 9);
+  });
+
+  it("stops billing a work once it is a ruin, and bills an idle one that is still standing", () => {
+    // STANDING means "not a ruin". An idle or decayed work still has a roof on it
+    // and still wants mending; a ruin has nothing left to maintain.
+    const town = worked({ population: 400, wealth: 50_000 }, ["sawpit", "warehouse"]);
+    const shed = town.works.find((w) => w.kind === "warehouse")!;
+
+    const whole = billed(town, blow);
+    expect(whole).toBeCloseTo((260 + 320) * 0.001, 9);
+
+    shed.condition = "idle";
+    expect(billed(town, blow)).toBeCloseTo(whole, 9);
+    shed.condition = "decayed";
+    expect(billed(town, blow)).toBeCloseTo(whole, 9);
+
+    shed.condition = "ruin";
+    const wrecked = billed(town, blow);
+    expect(wrecked).toBeCloseTo(260 * 0.001, 9);
+    expect(wrecked).toBeLessThan(whole);
+  });
+
+  it("cannot drive a town into debt, however long it blows", () => {
+    // A town that cannot pay simply cannot pay — the same refusal `settleSeason`
+    // makes. The remainder is not owed and the coffers stop at empty.
+    const town = worked({ population: 400, wealth: 5 }, [...TRIO, "customsHouse", "battery"]);
+    for (let d = 1; d <= 360; d++) {
+      takeWeather(town, DAY0 + d, { ...fair, maintenanceShare: 0.5 }, 0);
+      expect(town.wealth).toBeGreaterThanOrEqual(0);
+    }
+    expect(town.wealth).toBe(0);
   });
 });
 

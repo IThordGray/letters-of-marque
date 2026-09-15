@@ -499,7 +499,7 @@ describe("nothing is owed damage merely because a storm arrived", () => {
       const e = effectOf(BANDS[1].from - 0.001, i / 100);
       expect(e.band).toBe("fair");
       expect(e.yieldLoss).toBe(0);
-      expect(e.wealthLoss).toBe(0);
+      expect(e.maintenanceShare).toBe(0);
       expect(e.worksDropped).toBe(0);
       expect(e.worksDestroyed).toBe(0);
     }
@@ -589,17 +589,62 @@ describe("the bands are a reading of one spectrum, not four kinds of weather", (
 
   it("spoils contents as WEALTH and never as a stockpile", () => {
     // [HC-36]: the ratified model is flows plus one wealth stock, so there is
-    // literally nothing to deduct from. What a contact reports is a SHARE of
-    // wealth, never a quantity of goods.
+    // literally nothing to deduct from. What a contact reports is a RATE — never
+    // a quantity of goods, and (since 2026-09-15) never a share of the coffers
+    // either: it is a share of the town's standing works, which only the town
+    // can value.
     const e = effectOf(0.9, 0.5);
     expect(Object.keys(e).sort()).toEqual(
-      ["band", "severity", "wealthLoss", "worksDestroyed", "worksDropped", "yieldLoss"],
+      ["band", "maintenanceShare", "severity", "worksDestroyed", "worksDropped", "yieldLoss"],
     );
     for (let s = 0; s <= 1.0001; s += 0.01) {
       const w = effectOf(Math.min(1, s), 0.99);
-      expect(w.wealthLoss).toBeLessThan(1);
+      expect(w.maintenanceShare).toBeLessThan(1);
       expect(w.yieldLoss).toBeLessThan(1);
     }
+  });
+
+  it("charges a gale at least what it charges a blow, though §7.4's table gives a gale nothing", () => {
+    // THE SPEC READING THIS CODE IMPLEMENTS, stated out loud so that overruling
+    // it breaks a claim rather than passing unnoticed.
+    //
+    // §7.4's table reads Blow = "small maintenance cost", Gale = "—", Tempest =
+    // "one-off loss". As an EXCLUSIVE cost sheet that is incoherent: a gale is at
+    // least as windy as a blow, so it cannot loosen fewer shingles. Read as WHAT
+    // EACH BAND IS NOTABLE FOR it is exactly right — a blow is a property
+    // nuisance, a gale is a crop event, and the gale's headline is its yield
+    // column. The code holds the MONOTONE reading.
+    for (let i = 1; i < BANDS.length; i++) {
+      expect(BANDS[i].maintenanceShare).toBeGreaterThanOrEqual(BANDS[i - 1].maintenanceShare);
+      expect(BANDS[i].yieldLoss).toBeGreaterThanOrEqual(BANDS[i - 1].yieldLoss);
+    }
+    // ...and a foul day is never free: every band above fair costs SOMETHING to
+    // put right, at every roll, because a roll says which work the sea found and
+    // never whether the wind blew.
+    for (let b = 1; b < BANDS.length; b++) {
+      for (let i = 0; i <= 100; i++) {
+        expect(effectOf(BANDS[b].from + 0.001, i / 100).maintenanceShare).toBeGreaterThan(0);
+      }
+    }
+    // The maintenance column is a READING of the spectrum like every other
+    // column: the top of a blow takes more shingles off than the bottom of one.
+    // Without this the band would be a bucket in the one place it is easiest to
+    // let it become one.
+    expect(effectOf(BANDS[2].from - 0.001, 0.5).maintenanceShare).toBeGreaterThan(
+      effectOf(BANDS[1].from + 0.001, 0.5).maintenanceShare,
+    );
+  });
+
+  it("charges a rate and never a bill, because it cannot see a town's books", () => {
+    // [HC-33] as a signature ([P-17b]). The maintenance column stopped being a
+    // share of the treasury on 2026-09-15 and became a share of the town's
+    // standing works — and the thing that made that change safe is that this
+    // function was never given either one. It takes two numbers; a town's fabric,
+    // its coffers and its works cannot arrive through any argument it has.
+    expect(effectOf.length).toBe(2);
+    const e = effectOf(0.9, 0.5);
+    expect(e.maintenanceShare).toBeGreaterThan(0);
+    expect(e.maintenanceShare).toBeLessThan(1); // a share, not coin
   });
 
   it("takes the same roll to the same answer, so a contact is reproducible", () => {
