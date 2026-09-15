@@ -10,6 +10,49 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-15 (fifth) — The world has a face, and the line says it stopped
+
+KAN-100 is built, and it is the first thing in this project a person can look at. Everything before it
+was proved headless; `[HC-0]` says *done* is a century that reads as plausible and whose changes have
+nameable causes, and no test had ever answered that.
+
+**What it is.** A dark chart of the invented sea, 1500 × 800 nm. Fifty marks carrying all three
+`[HC-69]` axes at once — shape for purpose, colour for crown, area for population, rim weight for
+size class. Storms crawl across as a disc with a bright core and a track, clipped to the sea. **Each
+port wears its OWN ring in the severity it felt**, which is the thing a storm blob cannot draw:
+`[HC-32]`'s *"two towns twenty miles apart may feel the same event very differently"* is invisible
+otherwise. Five named rates — Pause · Watch 2/s · Passage 12/s · Season 90/s · Century 720/s — plus a
+blocking century that lands in about a second.
+
+**Verified in a real browser**, not merely built: 1660 → 1760, no console error but a favicon 404,
+the sea box measuring 1168 × 624 px for 1500 × 800 nm — the fit exact to the pixel.
+
+**It answers the milestone's question, and the answer is legible.** The trend key reads
+*"souls to 8800 · coin to 170718 · **population found their level**"* — which is §8's named failure
+mode, stated by the view itself rather than left for someone to notice. Souls climb 3,913 → 6,694 by
+1690 and sit at 6,671 in 1759; **coin climbs without bound**, which is the treasury problem recorded
+in the (third) entry showing up on a chart.
+
+**What it cannot show, and a test now says so.** `run.test.ts` pins that across a century **nothing
+is promoted and nothing changes hands** — because both need dispatches, and nations do not act yet.
+**That claim should FAIL the day KAN-101 lands**, which is the point of writing it: the ratified
+success sentence is *"fifty dots that grow, shrink and change colour"*, and two thirds of it is
+reachable today. The dots grow and shrink. Nothing changes colour.
+
+**Three findings worth keeping:**
+- **`[P-17c]` taken all the way**: the coast bakes into one `Path2D` in **world coordinates**, and the
+  canvas transform does the projection. Panning and zooming then cost a matrix rather than 1,928
+  vertices. The general shape for any baked geometry this project adds.
+- **`[P-50]` and `[P-51]` are new** — a snapshot field's beat must match what it copies, and a cull
+  with a wrong margin is worse than no cull. Both were real bugs in this view before they were rules.
+- **The reachability check found three dead exports in code written the same hour.** *Who calls this,
+  outside a test?* is worth running on your own work before committing, not only on inherited systems.
+
+**Measured for the record** (seed 1660): headless century **0.96 s** bare, **1.08 s** with the view's
+per-day sampling · 247 works destroyed per century · 774 grade drops · storms alive on **34%** of days,
+mean 0.45, max 6 · all 35 baked coast lines closed, so land fills as polygons.
+
+---
 ### 2026-09-15 (fourth) — The clamp is the rule: a fix that raises a threshold to lower one is a net loss
 
 Both weather fixes landed. The subsistence one produced **the most transferable finding of the

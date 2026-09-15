@@ -133,6 +133,28 @@ base is load-bearing, and a stale one is a lie the compiler cannot catch.
 > *(Found 2026-09-15: `upkeep` was the obvious base for a storm's maintenance bill and would have
 > made "more works means a bigger bill" literally unwritable as a test.)*
 
+**`[P-50]` A presentation snapshot holds exactly what the frame draws, and a copied field's BEAT must
+match the beat of the thing it copies.** Copying a value onto a snapshot to avoid recomputing it is
+right; copying it on the *wrong cadence* silently makes it a second, stale source of truth — `[P-47]`
+wearing a performance costume.
+
+The worked case (KAN-100): `PlaceView.coin` was written on the **seasonal** beat, but wealth moves
+**daily** under `[HC-6]`'s event half — so the card could show a purse up to **ninety days** out of
+date, and nothing drew the field anyway. Deleting it made the `[P-47]` claim exact rather than
+approximate.
+
+- **A snapshot field nobody draws is pure liability.** Ask what pixel it becomes.
+- **Match the beat, or read live.** A quantity that moves daily is either sampled daily or read from
+  the ledger at the moment it is shown. There is no third option that is honest.
+
+**`[P-51]` A cull whose margin is wrong is worse than no cull, and six of anything never needed one.**
+Culling by the visible box hid a live tempest the sidebar could describe in words — storms form up to
+300 nm off their zone seat and stray 420 nm past the world box, so their centres are *routinely*
+outside it. With a handful of objects the cull was pure risk for no saving (`[P-1]`), and clipping
+the drawing to the sea is the honest answer. **Before writing a cull, count the things: a cull is a
+correctness surface, and it only pays above the count where drawing them all is measurable.**
+
+
 ---
 
 ## §2. Doing less — where the wins actually are

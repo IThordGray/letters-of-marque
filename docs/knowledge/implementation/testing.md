@@ -348,6 +348,9 @@ them, which no unit test is even shaped to look for.
 - **The check is one question, and it is cheap:** *who calls this, outside a test?* Run it over any
   system about to be declared finished. A function whose only callers are `*.test.ts` is a component,
   not a feature.
+- **Run it on your OWN work, before committing.** On KAN-100 it found **three dead exports in code
+  written the same hour** — they had been useful for ten minutes during the build and were never
+  deleted. This is not only a tool for auditing inherited systems.
 - **A seam wants an integration claim, and it belongs to whoever builds the second end.** The claim
   is not *"weather damages works"* (a unit claim, and it passed) but *"running the world a year makes
   something in a ledger different from running it with the weather removed."*
