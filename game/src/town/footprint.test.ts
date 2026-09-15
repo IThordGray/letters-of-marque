@@ -14,16 +14,22 @@ import { stepSeason, stepYears } from "./sim";
 import { stepTownYears } from "./governor";
 import { key } from "./hex";
 import { mixedTown, townOf, reg, RING1, RING2 } from "./fixtures";
+import { CALENDAR, DAYS_PER_YEAR } from "../overworld/calendar";
+
+// The town keeps no clock (KAN-107): the world hands it the day, and here the
+// test plays the world. These fixtures stand on the world's first day.
+const DAY0 = 0;
+const SEASON = CALENDAR.daysPerSeason;
 
 describe("growth eats its own cause", () => {
   it("stops the ground producing the moment the town builds over it", () => {
     const town = mixedTown({ population: 500, wealth: 9000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     expect(pit.condition).toBe("working");
 
     town.footprint.claimed.push({ ...pit.hex! }); // the town spreads over it
-    stepSeason(town);
+    stepSeason(town, DAY0 + SEASON);
 
     expect(pit.condition).toBe("idle"); // ground the town built over carries nothing
   });
@@ -50,14 +56,14 @@ describe("claimed ground is permanent", () => {
     let high = town.footprint.claimed.length;
 
     for (let i = 0; i < 100; i++) {
-      stepTownYears(town, 1);
+      stepTownYears(town, 1, i * DAYS_PER_YEAR);
       expect(town.footprint.claimed.length).toBeGreaterThanOrEqual(high);
       high = town.footprint.claimed.length;
     }
 
     town.works = []; // ruin it utterly
     town.wealth = 0;
-    stepYears(town, 50);
+    stepYears(town, 50, 100 * DAYS_PER_YEAR);
 
     expect(town.footprint.claimed.length).toBeGreaterThanOrEqual(high);
   });
@@ -107,7 +113,7 @@ describe("which way a town grows", () => {
 describe("the wall is frozen where it was raised", () => {
   it("never re-extends its circuit as the town grows", () => {
     const town = mixedTown({ population: 500, wealth: 20000 });
-    const wall = raise(town, "palisade", 1650)!;
+    const wall = raise(town, "palisade", DAY0)!;
     const circuitAtRaising = wall.circuit!.length;
 
     stepTownYears(town, 60);
@@ -118,7 +124,7 @@ describe("the wall is frozen where it was raised", () => {
   it("leaves anything claimed afterwards outside the gate", () => {
     const town = mixedTown({ population: 500, wealth: 20000 });
     stepTownYears(town, 10);
-    const wall = raise(town, "palisade", 1660)!;
+    const wall = raise(town, "palisade", 10 * DAYS_PER_YEAR)!;
     const walled = walledGround(town);
 
     // Force the town onto ground it had not taken when the wall went up.

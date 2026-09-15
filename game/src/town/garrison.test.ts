@@ -15,8 +15,13 @@ import { describe, it, expect } from "vitest";
 import { derive, makeTown } from "./sim";
 import { raise } from "./works";
 import { mixedTown } from "./fixtures";
+
 import type { Town, Derived } from "./types";
 import type { GarrisonGrade } from "../types";
+
+// The town keeps no clock (KAN-107): a work is dated by the day it was raised on,
+// and these fixtures stand on the world's first day.
+const DAY0 = 0;
 
 // Softest first — the ordering IS the claim, so grades are compared by position on it.
 const LADDER: Derived["garrison"][] = ["picket", "garrison", "fortress"];
@@ -25,10 +30,10 @@ const rung = (t: Town): number => LADDER.indexOf(derive(t).garrison);
 // Every gun a mixed-ground town's land will bear: two batteries on its bluff, a palisade
 // round it, a barracks behind. Nothing else in the catalogue adds defence.
 const armToTheTeeth = (t: Town): Town => {
-  raise(t, "battery", 1650);
-  raise(t, "battery", 1650);
-  raise(t, "palisade", 1650);
-  raise(t, "barracks", 1650);
+  raise(t, "battery", DAY0);
+  raise(t, "battery", DAY0);
+  raise(t, "palisade", DAY0);
+  raise(t, "barracks", DAY0);
   return t;
 };
 
@@ -81,7 +86,7 @@ describe("the garrison grade", () => {
     const town = mixedTown({ population: 300 });
     let before = rung(town);
     for (const kind of ["battery", "battery", "palisade", "barracks"] as const) {
-      raise(town, kind, 1650);
+      raise(town, kind, DAY0);
       const after = rung(town);
       expect(after).toBeGreaterThanOrEqual(before);
       before = after;

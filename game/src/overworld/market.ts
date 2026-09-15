@@ -26,10 +26,11 @@
 import type { Town } from "../town/types";
 import { CLASS_COUNT } from "../town/trade";
 import { TRADE } from "../town/constants";
-import { derive, produceSeason, settleSeason, year } from "../town/sim";
+import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn, type Season as TownSeason } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
-import { DAYS_PER_YEAR, startsSeason, stepDay, yearOf, type World } from "./clock";
+import { DAYS_PER_YEAR } from "./calendar";
+import { startsSeason, stepDay, type World } from "./clock";
 import { DAY_RUN_NM, distanceNm } from "./shape";
 import type { Place } from "./places";
 
@@ -307,13 +308,20 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
 // price it saw in phase 2 — it reacts next season, through its governor.
 
 export interface WorldSeason {
-  year: number;
+  // The day the season began. One number, and a year is read off it by whoever
+  // wants to print one ([P-47]).
+  day: number;
   seasons: (TownSeason | null)[];
 }
 
+// THE WORLD HANDS EVERY PLACE THE SAME DAY, once, at the top ([HC-71], [HC-72]'s
+// first row). It used to ask each town what year IT thought it was — `year(t)`,
+// off that town's private season counter — which is why fifty places founded on
+// day 0 agreed only by coincidence (KAN-107). This got shorter, not longer.
 export function stepWorldSeason(world: World, towns: Town[], m: Markets, wars: Wars): WorldSeason {
+  const day = world.day;
   // 1 · PRODUCE
-  for (let i = 0; i < towns.length; i++) produceSeason(towns[i]);
+  for (let i = 0; i < towns.length; i++) produceSeason(towns[i], day);
   // 2 · CLEAR
   clearSeason(m, world.places, towns, wars);
   // 3 · SETTLE
@@ -321,12 +329,11 @@ export function stepWorldSeason(world: World, towns: Town[], m: Markets, wars: W
   // 4 · GOVERN
   const seasons: (TownSeason | null)[] = [];
   for (let i = 0; i < towns.length; i++) {
-    const t = towns[i];
-    const grew = stepFootprint(t);
-    seasons.push({ year: year(t), built: governorTurn(t, year(t)), grew });
+    const grew = stepFootprint(towns[i]);
+    seasons.push({ day, built: governorTurn(towns[i], day), grew });
   }
   // 5 · RULE — nations acting is KAN-101 and is deliberately not here.
-  return { year: yearOf(world), seasons };
+  return { day, seasons };
 }
 
 // Run the world forward, day by day, clearing on every seasonal boundary. The

@@ -13,14 +13,15 @@
 // SAMPLED SEVERITY and never the fact that a storm was overhead.
 
 import { describe, it, expect } from "vitest";
-import { DAYS_PER_YEAR, makeWorld, seasonOf, stepDay, type World } from "./clock";
+import { DAYS_PER_YEAR, seasonOfDay } from "./calendar";
+import { makeWorld, seasonOf, stepDay, type World } from "./clock";
 import { CLIMATES, climateOf, stormTrack, zoneAt } from "./climate";
 import type { Place } from "./places";
 import { generateWorld } from "./worldgen";
 import {
   AMBIENT, BANDS, DAMAGE, EXPOSURE, STORM,
   ambientAt, bandAt, bandIdAt, contactAt, coverageOf, describeStorm, effectOf,
-  feltAt, passageDays, prevailingAt, radiusOf, seasonAt, severityAt, stepWeather,
+  feltAt, passageDays, prevailingAt, radiusOf, severityAt, stepWeather,
   takesOf, windAt, type Storm,
 } from "./weather";
 
@@ -99,7 +100,7 @@ function longRun(years: number): Run {
       if (!known.has(s.id)) {
         known.add(s.id);
         r.born++;
-        if (!climateOf(world.zones, s.zone).storms.seasons[seasonAt(s.bornDay)]) r.offTrack++;
+        if (!climateOf(world.zones, s.zone).storms.seasons[seasonOfDay(s.bornDay)]) r.offTrack++;
       }
       const len = s.dx * s.dx + s.dy * s.dy;
       if (Math.abs(len - 1) > 1e-9) r.denormalised++;
@@ -269,12 +270,15 @@ describe("every zone has weather every single day, and none of it is stored", ()
   });
 
   it("reads the same season the clock does, so the two can never drift apart", () => {
-    // [P-47]: `seasonAt` is `seasonOf`'s arithmetic on a bare day, and weather
-    // owns no line of `clock.ts`. This is the bridge that keeps them one answer.
+    // [P-47], and the shape of it changed on KAN-107. `seasonAt` used to be a
+    // COPY of `seasonOf`'s arithmetic written out in this module, kept honest by
+    // this century-long sweep. Both now call the one calendar, so drift is not
+    // merely unmeasured but unreachable — and this claim stays, because it is
+    // what would notice if either side ever went back to doing its own sums.
     const w = makeWorld(1);
     for (let d = 0; d < DAYS_PER_YEAR * 100; d += 7) {
       w.day = d;
-      expect(seasonAt(d)).toBe(seasonOf(w));
+      expect(seasonOfDay(d)).toBe(seasonOf(w));
     }
   });
 });
@@ -298,7 +302,7 @@ describe("no zone ever produces weather its regime forbids", () => {
     for (let d = 0; d < DAYS_PER_YEAR * 50; d++) {
       stepDay(w);
       stepWeather(w);
-      for (const s of w.storms) if (s.bornDay === w.day && seasonAt(s.bornDay) === forbidden) bornInForbidden++;
+      for (const s of w.storms) if (s.bornDay === w.day && seasonOfDay(s.bornDay) === forbidden) bornInForbidden++;
     }
     expect(bornInForbidden).toBe(0);
   });

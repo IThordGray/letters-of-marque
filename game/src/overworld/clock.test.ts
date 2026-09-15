@@ -1,10 +1,8 @@
 // The world clock — one integer, and everything else read off it.
 
 import { describe, it, expect } from "vitest";
-import {
-  CALENDAR, DAYS_PER_YEAR, makeWorld, stepDay,
-  yearOf, seasonOf, dayOfSeason, startsSeason,
-} from "./clock";
+import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
+import { makeWorld, stepDay, yearOf, seasonOf, dayOfSeason, startsSeason } from "./clock";
 
 const runDays = (n: number, seed = 1) => {
   const w = makeWorld(seed);

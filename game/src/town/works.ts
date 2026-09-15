@@ -167,7 +167,7 @@ export function groundFor(town: Town, kind: WorkKind): { hex: Axial; region: Reg
 // Mint a work on a named hex, scaled by how well that ground suits it. Ground
 // that was made for a crop is worth more of it; ground that merely grudges it
 // pays a fraction — which is adaptability with a visible price.
-export function raise(town: Town, kind: WorkKind, year: number): Work | null {
+export function raise(town: Town, kind: WorkKind, day: number): Work | null {
   if (!buildable(town, kind)) return null;
   const def = CATALOGUE[kind];
   const ground = groundFor(town, kind);
@@ -188,9 +188,9 @@ export function raise(town: Town, kind: WorkKind, year: number): Work | null {
     name: def.label,
     region: ground ? town.regions.indexOf(ground.region) : null,
     hex: ground ? ground.hex : null,
-    since: year,
+    sinceDay: day,
     condition: "working",
-    idleSince: null,
+    idleSinceDay: null,
     food: def.food * q,
     trade: def.trade * q,
     defence: def.defence * q,
@@ -205,15 +205,19 @@ export function raise(town: Town, kind: WorkKind, year: number): Work | null {
 // ---- The ledger's own upkeep ----------------------------------------------
 // Run every season, before anything reads the ledger.
 
-export function stepWorks(town: Town, year: number): void {
-  raiseSubsistence(town, year);
-  allocateLabour(town);
-  devolve(town);
+// THE DAY ARRIVES AS AN ARGUMENT and is never fetched. `stepWorks(town, year)`
+// already had this shape before KAN-107 — all that changed is that the number it
+// takes is now the world's own integer rather than a year read off a private
+// counter, so the same argument now serves the chronicle AND the decay clock.
+export function stepWorks(town: Town, day: number): void {
+  raiseSubsistence(town, day);
+  allocateLabour(town, day);
+  devolve(town, day);
 }
 
 // People house and feed themselves without being told to, and without spending a
 // coin of the town's wealth. This IS the hamlet floor.
-function raiseSubsistence(town: Town, year: number): void {
+function raiseSubsistence(town: Town, day: number): void {
   for (const kind of SUBSISTENCE) {
     const def = CATALOGUE[kind];
     const want = def.autoPer
@@ -221,7 +225,7 @@ function raiseSubsistence(town: Town, year: number): void {
       : town.population >= (WORKS.subsistenceAt[kind] ?? 0)
         ? 1 // ...or simply appears once the place is big enough to warrant it
         : 0;
-    while (countOf(town, kind) < want && roomFor(town, kind) > 0) raise(town, kind, year);
+    while (countOf(town, kind) < want && roomFor(town, kind) > 0) raise(town, kind, day);
   }
 }
 
@@ -252,7 +256,7 @@ function workableNow(town: Town, w: Work): boolean {
 // not an oversight: a rotted work must be PUT BACK IN ORDER before anyone can
 // work it, and that is a priced decision, so it belongs to the governor and not
 // to the ledger's own upkeep. See `mendable` below.
-function allocateLabour(town: Town): void {
+function allocateLabour(town: Town, day: number): void {
   const live = town.works.filter((w) => w.condition === "working" || w.condition === "idle");
   // [P-10]: an explicit tie-break, and its direction is the ELDER WORK FIRST —
   // the sawpits that have stood since '54 keep their men before the ones cut
@@ -265,10 +269,10 @@ function allocateLabour(town: Town): void {
     if (hands >= w.hands && workableNow(town, w)) {
       hands -= w.hands;
       if (w.condition === "idle") w.condition = "working";
-      w.idleSince = null;
+      w.idleSinceDay = null;
     } else if (w.condition === "working") {
       w.condition = "idle";
-      w.idleSince = town.season;
+      w.idleSinceDay = day;
     }
   }
 }
@@ -305,11 +309,14 @@ export const mendable = (town: Town, w: Work): boolean =>
 
 // The devolution ladder going DOWN: working -> idle -> decayed -> ruin.
 // Subsistence works never rot — people keep their own roofs on.
-function devolve(town: Town): void {
+function devolve(town: Town, day: number): void {
   for (const w of town.works) {
     if (CATALOGUE[w.kind].cls === "subsistence") continue;
-    if (w.idleSince === null) continue;
-    const idleFor = town.season - w.idleSince;
+    if (w.idleSinceDay === null) continue;
+    // Both dates are days since world epoch, so this subtraction is the same
+    // subtraction anywhere in the world — which it was not while each town
+    // counted seasons from its own founding (KAN-107).
+    const idleFor = day - w.idleSinceDay;
     if (w.condition === "idle" && idleFor >= DECAY.idleToDecayed) w.condition = "decayed";
     else if (w.condition === "decayed" && idleFor >= DECAY.decayedToRuin) w.condition = "ruin";
   }

@@ -3,14 +3,23 @@
 //
 // The beat is a SEASON (four per year). The town never prompts; it accumulates,
 // and reports in prose when someone looks.
+//
+// THE TOWN KEEPS NO CLOCK. [HC-9] says there is one clock and it lives in world
+// state; [HC-71] says the world drives the ledger and the ledger never reaches
+// out. So every function below that needs to know when it is TAKES THE DAY AS AN
+// ARGUMENT — the same integer `world.day` is, days since world epoch. Nothing
+// here imports a `World`, reads `world.day`, or calls anything that takes one.
+// The only thing it borrows from `overworld/` is the calendar, a leaf that
+// imports nothing and is a definition table ([HC-90]).
 
+import { CALENDAR, yearOfDay } from "../overworld/calendar";
 import type { Town, Derived, Patron } from "./types";
 import type { Land } from "./land";
 import { describeLand } from "./land";
 import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
 import { commerceOf, makeMarket, payImports, dependencyWord } from "./trade";
-import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, SEASONS_PER_YEAR, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
+import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -140,13 +149,18 @@ export function prosperityTarget(town: Town, d: Derived): number {
 // Phase 1 — PRODUCE. Subsistence raises itself, hands are allotted, the untended
 // rots. Nothing here reads another place, so the order places are visited in
 // cannot matter.
-export function produceSeason(town: Town): void {
-  stepWorks(town, year(town));
+export function produceSeason(town: Town, day: number): void {
+  stepWorks(town, day);
 }
 
 // Phase 3 — SETTLE. Imports are paid FIRST out of what the season made ([HC-78]:
 // bread before batteries), wealth is the remainder, prosperity lags toward its
 // target, population drifts toward what the town can now feed.
+//
+// IT TAKES NO DAY, and that is the shape of the fix rather than an oversight. The
+// only time-bearing line it ever had was `town.season++` — the private counter
+// [HC-9] forbids — and settling coin, standing and souls needs no date at all.
+// [P-17b]: a function that is not GIVEN the day cannot start reading one.
 export function settleSeason(town: Town): void {
   const before = derive(town);
 
@@ -175,17 +189,32 @@ export function settleSeason(town: Town): void {
   // there. Growth needs survivors because CAPACITY needs them — every food work
   // in the catalogue costs hands, and hands come only from souls.
   town.population = town.population + (carryingCapacity(town) - town.population) * POP.drift;
-
-  town.season++;
 }
 
-export function stepSeason(town: Town): void {
-  produceSeason(town);
+// One season, on a named day. `day` is the FIRST DAY OF THE SEASON — the day the
+// world was standing on when `startsSeason` came back true.
+export function stepSeason(town: Town, day: number): void {
+  produceSeason(town, day);
   settleSeason(town);
 }
 
-export function stepYears(town: Town, years: number): void {
-  for (let i = 0; i < years * SEASONS_PER_YEAR; i++) stepSeason(town);
+// Run a town on its own for a stretch of seasons, from a named starting day.
+//
+// THIS IS A DRIVER, NOT A CLOCK, and the difference is the whole of why `from` is
+// a parameter rather than state. It advances a LOCAL counter and hands each
+// season its day; it writes nothing back to the town, because the town has
+// nowhere to keep it. A caller that wants two runs to join up passes the second
+// one the day the first ended on — which is what the world does, and what
+// `town.season` used to do invisibly and wrongly.
+//
+// The season is the town's beat ([HC-2]), so this is the primitive and `stepYears`
+// is the convenience over it. Neither divides or multiplies a calendar of its own.
+export function stepSeasons(town: Town, seasons: number, from = 0): void {
+  for (let i = 0; i < seasons; i++) stepSeason(town, from + i * CALENDAR.daysPerSeason);
+}
+
+export function stepYears(town: Town, years: number, from = 0): void {
+  stepSeasons(town, years * CALENDAR.seasonsPerYear, from);
 }
 
 // ---- Construction ----------------------------------------------------------
@@ -194,8 +223,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     id: 1,
     archetype: "colony",
     patron: { kind: "none", name: "", owns: false },
-    founded: 1640,
-    season: 0,
+    foundedDay: 0,
     population: 80,
     wealth: WEALTH.start,
     prosperity: PROSPERITY.start,
@@ -208,7 +236,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     grant: 0,
     market: makeMarket(),
     nextWorkId: 1,
-    lastThreat: null,
+    lastThreatDay: null,
     ...init,
   };
 }
@@ -228,7 +256,13 @@ export function foundTown(init: Partial<Town> & { name: string; seed: number }, 
 }
 
 // ---- Reading it back -------------------------------------------------------
-export const year = (town: Town) => town.founded + Math.floor(town.season / SEASONS_PER_YEAR);
+//
+// `year(town)` USED TO LIVE HERE and it was the bug, stated in one line:
+// `town.founded + floor(town.season / SEASONS_PER_YEAR)` — a year the town
+// reckoned from its own founding, off a counter only it kept, divided by a second
+// copy of the calendar. Two places founded in different years each believed year 1
+// was their own (KAN-107). A year is now read off a DAY, by whoever is asking, out
+// of the one calendar: `yearOfDay(day)`.
 
 function band(v: number, bands: { at: number; word: string }[]): string {
   for (const b of bands) if (v >= b.at) return b.word;
@@ -289,7 +323,11 @@ export function failureWord(town: Town): Failure | null {
 
 // A one-line read of the place. The full town card and chronicle are KAN-75 —
 // this is the minimum needed to see the sim working.
-export function summarise(town: Town): string {
+//
+// It takes the DAY and turns it into a year here, at the one point that wants a
+// year: prose. [P-47] — one number in, the reading derived from it. Handing this
+// function a year instead would mean somebody upstream held both.
+export function summarise(town: Town, day: number): string {
   const d = derive(town);
   const earners = town.works.filter((w) => w.condition === "working" && w.trade > 0 && CATALOGUE[w.kind].cls === "capital");
   const makes = earners.length
@@ -297,7 +335,7 @@ export function summarise(town: Town): string {
     : "Makes nothing anyone would buy";
   const land = town.regions.length ? ` Set among ${describeLand(town)}.` : "";
   return (
-    `${town.name}, ${year(town)} — a town of ${Math.round(town.population)} souls, ${prosperityWord(town)}.` +
+    `${town.name}, ${yearOfDay(day)} — a town of ${Math.round(town.population)} souls, ${prosperityWord(town)}.` +
     `${land} ${cap(wealthWord(town))}, ${dependencyWord(d.dependency)}. ${makes}. ` +
     `${article(d.garrison)} ${d.garrison} watch.`
   );

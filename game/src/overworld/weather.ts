@@ -44,7 +44,8 @@
 // does: damage is an EVENT and lands the day it happens, yield is a MODIFIER
 // that accumulates into the season. Nothing here touches a town.
 
-import { CALENDAR, DAYS_PER_YEAR, type Season, type World } from "./clock";
+import { CALENDAR, DAYS_PER_YEAR, seasonOfDay, type Season } from "./calendar";
+import type { World } from "./clock";
 import { CHANNEL, rollOf, seedFor } from "./chance";
 import { baselineOf, climateOf, exposureOf, stormTrack, windOf, zoneAt, type Climate } from "./climate";
 import { fbm } from "./noise";
@@ -78,14 +79,6 @@ const anchorPhase = (day: number): number => {
 const anchorFrom = (u: number): Season => ((((Math.floor(u) % 4) + 4) % 4) as Season);
 const anchorNext = (s: Season): Season => (((s + 1) % 4) as Season);
 const anchorMix = (u: number): number => smooth(u - Math.floor(u));
-
-// Which season a bare day falls in. This is `seasonOf`'s arithmetic without a
-// World to read it from — the clock takes the world, and weather asks about days
-// the world is not standing on (a test sweeping a year, an event's regime check).
-// `weather.test.ts` pins the two together over a century so they cannot drift
-// apart in silence ([P-47]).
-export const seasonAt = (day: number): Season =>
-  Math.trunc((((day % DAYS_PER_YEAR) + DAYS_PER_YEAR) % DAYS_PER_YEAR) / CALENDAR.daysPerSeason) as Season;
 
 // ---- §7.2 Ambient — a spectrum, and free -----------------------------------
 //
@@ -312,7 +305,7 @@ function formsIn(w: World, zone: number, day: number): Storm | null {
   // [HC-27] / "climate holds": the regime is a hard per-season fact and is NOT
   // blended. A dry coast records no rainstorm season in two hundred years
   // because there is no day on which the question is even asked.
-  if (!c.storms.seasons[seasonAt(day)]) return null;
+  if (!c.storms.seasons[seasonOfDay(day)]) return null;
   const roll = (attr: number) => rollOf(w.seed, CHANNEL.storm, SLOT.spawn + zone * ATTRS + attr, day);
   if (roll(0) >= c.storms.perSeason / CALENDAR.daysPerSeason) return null;
 

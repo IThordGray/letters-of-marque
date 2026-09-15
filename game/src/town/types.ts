@@ -124,9 +124,14 @@ export interface Work {
   name: string; // how it reads in a sentence — "the sawpits above the creek"
   region: number | null; // index into town.regions, or null for a civic work
   hex: Axial | null; // the ground it actually stands on — five mills in a line, not five on a point
-  since: number; // year it started working, for the chronicle
+  // BOTH OF THESE ARE DAYS SINCE WORLD EPOCH — the same integer `world.day` is
+  // ([HC-3], [HC-9]). They used to be a year and a season off the town's own
+  // private counter, which meant no two places could be compared (KAN-107). The
+  // `Day` suffix is not decoration: a bare `since` that once held a year is
+  // exactly the sort of name a future reader would do year arithmetic on.
+  sinceDay: number; // the day it started working, for the chronicle
   condition: WorkCondition;
-  idleSince: number | null; // season it stopped working, for the devolution ladder
+  idleSinceDay: number | null; // the day it stopped working, for the devolution ladder
 
   // What it contributes each season, already scaled by its parcel's quality.
   food: number; // mouths it can feed beyond its own hands
@@ -163,9 +168,14 @@ export interface Town {
   seed: number; // fixes the founding roll and the map projection
   archetype: Archetype;
   patron: Patron;
-  founded: number; // year
-
-  season: number; // seasons elapsed since founding (4 per year)
+  // Days since world epoch, like every other date a place keeps. THERE IS NO
+  // SECOND CLOCK HERE and there must never be one again: [HC-9] says there is
+  // one clock and it lives in world state, and `town.season` — "seasons elapsed
+  // since founding" — was this module ignoring it. Two places founded in
+  // different years could not be compared on one timeline, because each thought
+  // year 1 was the year IT was founded. The world hands the day in; the town
+  // never reaches for it ([HC-71]).
+  foundedDay: number;
 
   // The three stored variables. Everything else is DERIVED every tick so it can
   // never drift out of step with its own explanation.
@@ -192,9 +202,9 @@ export interface Town {
   market: MarketState;
   nextWorkId: number;
 
-  // The season the town was last frightened — a raid, a bombardment. Feeds the
+  // The DAY the town was last frightened — a raid, a bombardment. Feeds the
   // governor's FEAR term ("since the burning, the town wants guns"). KAN-74 sets it.
-  lastThreat: number | null;
+  lastThreatDay: number | null;
 }
 
 // ---- Derived, never stored -------------------------------------------------
