@@ -23,7 +23,7 @@
 // below. What this file owns is the RULEBOOK every weather event will obey.
 
 import type { Produce, TerrainKind } from "../town/types";
-import type { Season } from "./clock";
+import type { Season } from "./calendar";
 import { CHANNEL, rollOf } from "./chance";
 import { WORLD_BOX } from "./shape";
 

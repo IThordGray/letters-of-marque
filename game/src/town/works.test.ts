@@ -6,11 +6,22 @@
 
 import { describe, it, expect } from "vitest";
 import type { Town } from "./types";
-import { derive, stepYears, stepSeason } from "./sim";
+import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
 import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, mendable, repairCost, CATALOGUE } from "./works";
 import { stepTownSeason } from "./governor";
-import { DECAY, SEASONS_PER_YEAR } from "./constants";
+import { DECAY } from "./constants";
+import { CALENDAR } from "../overworld/calendar";
 import { mixedTown, bareTown, townOf, reg, RING1 } from "./fixtures";
+
+// The town keeps no clock (KAN-107): the world hands it the day, and here the
+// test plays the world. These fixtures stand on the world's first day.
+const DAY0 = 0;
+const SEASON = CALENDAR.daysPerSeason;
+
+// The devolution thresholds are DAYS. How many seasons it takes to cross one is
+// written out here rather than read back out of the ladder — the oracle rule.
+const SEASONS_TO_DECAY = DECAY.idleToDecayed / SEASON;
+const SEASONS_TO_RUIN = DECAY.decayedToRuin / SEASON;
 
 // A presidio. It is §5.6's own example — "a presidio of ninety souls" — and it is
 // the right fixture for a claim about the LADDER, because SPRAWL.royalOutpost
@@ -61,18 +72,18 @@ describe("the hamlet floor", () => {
 
 describe("the devolution ladder", () => {
   it("rots by grades and never straight to ruin", () => {
-    // A work nobody can man goes idle, and only then decays. Elapsed time is
-    // counted in seasons stepped, never in town.season arithmetic — the town's
-    // private clock is on the contradiction list.
+    // A work nobody can man goes idle, and only then decays. Elapsed time is the
+    // difference between two days handed in, which is all it ever should have
+    // been — the town's private season counter is gone (KAN-107).
     const town = mixedTown({ population: 400, wealth: 4000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     expect(pit.condition).toBe("working");
 
     town.population = 4; // the hands walk away
     const seen: string[] = [];
-    for (let i = 0; i < 40; i++) {
-      stepSeason(town);
+    for (let i = 1; i <= 40; i++) {
+      stepSeason(town, DAY0 + i * SEASON);
       if (seen[seen.length - 1] !== pit.condition) seen.push(pit.condition);
     }
 
@@ -82,23 +93,23 @@ describe("the devolution ladder", () => {
 
   it("is idle for a while before it is decayed", () => {
     const town = mixedTown({ population: 400, wealth: 4000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     town.population = 4;
-    stepSeason(town);
+    stepSeason(town, DAY0 + SEASON);
     expect(pit.condition).toBe("idle"); // one season of neglect is not decay
   });
 
   it("comes straight back the season the hands return", () => {
     const town = mixedTown({ population: 400, wealth: 4000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     town.population = 4;
-    stepSeason(town);
+    stepSeason(town, DAY0 + SEASON);
     expect(pit.condition).toBe("idle");
 
     town.population = 400;
-    stepSeason(town);
+    stepSeason(town, DAY0 + 2 * SEASON);
     expect(pit.condition).toBe("working");
   });
 });
@@ -116,22 +127,23 @@ describe("coming back up the ladder", () => {
 
   it("puts a rotted work back to work when someone pays for it", () => {
     const town = presidio({ population: 400, wealth: 9000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     expect(pit.condition).toBe("working");
 
     town.population = 4; // the hands walk away, and it rots two rungs
-    for (let i = 0; i < DECAY.idleToDecayed + 1; i++) stepSeason(town);
+    stepSeasons(town, SEASONS_TO_DECAY + 1, DAY0 + SEASON);
+    const rotted = DAY0 + (SEASONS_TO_DECAY + 2) * SEASON;
     expect(pit.condition).toBe("decayed");
 
     // They come back, and so does the coin.
     town.population = 400;
     town.wealth = 9000;
-    const mended = stepTownSeason(town);
+    const mended = stepTownSeason(town, rotted);
     expect(mended.built?.work).toBe(pit);
     expect(pit.condition).toBe("idle"); // the coin buys ONE RUNG, not the men
 
-    stepTownSeason(town);
+    stepTownSeason(town, rotted + SEASON);
     expect(pit.condition).toBe("working"); // ...and the hands take the last step
   });
 
@@ -147,16 +159,16 @@ describe("coming back up the ladder", () => {
 
   it("is past saving once it is a ruin, however rich the town and however long it waits", () => {
     const town = presidio({ population: 600, wealth: 9000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
     pit.condition = "ruin";
-    pit.idleSince = town.season;
+    pit.idleSinceDay = DAY0;
 
     expect(mendable(town, pit)).toBe(false);
-    for (let i = 0; i < 60 * SEASONS_PER_YEAR; i++) {
+    for (let i = 1; i <= 60 * CALENDAR.seasonsPerYear; i++) {
       town.wealth = 90000; // never short of coin for a single season of it
       town.population = 600;
-      stepTownSeason(town);
+      stepTownSeason(town, DAY0 + i * SEASON);
     }
     expect(pit.condition).toBe("ruin");
   });
@@ -169,7 +181,7 @@ describe("coming back up the ladder", () => {
       population: 900,
       wealth: 90000,
     });
-    const pit = raise(town, "sawpit", 1650)!;
+    const pit = raise(town, "sawpit", DAY0)!;
     expect(roomFor(town, "sawpit")).toBe(1);
 
     pit.condition = "decayed";
@@ -186,33 +198,36 @@ describe("coming back up the ladder", () => {
     // gap between the two thresholds IS how long the ground is held, so this
     // moves when the ladder is tuned and breaks when the ladder is rewired.
     const town = presidio({ population: 400, wealth: 4000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
 
     town.population = 4;
-    let decayedAt = -1;
-    let ruinedAt = -1;
-    for (let i = 0; i < 2 * DECAY.decayedToRuin; i++) {
-      stepSeason(town);
-      if (decayedAt < 0 && pit.condition === "decayed") decayedAt = town.season;
-      if (ruinedAt < 0 && pit.condition === "ruin") ruinedAt = town.season;
+    let decayedOn = -1;
+    let ruinedOn = -1;
+    for (let i = 1; i <= 2 * SEASONS_TO_RUIN; i++) {
+      const day = DAY0 + i * SEASON;
+      stepSeason(town, day);
+      if (decayedOn < 0 && pit.condition === "decayed") decayedOn = day;
+      if (ruinedOn < 0 && pit.condition === "ruin") ruinedOn = day;
     }
-    expect(decayedAt).toBeGreaterThan(0);
-    expect(ruinedAt).toBeGreaterThan(decayedAt);
-    expect(ruinedAt - decayedAt).toBe(DECAY.decayedToRuin - DECAY.idleToDecayed);
+    expect(decayedOn).toBeGreaterThan(0);
+    expect(ruinedOn).toBeGreaterThan(decayedOn);
+    // Both dates are days now, so the gap IS the difference between the two
+    // thresholds — no conversion, and nothing to get wrong in one.
+    expect(ruinedOn - decayedOn).toBe(DECAY.decayedToRuin - DECAY.idleToDecayed);
   });
 });
 
 describe("the dependency chain", () => {
   it("stands the shipways idle for want of planks", () => {
     const town = mixedTown({ population: 600, wealth: 9000 });
-    const pit = raise(town, "sawpit", 1650)!;
-    const ways = raise(town, "shipway", 1650)!;
-    stepSeason(town);
+    const pit = raise(town, "sawpit", DAY0)!;
+    const ways = raise(town, "shipway", DAY0)!;
+    stepSeason(town, DAY0);
     expect(ways.condition).toBe("working");
 
     pit.condition = "ruin"; // the planks stop
-    stepSeason(town);
+    stepSeason(town, DAY0 + SEASON);
 
     expect(ways.condition).toBe("idle");
   });
@@ -245,8 +260,8 @@ describe("the two gates on the ground", () => {
     });
 
     expect(buildable(grudging, "caneField")).toBe(true); // offered, not refused
-    const good = raise(ideal, "caneField", 1650)!;
-    const poor = raise(grudging, "caneField", 1650)!;
+    const good = raise(ideal, "caneField", DAY0)!;
+    const poor = raise(grudging, "caneField", DAY0)!;
     expect(poor.trade).toBeLessThan(good.trade);
   });
 
@@ -270,10 +285,10 @@ describe("the two gates on the ground", () => {
     });
     const before = roomFor(town, "sawpit");
     expect(before).toBe(2);
-    raise(town, "sawpit", 1650);
-    raise(town, "sawpit", 1650);
+    raise(town, "sawpit", DAY0);
+    raise(town, "sawpit", DAY0);
     expect(roomFor(town, "sawpit")).toBe(0);
-    expect(raise(town, "sawpit", 1650)).toBeNull();
+    expect(raise(town, "sawpit", DAY0)).toBeNull();
     expect(countOf(town, "sawpit")).toBe(2);
   });
 });
@@ -289,8 +304,8 @@ describe("ground out of the town's way", () => {
       wealth: 9000,
     });
 
-    const atHand = raise(near, "sawpit", 1650)!;
-    const overTheRidge = raise(far, "sawpit", 1650)!;
+    const atHand = raise(near, "sawpit", DAY0)!;
+    const overTheRidge = raise(far, "sawpit", DAY0)!;
 
     expect(overTheRidge.hands).toBeGreaterThan(atHand.hands);
     expect(overTheRidge.trade).toBeLessThan(atHand.trade);
@@ -306,11 +321,11 @@ describe("ground out of the town's way", () => {
         population: 400,
         wealth: 9000,
       });
-      const elder = raise(town, "sawpit", 1650)!;
-      const younger = raise(town, "sawpit", 1650)!;
+      const elder = raise(town, "sawpit", DAY0)!;
+      const younger = raise(town, "sawpit", DAY0)!;
       if (reversed) town.works.reverse();
       town.population = 22; // hands enough for one of them, and not for two
-      stepSeason(town);
+      stepSeason(town, DAY0);
       return { elder: elder.condition, younger: younger.condition };
     };
 
@@ -327,12 +342,12 @@ describe("ground out of the town's way", () => {
       ],
       { population: 400, wealth: 9000 },
     );
-    const atHand = raise(town, "sawpit", 1650)!;
-    const overTheRidge = raise(town, "caneField", 1650)!;
-    stepSeason(town);
+    const atHand = raise(town, "sawpit", DAY0)!;
+    const overTheRidge = raise(town, "caneField", DAY0)!;
+    stepSeason(town, DAY0);
 
     town.population = 30; // barely anyone left
-    stepSeason(town);
+    stepSeason(town, DAY0 + SEASON);
 
     expect(overTheRidge.condition).toBe("idle");
     expect(atHand.condition).toBe("working");
@@ -346,8 +361,8 @@ describe("what the town wants", () => {
     const town = mixedTown({ population: 50, wealth: 9000 });
     expect(unmetNeeds(town).drink).toBe(1);
 
-    raise(town, "tavern", 1650);
-    stepSeason(town);
+    raise(town, "tavern", DAY0);
+    stepSeason(town, DAY0);
 
     expect(unmetNeeds(town).drink).toBe(0); // a tavern serving more souls than there are
   });
@@ -370,18 +385,18 @@ describe("reproducibility", () => {
   it("gives the same ledger from the same start and the same steps", () => {
     const a = mixedTown({ population: 350, wealth: 5000 });
     const b = mixedTown({ population: 350, wealth: 5000 });
-    for (let i = 0; i < 200; i++) { stepSeason(a); stepSeason(b); }
+    for (let i = 0; i < 200; i++) { stepSeason(a, DAY0 + i * SEASON); stepSeason(b, DAY0 + i * SEASON); }
     expect(b).toEqual(a);
   });
 
   it("does not depend on the order the works were entered in the ledger", () => {
     const build = (reversed: boolean) => {
       const t = mixedTown({ population: 600, wealth: 20000 });
-      raise(t, "sawpit", 1650);
-      raise(t, "caneField", 1650);
-      raise(t, "tavern", 1650);
+      raise(t, "sawpit", DAY0);
+      raise(t, "caneField", DAY0);
+      raise(t, "tavern", DAY0);
       if (reversed) t.works.reverse();
-      for (let i = 0; i < 40; i++) stepSeason(t);
+      stepSeasons(t, 40, DAY0);
       return t.works.map((w) => `${w.kind}:${w.condition}`).sort();
     };
     expect(build(true)).toEqual(build(false));

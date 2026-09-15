@@ -80,11 +80,12 @@ export function foundPlace(world: World, place: Place): Town {
       grant: nation.crown ? STANDING_GRANT[place.purpose] : 0,
       population: place.population,
       wealth: place.wealth,
-      // The town's private season counter is a known contradiction against
-      // [HC-9] and is KAN-107's to remove; until it goes, a place's own clock
-      // starts on the world's current year rather than on the year a warm-start
-      // city would really have been founded. KAN-99 gives places their history.
-      founded: yearOf(world),
+      // The day the world is standing on, handed straight across — a place keeps
+      // days since world epoch and nothing else, so there is no conversion here
+      // and no second clock to start (KAN-107). Every place the generator founds
+      // is founded TODAY; a warm start that founds a city eighty years before the
+      // epoch writes a negative day and the calendar reads it correctly (KAN-99).
+      foundedDay: world.day,
     },
     groundAt(world, place),
   );
@@ -112,7 +113,7 @@ export function foundPlace(world: World, place: Place): Town {
 function settleOpening(town: Town, allowed: number): void {
   town.population = allowed;
   for (let pass = 0; pass < 3; pass++) {
-    stepWorks(town, town.founded);
+    stepWorks(town, town.foundedDay);
     const canFeed = carryingCapacity(town);
     town.population = Math.min(allowed, canFeed);
   }

@@ -4,7 +4,14 @@
 // season, four per year) so these are tuned against decades, not minutes.
 // ============================================================================
 
-export const SEASONS_PER_YEAR = 4;
+// The calendar is NOT redefined here. `SEASONS_PER_YEAR = 4` used to sit on this
+// line and it was a second source of truth for `CALENDAR.seasonsPerYear` — the
+// same class of bug as the deleted `POP.floor` (KAN-106) and the hardcoded
+// garrison preview (KAN-109, [P-47]): a derived quantity previewed from a second
+// number. There is one calendar, in `overworld/calendar.ts` — a leaf that imports
+// nothing, so reading it from here closes no cycle — and the durations below are
+// written IN TERMS OF IT rather than trusting two numbers to agree.
+import { DAYS_PER_YEAR } from "../overworld/calendar";
 
 // ---- The land --------------------------------------------------------------
 // An irregular coast of regions. Dilution comes from INDEPENDENT PER-TILE
@@ -51,13 +58,18 @@ export const WORKS = {
   } as Partial<Record<string, number>>,
 };
 
-// The devolution ladder, in seasons idle. Decay is recoverable at every step
-// until the last — a work rots, it does not vanish. Both thresholds are counted
-// from the season the work went idle, so a work is DECAYED for the difference
-// between them (four years) before it is past saving.
+// The devolution ladder, IN DAYS IDLE. Decay is recoverable at every step until
+// the last — a work rots, it does not vanish. Both thresholds are counted from
+// the DAY the work went idle, so a work is DECAYED for the difference between
+// them (four years) before it is past saving.
+//
+// Written as years rather than as 1080 and 2520, so the derivation stays visible
+// and the number a person tunes is still the number of years a governor may
+// neglect a shed. They were 12 and 28 SEASONS until KAN-107: the durations are
+// unchanged to the day, only the unit the town counts them in.
 export const DECAY = {
-  idleToDecayed: 12, // three years untended
-  decayedToRuin: 28, // ...and seven before it is past saving
+  idleToDecayed: 3 * DAYS_PER_YEAR, // three years untended
+  decayedToRuin: 7 * DAYS_PER_YEAR, // ...and seven before it is past saving
   // What it costs to put a rotted work back in order, as a share of raising the
   // same work new. WELL UNDER 1, and that is the whole reason anyone mends
   // rather than rebuilds — it is also what keeps `decayed` a rung on a ladder
@@ -227,7 +239,9 @@ export const PLAN = {
   // which is what lets an investment slider "unlock a category" rather than just
   // speed things up.
   settleFor: 0.7,
-  threatMemory: 40, // seasons a sacking stays fresh in the town's mind
+  // How long a sacking stays fresh in the town's mind, in DAYS (it was 40
+  // seasons, which is the same ten years).
+  threatMemory: 10 * DAYS_PER_YEAR,
 };
 
 // ---- The footprint ---------------------------------------------------------

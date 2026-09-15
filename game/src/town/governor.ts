@@ -13,8 +13,9 @@ import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived } from "./typ
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf } from "./works";
 import { compass, LABEL } from "./land";
 import { DEPENDENCY_CLAUSE, canBuild, fetchOf } from "./trade";
-import { derive, stepSeason, year } from "./sim";
-import { PLAN, SEASONS_PER_YEAR } from "./constants";
+import { derive, stepSeason } from "./sim";
+import { CALENDAR } from "../overworld/calendar";
+import { PLAN } from "./constants";
 import { stepFootprint, type Grew } from "./footprint";
 
 export type TermKey = "land" | "need" | "market" | "fear" | "agenda";
@@ -124,7 +125,10 @@ export const permits = (town: Town, kind: WorkKind): boolean =>
 
 // ---- Scoring ---------------------------------------------------------------
 
-export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): Term[] {
+// THE DAY IS AN ARGUMENT, not a lookup. The fear term asks how long ago the town
+// was burned, and "how long ago" is the difference between two days since world
+// epoch ([HC-3]) — handed in, never fetched ([HC-71]).
+export function scoreWork(town: Town, kind: WorkKind, day: number, derived = derive(town)): Term[] {
   const def = CATALOGUE[kind];
   const d = derived;
   const terms: Term[] = [];
@@ -172,7 +176,7 @@ export function scoreWork(town: Town, kind: WorkKind, derived = derive(town)): T
   // 4. FEAR — the town is open, and more so if it was lately hurt.
   if (def.defence > 0) {
     const deficit = Math.max(0, 1 - d.security / PLAN.wantSecurity);
-    const fresh = town.lastThreat !== null && town.season - town.lastThreat < PLAN.threatMemory;
+    const fresh = town.lastThreatDay !== null && day - town.lastThreatDay < PLAN.threatMemory;
     if (deficit > 0) {
       terms.push({
         key: "fear",
@@ -206,14 +210,14 @@ function whereFor(town: Town, kind: WorkKind): string {
 // ---- The wants-list --------------------------------------------------------
 // Published so the sim is INSPECTABLE WITHOUT BEING CONTROLLABLE. Raising the
 // investment reorders and lengthens this list, which is the whole demo.
-export function wants(town: Town, limit = 3, derived = derive(town)): Want[] {
+export function wants(town: Town, day: number, limit = 3, derived = derive(town)): Want[] {
   const d = derived;
   const spare = spareHands(d);
   const supplied = canBuild(d.commerce);
   const out: Want[] = [];
   for (const kind of CHOOSABLE) {
     if (!buildable(town, kind)) continue;
-    const terms = scoreWork(town, kind, d);
+    const terms = scoreWork(town, kind, day, d);
     const score = terms.reduce((s, t) => s + t.weight, 0);
     if (score <= 0) continue;
     const def = CATALOGUE[kind];
@@ -242,7 +246,10 @@ export interface Built {
   // `null` when he MENDED rather than raised. A repair has no auction behind it:
   // the town is not choosing what it wants, it is keeping what it already has.
   want: Want | null;
-  year: number;
+  // The DAY it happened, days since world epoch. Not a year: a year is a reading,
+  // taken by whoever prints the sentence. A struct carrying both would be [P-47]
+  // in miniature, and the two would eventually disagree.
+  day: number;
   sentence: string;
 }
 
@@ -283,7 +290,7 @@ const spareHands = (d: Derived): number => Math.max(0, d.hands.available - d.han
 // active set would need maintaining by `devolve`, by this function and by every
 // future raid that damages a work, to save a property compare on ~20 works once a
 // season. It has not earned that; the loop's first test is a single compare.
-function mendTurn(town: Town, d: Derived, year: number): Built | null {
+function mendTurn(town: Town, d: Derived, day: number): Built | null {
   if (!canBuild(d.commerce)) return null; // no timber, no stone, no repairs either
   const spare = spareHands(d);
 
@@ -307,8 +314,10 @@ function mendTurn(town: Town, d: Derived, year: number): Built | null {
   // season, through the allocator, which stays the only thing that ever writes
   // `working` — a governor buys the repair, he does not conjure the men.
   best.condition = "idle";
-  best.idleSince = town.season;
-  return { work: best, want: null, year, sentence: describeMend(town, best) };
+  // The idle clock restarts on the day the coin was spent, not on a season
+  // counted from the town's own founding.
+  best.idleSinceDay = day;
+  return { work: best, want: null, day, sentence: describeMend(town, best) };
 }
 
 function describeMend(town: Town, w: Work): string {
@@ -320,7 +329,7 @@ function describeMend(town: Town, w: Work): string {
 // but he HOLDS OUT for something better rather than always buying the cheapest
 // option, which is what lets money change what a town becomes and not merely how
 // fast it gets there.
-export function governorTurn(town: Town, year: number): Built | null {
+export function governorTurn(town: Town, day: number): Built | null {
   // Derived once and handed on ([P-18]): the mend gate and the auction ask the
   // same town the same question, and asking twice is how the two answers start
   // disagreeing.
@@ -329,10 +338,10 @@ export function governorTurn(town: Town, year: number): Built | null {
   // He puts his own house in order before he raises a new one. Mending is cheaper
   // than building, so this is not a generosity — it is what a governor who could
   // count would do, and it is what keeps the ladder's middle rung a rung.
-  const mended = mendTurn(town, d, year);
+  const mended = mendTurn(town, d, day);
   if (mended) return mended;
 
-  const ranked = wants(town, CHOOSABLE.length, d);
+  const ranked = wants(town, day, CHOOSABLE.length, d);
 
   // He will not raise what nobody can work. A town with money and no men simply
   // waits — and building anyway would just leave a shed to rot, which is exactly
@@ -351,10 +360,10 @@ export function governorTurn(town: Town, year: number): Built | null {
   // He holds out for the better thing unless something nearly as good is to hand.
   if (now !== best && now.score < best.score * PLAN.settleFor) return null;
 
-  const work = raise(town, now.kind, year);
+  const work = raise(town, now.kind, day);
   if (!work) return null;
   town.wealth -= now.cost;
-  return { work, want: now, year, sentence: describeBuild(town, now) };
+  return { work, want: now, day, sentence: describeBuild(town, now) };
 }
 
 export function describeBuild(town: Town, want: Want): string {
@@ -370,23 +379,29 @@ export function describeBuild(town: Town, want: Want): string {
 // What a season came to. Growth is never a prompt — the town does not tell you it
 // has outgrown its wall (§1.1); this is only what a harness may report if asked.
 export interface Season {
-  year: number;
+  // The day the season began, days since world epoch. The harness turns it into a
+  // year when it writes its journal line; nothing in the sim ever needs one.
+  day: number;
   built: Built | null;
   grew: Grew | null;
 }
 
-export function stepTownSeason(town: Town): Season {
-  stepSeason(town);
+export function stepTownSeason(town: Town, day: number): Season {
+  stepSeason(town, day);
   // The town spreads on its own, whatever the governor is minded to build. It is
   // pressure relieved, not a decision taken — so it is not part of the auction.
   const grew = stepFootprint(town);
-  return { year: year(town), built: governorTurn(town, year(town)), grew };
+  return { day, built: governorTurn(town, day), grew };
 }
 
-export function stepTownYears(town: Town, years: number): Season[] {
+// The same driver as `stepYears`, one layer up: a local day counter handed to
+// each season and never written back to the town. See the note there for why the
+// starting day is a parameter rather than state.
+export function stepTownYears(town: Town, years: number, from = 0): Season[] {
   const out: Season[] = [];
-  for (let i = 0; i < years * SEASONS_PER_YEAR; i++) {
-    const s = stepTownSeason(town);
+  const seasons = years * CALENDAR.seasonsPerYear;
+  for (let i = 0; i < seasons; i++) {
+    const s = stepTownSeason(town, from + i * CALENDAR.daysPerSeason);
     if (s.built || s.grew) out.push(s);
   }
   return out;

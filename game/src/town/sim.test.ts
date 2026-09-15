@@ -5,12 +5,18 @@
 // that nothing derived is kept. See spec/world-simulation.md §10.1.
 
 import { describe, it, expect } from "vitest";
-import { derive, stepSeason, stepYears, makeTown, carryingCapacity, failureWord } from "./sim";
+import { derive, stepSeason, stepSeasons, stepYears, makeTown, carryingCapacity, failureWord } from "./sim";
 import { stepTownYears } from "./governor";
 import { raise, CATALOGUE } from "./works";
 import { mixedTown, bareTown } from "./fixtures";
 import { WORKS } from "./constants";
 import type { Town } from "./types";
+import { CALENDAR, DAYS_PER_YEAR, yearOfDay } from "../overworld/calendar";
+
+// The town keeps no clock (KAN-107), so a test that steps one plays the world and
+// says which day it is. These fixtures stand on the world's first day.
+const DAY0 = 0;
+const SEASON = CALENDAR.daysPerSeason;
 
 describe("the ledger", () => {
   it("recomputes what it does not store", () => {
@@ -31,14 +37,14 @@ describe("the ledger", () => {
     const town = mixedTown({ population: 300, wealth: 6000 });
     stepYears(town, 10);
 
-    const earner = raise(town, "sawpit", 1650)!;
-    stepSeason(town);
+    const earner = raise(town, "sawpit", 10 * DAYS_PER_YEAR)!;
+    stepSeason(town, 10 * DAYS_PER_YEAR);
     const yieldWith = derive(town).yield;
     const prosperityWith = town.prosperity;
 
     earner.condition = "ruin";
     const yieldWithout = derive(town).yield;
-    stepSeason(town);
+    stepSeason(town, 10 * DAYS_PER_YEAR + SEASON);
 
     // The flow answers instantly...
     expect(yieldWithout).toBeLessThan(yieldWith);
@@ -50,9 +56,9 @@ describe("the ledger", () => {
   it("settles toward a new verdict only after many seasons, never in one", () => {
     const town = bareTown({ population: 120, prosperity: 5 });
     const start = town.prosperity;
-    stepSeason(town);
+    stepSeason(town, DAY0);
     const afterOne = town.prosperity - start;
-    stepYears(town, 15);
+    stepYears(town, 15, DAY0 + SEASON);
     const afterMany = town.prosperity - start;
 
     expect(afterOne).toBeGreaterThan(0);
@@ -161,21 +167,21 @@ describe("only a deliberate hand empties a town", () => {
     // than a number.
     const fed = mixedTown({ population: 200, wealth: 20_000 });
     const never = mixedTown({ population: 200, wealth: 20_000 });
-    for (const t of [fed, never]) raise(t, "warehouse", 1650); // somewhere to land it
+    for (const t of [fed, never]) raise(t, "warehouse", DAY0); // somewhere to land it
 
     for (let i = 0; i < 200; i++) {
       fed.market.allotted[0] = 900;
       fed.market.price[0] = 0.15;
-      stepSeason(fed);
-      stepSeason(never);
+      stepSeason(fed, DAY0 + i * SEASON);
+      stepSeason(never, DAY0 + i * SEASON);
     }
     const peak = fed.population;
     expect(peak).toBeGreaterThan(never.population); // the sea carried souls its ground could not
 
     fed.market.allotted[0] = 0; // ...and then it stopped
-    for (let i = 0; i < 200; i++) stepSeason(fed);
+    stepSeasons(fed, 200, DAY0 + 200 * SEASON);
     const fallen = fed.population;
-    for (let i = 0; i < 200; i++) stepSeason(fed);
+    stepSeasons(fed, 200, DAY0 + 400 * SEASON);
 
     expect(fallen).toBeLessThan(peak); // it really did fall
     expect(fed.population).toBeCloseTo(fallen, 1); // ...and then stood, rather than sliding on
@@ -200,8 +206,8 @@ describe("the three failure states are readings, never fields", () => {
 
   // The top row of the table: a place whose trades have not stopped.
   function withATrade(town: Town): Town {
-    raise(town, "sawpit", 1650);
-    stepSeason(town);
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
     expect(town.works.some((w) => w.kind === "sawpit" && w.condition === "working")).toBe(true);
     return town;
   }
@@ -266,7 +272,7 @@ describe("the three failure states are readings, never fields", () => {
     // somebody could walk back into, and it reads as one.
     const emptied = settled();
     for (const w of emptied.works) if (CATALOGUE[w.kind].cls === "capital") w.condition = "ruin";
-    raise(emptied, "sawpit", 1650)!.condition = "ruin"; // a wreck to remember it by
+    raise(emptied, "sawpit", DAY0)!.condition = "ruin"; // a wreck to remember it by
     emptied.population = 0;
     expect(emptied.works.length).toBeGreaterThan(0);
     expect(failureWord(emptied)).toBe("ruined");
@@ -326,14 +332,19 @@ describe("determinism", () => {
     const pieces = mixedTown({ population: 200, wealth: 3000 });
 
     stepTownYears(whole, 60);
-    for (let i = 0; i < 60; i++) stepTownYears(pieces, 1);
+    // The pieces have to be told where they resume — the town cannot be asked,
+    // because it keeps no clock. That is the shape of the fix, and it makes this
+    // claim stronger than it was: it now also says the handed-in day is what
+    // drives the run, not some counter the town quietly kept between calls.
+    for (let i = 0; i < 60; i++) stepTownYears(pieces, 1, i * DAYS_PER_YEAR);
 
     expect(pieces).toEqual(whole);
   });
 
-  it("reads no clock of its own beyond the season it counts", () => {
+  it("reads no clock of its own at all", () => {
     // A guard against wall-clock or Math.random creeping into the sim: two runs
-    // separated in real time must be identical.
+    // separated in real time must be identical. The claim used to end "beyond the
+    // season it counts", because the town counted one; it counts nothing now.
     const a = makeTown({ name: "A", seed: 7, population: 90 });
     const b = makeTown({ name: "B", seed: 7, population: 90 });
     stepYears(a, 30);
@@ -341,5 +352,96 @@ describe("determinism", () => {
     expect(b.population).toBe(a.population);
     expect(b.prosperity).toBe(a.prosperity);
     expect(b.wealth).toBe(a.wealth);
+  });
+});
+
+// ---- One clock, and everything on it ---------------------------------------
+//
+// [HC-9]: one clock, in world state, and no system carries its own. The town
+// carried one until KAN-107 — `season`, "seasons elapsed since founding" — and
+// the year it computed from it was reckoned from the town's OWN founding. Two
+// places founded in different years therefore could not be compared at all: each
+// believed year 1 was the year it was founded. Every claim below was impossible
+// to write before the fix and is almost too easy to write after it, which is
+// exactly what a fix of this shape should look like.
+
+describe("a place keeps days since world epoch, and no clock of its own", () => {
+  it("stores no field that counts seasons or years", () => {
+    // The sharp form, and the one that would fail if anybody reintroduced a
+    // private counter under a new name. Every time-bearing field on the struct —
+    // the town's and its works' — is a DAY, and says so.
+    const town = mixedTown({ population: 200, wealth: 3000 });
+    stepYears(town, 20);
+
+    const timeBearing = (o: object) =>
+      Object.keys(o).filter((k) => /year|season|month|week|date|time|day|since|founded/i.test(k));
+
+    expect(timeBearing(town)).toEqual(["foundedDay", "lastThreatDay"]);
+    expect(town.works.length).toBeGreaterThan(0);
+    for (const w of town.works) expect(timeBearing(w)).toEqual(["sinceDay", "idleSinceDay"]);
+  });
+
+  it("dates a work by the day it was handed, not by a season it counted", () => {
+    const town = mixedTown({ population: 300, wealth: 9000 });
+    const day = 37 * DAYS_PER_YEAR + 2 * SEASON;
+    const pit = raise(town, "sawpit", day)!;
+    expect(pit.sinceDay).toBe(day);
+    expect(yearOfDay(pit.sinceDay)).toBe(yearOfDay(day));
+  });
+});
+
+describe("two places founded in different years sit on one timeline", () => {
+  // THE CLAIM THIS TICKET EXISTS FOR. Today every place is founded on day 0 and
+  // the old reckoning agreed with this one by coincidence; the moment a place has
+  // a history (KAN-99) or a date is printed on a map (KAN-100), it would not.
+
+  it("dates the same season the same way in a young town and an old one", () => {
+    // Founded eighty years apart, run through the SAME seasons. Under the old
+    // reckoning the elder would have called this its 92nd year and the younger its
+    // 12th, and both would have been talking about the same afternoon.
+    const elder = mixedTown({ population: 200, wealth: 9000, foundedDay: -80 * DAYS_PER_YEAR });
+    const younger = mixedTown({ population: 200, wealth: 9000, foundedDay: 0 });
+
+    const from = 12 * DAYS_PER_YEAR;
+    stepTownYears(elder, 5, from);
+    stepTownYears(younger, 5, from);
+
+    const raisedIn = (t: Town) => t.works.filter((w) => w.sinceDay >= from).map((w) => yearOfDay(w.sinceDay));
+    expect(raisedIn(elder).length).toBeGreaterThan(0);
+    expect(raisedIn(younger).length).toBeGreaterThan(0);
+    for (const y of [...raisedIn(elder), ...raisedIn(younger)]) {
+      expect(y).toBeGreaterThanOrEqual(yearOfDay(from));
+      expect(y).toBeLessThan(yearOfDay(from) + 5);
+    }
+  });
+
+  it("says which of two places' works is the elder, across the whole map", () => {
+    // The comparison itself — a single `<` over two towns' ledgers, which is what
+    // a chronicle, a world map date and a warm start all need. It could not be
+    // written at all while each place counted from its own founding.
+    const oldTown = mixedTown({ population: 200, wealth: 9000, foundedDay: -80 * DAYS_PER_YEAR });
+    const newTown = mixedTown({ population: 200, wealth: 9000, foundedDay: 0 });
+
+    const oldSawpit = raise(oldTown, "sawpit", -80 * DAYS_PER_YEAR)!; // cut the year it was founded
+    const newSawpit = raise(newTown, "sawpit", 0)!; // ...and this one eighty years later
+
+    expect(oldSawpit.sinceDay).toBeLessThan(newSawpit.sinceDay);
+    expect(yearOfDay(newSawpit.sinceDay) - yearOfDay(oldSawpit.sinceDay)).toBe(80);
+  });
+
+  it("ages two places at their own ages while the world keeps one date", () => {
+    // Both halves at once, which is the point of the split: HOW OLD a place is
+    // belongs to the place, WHAT DAY IT IS belongs to the world, and the second
+    // is not a function of the first.
+    const elder = mixedTown({ foundedDay: -80 * DAYS_PER_YEAR });
+    const younger = mixedTown({ foundedDay: -5 * DAYS_PER_YEAR });
+    const today = 12 * DAYS_PER_YEAR;
+
+    expect((today - elder.foundedDay) / DAYS_PER_YEAR).toBe(92);
+    expect((today - younger.foundedDay) / DAYS_PER_YEAR).toBe(17);
+    expect(elder.foundedDay).toBeLessThan(younger.foundedDay); // and the elder is elder
+    // ...while the date is one date, and neither founding is in it. The oracle is
+    // written out rather than read back: twelve years after the epoch is 1672.
+    expect(yearOfDay(today)).toBe(CALENDAR.epochYear + 12);
   });
 });

@@ -6,14 +6,14 @@
 // it is the contract §6's table sets out.
 
 import { describe, it, expect } from "vitest";
-import { DAYS_PER_YEAR, yearOf } from "./clock";
+import { yearOf } from "./clock";
 import { inFlightCount } from "./dispatch";
 import { describeWorld, foundAll, foundPlace, generateWorld } from "./worldgen";
 import { FACTIONS } from "./factions";
 import { SIZES } from "./places";
-import { derive, stepSeason } from "../town/sim";
+import { derive, stepYears } from "../town/sim";
 import { CATALOGUE } from "../town/works";
-import { SEASONS_PER_YEAR, WORKS } from "../town/constants";
+import { WORKS } from "../town/constants";
 
 // THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
 // being a second number laid over the floor the catalogue already raises, so the
@@ -139,9 +139,10 @@ describe("the cheapest test of the whole generator", () => {
   const YEARS = 20;
   const towns = foundAll(WORLD);
   const opening = towns.map((t) => t.population);
-  for (const t of towns) {
-    for (let i = 0; i < YEARS * SEASONS_PER_YEAR; i++) stepSeason(t);
-  }
+  // Stepped from the day the generator founded them — `world.day`, which is 0 for
+  // a fresh world. There is no second calendar to count the seasons with any more
+  // (KAN-107): `stepYears` takes years and hands each season its day.
+  for (const t of towns) stepYears(t, YEARS, WORLD.day);
 
   it("leaves every place able to work its own ground after twenty years", () => {
     // [HC-18] as the generator's problem rather than the ledger's: decline alone
@@ -185,14 +186,28 @@ describe("the cheapest test of the whole generator", () => {
   it("runs the same twenty years twice over", () => {
     // [HC-11]: reproducible means the whole history, not the starting state.
     const again = foundAll(generateWorld(SEED));
-    for (const t of again) {
-      for (let i = 0; i < YEARS * SEASONS_PER_YEAR; i++) stepSeason(t);
-    }
+    for (const t of again) stepYears(t, YEARS, WORLD.day);
     expect(again.map((t) => t.population)).toEqual(towns.map((t) => t.population));
     expect(again.map((t) => t.works.length)).toEqual(towns.map((t) => t.works.length));
   });
 
-  it("counts twenty years the same way the world's calendar does", () => {
-    expect(YEARS * SEASONS_PER_YEAR).toBe((YEARS * DAYS_PER_YEAR) / 90);
+  // "counts twenty years the same way the world's calendar does" — asserting
+  // `YEARS * SEASONS_PER_YEAR === YEARS * DAYS_PER_YEAR / 90` — stood here and is
+  // DELETED. It was a bridge between two calendars that both existed, and it had
+  // to be written because `town/constants.ts` kept its own `SEASONS_PER_YEAR`.
+  // There is one calendar now, so the claim has nothing left to relate: the town
+  // module counts seasons out of `CALENDAR` or it does not count them at all.
+
+  it("founds every place on the day the world is standing on, and never on a year", () => {
+    // The generator's half of KAN-107. It used to write `founded: yearOf(world)`
+    // — a YEAR into a field the town then did season arithmetic on. A place now
+    // takes the world's own integer, unconverted, so the date it keeps is
+    // comparable with every other place's and with the clock itself.
+    for (const p of WORLD.places.slice(0, 12)) {
+      const town = foundPlace(WORLD, p);
+      expect(town.foundedDay).toBe(WORLD.day);
+      // ...and the warm start's works are dated the same day, not a year number.
+      for (const w of town.works) expect(w.sinceDay).toBe(WORLD.day);
+    }
   });
 });

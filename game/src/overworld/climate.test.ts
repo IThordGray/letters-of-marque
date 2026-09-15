@@ -13,7 +13,8 @@ import {
   exposureOf, makeZones, stormTrack, windOf, zoneAt,
 } from "./climate";
 import { WORLD_BOX } from "./shape";
-import { makeWorld, type Season } from "./clock";
+import type { Season } from "./calendar";
+import { makeWorld } from "./clock";
 
 const SEED = 1660;
 const ZONES = makeZones(SEED);

@@ -6,14 +6,15 @@
 // and chronicle are KAN-75; the investment slider and the steer are KAN-72.
 
 import type { Town } from "./types";
-import { derive, summarise, year, prosperityWord, wealthWord } from "./sim";
+import { derive, summarise, prosperityWord, wealthWord } from "./sim";
 import { generateWorld, foundPlace, describeWorld } from "../overworld/worldgen";
 import type { Place } from "../overworld/places";
-import { stepTownSeason, stepTownYears, wants } from "./governor";
+import { CALENDAR, yearOfDay } from "../overworld/calendar";
+import { seasonOf, stepDay, yearOf } from "../overworld/clock";
+import { stepTownSeason, wants } from "./governor";
 import { renderHexMap, landCaption } from "./hexmap";
 import { renderPlan } from "./planview";
 import { planTown, describePlan } from "./plan";
-import { SEASONS_PER_YEAR } from "./constants";
 
 // ONE WORLD SEED, AND NOTHING ELSE HAND-PICKED (KAN-98). The generator draws the
 // coastlines, sites the ports, decides their size, purpose and faction, names
@@ -25,6 +26,13 @@ import { SEASONS_PER_YEAR } from "./constants";
 //
 // [HC-21] The step-buttons stay here. This is the single-town harness and it is
 // how the ledger is tested; the world sim gets the running clock, elsewhere.
+//
+// THE DATE ON THIS PAGE IS THE WORLD'S, as of KAN-107. It used to be read off
+// `towns[0]` — a year the first showcased town reckoned from its own founding,
+// which meant the header could only ever be right about one of the three towns
+// below it. The harness already holds a World, so it advances the real clock and
+// prints it, and every town it steps is handed the same day. That is [HC-71] in
+// the smallest possible form: the world drives, the ledger takes what it is given.
 const WORLD_SEED = 1660;
 const world = generateWorld(WORLD_SEED);
 
@@ -66,7 +74,7 @@ function card(t: Town, i: number): string {
     ? `<p class="dim">Idle or rotting: ${tally(sick.map((w) => `${w.name} (${w.condition})`)).join(" · ")}</p>`
     : "";
 
-  const list = wants(t).map((w) =>
+  const list = wants(t, world.day).map((w) =>
     `<li><b>${w.label}${w.where}</b> — ${w.reason}
        <span class="dim">· ${w.cost} coin${w.affordable ? "" : " (saving)"}
        · ${w.terms.map((x) => `${x.key} ${x.weight.toFixed(2)}`).join(", ")}</span></li>`).join("");
@@ -75,7 +83,7 @@ function card(t: Town, i: number): string {
 
   return `<section class="town">
     <h2>${t.name} <small>${t.archetype} · ${t.governor}</small></h2>
-    <p class="line">${summarise(t)}</p>
+    <p class="line">${summarise(t, world.day)}</p>
     <div class="cols">
       <div>
         <table>
@@ -117,29 +125,39 @@ function unmet(needs: Record<string, number>): string {
 }
 
 function render() {
-  const t0 = towns[0];
   app.innerHTML =
-    `<p class="clock">Year <b>${year(t0)}</b> · season ${(t0.season % SEASONS_PER_YEAR) + 1} of ${SEASONS_PER_YEAR}</p>` +
+    `<p class="clock">Year <b>${yearOf(world)}</b> · season ${seasonOf(world) + 1} of ${CALENDAR.seasonsPerYear}</p>` +
     `<p class="dim caption">${describeWorld(world)}</p>` +
     towns.map(card).join("");
 }
 
+// Every button is a number of SEASONS, and each one is stepped the same way: the
+// day the world is standing on goes to all three towns, then the world advances a
+// season's worth of days. The days really are stepped one at a time ([HC-2]: the
+// day is the atom), which costs 90 increments a season and buys the guarantee
+// that this harness's clock is not a second arithmetic of its own.
 function advance(seasons: number) {
-  towns.forEach((t, i) => {
-    const seasonsRun = seasons === 1 ? [stepTownSeason(t)] : stepTownYears(t, seasons / SEASONS_PER_YEAR);
-    for (const s of seasonsRun) {
-      if (s.built) journal[i].push(`${s.year} — ${s.built.sentence}`);
+  for (let s = 0; s < seasons; s++) {
+    const day = world.day;
+    towns.forEach((t, i) => {
+      const season = stepTownSeason(t, day);
+      const when = yearOfDay(season.day);
+      if (season.built) journal[i].push(`${when} — ${season.built.sentence}`);
       // Stalling is a standing condition, not news — don't repeat it every season.
-      if (s.grew && s.grew.kind !== "stalled") journal[i].push(`${s.year} — ${s.grew.sentence}`);
-    }
-  });
+      if (season.grew && season.grew.kind !== "stalled") journal[i].push(`${when} — ${season.grew.sentence}`);
+    });
+    for (let d = 0; d < CALENDAR.daysPerSeason; d++) stepDay(world);
+  }
   render();
 }
 
 document.getElementById("season")!.addEventListener("click", () => advance(1));
-document.getElementById("year")!.addEventListener("click", () => advance(SEASONS_PER_YEAR));
-document.getElementById("twenty")!.addEventListener("click", () => advance(20 * SEASONS_PER_YEAR));
+document.getElementById("year")!.addEventListener("click", () => advance(CALENDAR.seasonsPerYear));
+document.getElementById("twenty")!.addEventListener("click", () => advance(20 * CALENDAR.seasonsPerYear));
 document.getElementById("reset")!.addEventListener("click", () => {
+  // Reset winds the world's clock back too, or the "new" towns would be founded
+  // on whatever day the last run reached. A reset is not a simulation step.
+  world.day = 0;
   towns = seedTowns();
   journal = towns.map(() => []);
   render();

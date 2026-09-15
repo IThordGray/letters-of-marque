@@ -10,7 +10,7 @@ import {
   MARKET, atWar, clearSeason, declareWar, describeMarkets, makeMarkets, noWars, priceFor, runYears,
   type Markets, type Wars,
 } from "./market";
-import { derive, produceSeason, settleSeason, year } from "../town/sim";
+import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { TRADE } from "../town/constants";
@@ -18,9 +18,16 @@ import { mixedTown, seaTown } from "../town/fixtures";
 import { raise } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
+import { CALENDAR } from "./calendar";
 import type { World } from "./clock";
 
 const SEED = 20260910;
+
+// Hand-built fixtures stand on the world's first day, so the works they are given
+// are dated day 0 — the same integer `world.day` holds ([HC-3]). It is spelled
+// out rather than written `0` because a bare zero in a date argument used to be a
+// year and is now a day, and the two are not the same kind of nothing.
+const DAY0 = 0;
 
 // A world, its ledgers and its markets — the whole of what a season needs. The
 // world itself is generated once and rewound, because siting fifty ports is the
@@ -41,13 +48,18 @@ function bench(seed = SEED): { world: World; towns: Town[]; markets: Markets; wa
 // A season run with the places VISITED in a given order. The clearing itself is
 // untouched; what varies is only the order phases 1, 3 and 4 walk the map in,
 // which is exactly what [HC-7] says must not matter.
-function seasonIn(order: number[], towns: Town[], markets: Markets, places: World["places"], wars: Wars): void {
-  for (const i of order) produceSeason(towns[i]);
+//
+// The DAY is handed in once and every place gets the same one — which is the
+// point of KAN-107 and also what makes this test sharper than it was. It used to
+// ask each town what year IT thought it was (`year(towns[i])`), so the argument
+// varied with the visitor rather than being a fact about the world.
+function seasonIn(order: number[], day: number, towns: Town[], markets: Markets, places: World["places"], wars: Wars): void {
+  for (const i of order) produceSeason(towns[i], day);
   clearSeason(markets, places, towns, wars);
   for (const i of order) settleSeason(towns[i]);
   for (const i of order) {
     stepFootprint(towns[i]);
-    governorTurn(towns[i], year(towns[i]));
+    governorTurn(towns[i], day);
   }
 }
 
@@ -134,8 +146,9 @@ describe("clearing is order-independent", () => {
     const straight = shuffled(n, 0).map((_, i) => i);
 
     for (let s = 0; s < 80; s++) {
-      seasonIn(straight, a.towns, a.markets, a.world.places, a.wars);
-      seasonIn(shuffled(n, s + 1), b.towns, b.markets, b.world.places, b.wars);
+      const day = s * CALENDAR.daysPerSeason;
+      seasonIn(straight, day, a.towns, a.markets, a.world.places, a.wars);
+      seasonIn(shuffled(n, s + 1), day, b.towns, b.markets, b.world.places, b.wars);
     }
 
     for (let i = 0; i < n; i++) {
@@ -159,15 +172,15 @@ describe("clearing is order-independent", () => {
 
     const port = () => {
       const t = seaTown({ population: 300, wealth: 200000 });
-      raise(t, "warehouse", 1650);
-      raise(t, "customsHouse", 1650);
+      raise(t, "warehouse", DAY0);
+      raise(t, "customsHouse", DAY0);
       return t;
     };
     // A farm with far less corn than the two ports between them want.
     const farm = mixedTown({ population: 60, wealth: 500 });
-    raise(farm, "warehouse", 1650);
-    raise(farm, "provisionGround", 1650);
-    produceSeason(farm);
+    raise(farm, "warehouse", DAY0);
+    raise(farm, "provisionGround", DAY0);
+    produceSeason(farm, DAY0);
 
     const towns = [port(), farm, port()];
     clearSeason(markets, places, towns, noWars(3));
@@ -228,8 +241,8 @@ describe("the pyramid, and its gate", () => {
   // timber of its own. It wants both, and its bread is the lower rung.
   function hungryPort(): Town {
     const t = seaTown({ population: 60, wealth: 200000 });
-    raise(t, "warehouse", 1650);
-    raise(t, "customsHouse", 1650);
+    raise(t, "warehouse", DAY0);
+    raise(t, "customsHouse", DAY0);
     return t;
   }
 
@@ -238,18 +251,18 @@ describe("the pyramid, and its gate", () => {
   // "registers no demand for it" to mean anything at all.
   function hungryTimberPort(): Town {
     const t = hungryPort();
-    raise(t, "sawpit", 1650);
-    raise(t, "sawpit", 1650);
+    raise(t, "sawpit", DAY0);
+    raise(t, "sawpit", DAY0);
     return t;
   }
 
   // ...and a neighbour with corn and timber to spare.
   function farmingNeighbour(): Town {
     const t = mixedTown({ population: 120, wealth: 500 });
-    raise(t, "warehouse", 1650);
-    raise(t, "provisionGround", 1650);
-    raise(t, "sawpit", 1650);
-    produceSeason(t);
+    raise(t, "warehouse", DAY0);
+    raise(t, "provisionGround", DAY0);
+    raise(t, "sawpit", DAY0);
+    produceSeason(t, DAY0);
     return t;
   }
 
@@ -289,13 +302,13 @@ describe("war is a filter on the pool, never on a place", () => {
 
     const build = () => {
       const port = seaTown({ population: 300, wealth: 200000 });
-      raise(port, "warehouse", 1650);
-      raise(port, "customsHouse", 1650);
+      raise(port, "warehouse", DAY0);
+      raise(port, "customsHouse", DAY0);
       const farm = mixedTown({ population: 60, wealth: 500 });
-      raise(farm, "warehouse", 1650);
-      raise(farm, "provisionGround", 1650);
-      raise(farm, "provisionGround", 1650);
-      produceSeason(farm);
+      raise(farm, "warehouse", DAY0);
+      raise(farm, "provisionGround", DAY0);
+      raise(farm, "provisionGround", DAY0);
+      produceSeason(farm, DAY0);
       return [port, farm];
     };
 
@@ -319,11 +332,11 @@ describe("war is a filter on the pool, never on a place", () => {
 
     const price = (wars: Wars) => {
       const port = seaTown({ population: 300, wealth: 200000 });
-      raise(port, "warehouse", 1650);
+      raise(port, "warehouse", DAY0);
       const farm = mixedTown({ population: 60, wealth: 500 });
-      raise(farm, "warehouse", 1650);
-      raise(farm, "provisionGround", 1650);
-      produceSeason(farm);
+      raise(farm, "warehouse", DAY0);
+      raise(farm, "provisionGround", DAY0);
+      produceSeason(farm, DAY0);
       const towns = [port, farm];
       clearSeason(markets, places, towns, wars);
       return farm.market.price[0];
@@ -421,7 +434,7 @@ describe("what a place brings to market", () => {
     const shut = towns[0];
     for (const w of shut.works) w.condition = "ruin";
     shut.patron = { kind: "none", name: "", owns: false };
-    produceSeason(shut);
+    produceSeason(shut, world.day);
     for (const w of shut.works) if (w.kind === "fishingShacks") w.condition = "ruin";
     clearSeason(markets, world.places, towns, wars);
     expect(derive(shut).access).toBe(0);
@@ -433,9 +446,10 @@ describe("what a place brings to market", () => {
     // multiply the world's goods.
     const { world, towns, markets, wars } = bench();
     for (let s = 0; s < 8; s++) {
-      for (const t of towns) produceSeason(t);
+      for (const t of towns) produceSeason(t, world.day);
       clearSeason(markets, world.places, towns, wars);
       for (const t of towns) settleSeason(t);
+      world.day += CALENDAR.daysPerSeason;
     }
     for (let i = 0; i < towns.length; i++) {
       const want = derive(towns[i]).commerce.want[0];
