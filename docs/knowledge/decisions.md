@@ -10,6 +10,49 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-15 (second) — The world gets an outline, and a place to draw it from
+
+The first piece of the world map view. There was no coastline geometry anywhere in the project,
+because the world's shape is a **pure field** — thirty-odd elliptical lobes under two fbm stacks,
+answered at any resolution and storing nothing. Drawing a coast means contouring it.
+
+**`worldview/` is a new top-level directory, and the reason is a rule.** `guardrails.test.ts`
+discovers every file under `overworld/` and enforces the simulation's rules on it, `[P-11]` — *never
+read a wall clock* — included. A render loop must read one. **Separate directories are what let both
+rules stay absolute rather than growing an exception list**, and the boundary is asserted in both
+directions by source scan. Proven by experiment: `performance.now()` planted in `worldview/` leaves
+the whole suite green.
+
+**`[P-17c]` is new and generalises the trade-off this ticket had to make.** `[P-17]` says a pure
+function of `(identity, time, seed)` is computed on demand; `[P-2]` says complexity × **tick rate**.
+The coast is the first case where those pull apart: the simulation is right to derive the field — it
+asks a few thousand times at generation — and a 60 Hz view would ask **300,000 times a frame** for
+the same picture. Nothing about the function changed; **the reader did.** So it is baked once, into
+the view, never onto the `World`, and `[HC-26]` survives untouched: looking still cannot change what
+is true.
+
+**Three findings worth keeping past this ticket:**
+
+- **A marching-squares saddle is a correctness question, and the field is the only honest arbiter.**
+  The textbook corner-average agrees with the *interpolant* rather than with the world, and
+  neighbouring cells that disagree give a shore that crosses itself. Asking the field at the cell
+  centre costs one evaluation in **0.003%** of cells. Generalises to any contouring this project adds.
+- **Bake resolution is settled by the THINNED vertex count, not the raw one.** Raw vertices grow with
+  the lattice for ever; thinned vertices **stop** once the lattice is finer than the field's finest
+  octave — 1,417 at 2 nm against 1,575 at 1 nm, for four times the work. The right resolution is the
+  last one where simplification still finds new shape.
+- **One resolution does not serve all zoom levels, and that was left undone deliberately.** At full
+  extent 2 nm is about two pixels; at 8× it reads as a polygon. The answer is a finer bake of the
+  *visible box*, not of the world — which is why the step is an argument and not a constant. Nothing
+  speculative was built for it.
+
+**And an honest caveat the agent raised against itself**, which is the reachability rule from the
+day before working as intended: `bakeCoast` **has no caller outside its own test file.** It is a
+component, not a feature, until the renderer lands. Expected for the first half of a view — but it
+means the integration claim, *"the map draws a coast a human recognises"*, belongs to whoever builds
+the second end and **cannot be inferred from a green suite.**
+
+---
 ### 2026-09-15 — One clock, and a leaf to read it from
 
 KAN-107 deleted `Town.season`. Every date a place keeps is now **days since world epoch** — the same

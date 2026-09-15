@@ -170,6 +170,25 @@ under `[P-5]`. So `[HC-73]`'s town-local frame is not an approximation of the wo
 rotation of it**. Reach for a stored unit vector before reaching for an angle, always: an angle costs
 a banned function to use and a banned function to recover.
 
+**`[P-17c]` A derived quantity is BAKED when its reader's tick rate — not its complexity — makes
+deriving ruinous, and the bake then belongs to the READER, never to the world.** `[P-17]` says
+compute on demand; `[P-2]` says complexity × tick rate. When those two pull against each other, the
+tick rate decides.
+
+The worked case is the coastline (2026-09-15). `heightAt` is the same field at every scale and the
+simulation is right to derive it: it asks a few thousand times at generation and then hardly at all.
+A view running at 60 Hz would ask **300,000 times a frame** to draw the same coast. Nothing about the
+function changed; the reader did. So the contour is baked **once**, into the view, and:
+
+- **It is not world state.** Not on the `World` struct, not saved, not readable by the simulation.
+  `[HC-14]` and `[HC-26]` both hold — looking at the world still cannot change what is true in it.
+- **The sim keeps deriving.** There is no second source of truth: the bake is a *rendering* of the
+  field, and if it disagreed with the field that is a bug in the bake.
+- **Test the bake against the field, never against itself.**
+
+The trigger to watch for is a reader whose rate is *categorically* different from the writer's —
+a frame loop reading something a generator wrote. That is the only shape where baking wins.
+
 **`[P-18]` Compute an invariant once per scope, not once per use.** See §7 for the live example in
 our own code: an auction that rebuilds the same `Set` thirty-six times.
 

@@ -271,6 +271,26 @@ sender was never exercised — a different guard refused it first, and the test 
 **A fixture's coordinates should be deliberately off-origin and asymmetric**, for the same reason a
 tie-break needs a stated direction: symmetry hides the difference between right and nearly-right.
 
+### A fixture must be able to tell the cases apart
+
+**Two unpredicted mutation survivors in one session, 2026-09-15, both fixed by building a fixture
+rather than by arguing** — and both are the *off-origin fixture* rule one layer further down, in the
+arithmetic.
+
+- **A degenerate case a float field never produces must be CONSTRUCTED in exact binary.** A guard
+  against a repeated vertex only fires where the height field is *exactly* zero at a lattice point,
+  which a fractal field in double precision never is — so no mutation could break it. The fixture:
+  a lobe of lift 1 and radius 16 centred at (72, 72), because `(8/16)² + (8/16)²` is exactly ½ and so
+  `heightAt(64, 64)` is exactly 0.
+- **A claim about coordinate arithmetic needs a divisor where the two forms actually differ.**
+  `i * (W / cols)` and `(i / cols) * W` agree for most divisors, so a fixture whose step divides the
+  box evenly **cannot tell exact from nearly-exact**. Eleven columns across a hundred miles overshoots
+  by an ULP; that is the fixture.
+
+The general rule: **before writing a claim, ask what input would distinguish the right answer from
+the plausible one.** If no input in the fixture can, the claim is decoration however carefully it is
+worded — and a mutation survivor is how you find out.
+
 ### Enumerate before you generalise
 
 **The sibling rule, and it has now been earned twice on the same function.** Where a claim

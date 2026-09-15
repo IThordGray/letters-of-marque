@@ -40,6 +40,16 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
   exists and is the *raid layer's* battlefield, so a sibling `world/` directory
   would make imports ambiguous. Every world-layer file goes here; **do not create
   a `world/` directory and do not fold world state into `src/world.ts`.**
+- **`src/worldview/` is the world layer's PRESENTATION, and the split is a rule rather than a filing
+  preference** (added 2026-09-15). `town/guardrails.test.ts` **discovers** every file under
+  `src/overworld/` and enforces the simulation's rules on it — including `[P-11]`, *never read a wall
+  clock*. A render loop must read one. Keeping the view in its own directory is what lets **both**
+  rules stay absolute instead of growing an exception list, and the boundary is asserted in two
+  directions: a scan fails if any simulation file mentions `worldview`, and a second scan enforces
+  `[P-5]`'s banned-`Math` list over `worldview/` — minus `performance.now`, deliberately. *Proven by
+  experiment rather than by reading: `performance.now()` planted in `worldview/` leaves the whole
+  suite green.* Presentation-side caches derived from world state (`[P-17c]`) live here, never on the
+  `World` struct.
 - **Two entry points.** `index.html` → the land raid; `town.html` → the standalone
   **town module** (`src/town/`), the living-town economy built as its own startup file
   and deliberately not wired into the raid yet (epic KAN-67).
