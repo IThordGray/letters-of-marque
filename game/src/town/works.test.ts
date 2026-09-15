@@ -5,13 +5,16 @@
 // moves works down THIS ladder, one grade at a time).
 
 import { describe, it, expect } from "vitest";
-import type { Town, Work } from "./types";
+import type { Town, Work, Suit } from "./types";
 import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
-import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, damageWorks, mendable, repairCost, CATALOGUE } from "./works";
+import {
+  raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, damageWorks, mendable, repairCost,
+  CATALOGUE, SUBSISTENCE,
+} from "./works";
 import { stepTownSeason } from "./governor";
-import { DECAY } from "./constants";
+import { DECAY, POP, SUIT_YIELD, WORKS } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
-import { mixedTown, bareTown, townOf, reg, RING1 } from "./fixtures";
+import { mixedTown, bareTown, townOf, reg, RING1, RING2 } from "./fixtures";
 
 // The town keeps no clock (KAN-107): the world hands it the day, and here the
 // test plays the world. These fixtures stand on the world's first day.
@@ -67,6 +70,221 @@ describe("the hamlet floor", () => {
     const homes = town.works.filter((w) => w.kind === "dwellings");
     expect(homes.length).toBeGreaterThan(0);
     expect(homes.every((w) => w.condition !== "ruin")).toBe(true);
+  });
+});
+
+// ---- A work is manned to the size the ground will repay ---------------------
+//
+// Ratified 2026-09-15, to close a live breach of [HC-18]: *a subsistence food
+// work must always feed at least the hands that work it, whatever the ground.*
+//
+// What was wrong: `raise` scaled the four numbers the ground GIVES — food, trade,
+// defence, servesFor — and left the one number it COSTS flat. A garden plot on
+// `poor` ground fed 10.5 mouths and still wanted six men, which is 10.91 souls at
+// `labourShare`, so a place with nothing but poor food ground could not sustain
+// the hands that worked its own food. Measured, by ordinary decline and with
+// nobody attacking it: 163 souls to nothing in about forty years.
+//
+// One work on one hex of a named grade, so a claim can be made about the WORK
+// rather than about a town. The hex is deliberately off-origin and off-axis
+// (testing.md, "anchor fixtures off-origin, and asymmetrically") — at the centre,
+// "plotted from the seat" and "plotted from nowhere" are the same coordinates.
+const FOOD_WORKS = SUBSISTENCE.filter((k) => CATALOGUE[k].food > 0);
+
+function onGround(kind: string, suit: Suit, reach: "atHand" | "far", sweet: boolean): Work {
+  const hex = RING1.slice(3, 4);
+  const town = townOf(
+    [
+      reg(0, kind === "gardenPlots" ? "tilledGround" : "reef", hex, {
+        bears: kind === "gardenPlots" ? { food: suit } : { fish: suit },
+        reach,
+        sweetSpot: sweet ? hex[0] : null,
+      }),
+    ],
+    { population: 500 }, // souls enough that nothing here is about manning
+  );
+  return raise(town, kind as Parameters<typeof raise>[1], DAY0)!;
+}
+
+// Every case the ground can be in: three grades, at hand and over the ridge, on
+// ordinary ground and on the region's one sweet spot. ENUMERATE, DO NOT
+// GENERALISE (testing.md) — the claim is about which cases exist, and the case
+// that used to fail is one of twelve rather than the one anybody would pick.
+function everyGround(): { where: string; work: Work; kind: string; reach: "atHand" | "far" }[] {
+  const out: { where: string; work: Work; kind: string; reach: "atHand" | "far" }[] = [];
+  for (const kind of FOOD_WORKS) {
+    for (const suit of Object.keys(SUIT_YIELD) as Suit[]) {
+      for (const reach of ["atHand", "far"] as const) {
+        for (const sweet of [false, true]) {
+          out.push({ where: `${kind} on ${suit}/${reach}${sweet ? "/sweet" : ""}`, work: onGround(kind, suit, reach, sweet), kind, reach });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+describe("a subsistence work is manned to the size the ground will repay", () => {
+  it("feeds more mouths than the hands that work it, on every grade of ground there is", () => {
+    // THE ORACLE IS WRITTEN OUT, never asked of the code (testing.md): the souls
+    // a work needs are its hands divided by the share of a population that works,
+    // and that division is spelled here rather than read back from the module.
+    const under: string[] = [];
+    for (const { where, work } of everyGround()) {
+      const souls = work.hands / WORKS.labourShare;
+      if (work.food <= souls) under.push(`${where}: feeds ${work.food}, wants ${souls} souls`);
+    }
+    expect(under).toEqual([]);
+  });
+
+  it("feeds enough more of them to hold at the lowest standing a place can sink to", () => {
+    // WHY A BARE SURPLUS IS NOT ENOUGH, derived rather than guessed. A place with
+    // one food work settles where its carrying capacity puts it — `food × pull`,
+    // and `pull` is what prosperity does to the ceiling — so it can man that work
+    // only while
+    //
+    //     food × pull × labourShare  >=  hands
+    //
+    // i.e. while `food × labourShare / hands >= 1 / pull`. The worst `pull` the
+    // model permits is `POP.prosperityPull.min`, so at 0.5 the margin a work must
+    // clear is TWO: it must feed twice the souls its own hands need, and a place
+    // may then lose half its people to a shock and still work its ground. Exactly
+    // break-even would wobble across the line on any weather at all.
+    const need = 1 / POP.prosperityPull.min;
+    const thin: string[] = [];
+    for (const { where, work } of everyGround()) {
+      const margin = (work.food * WORKS.labourShare) / work.hands;
+      if (margin < need) thin.push(`${where}: margin ${margin.toFixed(3)}, wants ${need}`);
+    }
+    expect(thin).toEqual([]);
+  });
+
+  it("never asks more men of a work than the catalogue writes it for", () => {
+    // THE SAFETY HALF OF THE RULE, and it is the half that was learned the hard
+    // way. Scaling hands by the ground's quality UNSCALED — letting ideal ground
+    // ask 7.8 men where the catalogue writes 6 — raises the manning threshold on
+    // good ground, which is where nearly every place in the world actually lives.
+    // Measured across five seeds and two centuries: it emptied three places that
+    // stand today while fixing the one that does not. So the scaling only ever
+    // reduces: `min(q, 1)`. Good ground does not take more men — it repays the
+    // same men better, which is what the yield half already says.
+    for (const { where, work, kind, reach } of everyGround()) {
+      const walk = reach === "far" ? WORKS.farHands : 1;
+      expect(work.hands, where).toBeLessThanOrEqual(CATALOGUE[kind as "gardenPlots"].hands * walk);
+    }
+  });
+
+  it("puts fewer men on ground that grudges the crop, and no more on ground that does not", () => {
+    const poor = onGround("gardenPlots", "poor", "atHand", false);
+    const fair = onGround("gardenPlots", "fair", "atHand", false);
+    const ideal = onGround("gardenPlots", "ideal", "atHand", false);
+
+    expect(poor.hands).toBeLessThan(fair.hands);
+    expect(fair.hands).toBeLessThan(ideal.hands);
+    expect(ideal.hands).toBe(CATALOGUE.gardenPlots.hands); // a plot is still a plot
+  });
+
+  it("still costs more men over the ridge than the same plot at hand", () => {
+    // The far cost is a separate design statement — men must walk to it — and the
+    // scaling must not quietly cancel it.
+    const near = onGround("gardenPlots", "fair", "atHand", false);
+    const far = onGround("gardenPlots", "fair", "far", false);
+    expect(far.hands).toBeGreaterThan(near.hands);
+    expect(far.food).toBeLessThan(near.food);
+  });
+
+  it("leaves a capital work's hands exactly as the catalogue writes them, on any ground", () => {
+    // DELIBERATELY NOT WIDENED. The hamlet floor is made of subsistence works and
+    // only of them ([HC-67]) — free, self-raising, never rotting, chosen by
+    // nobody — so a subsistence work that cannot pay its own wages is a spiral
+    // with no brake. A capital work is a priced decision, and one that cannot pay
+    // for itself on bad ground is the correct disincentive and the governor's
+    // problem (§5.6). It cannot empty a place either: it rots to `ruin` and the
+    // subsistence floor catches the town.
+    const ground = (suit: Suit) =>
+      townOf([reg(0, "tilledGround", RING1.slice(2, 3), { bears: { food: suit } })], { population: 900, wealth: 9000 });
+    const poor = raise(ground("poor"), "provisionGround", DAY0)!;
+    const ideal = raise(ground("ideal"), "provisionGround", DAY0)!;
+
+    expect(poor.hands).toBe(CATALOGUE.provisionGround.hands);
+    expect(ideal.hands).toBe(CATALOGUE.provisionGround.hands);
+    expect(poor.food).toBeLessThan(ideal.food); // the ground still decides what it returns
+  });
+});
+
+// ---- A place with nothing but poor ground -----------------------------------
+//
+// [HC-18]: only a deliberate hand empties a town, so decline alone can never
+// empty one. The case is CONSTRUCTED rather than hunted for in a seed, because a
+// claim that depends on a generator containing an example expires with the
+// generator.
+const onlyPoor = (init: Partial<Town> = {}) =>
+  townOf([reg(0, "tilledGround", RING1, { bears: { food: "poor" } }), reg(1, "scrub", RING2)], init);
+const onlyFair = (init: Partial<Town> = {}) =>
+  townOf([reg(0, "tilledGround", RING1, { bears: { food: "fair" } }), reg(1, "scrub", RING2)], init);
+
+describe("a town on nothing but poor ground", () => {
+  it("still stands after two centuries, rather than emptying by ordinary decline", () => {
+    const town = onlyPoor({ population: 163, wealth: 0 });
+    stepYears(town, 200, DAY0);
+
+    expect(town.population).toBeGreaterThan(0);
+    expect(derive(town).food).toBeGreaterThan(0);
+    expect(town.works.some((w) => w.kind === "gardenPlots" && w.condition === "working")).toBe(true);
+  });
+
+  it("stands STILL at a living size, rather than sliding on a century later", () => {
+    // The sharper form, and the one the old bug would have failed on its own
+    // terms: it did not merely end small, it never stopped falling.
+    //
+    // "AT A LIVING SIZE" IS LOAD-BEARING, and it was put there by a mutation
+    // survivor rather than by foresight (testing.md). Without it the claim is
+    // decoration: a town of nobody also stands perfectly still, so every mutation
+    // that killed the place outright sailed straight through. The size it must
+    // stand at is written out from the catalogue and the grade — the souls one
+    // plot on poor ground needs — and never read back from the module.
+    const needed = (CATALOGUE.gardenPlots.hands * SUIT_YIELD.poor) / WORKS.labourShare;
+    const town = onlyPoor({ population: 163, wealth: 0 });
+    stepYears(town, 100, DAY0);
+    const settled = town.population;
+    stepYears(town, 100, DAY0 + 100 * CALENDAR.seasonsPerYear * SEASON);
+
+    expect(settled).toBeGreaterThan(needed);
+    expect(town.population).toBeCloseTo(settled, 1);
+  });
+
+  it("grows a small surplus off ground that grudges it, which is the whole difference", () => {
+    // Poor ground is meant to mean a thin living, not a death sentence.
+    const town = onlyPoor({ population: 163, wealth: 0 });
+    stepYears(town, 200, DAY0);
+    expect(derive(town).surplus).toBeGreaterThan(0);
+  });
+
+  it("settles measurably smaller than the same town on ground that takes the crop well", () => {
+    // The fix must stop poor ground being fatal WITHOUT flattening what it means.
+    const poor = onlyPoor({ population: 163, wealth: 0 });
+    const fair = onlyFair({ population: 163, wealth: 0 });
+    stepYears(poor, 200, DAY0);
+    stepYears(fair, 200, DAY0);
+
+    expect(poor.population).toBeLessThan(fair.population * 0.75);
+  });
+
+  it("never comes back once it is razed to nothing, however kind the scaling", () => {
+    // [HC-67] and KAN-106, claimed in the file that changed. The floor REQUIRES
+    // SURVIVORS: `raiseSubsistence` wants `ceil(population / autoPer)` of works
+    // that cost nothing, and at nobody that is nothing. Cheapening the hands a
+    // plot costs must not turn a place with no people into a place with one.
+    const town = onlyPoor({ population: 163, wealth: 0 });
+    stepYears(town, 50, DAY0);
+    expect(town.works.length).toBeGreaterThan(0);
+
+    town.works = []; // razed to nothing, and nobody left to raise a hut
+    town.population = 0;
+    stepYears(town, 200, DAY0 + 50 * CALENDAR.seasonsPerYear * SEASON);
+
+    expect(town.works).toEqual([]);
+    expect(town.population).toBe(0);
   });
 });
 
