@@ -43,10 +43,14 @@ export const LAND = {
 export const SUIT_YIELD = { poor: 0.35, fair: 0.7, ideal: 1.3 };
 
 export const WORKS = {
+  // Share of souls who are working hands; the rest are children, old, idle. It is
+  // half of every manning question in the module — a work is manned when
+  // `population · labourShare` covers its `hands` — so it is also half of the
+  // hamlet floor, which is a LABOUR floor and not a food one ([HC-67]).
   labourShare: 0.55,
   sweetSpotBonus: 1.25, // the best of the cane — why the boiling house stands there
   farPenalty: 0.85, // ground over the ridge yields a little less...
-  farHands: 1.35, // ...and costs more men, because they must walk to it // share of souls who are working hands (the rest are children, old, idle)
+  farHands: 1.35, // ...and costs more men, because they must walk to it
   // Population at which each self-raising subsistence work appears. Absent = 0.
   subsistenceAt: {
     dwellings: 0,
@@ -83,6 +87,13 @@ export const DECAY = {
 // catalogue (garden plots, dwellings, fishing shacks). They cost no wealth and
 // raise themselves, so a sacked town always crawls back to a hamlet without
 // anyone deciding to rebuild it. Burnable, like everything else in the ledger.
+//
+// AND IT IS NOT A NUMBER PER PLACE EITHER, since 2026-09-15: a subsistence work's
+// `hands` are scaled by the same ground quality as its yield (`handsOn` in
+// works.ts), so the floor a place sits on is its OWN ground's, and the ratio that
+// decides whether it can man its food — `food · labourShare / hands` — is the
+// same on every grade. What the catalogue has to supply is the MARGIN in that
+// ratio, and the margin it must clear is derived below, at `prosperityPull`.
 export const FOOD = {
   perHead: 1, // mouths: food one soul eats per season
 };
@@ -162,7 +173,11 @@ export const POP = {
   // not be reached by anything ([HC-67], [HC-50]). The floor REQUIRES SURVIVORS, and
   // it is not a constant — it is `raiseSubsistence` wanting `ceil(population/autoPer)`
   // of works that cost nothing, which at nobody wants nothing. Do not reintroduce a
-  // population floor here; if a place must not empty, give it ground that feeds someone.
+  // population floor here. The line that used to follow — "if a place must not empty,
+  // give it ground that feeds someone" — was the criterion that failed, and it is
+  // answered as of 2026-09-15: a subsistence work's hands scale with its yield, so
+  // EVERY grade of ground feeds the hands that work it and the generator is free to
+  // make thin places again.
   // Carrying capacity is what the food can feed, held BELOW that ceiling when the
   // place is miserable: people drift away from a sinking town. A town that is
   // merely DOING WELL fills its land — contentment is not a cap. So the pull
@@ -170,7 +185,23 @@ export const POP = {
   // below that. Growing PAST its own land is BOUGHT GRAIN, and as of KAN-91 the
   // capacity counts it: the ~450-soul ceiling is gone, and the four limits that
   // replace it are coin, access, ground for houses, and hands (§3.5.6).
-  prosperityPull: { min: 0.5, fullAt: 55 }, // 0.5 at prosperity 0, 1.0 from 55 up
+  // 0.5 at prosperity 0, 1.0 from 55 up.
+  //
+  // `min` IS ALSO WHERE THE SUBSISTENCE MARGIN COMES FROM, and that is why no
+  // second constant was added for it ([P-47]). A place with one food work settles
+  // where capacity puts it — `food · pull` — and can man that work only if
+  // `food · pull · labourShare >= hands`. So the ratio the catalogue must clear is
+  //
+  //     food · labourShare / hands  >=  1 / pull
+  //
+  // and the worst `pull` the model permits is `min`. At 0.5 that is a margin of
+  // TWO: a subsistence food work must feed twice the souls its own hands need, and
+  // a place may then lose half its people to a shock and still work its ground.
+  // Garden plots clear it at 2.75 and fishing shacks at 3.03; over the ridge both
+  // are divided by `WORKS.farHands` and clear it at 2.04 and 2.24. Tune `min`
+  // upward and the margin required falls; tune it down and the catalogue has to
+  // widen with it.
+  prosperityPull: { min: 0.5, fullAt: 55 },
 };
 
 // ---- Wealth ----------------------------------------------------------------

@@ -164,6 +164,67 @@ export function groundFor(town: Town, kind: WorkKind): { hex: Axial; region: Reg
   return null;
 }
 
+// WHAT THE GROUND COSTS, scaled by the same `q` as what the ground gives.
+//
+// A SUBSISTENCE WORK'S HANDS SCALE WITH ITS YIELD (ratified 2026-09-15), and the
+// bug it closes is stated most simply as an omission: `raise` already scaled the
+// four numbers the ground GIVES — food, trade, defence, servesFor — and left the
+// one number the ground COSTS flat. So a garden plot on `poor` ground fed 10.5
+// mouths and still wanted six men, which is 10.91 souls at `labourShare`. A place
+// with nothing but poor food ground therefore could not sustain the hands that
+// worked its own food: each step down idled another plot and it cascaded, 163
+// souls to nothing in about forty years by ordinary decline — [HC-18] violated,
+// and live in a shipped world once the weather reached the ledger.
+//
+// The rule, in one sentence: A SUBSISTENCE WORK IS MANNED TO THE SIZE THE GROUND
+// WILL REPAY, AND NEVER BEYOND ITS OWN SIZE. `min(q, 1)`, and the asymmetry is
+// the whole of it:
+//
+// * BELOW 1 the ground can make the work not worth doing in full, and nobody digs
+//   a field that eats more than it grows — that is what subsistence MEANS. Six men
+//   on ground that repays a third of six men's bread is three men and a smaller
+//   patch. So the mouths-per-soul-of-labour ratio, `food · labourShare / hands`,
+//   comes out INDEPENDENT of the ground at or below the grade the catalogue is
+//   written for: `food·q·λ / (hands·q) = food·λ / hands`.
+// * ABOVE 1 it does NOT scale, because good ground does not take more men — it
+//   repays the same men better. That is already what the yield half says, and it
+//   is §2.5's ratified line read the right way round: terrain BIASES a crop, it
+//   does not determine how many hands a plot has.
+//
+// THE ASYMMETRY IS ALSO THE SAFETY ARGUMENT, and it is worth stating as one:
+// `min(q, 1) <= 1`, so this change can only ever ask FEWER men of a work than the
+// shipped catalogue did — never more. **No place's manning threshold can rise**,
+// so no place that stands today can be pushed under by this.
+//
+// That safety matters more than it looks, and it was MEASURED rather than
+// reasoned: an unclamped `q` scaled hands UP on ideal ground (six men to 7.8), and
+// three places across five seeds that stand today emptied instead — because a
+// storm-battered place lives near the bottom of its margin, not at the top of it,
+// and the margin on good ground is where almost every place actually lives.
+//
+// TWO THINGS DELIBERATELY NOT DONE HERE:
+//
+// * CAPITAL WORKS KEEP A FLAT HAND COST. The hamlet floor is made of subsistence
+//   works and only of them ([HC-67]): they are free, self-raising, never rot, and
+//   nobody ever DECIDES to have one, so a subsistence work that cannot pay its own
+//   wages is a spiral with no brake. A capital work is a priced decision; one that
+//   cannot pay for itself on bad ground is the correct disincentive and the
+//   governor's problem (§5.6, "he will not raise what nobody can work"), and it
+//   cannot empty a place — it rots to `ruin` and the subsistence floor catches the
+//   town. Scaling it would also flatten the reason a governor prefers good ground
+//   and would silently falsify the auction's `def.hands <= spare` preview, which
+//   reads the CATALOGUE rather than the instance ([P-47]).
+// * THE FAR-GROUND `Math.ceil` IS NOT APPLIED to a scaled cost. Rounding up can
+//   only ever RAISE the cost, which is the one thing this function must not do — a
+//   plot worth 2.41 men charged for 3 loses a quarter of its margin. Hands are
+//   compared against `population · labourShare`, a float in a model whose
+//   population is a float, so nothing wanted a whole number here except habit.
+const handsOn = (def: WorkDef, q: number, far: boolean): number => {
+  const walk = far ? WORKS.farHands : 1; // men must still walk to it
+  if (def.cls !== "subsistence") return far ? Math.ceil(def.hands * walk) : def.hands;
+  return def.hands * Math.min(q, 1) * walk;
+};
+
 // Mint a work on a named hex, scaled by how well that ground suits it. Ground
 // that was made for a crop is worth more of it; ground that merely grudges it
 // pays a fraction — which is adaptability with a visible price.
@@ -176,7 +237,8 @@ export function raise(town: Town, kind: WorkKind, day: number): Work | null {
   if (ground && ground.region.sweetSpot && ground.hex && key(ground.hex) === key(ground.region.sweetSpot)) {
     q *= WORKS.sweetSpotBonus; // the best of it
   }
-  if (ground && ground.region.reach === "far") q *= WORKS.farPenalty; // men must walk
+  const far = ground?.region.reach === "far";
+  if (far) q *= WORKS.farPenalty; // ground over the ridge yields a little less...
 
   const work: Work = {
     id: town.nextWorkId++,
@@ -194,7 +256,7 @@ export function raise(town: Town, kind: WorkKind, day: number): Work | null {
     food: def.food * q,
     trade: def.trade * q,
     defence: def.defence * q,
-    hands: ground?.region.reach === "far" ? Math.ceil(def.hands * WORKS.farHands) : def.hands,
+    hands: handsOn(def, q, far),
     serves: def.serves,
     servesFor: def.servesFor * q,
   };
