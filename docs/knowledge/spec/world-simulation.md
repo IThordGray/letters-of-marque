@@ -467,6 +467,34 @@ illustrations of it. Numbers are tuning; the *sentences* are the rule.
 | **Tempest** *(rare — memorable)* | "The warehouse falls over and its contents spoil" | One-off loss | Hit | **Works drop a grade** |
 | *Tempest, extreme tail* *(generational)* | A work destroyed outright | | | **One work removed** |
 
+> **The WEALTH column is priced against the town's WORKS, not against its treasury. Ratified
+> 2026-09-15**, after the seam was wired and the table met a ledger for the first time.
+>
+> **What was wrong, measured.** The cost was charged as a share of coin on hand. Over 20 years × 50
+> places (seed 1660) a place sees **50.3 contact-days a year**, from **6.82 storms averaging 7.4
+> contact-days each** — 47.6 of those days are Blows, 2.26 Gales, 0.44 Tempests. At a share of the
+> treasury that compounds to **~18.6% of all wealth per year, for ever**: a proportional ceiling on
+> wealth wearing the costume of a maintenance cost, and it alone took wealth from 851k to 121k over
+> two centuries.
+>
+> **And it was the wrong fiction.** A broken gate costs what a broken gate costs. Charging a share of
+> the coffers means a town with a million pays a thousand times more to mend the same fence than a
+> town with a thousand. Priced against the standing works, what varies is **how much fence there is**
+> — and a poor town still feels a storm more sharply, because the same bill is a larger share of a
+> smaller purse, which is the right way round.
+>
+> **One reading of the table above, flagged rather than buried.** It gives a Gale **no** wealth cost
+> while giving a Blow a *"small maintenance cost"*. Read as an exclusive cost sheet that is
+> incoherent — a Gale is at least as windy as a Blow. Read as *what each band is NOTABLE for* it
+> makes sense: a Blow is a property nuisance, a Gale is a crop event. The **monotone reading is
+> implemented** — a Gale's maintenance cost is at least a Blow's. Overrule it here if that is wrong.
+>
+> **The yield column needed no such change**, and it is worth saying why the two came out
+> differently: ~0.11 per gale-day across roughly three gale-days in a gale works out near the 0.30
+> this table asks for. The yield numbers were written per-day and read per-day; the wealth numbers
+> were written per-event and read per-day.
+
+
 **`[HC-34]` Damage moves works down the existing ladder** — `working → idle → decayed → ruin` — one
 grade at a time. It never skips to ruin, and it never touches more works than the severity warrants.
 
@@ -910,6 +938,21 @@ a hut.
 > across 8 seeds ran 200 years with **0 emptied** and the smallest at 40.6 souls. The old constant
 > was *hiding* this, not preventing it. Two candidate fixes, neither taken — see `decisions.md`
 > (2026-09-14, second).
+
+> **DECIDED 2026-09-15, and it went live before it was decided.** Wiring the weather seam gave the
+> world a shock source, and the latent spiral became a real one: on seed 20260911 a place of 44 falls
+> to **0.49 souls**, where the smallest place in the same world without weather is 48.2. `[HC-18]` is
+> breached in a shipped world, by decline alone.
+>
+> **The ratified fix is the second of the two candidates: subsistence hand costs scale with yield, so
+> a subsistence food work always feeds at least the hands that work it, on any ground.** Poor ground
+> then means a **small surplus** rather than a death sentence.
+>
+> *Why this one and not "the generator must give every place at least fair food ground":* it makes
+> the rule true **by construction** rather than by the generator's good luck, and it leaves world
+> generation free to site thin, marginal places — which are worth having. Fifty ports that are all
+> comfortably viable is a duller sea.
+
 
 **`[HC-68]` Reviving a ruined place is ONE decision, never a grind.** It resolves as a dispatch
 arriving (`[HC-44]`) — a crown's cost-versus-benefit action, generally led by a show of force, or the

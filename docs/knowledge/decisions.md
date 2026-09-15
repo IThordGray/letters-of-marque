@@ -10,6 +10,54 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-15 (third) — A tuning table that has never met a ledger is not tuned
+
+The weather seam landed and storms reached towns for the first time. Over 200 years the world moved
+hard: **population −39%, wealth −86%, ruins 35 → 470.** The seam itself was proved innocent — with
+the ledger handed zeroes the run is **bit-identical** to before — so what moved was a `BANDS` table
+written for KAN-90 that **had no consumer at all until yesterday.**
+
+**The measurement that located it** (20 years × 50 places, seed 1660): a place sees **50.3
+contact-days a year**, from **6.82 storms averaging 7.4 contact-days each** — 47.6 Blow-days, 2.26
+Gale-days, 0.44 Tempest-days.
+
+**Why the two columns came out differently is the whole lesson.**
+
+| Column | Written as | Read as | Verdict |
+|---|---|---|---|
+| **Yield** | per day | per day | Fine. ~0.11 × ~3 gale-days ≈ the 0.30 §7.4 asks for. |
+| **Wealth** | per **event** | per **day** | Charged ~7× too often, and against the wrong base. |
+
+**Two ratified decisions, both the human's, both recorded on the spec:**
+
+**1. Storm maintenance is priced against the town's WORKS, never its treasury.** A share of coin on
+hand compounds to **~18.6% of all wealth per year** and is a proportional ceiling on wealth dressed
+as a maintenance cost. It is also the wrong fiction: a broken gate costs what a broken gate costs,
+and charging a share of the coffers means a rich town pays a thousand times more to mend the same
+fence. Priced against standing works, what varies is *how much fence there is* — and the poor town
+still feels it more, because the same bill is a larger share of a smaller purse.
+
+**2. Subsistence hand costs scale with yield**, closing the `[HC-18]` breach that went live the same
+day: with a shock source in the world, seed 20260911 dropped a place to **0.49 souls** by ordinary
+decline. Chosen over "the generator must guarantee fair food ground" because it makes the rule true
+**by construction** rather than by the generator's luck, and leaves world generation free to site
+thin, marginal places.
+
+**The general lesson, and it is the sharper cousin of this week's reachability rule.** *"Who calls
+this, outside a test?"* finds unwired code. This finds something worse: **code that is wired, tested,
+green — and whose numbers have never been exercised by anything.** `BANDS` had unit tests. Every one
+passed. None of them could notice that the table's numbers were calibrated in units the caller did
+not use.
+
+- **A constants table is not tuned until something consumes it end to end.** Until then its numbers
+  are a proposal, and calling them "tuning" flatters them.
+- **Ask what UNIT a number was written in, and what unit its caller reads it in.** Per event vs per
+  day is invisible in a unit test of either side and catastrophic across the seam — the yield column
+  survived the same wiring untouched precisely because both ends agreed on "per day".
+- **A rate applied to a stock compounds.** Any per-tick cost expressed as a share of an accumulating
+  quantity is a growth ceiling in disguise; that is worth checking on sight, before measuring.
+
+---
 ### 2026-09-15 (second) — The world gets an outline, and a place to draw it from
 
 The first piece of the world map view. There was no coastline geometry anywhere in the project,
