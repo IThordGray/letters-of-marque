@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Letters of Marque — the world</title>
+    <style>
+      /* Programmer art, and deliberately the SAME programmer art as town.html:
+         same page colour, same monospace, same gold accent. The map itself is a
+         canvas, so its palette cannot live here — it is a data table in
+         src/worldview/palette.ts ([HC-90]). */
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { margin: 0; background: #14120e; color: #e8e0d0;
+             font: 13px/1.5 ui-monospace, Consolas, monospace; overflow: hidden; }
+      .shell { display: grid; grid-template-columns: 1fr 380px; height: 100vh; }
+      @media (max-width: 1100px) { .shell { grid-template-columns: 1fr 320px; } }
+
+      /* ---- the chart ---- */
+      .chart { position: relative; overflow: hidden; }
+      #map { display: block; width: 100%; height: 100%; cursor: grab; }
+      #map.dragging { cursor: grabbing; }
+      .overlay { position: absolute; left: 0; right: 0; top: 0; padding: 12px 16px;
+                 pointer-events: none; background: linear-gradient(#14120ecc, #14120e00); }
+      .overlay h1 { font-size: 13px; margin: 0; letter-spacing: .1em; text-transform: uppercase; color: #8c8272; }
+      .overlay .date { font-size: 22px; margin: 2px 0 0; color: #c9a227; letter-spacing: .04em; }
+      .overlay .sub { margin: 0; color: #8c8272; }
+      .legend { position: absolute; left: 16px; bottom: 14px; color: #7d7464; pointer-events: none; }
+      .legend b { color: #cfc4ac; font-weight: normal; }
+      .legend .sw { display: inline-block; width: 9px; height: 9px; margin-right: 4px;
+                    vertical-align: -1px; border: 1px solid #14120e; }
+
+      /* ---- the right-hand column ---- */
+      .side { border-left: 1px solid #3a3226; background: #14120e;
+              display: flex; flex-direction: column; min-height: 0; }
+      .side section { border-bottom: 1px solid #2a251c; padding: 10px 14px; }
+      .side h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+                 color: #8c8272; margin: 0 0 6px; font-weight: normal; }
+      .side h2 .dim { text-transform: none; letter-spacing: 0; color: #5f5849; }
+
+      button { font: inherit; background: #2a251c; color: #e8e0d0; border: 1px solid #4a4335;
+               padding: 3px 9px; margin: 0 4px 4px 0; cursor: pointer; }
+      button:hover { background: #3a3226; }
+      button.on { background: #c9a227; border-color: #c9a227; color: #14120e; }
+      input[type="number"] { font: inherit; background: #1b1813; color: #e8e0d0;
+                             border: 1px solid #4a4335; padding: 3px 6px; width: 84px; }
+      .rate-blurb { color: #7d7464; font-style: italic; margin: 2px 0 0; min-height: 20px; }
+
+      table { border-collapse: collapse; width: 100%; }
+      th { text-align: left; color: #8c8272; font-weight: normal; padding: 0 12px 0 0; white-space: nowrap; }
+      td { padding: 0; text-align: right; }
+      .dim { color: #7d7464; }
+      .accent { color: #c9a227; }
+      .line { color: #cfc4ac; font-style: italic; margin: 0 0 6px; }
+
+      #trendbox { position: relative; }
+      #trend { display: block; width: 100%; height: 96px; }
+      .trendkey { margin: 4px 0 0; color: #7d7464; }
+      .trendkey i { font-style: normal; }
+
+      /* The card and the feed share whatever is left of the column, and each
+         scrolls on its own — a card that ran off the bottom of the page was
+         hiding the half of it that says what the governor wants. */
+      #cardbox { flex: 1 1 auto; min-height: 150px; overflow-y: auto; }
+      .grow { flex: 1 1 auto; min-height: 150px; display: flex; flex-direction: column; border-bottom: none; }
+      #feed { overflow-y: auto; margin: 0; padding: 0; list-style: none; flex: 1 1 auto; }
+      #feed li { color: #a89b82; padding: 1px 0; border-bottom: 1px solid #1d1a14; }
+      #feed li.lost { color: #b98a6a; }
+      #feed li.taken, #feed li.promoted { color: #c9a227; }
+      #feed li.broke, #feed li.emptied { color: #b5453a; }
+
+      #card ul { margin: 4px 0 0; padding-left: 16px; }
+      #card li { margin: 1px 0; color: #a89b82; }
+      #card li b { color: #c9a227; font-weight: normal; }
+      .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px;
+                vertical-align: -1px; border: 1px solid #14120e; }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="chart">
+        <canvas id="map"></canvas>
+        <div class="overlay">
+          <h1>Letters of Marque — the world</h1>
+          <p class="date" id="date">—</p>
+          <p class="sub" id="worldline">—</p>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <aside class="side">
+        <section>
+          <h2>Time <span class="dim">— days per second, never a shorter day</span></h2>
+          <div id="rates"></div>
+          <p class="rate-blurb" id="rateblurb"></p>
+          <button id="century">Run a century, then draw it</button>
+        </section>
+
+        <section>
+          <h2>The sea <span class="dim">— one seed, no save, no load</span></h2>
+          <label class="dim">seed <input type="number" id="seed" value="1660" step="1" /></label>
+          <button id="chart">Chart a new sea</button>
+          <p class="dim" id="worlddesc">—</p>
+          <p class="dim" id="worldstat">—</p>
+        </section>
+
+        <section id="trendbox">
+          <h2>A century, as a line <span class="dim">— do they find their level?</span></h2>
+          <canvas id="trend"></canvas>
+          <p class="trendkey" id="trendkey">—</p>
+        </section>
+
+        <section id="cardbox">
+          <h2>The place <span class="dim">— read-only; nobody here takes orders</span></h2>
+          <div id="card"><p class="dim">Click a port. Pan by dragging, zoom with the wheel.</p></div>
+        </section>
+
+        <section class="grow">
+          <h2>What happened <span class="dim">— standing, not business</span></h2>
+          <ul id="feed"></ul>
+        </section>
+      </aside>
+    </div>
+    <script type="module" src="/src/worldview/main.ts"></script>
+  </body>
+</html>

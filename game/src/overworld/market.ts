@@ -409,6 +409,40 @@ export function stepWorldDay(world: World, towns: Town[], sky: Sky): void {
 // wipe it before the season it actually belongs to could count it. So: strike the
 // books, close the weather's account against them, and only then let the new
 // day's weather begin filling the next one.
+//
+// SPLIT IN TWO SO THAT THE ORDER IS WRITTEN ONCE (KAN-100). A headless run wants
+// years; a view wants however many days one frame of real time earned, which is
+// never a round number and is usually one. Both are the same loop, and the loop
+// is the one place the paragraph above is actually enforced — so the view calls
+// `runDays` rather than keeping a second copy of the tick order that could drift
+// away from this one ([P-47]).
+//
+// The two hooks are both READ-ONLY reporting seams and neither exists for the
+// simulation's benefit: `onSeason` is what publishes [HC-16]'s reasons, and
+// `onDay` fires after the day has fully resolved and BEFORE the clock moves on,
+// so `world.day` is still the day being reported. Nothing they do can reach back
+// into the tick — they are handed nothing to reach with.
+export function runDays(
+  world: World,
+  towns: Town[],
+  m: Markets,
+  wars: Wars,
+  days: number,
+  sky: Sky,
+  onSeason?: (s: WorldSeason) => void,
+  onDay?: () => void,
+): void {
+  for (let d = 0; d < days; d++) {
+    if (startsSeason(world)) {
+      const s = stepWorldSeason(world, towns, m, wars);
+      if (onSeason) onSeason(s);
+    }
+    stepWorldDay(world, towns, sky);
+    if (onDay) onDay();
+    stepDay(world);
+  }
+}
+
 export function runYears(
   world: World,
   towns: Town[],
@@ -417,15 +451,6 @@ export function runYears(
   years: number,
   onSeason?: (s: WorldSeason) => void,
 ): void {
-  const days = years * DAYS_PER_YEAR;
-  const sky = skyOf(world);
-  for (let d = 0; d < days; d++) {
-    if (startsSeason(world)) {
-      const s = stepWorldSeason(world, towns, m, wars);
-      if (onSeason) onSeason(s);
-    }
-    stepWorldDay(world, towns, sky);
-    stepDay(world);
-  }
+  runDays(world, towns, m, wars, years * DAYS_PER_YEAR, skyOf(world), onSeason);
 }
 

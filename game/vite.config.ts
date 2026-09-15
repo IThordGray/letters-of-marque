@@ -1,12 +1,15 @@
 import { defineConfig } from "vite";
 
-// Two entry points: the land raid (index.html) and the standalone town module
-// (town.html). The town module is deliberately NOT wired into the raid — it is
-// its own startup file until the placement pass proves the plan is placeable.
+// Three entry points: the land raid (index.html), the standalone town module
+// (town.html), and the world map view (world.html). The town module is
+// deliberately NOT wired into the raid — it is its own startup file until the
+// placement pass proves the plan is placeable — and the world view is its own
+// again, because [HC-21] keeps the step-buttons in the single-town harness and
+// gives the world sim the running clock. Neither page knows the other exists.
 export default defineConfig({
   build: {
     rollupOptions: {
-      input: { main: "index.html", town: "town.html" },
+      input: { main: "index.html", town: "town.html", world: "world.html" },
     },
   },
 
