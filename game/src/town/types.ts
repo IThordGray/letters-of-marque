@@ -194,6 +194,18 @@ export interface Town {
   grantedToTown?: number[]; // region ids
   governor: string; // who runs the place. KAN-73 gives him competence and temperament.
 
+  // WHAT THE WEATHER HAS TAKEN OFF THIS SEASON'S HARVEST, as a share of it —
+  // [HC-72]'s "a seasonal yield modifier, accumulated" row, and the MODIFIER half
+  // of [HC-6]. It is stored for exactly the reason `grant` is: it does not come
+  // off the ledger, it ARRIVES, and no function of the ledger could recompute it
+  // ([HC-14]'s test is "could this have been recomputed?" — a spent storm's
+  // momentum is history and nothing here remembers it).
+  //
+  // It accumulates a day at a time and is spent ONCE, when the season's books are
+  // struck; `closeHarvest` then puts it back to nothing. A downpour does not
+  // reach into a ledger that has not been struck yet, and a modifier that carried
+  // into the next ninety days would be a downpour charged twice.
+  harvestLoss: number;
   grant: number; // standing coin per season from the patron (KAN-72 makes this archetypal)
   // WHAT THE SHIPPING BROUGHT — [HC-72]'s "cleared trade" row, written by the
   // world in the seasonal clear and by settlement afterwards. Stored for the
@@ -205,6 +217,26 @@ export interface Town {
   // The DAY the town was last frightened — a raid, a bombardment. Feeds the
   // governor's FEAR term ("since the burning, the town wants guns"). KAN-74 sets it.
   lastThreatDay: number | null;
+}
+
+// ---- What the world hands in ------------------------------------------------
+
+// A day's weather at this place, in the TOWN'S OWN VOCABULARY. It is [HC-72]'s
+// two weather rows — the yield modifier and the damage events — and it is
+// written here rather than imported so that [HC-71] survives as a property of
+// the code: the ledger accepts weather without knowing that a world, a zone or a
+// storm exists. The overworld's `Weather` satisfies this structurally, so the
+// compiler checks the match at the one call site that joins the two ends, and
+// neither module has to import the other.
+//
+// Note what is NOT on it: a severity, a band, a storm, a position. [HC-33] says
+// no code path may key an effect off "an event happened here", and the surest
+// form of that rule is a type through which the fact cannot arrive ([P-17b]).
+export interface WeatherDay {
+  yieldLoss: number; // a share of the season's harvest, accumulated ([HC-6])
+  wealthLoss: number; // a share of coin on hand, lost today ([HC-36])
+  worksDropped: number; // grades down the ladder, today ([HC-34])
+  worksDestroyed: number; // zero or one, never a sweep ([HC-35])
 }
 
 // ---- Derived, never stored -------------------------------------------------

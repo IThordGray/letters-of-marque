@@ -5,9 +5,9 @@
 // moves works down THIS ladder, one grade at a time).
 
 import { describe, it, expect } from "vitest";
-import type { Town } from "./types";
+import type { Town, Work } from "./types";
 import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
-import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, mendable, repairCost, CATALOGUE } from "./works";
+import { raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, damageWorks, mendable, repairCost, CATALOGUE } from "./works";
 import { stepTownSeason } from "./governor";
 import { DECAY } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
@@ -215,6 +215,152 @@ describe("coming back up the ladder", () => {
     // Both dates are days now, so the gap IS the difference between the two
     // thresholds — no conversion, and nothing to get wrong in one.
     expect(ruinedOn - decayedOn).toBe(DECAY.decayedToRuin - DECAY.idleToDecayed);
+  });
+});
+
+describe("the weather coming down the same ladder", () => {
+  // [HC-34] / [HC-35]. Damage is the EVENT half of [HC-6] and lands the day it
+  // happens; it uses the ladder that was already there rather than a second one
+  // of its own. Nothing here knows what a storm is: `damageWorks` is handed a
+  // count, a count and a roll, which is [HC-33] as a signature ([P-17b]).
+
+  // A place with plenty on its ledger to hit, so a claim about WHICH work is hit
+  // is not really a claim about there being only one.
+  const stocked = (): Town => {
+    const town = presidio({ population: 900, wealth: 40000 });
+    for (const kind of ["sawpit", "warehouse", "caneField", "battery", "tavern"] as const) {
+      raise(town, kind, DAY0);
+    }
+    stepSeason(town, DAY0);
+    return town;
+  };
+
+  const countBy = (town: Town, c: Work["condition"]) => town.works.filter((w) => w.condition === c).length;
+
+  it("takes a work down one grade at a time, and never straight to ruin", () => {
+    // The ladder is `working -> idle -> decayed -> ruin`. A drop walks it; only
+    // the extreme tail writes the bottom rung, and it is counted separately.
+    const town = stocked();
+    const working = countBy(town, "working");
+    damageWorks(town, 1, 0, 0.5, DAY0 + 1);
+    expect(countBy(town, "working")).toBe(working - 1);
+    expect(countBy(town, "idle")).toBe(1);
+    expect(countBy(town, "ruin")).toBe(0);
+
+    // ...and a second blow on the same work takes it one further, not two.
+    const knocked = town.works.find((w) => w.condition === "idle")!;
+    damageWorks(town, 1, 0, 0.5, DAY0 + 2);
+    expect(knocked.condition).toBe("decayed");
+    expect(countBy(town, "ruin")).toBe(0);
+  });
+
+  it("stops a drop at decayed, because the rung below it is the one the storm may not write", () => {
+    // [HC-34]: "it never skips to ruin". A decayed work is skipped by a DROP
+    // altogether — there is nothing the weather can do to it short of the tail —
+    // and the drop moves on to whatever stands next to it on the ledger.
+    const town = stocked();
+    for (const w of town.works) {
+      w.condition = "decayed";
+      w.idleSinceDay = DAY0;
+    }
+    damageWorks(town, 2, 0, 0.0, DAY0 + 1);
+    expect(countBy(town, "ruin")).toBe(0);
+    expect(countBy(town, "decayed")).toBe(town.works.length);
+  });
+
+  it("destroys exactly one work per contact, however hard it blows", () => {
+    // [HC-35], and it is the rule that keeps razing and weather different kinds
+    // of thing: razing is deliberate and wholesale, the storm is random and
+    // singular. A town can lose its quay to the sea; it cannot lose its town.
+    for (const pick of [0, 0.17, 0.4, 0.61, 0.83, 0.99]) {
+      const town = stocked();
+      damageWorks(town, 2, 5, pick, DAY0 + 1); // five asked for, one taken
+      expect(countBy(town, "ruin")).toBe(1);
+    }
+  });
+
+  it("takes what it finds, and a different work when it finds a different one", () => {
+    // The victim is a derived roll, not a rule about worth: the sea does not pick
+    // out the most valuable shed. Two different rolls on the same ledger must be
+    // able to land on two different works, or the roll is decoration.
+    const hit = new Set<number>();
+    for (const pick of [0, 0.1, 0.2, 0.3, 0.45, 0.6, 0.75, 0.9]) {
+      const town = stocked();
+      damageWorks(town, 1, 0, pick, DAY0 + 1);
+      hit.add(town.works.find((w) => w.condition === "idle")!.id);
+    }
+    expect(hit.size).toBeGreaterThan(2);
+  });
+
+  it("leaves a ruin alone, because there is nothing left in it to take", () => {
+    const town = stocked();
+    for (const w of town.works) {
+      w.condition = "ruin";
+      w.idleSinceDay = DAY0;
+    }
+    damageWorks(town, 2, 1, 0.5, DAY0 + 1);
+    expect(countBy(town, "ruin")).toBe(town.works.length);
+  });
+
+  it("does nothing at all to a place with nothing on its ledger", () => {
+    const town = presidio({ population: 0, wealth: 0 });
+    expect(() => damageWorks(town, 2, 1, 0.999, DAY0)).not.toThrow();
+    expect(town.works).toEqual([]);
+  });
+
+  // THE KAN-108 INTERACTION, and it is the reason that ticket lands in this one.
+  // The ladder was made two-way yesterday; a storm-damaged work therefore has a
+  // repair path and a governor who can pay for it. A DESTROYED one does not, and
+  // that difference is the whole distinction between damage and destruction.
+  it("leaves a storm-damaged work mendable, and a destroyed one past saving", () => {
+    const town = stocked();
+    const pit = town.works.find((w) => w.kind === "sawpit")!;
+    const yard = town.works.find((w) => w.kind === "warehouse")!;
+
+    // Knocked twice: `working -> idle -> decayed`, which is the rung a mend buys
+    // its way off.
+    pit.condition = "decayed";
+    pit.idleSinceDay = DAY0;
+    expect(mendable(town, pit)).toBe(true);
+
+    yard.condition = "ruin";
+    yard.idleSinceDay = DAY0;
+    expect(mendable(town, yard)).toBe(false);
+  });
+
+  it("puts a storm-damaged work back to work when the governor pays for it", () => {
+    // End to end through the ladder both ways: the sea knocks it down, the coin
+    // buys one rung, the hands take the last step.
+    const town = presidio({ population: 400, wealth: 40000 });
+    const pit = raise(town, "sawpit", DAY0)!;
+    stepSeason(town, DAY0);
+    expect(pit.condition).toBe("working");
+
+    // Two contacts, both starting at the head of the ledger — which is the
+    // sawpit, because it was raised before anything else stood here.
+    expect(town.works[0]).toBe(pit);
+    damageWorks(town, 1, 0, 0, DAY0 + 1);
+    damageWorks(town, 1, 0, 0, DAY0 + 2);
+    expect(pit.condition).toBe("decayed");
+    expect(mendable(town, pit)).toBe(true);
+
+    const mended = stepTownSeason(town, DAY0 + SEASON);
+    expect(mended.built?.work).toBe(pit);
+    expect(pit.condition).toBe("idle");
+    stepTownSeason(town, DAY0 + 2 * SEASON);
+    expect(pit.condition).toBe("working");
+  });
+
+  it("gives the same world the same damage, whatever order the places were walked", () => {
+    // [HC-10]: the roll is derived, so nothing about it depends on who went
+    // first. Two identical ledgers, the same numbers in, the same wreck out.
+    const a = stocked();
+    const b = stocked();
+    for (const pick of [0.11, 0.62, 0.34]) {
+      damageWorks(a, 2, 1, pick, DAY0 + 1);
+      damageWorks(b, 2, 1, pick, DAY0 + 1);
+    }
+    expect(b.works.map((w) => w.condition)).toEqual(a.works.map((w) => w.condition));
   });
 });
 

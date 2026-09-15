@@ -13,10 +13,10 @@
 // imports nothing and is a definition table ([HC-90]).
 
 import { CALENDAR, yearOfDay } from "../overworld/calendar";
-import type { Town, Derived, Patron } from "./types";
+import type { Town, Derived, Patron, WeatherDay } from "./types";
 import type { Land } from "./land";
 import { describeLand } from "./land";
-import { stepWorks, unmetNeeds, CATALOGUE } from "./works";
+import { damageWorks, harvestShare, stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
 import { commerceOf, makeMarket, payImports, dependencyWord } from "./trade";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
@@ -29,9 +29,13 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 export function derive(town: Town): Derived {
   const working = town.works.filter((w) => w.condition === "working");
 
-  const food = sum(working, (w) => w.food);
+  // [HC-6]: what the weather took off this season's harvest, applied where the
+  // harvest is counted and nowhere else. `harvestShare` is the one definition of
+  // it, and `commerceOf` reads the same one for the cargo half.
+  const harvest = harvestShare(town);
+  const food = sum(working, (w) => w.food) * harvest;
   const mouths = town.population * FOOD.perHead;
-  const trade = sum(working, (w) => w.trade);
+  const trade = sum(working, (w) => w.trade) * harvest;
   const upkeep = town.population * WEALTH.upkeepPerHead;
   const defence = sum(working, (w) => w.defence);
 
@@ -108,7 +112,10 @@ function garrisonOf(town: Town, security: number): Derived["garrison"] {
 // against [HC-67] and [HC-50]. The hamlet floor is real but it is EMERGENT: what
 // people raise for themselves out of the catalogue, and nobody raises anything.
 export function carryingCapacity(town: Town): number {
-  const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food);
+  // The SAME share `derive` scales the harvest by ([P-47]): a spoiled harvest
+  // feeds fewer people, and it would be a quiet bug for the food a town sells to
+  // fall while the mouths it can keep did not.
+  const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food) * harvestShare(town);
   const foodCap = (grown + town.market.bought[0]) / FOOD.perHead;
   const { min, fullAt } = POP.prosperityPull;
   const pull = min + (1 - min) * clamp(town.prosperity / fullAt, 0, 1);
@@ -135,6 +142,46 @@ export function prosperityTarget(town: Town, d: Derived): number {
     0,
     100,
   );
+}
+
+// ---- The weather, as an input row ------------------------------------------
+//
+// [HC-72] rows five and six, and [HC-6] IS THE WHOLE DESIGN: weather has two
+// output paths and they must not be mixed.
+//
+//   DAMAGE is an EVENT.    It lands today — a work drops a grade, or at the top
+//                          of the spectrum one is destroyed — and so does the
+//                          coin that went down with it ([HC-36]: "contents
+//                          spoil" is a wealth loss, never a stockpile deduction,
+//                          because there is no stockpile).
+//   YIELD is a MODIFIER.   It is added to the season's account and spent once,
+//                          when the books are struck. A downpour does not reach
+//                          into a ledger that has not been struck yet.
+//
+// [HC-71]: the world drives the ledger and the ledger never reaches out. Nothing
+// here knows what a storm is, where it was, or whether one existed — it is given
+// four numbers and applies them ([HC-33], [P-17b]).
+export function takeWeather(town: Town, day: number, w: WeatherDay, pick: number): void {
+  // THE MODIFIER. Never more than all of it, clamped where it is written so
+  // there is one meaning of the number and not two ([P-47]).
+  const loss = town.harvestLoss + w.yieldLoss;
+  town.harvestLoss = loss > 1 ? 1 : loss;
+
+  // THE EVENT, both halves of it, today.
+  town.wealth -= town.wealth * w.wealthLoss;
+  if (w.worksDropped > 0 || w.worksDestroyed > 0) {
+    damageWorks(town, w.worksDropped, w.worksDestroyed, pick, day);
+  }
+}
+
+// The books are struck and the weather's account against THAT harvest is closed
+// with them. The next ninety days start from nothing.
+//
+// It is one line and it is a function anyway, because the rule is "reset when the
+// season resolves" and there are two drivers that resolve a season — the world's
+// five phases and a lone town's two. One definition, two callers.
+export function closeHarvest(town: Town): void {
+  town.harvestLoss = 0;
 }
 
 // ---- The season tick -------------------------------------------------------
@@ -196,6 +243,7 @@ export function settleSeason(town: Town): void {
 export function stepSeason(town: Town, day: number): void {
   produceSeason(town, day);
   settleSeason(town);
+  closeHarvest(town);
 }
 
 // Run a town on its own for a stretch of seasons, from a named starting day.
@@ -233,6 +281,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     works: [],
     footprint: makeFootprint(),
     governor: "",
+    harvestLoss: 0,
     grant: 0,
     market: makeMarket(),
     nextWorkId: 1,

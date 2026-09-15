@@ -23,7 +23,7 @@
 //         the same mechanism seen from two sides.
 
 import type { Derived, Town, Work, WorkKind } from "./types";
-import { CATALOGUE } from "./works";
+import { CATALOGUE, harvestShare } from "./works";
 import { ACCESS, FOOD, TRADE, WEALTH, DEPENDENCY_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -175,6 +175,14 @@ export function commerceOf(
 ): Commerce {
   const access = accessOf(working, security);
   const produced = producedOf(working, food);
+  // [HC-6]'s yield modifier reaching the CARGO. `food` arrives already scaled —
+  // `derive` is the one place that counts it — but materials and luxury are read
+  // straight off the works here, so the same share has to bite here too, or a
+  // storm would spoil a town's bread and leave its cane untouched. One
+  // definition of the share ([P-47]); it is `harvestShare` in both places.
+  const harvest = harvestShare(town);
+  produced[1] *= harvest;
+  produced[2] *= harvest;
   const consumed = consumedOf(town.population, capitalWorksOf(working));
   const m = town.market;
 
