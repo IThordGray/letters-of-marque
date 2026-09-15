@@ -10,6 +10,46 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-15 — One clock, and a leaf to read it from
+
+KAN-107 deleted `Town.season`. Every date a place keeps is now **days since world epoch** — the same
+integer `world.day` is — and the world hands the day in rather than the ledger reaching for it
+(`[HC-71]`). Two places founded in different years can be compared on one timeline, which could not
+be done before and which KAN-99 and KAN-100 both need.
+
+**The structural problem, and the pattern worth reusing.** The town needs the calendar; the calendar
+lived in `clock.ts`; `clock.ts` owns the `World` and so pulls in `climate`, `dispatch`, `factions`,
+`places`, `shape` and `weather`, several of which import from `town/`. Importing it from the town
+would have closed a cycle. **The answer was a LEAF: `overworld/calendar.ts` imports nothing at all**,
+holds the calendar table (`[HC-90]`) and the pure day→(year, season, day-of-season) conversions, and
+both layers read it. A file with no imports can close no cycle.
+
+**And the leaf-ness is asserted, not trusted.** A test reads the source and fails if the word
+`import` appears in it. That is `[P-17b]` — *enforce a prohibition by signature, not discipline* —
+extended from function signatures to module structure: **a property of the source is checked in the
+source.** The general form is worth keeping: when a module's whole warrant is what it does *not*
+depend on, that is a claim, and claims go in the suite.
+
+**`[P-47]` now has a hat-trick in one week**, and the three are the same bug wearing three hats:
+
+| Deleted | Was previewing | Ticket |
+|---|---|---|
+| `garrison: 14` | the watch a grade actually fields | KAN-109 |
+| `POP.floor: 12` | the floor subsistence works already produce | KAN-106 |
+| `SEASONS_PER_YEAR` | `CALENDAR.seasonsPerYear` | KAN-107 |
+
+**In all three, prose in the same file already said the number was wrong** — and in all three it had
+been sitting there for weeks. That is the cheap detection rule: **a constant with a comment nearby
+explaining what really determines it is already a bug report.**
+
+**A constraint KAN-99 inherits, found by anticipating it rather than by hitting it.** A place founded
+before the world's epoch holds a **negative** day, which is exactly what a warm start will write.
+`Math.trunc(-1 / 360)` is `-0`, so day −1 would read as the epoch year rather than the year before
+it; `Math.floor` is right across the whole integer range. Both are exactly specified (`[P-7]`), so
+determinism was never the question — **only one of them is correct**, and the difference is invisible
+until a date goes below zero.
+
+---
 ### 2026-09-14 (third) — A ladder rung that costs nothing is not a rung
 
 KAN-108 found that the devolution ladder — `working → idle → decayed → ruin`, documented in three

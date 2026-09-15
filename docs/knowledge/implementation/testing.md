@@ -20,6 +20,29 @@ npm run test:watch # re-run on save while working on a system
 `npm run build` runs `tsc` first, so **typecheck failures block the build**. Test files are
 typechecked but never bundled into `dist/` — nothing imports them.
 
+### A test timeout is a hang detector, not a performance budget
+
+**Set deliberately 2026-09-15, after running on vitest's 5 s default by accident for the life of the
+project** — nothing configured the runner at all until then.
+
+Several claims here generate whole worlds, and a world is a height field of thirty-odd lobes under
+two fbm stacks, so a claim that samples several seeds legitimately takes seconds. Run alone they pass
+in about five; run across twenty-one parallel workers on a machine that is also doing something else
+they take eleven. Observed on one unchanged tree: **seven failures on one run, one on the next, none
+at all serially.**
+
+**A suite that fails at random is a suite people stop reading**, which costs far more than the minute
+it saves. And notice what the default was really doing: acting as a **second, implicit,
+machine-dependent performance gate** beside the explicit `[P-39]` measurements this project already
+takes on purpose. That is the `[P-47]` mistake — one quantity with two sources, one of them unstated
+— and this source varies with whatever else the box is running.
+
+- **Performance is policed by measurement**, in tests written to measure it, on the terms
+  `performance.md` sets. Never by the runner's clock.
+- The timeout only has to be long enough that **a genuine hang is still obvious**. 30 s.
+- **Corollary:** if a test is slow enough to worry you, that is a `[P-39]` measurement waiting to be
+  written, not a timeout waiting to be tightened.
+
 ## Where tests live
 
 **Co-located** with the module they cover: `src/town/sim.ts` → `src/town/sim.test.ts`. A system and
@@ -159,8 +182,10 @@ and all cheap:
 > general rule is *Write the oracle out independently*, below: **an assertion that reads its own
 > threshold out of the code under test asserts nothing.**
 >
-> Related: express elapsed time as **seasons stepped**, never as `town.season` arithmetic — the
-> town's private clock is still on the contradiction list (KAN-107).
+> Related, and **resolved 2026-09-15 by KAN-107**: elapsed time used to be expressible two ways, and
+> the advice here was to prefer *seasons stepped* over `town.season` arithmetic. There is no longer a
+> choice — `town.season` is deleted and every date a place keeps is **days since world epoch**, the
+> same integer `world.day` is. Express elapsed time in days, and derive year and season from it.
 
 The rest of this section is kept for the record — it explains why the park was right at the time.
 
