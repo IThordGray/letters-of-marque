@@ -144,6 +144,43 @@ export function prosperityTarget(town: Town, d: Derived): number {
   );
 }
 
+// WHAT THE TOWN HAS TO MAINTAIN, in coin: what its standing works cost to raise.
+//
+// This is the base a storm's maintenance bill is priced against (ratified
+// 2026-09-15). It is DERIVED and never stored ([HC-14]) — the works are already
+// on the ledger and the catalogue already prices them, so there is nothing here
+// a second field could hold that this loop cannot answer.
+//
+// WHY NOT `Derived.upkeep`, which reads "what the town costs itself to run" and
+// looks like the natural base. Because it is `population x upkeepPerHead` and
+// nothing else: it prices SOULS, not FABRIC. Two towns with the same people and
+// wildly different works would be sent the same bill for a storm, and the rule
+// the change exists to state — a town with more standing works pays more — could
+// not be written against it at all. `upkeep` is also a term in `yield`, so
+// widening it would move the whole economy for a reason that has nothing to do
+// with weather.
+//
+// SUBSISTENCE WORKS COST NOTHING HERE, and that is the catalogue's own rule
+// rather than an omission: people raise their own houses and garden plots, so
+// they re-thatch them too. The town's COIN bill is for what coin built. It also
+// means a place razed to the hamlet floor is not taxed by the weather while it
+// crawls back, which is what [HC-67] wants.
+//
+// STANDING = NOT A RUIN. An idle or decayed work still has a roof on it and
+// still wants mending; a ruin has nothing left to maintain.
+//
+// [P-32]: an indexed loop with no allocation, because this is read on the DAILY
+// beat — the highest-rate loop in the game — and never through `derive()`, which
+// costs seven times the ledger it advises.
+export function standingValue(town: Town): number {
+  let coin = 0;
+  for (let i = 0; i < town.works.length; i++) {
+    const w = town.works[i];
+    if (w.condition !== "ruin") coin += CATALOGUE[w.kind].cost;
+  }
+  return coin;
+}
+
 // ---- The weather, as an input row ------------------------------------------
 //
 // [HC-72] rows five and six, and [HC-6] IS THE WHOLE DESIGN: weather has two
@@ -168,7 +205,20 @@ export function takeWeather(town: Town, day: number, w: WeatherDay, pick: number
   town.harvestLoss = loss > 1 ? 1 : loss;
 
   // THE EVENT, both halves of it, today.
-  town.wealth -= town.wealth * w.wealthLoss;
+  //
+  // THE BILL IS PRICED AGAINST THE WORKS AND PAID OUT OF THE PURSE. It was
+  // `town.wealth -= town.wealth * w.wealthLoss` until 2026-09-15 — a share of the
+  // treasury — which charged a rich town a thousand times more for the same
+  // broken fence and compounded to a fifth of every treasury in the world per
+  // year. The rate comes in from outside; the town is the only thing that knows
+  // what it has standing, and it does the multiplying itself.
+  //
+  // A town that cannot pay simply cannot pay: wealth stops at nothing and the
+  // remainder is not owed, for the same reason `settleSeason` refuses debt.
+  if (w.maintenanceShare > 0) {
+    const bill = standingValue(town) * w.maintenanceShare;
+    town.wealth = bill < town.wealth ? town.wealth - bill : 0;
+  }
   if (w.worksDropped > 0 || w.worksDestroyed > 0) {
     damageWorks(town, w.worksDropped, w.worksDestroyed, pick, day);
   }

@@ -522,15 +522,53 @@ export function feltAt(w: World, p: Place, sky: Sky | null = null): number {
 // below are tuning; the sentences beside them are the specification.
 // [HC-91]: `BandId` comes FROM the table, never the other way round.
 
+// THE MAINTENANCE COLUMN IS PRICED AGAINST WHAT A TOWN HAS TO MAINTAIN, not
+// against what is in its coffers (ratified 2026-09-15). It used to be a share of
+// the treasury, which made the same broken fence cost a thousand times more in a
+// rich town than in a poor one and turned §7.4's "small maintenance cost" into a
+// proportional ceiling on wealth — measured at roughly a fifth of every treasury
+// in the world, every year, for ever. A fence costs what a fence costs; what
+// varies between two towns is HOW MUCH FENCE THERE IS.
+//
+// So `maintenanceShare` is a share of the STANDING WORKS' RAISING COST — the
+// town's fabric, valued in the coin that raised it. This file still hands out a
+// RATE and nothing else: the town turns it into coin out of its own books, which
+// is what keeps [HC-33] a signature rather than a rule ([P-17b]).
+//
+// THE ARITHMETIC BEHIND EACH ROW, derived from §7.4's sentences and written out
+// so the next person can disagree with the reasoning rather than with a number.
+// Every band is the same product:
+//
+//     rate = (how much of the fabric the day's weather finds)
+//          x (what putting that right costs, as a share of raising it)
+//
+//   blow     a tenth of it — a gate here, a fence there — and a hundredth of
+//            raising each: nails, a plank, half a day. 0.10 x 0.01 = 0.001
+//   gale     a fifth: the same shingles, off more roofs, because it is windier.
+//            0.20 x 0.01 = 0.002
+//   tempest  a third, and a tenth of raising each: a wall down, a roof off, and
+//            what was in store lost with it. 0.33 x 0.10 = 0.033
+//
+// [HC-36] survives the change unaltered — "contents spoil" is still a WEALTH
+// loss and still never a stockpile deduction, because there is still no stock.
+// What moved is only what the loss is a share OF.
+//
+// A GALE IS GIVEN A MAINTENANCE COST, AND §7.4'S TABLE SAYS `—`. Read as an
+// exclusive cost sheet that table is incoherent: a gale is at least as windy as
+// a blow, so it cannot loosen fewer shingles. Read as WHAT EACH BAND IS NOTABLE
+// FOR it is exactly right — a blow is a property nuisance, a gale is a crop
+// event — and that is the reading here. The rule the code holds is MONOTONE:
+// further up the spectrum never costs less, in any column. Flagged rather than
+// hidden; the human may overrule it.
 export const BANDS = [
   // Ordinary weather. Costs nothing, and most days are this.
-  { id: "fair", from: 0, wealthLoss: 0, yieldLoss: 0, drops: 0 },
+  { id: "fair", from: 0, maintenanceShare: 0, yieldLoss: 0, drops: 0 },
   // "Loose roof shingles, a broken gate or fence." Common — several a year.
-  { id: "blow", from: 0.24, wealthLoss: 0.006, yieldLoss: 0.02, drops: 0 },
+  { id: "blow", from: 0.24, maintenanceShare: 0.001, yieldLoss: 0.02, drops: 0 },
   // "A downpour on the fields" — a surplus of 100 becomes 70. Every year or two.
-  { id: "gale", from: 0.4, wealthLoss: 0.012, yieldLoss: 0.11, drops: 0 },
+  { id: "gale", from: 0.4, maintenanceShare: 0.002, yieldLoss: 0.11, drops: 0 },
   // "The warehouse falls over and its contents spoil." Rare, and memorable.
-  { id: "tempest", from: 0.52, wealthLoss: 0.07, yieldLoss: 0.2, drops: 1 },
+  { id: "tempest", from: 0.52, maintenanceShare: 0.033, yieldLoss: 0.2, drops: 1 },
 ] as const;
 
 export type BandId = (typeof BANDS)[number]["id"];
@@ -575,10 +613,14 @@ export interface Weather {
   // the season's harvest and applied once when the season resolves — a downpour
   // does not reach into a ledger that has not been struck yet.
   yieldLoss: number;
-  // A share of wealth, lost once, on the day. [HC-36]: "contents spoil" is a
-  // WEALTH loss and never a stockpile deduction — the ratified model is flows
-  // plus one wealth stock, so there is literally nothing to spoil.
-  wealthLoss: number;
+  // The day's maintenance bill, as A SHARE OF WHAT THE TOWN'S STANDING WORKS
+  // COST TO RAISE — its fabric — and NOT as a share of coin on hand. It is paid
+  // in wealth once, on the day, because [HC-36] says "contents spoil" is a wealth
+  // loss and never a stockpile deduction; what it is a share OF is the town's
+  // works, so the same storm sends the same bill to a rich town and a poor one.
+  // This file cannot value a town's works and must not learn to: it emits the
+  // rate, the ledger does the multiplying ([HC-33], [P-17b]).
+  maintenanceShare: number;
   // Grades down the existing ladder — working → idle → decayed → ruin — one at a
   // time, never skipping to ruin ([HC-34]).
   worksDropped: number;
@@ -612,7 +654,7 @@ export function effectOf(severity: number, roll: number): Weather {
     // A Blow "may nick it" and a Gale is a real hit: the same shape, read at two
     // heights on one spectrum.
     yieldLoss: row.yieldLoss * bite,
-    wealthLoss: row.wealthLoss * bite,
+    maintenanceShare: row.maintenanceShare * bite,
     worksDropped: dropped,
     worksDestroyed: severity >= DAMAGE.destroysAt && roll < DAMAGE.destroyChance ? 1 : 0,
   };
