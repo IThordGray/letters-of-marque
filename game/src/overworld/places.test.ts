@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { CROWN_IDS, FACTIONS, FACTION_IDS, NAME_POOLS, holdingsOf, makeNations } from "./factions";
-import { isOutpost, legBetween, makePlaces, sitePlaces, sizeRank, SIZES, type Place } from "./places";
+import { hinterlandAt, isOutpost, legBetween, makePlaces, sitePlaces, sizeRank, SIZES, type Place } from "./places";
 import { makeShape, DAY_RUN_NM, RAYS, isLandAt, distanceNm } from "./shape";
 import { makeZones } from "./climate";
 import { generateWorld } from "./worldgen";
@@ -94,6 +94,35 @@ describe("the three axes", () => {
     }
   });
 
+  it("designates its great ports where the ground behind them will feed a city", () => {
+    // KAN-99, and the term `standingOf` was missing. A harbour is what lets a
+    // port TRADE; a hinterland is what lets it be LARGE — and "which harbours
+    // grew into great ports" was being decided by shelter, company and a roll,
+    // none of which has anything to say about whether the ground will feed
+    // anybody. Measured before the term existed: the five designated cities of
+    // this sea came out at 83 to 290 souls on day 0 while its largest place, a
+    // settlement, stood at 910.
+    //
+    // FOUR SEAS, NOT ONE, and that is what makes this a claim rather than a
+    // coincidence. The roll is still a sixth of the argument and a lucky
+    // headland may still be designated over a fertile one, so on any single sea
+    // the cities can come out barely above the middle. Measured across eight
+    // seeds, the designated cities' ground runs **1.57 to 3.31** times the
+    // median coast's; with the term taken out of the score it runs **1.12 to
+    // 2.03**, and two of these four seas fall through the bar below. That
+    // overlap is exactly why one sea cannot tell the cases apart.
+    for (const seed of [1660, 20260910, 7, 99]) {
+      const world = seed === SEED ? WORLD : generateWorld(seed);
+      const score = world.places.map((p) => hinterlandAt(world, p));
+      const sorted = [...score].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const cities = world.places.filter((p) => p.size === "city");
+      const mean = cities.reduce((a, p) => a + score[p.id], 0) / cities.length;
+      expect(mean, `seed ${seed} designated its cities on ordinary ground`)
+        .toBeGreaterThan(median * 1.5);
+    }
+  });
+
   it("designates no neutral city, because nothing neutral can ever be chartered", () => {
     // [HC-65] plus [HC-51]: a neutral place has no patron, so an unpromotable
     // great port would be a dead end the size class could never explain.
@@ -138,14 +167,20 @@ describe("the three axes", () => {
     expect(sizeRank(city)).toBeGreaterThan(sizeRank(settlement));
   });
 
-  it("gives a bigger class a bigger opening, but never bigger than its ground allows", () => {
-    // The generator's answer to [HC-22]: class says how big a place is ALLOWED
-    // to be on day 0, and the ground says how big it can be. Neither is ignored.
+  it("lands a bigger party for a bigger class, and then stops having an opinion", () => {
+    // WHAT THIS MEANS CHANGED WITH KAN-99, and the old wording — "class says how
+    // big a place is ALLOWED to be on day 0" — is exactly what the warm start
+    // retired. `SIZES.population` is now the FOUNDING PARTY: how many people a
+    // crown's seat, a town or a fishing village landed with. Day 0 is eighty-odd
+    // years later and the class has no say in it at all; `worldgen.test.ts`
+    // holds the other end of that.
     for (const p of PLACES) {
       const def = SIZES[p.size];
       expect(p.population, p.name).toBeLessThanOrEqual(def.population[1]);
-      expect(p.population, p.name).toBeGreaterThan(0);
+      expect(p.population, p.name).toBeGreaterThanOrEqual(def.population[0]);
     }
+    expect(SIZES.settlement.population[1]).toBeLessThan(SIZES.town.population[1]);
+    expect(SIZES.town.population[1]).toBeLessThan(SIZES.city.population[1]);
   });
 });
 

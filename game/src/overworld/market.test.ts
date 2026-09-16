@@ -96,7 +96,8 @@ function shuffled(n: number, salt: number): number[] {
 function placeAt(id: number, x: number, faction = 0): Place {
   return {
     id, name: `P${id}`, governor: "", x, y: 0, sx: 0, sy: 1, zone: 0, shelter: 0.5,
-    size: "town", purpose: "trade", faction, seed: id + 1, population: 100, wealth: 100,
+    size: "town", purpose: "trade", faction, seed: id + 1,
+    foundedDay: -40 * DAYS_PER_YEAR, population: 100, wealth: 100,
   };
 }
 

@@ -33,11 +33,33 @@ import { CENTRE, bearingOf, centroid, disc, distance, key, neighbours, southness
 import { LAND } from "../town/constants";
 import { makeRng, nextFloat, type Rng } from "../rng";
 import { CHANNEL, seedFor } from "./chance";
-import { CLIMATES, TERRAIN_BEARS, type Climate } from "./climate";
+import { CLIMATES, TERRAIN_BEARS, type Climate, type Zone } from "./climate";
 import { fbm, fieldSeed } from "./noise";
-import { heightAt } from "./shape";
-import type { Place } from "./places";
-import type { World } from "./clock";
+import { heightAt, type WorldShape } from "./shape";
+
+// WHAT THE CUT ACTUALLY NEEDS, and it is deliberately less than a World and less
+// than a Place. `World` and `Place` both satisfy these structurally, so every
+// existing call site is unchanged — but the generator can now ask what the ground
+// behind a beach will bear BEFORE it has decided what sort of place stands there,
+// which is what `standingOf` needs in order to see a hinterland ([HC-19]: one
+// geography, asked at whatever moment somebody needs an answer).
+//
+// [P-17b] again: there is no argument through which a size class, a faction or a
+// ledger could arrive here, so the cut cannot start reading one.
+export interface Fields {
+  seed: number;
+  shape: WorldShape;
+  zones: Zone[];
+}
+
+export interface Site {
+  id: number;
+  x: number;
+  y: number;
+  sx: number;
+  sy: number;
+  zone: number;
+}
 
 // ---- The scale of a town's own ground --------------------------------------
 // A hex is a bit under two nautical miles across, so the ~24 hexes of a town's
@@ -125,7 +147,7 @@ function worldOf(f: Frame, h: Axial): { x: number; y: number } {
 // field; the small stream is used only for the things the map has no opinion
 // about — which crop a stretch of tilled ground favours, and where the best of it
 // lies.
-export function groundAt(world: World, place: Place): Land {
+export function groundAt(world: Fields, place: Site): Land {
   const s = world.shape;
   const climate = CLIMATES[world.zones[place.zone].climate];
   const rng = makeRng(seedFor(world.seed, CHANNEL.land, place.id));

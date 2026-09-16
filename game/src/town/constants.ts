@@ -304,8 +304,30 @@ export const PLAN = {
 // ---- The footprint ---------------------------------------------------------
 // Room is measured in WORKS, not acres: everything that is not `beyondThePale`
 // stands inside the town. Calibrated to the population band the sim actually
-// produces (~80-450 souls) — NOT to the 900-soul port in the spec's prose, which
-// needs bought grain from the deferred trade layer. Re-tune when that lands.
+// produces — NOT to the 900-soul port in the spec's prose, which needs bought
+// grain from the deferred trade layer.
+//
+// MEASURED AGAINST THE WARM WORLD AND LEFT ALONE (KAN-99, 2026-09-16). The note
+// that stood here asked to be re-tuned once trade landed; trade landed, the warm
+// start ran eighty-odd years of `stepFootprint` over fifty places on four seeds,
+// and the table came out of it honest:
+//
+//   day-0 core grade  0..4, median 2 ("close-built")
+//   claimed hexes     1..11, median 1-2
+//   crowding          0.50 .. 2.00, median 0.67-0.87
+//   populations       11 .. 928 souls, median 47-96
+//
+// SO THE BAND IS WIDER THAN THE ~80-450 THIS WAS WRITTEN FOR, AT BOTH ENDS, and
+// nothing wanted changing. The reason is worth keeping: what happens above the
+// table is a STALL — `stepFootprint` finds nothing to densify and nowhere to
+// spread — and a stall is the ground-for-houses cap doing its job (§3.5.6's
+// third limit), not a number overflowing. Every place measured above crowding 1
+// had already reached core 4 or run out of buildable land. Tuning `coreRoom`
+// upward would loosen a cap that is meant to bite.
+//
+// What it cost: `densifyCost[2] = 900` holds the median town at "close-built"
+// for want of coin, which is exactly the poor-town-sprawls/funded-town-holds
+// trade-off the table was written to make.
 export const FOOTPRINT = {
   coreRoom: [4, 6, 9, 13, 18], // scattered · settled · close-built · packed · stone-built
   roomPerClaim: 3, // ...plus this much for every hex the town has built over

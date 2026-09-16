@@ -27,14 +27,11 @@ import { DAYS_PER_YEAR, dayInSeason, seasonOfDay, yearOfDay } from "../overworld
 import { type World } from "../overworld/clock";
 import { CLIMATES } from "../overworld/climate";
 import { inFlight, type Dispatch } from "../overworld/dispatch";
-import { FACTIONS, FACTION_IDS } from "../overworld/factions";
-import {
-  makeMarkets, noWars, openRoutes, runDays,
-  type Markets, type Routes, type Wars, type WorldSeason,
-} from "../overworld/market";
+import { FACTIONS } from "../overworld/factions";
+import { runDays, type Markets, type Routes, type Wars, type WorldSeason } from "../overworld/market";
 import { SIZES, type Place } from "../overworld/places";
-import { bandAt, feltAt, skyOf, type Sky } from "../overworld/weather";
-import { foundAll, generateWorld } from "../overworld/worldgen";
+import { bandAt, feltAt, type Sky } from "../overworld/weather";
+import { warmStart } from "../overworld/worldgen";
 import { derive, prosperityWord, summarise, wealthWord } from "../town/sim";
 import { wants, type Want } from "../town/governor";
 import type { Town } from "../town/types";
@@ -167,23 +164,24 @@ export interface Run {
 // ---- Building one ----------------------------------------------------------
 
 export function makeRun(seed: number): Run {
-  const world = generateWorld(seed >>> 0);
-  const towns = foundAll(world);
+  // THE WARM START, and the whole of the view's relationship with it: the view
+  // is handed a world that already has a past (KAN-99), and the day it opens on
+  // is spring 1660 with century-old cities already on it.
+  //
+  // The wars and the routes come with it rather than being built again here.
+  // Nations do not declare war yet (KAN-101) and nothing blockades anything yet,
+  // so both are their honest empty cases — but they are the SAME empty cases the
+  // pre-run used, not a second pair that happen to agree ([P-47]).
+  const { world, towns, markets, wars, routes, sky } = warmStart(seed >>> 0);
   const n = world.places.length;
-  const markets = makeMarkets(world.places);
   const run: Run = {
     seed: seed >>> 0,
     world,
     towns,
     markets,
-    // Nations do not declare war yet (KAN-101). The seam is real and the answer
-    // is "nobody", which is the honest state of the world rather than a stub.
-    wars: noWars(FACTION_IDS.length),
-    // ...and nothing blockades anything yet either, so every sea lane the
-    // neighbourhoods imply is open. Same shape, same honesty: the answer is
-    // "nobody is holding a harbour", not a stub standing in for one.
-    routes: openRoutes(markets),
-    sky: skyOf(world),
+    wars,
+    routes,
+    sky,
     places: [],
     xs: new Float64Array(n),
     ys: new Float64Array(n),
