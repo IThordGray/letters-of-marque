@@ -10,6 +10,61 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-16 (second) — The ceiling was never fragile, because half the world already touched it
+
+KAN-112 landed and `[HC-87]` is statable at world scale for the first time. The story was framed as
+*"`access` cannot express a blockade"*, which was true. **The finding underneath it was different and
+larger: the scale had saturated.**
+
+**`access` is now REACH × READINESS** — reach being the share of a place's sea lanes still calling,
+readiness its own quays, strand and guns. A product, because it is the only combination under which
+both ratified sentences survive: drop readiness and a quayless shore trades freely because ships
+happen to pass (`[HC-85]` false); drop reach and a blockade stays inexpressible.
+
+**A route turned out to be nothing new.** It is `[HC-82]`'s market neighbourhood read the other way
+round: if two places are near enough to clear a market together, there is water between them that
+ships use. Inventing a second notion of *"who is reachable"* would have been `[P-47]` wearing a map —
+one definition, read twice. Worth stating as a rule for the next system that needs it (patrols,
+dispatches, a player's course): **"who is near enough" has exactly one definition in this world.**
+
+**The saturation, which is the part worth remembering.** Three fishing shacks — which the hamlet floor
+raises for nothing — bought 0.9 of a 0..1 scale, so **the median access in the shipped world was
+exactly 1.00.** Nothing was arithmetically wrong. But a ceiling every place already touches **is not
+fragile, it is furniture**, and that, not the blockade gap, is why `[HC-87]` had no world-scale
+demonstration. Now `[P-52]`: *a clamped quantity whose median is its clamp is a bug report*, and the
+check is one line.
+
+**`[HC-67]`'s scope is now precise**, and it generalises: the hamlet floor raises a place's **works**
+for nothing; it does not raise a place's **standing in the world**. *Free to rebuild fabric, never
+free to rebuild reach.* That single line is what makes raiding and blockade different acts with
+different costs — and the measurement shows it: burning the most sea-fed port's entire waterfront
+recovers to the untouched figure **exactly** on two of four seeds, while a cordon takes it from 293
+souls to 94.
+
+**A near miss, and the discipline that caught it.** The first honest-looking calibration of *"a beach
+is not a quay"* cost **85% of world wealth** and left zero trade-fed ports on three of four seeds — an
+economy rebalance smuggled inside a mechanism story, with `[HC-87a]` made unreachable as a side
+effect. The rule that saved it, and it is new:
+
+> **When a story changes what a quantity is MADE OF, calibrate so the world's aggregate stays roughly
+> where it was, and report the residual.** The shipped figure cost −1.6% to −6.8% population and
+> −1.3% to −7.7% wealth, reported rather than hidden.
+>
+> This is **distinct from** *"report the criterion that fails; never tune until it passes"* (2026-09-10),
+> and the distinction matters: **that** rule governs a criterion the design cannot meet, where tuning
+> would hide a design problem. **This** one governs a dial the change itself introduced, where *not*
+> pinning it lets a mechanism story quietly become a balance story.
+
+**Consequence for KAN-99, which is next:** opening ledgers are re-priced. A warm-started place with no
+capital quay now opens at **0.68–0.87** access rather than 1.00. Whoever writes the warm start reads
+`ACCESS` before authoring any opening population.
+
+**And a pattern, now used twice, worth naming before it is invented a third time.** A world input that
+nothing drives yet — `Wars`, now `Routes` — is: a struct handed in, an empty-case constructor, a
+primitive verb, a convenience verb over it, a reader, and a describe-line, **with a test asserting the
+empty case really is empty.** Both have no non-test callers, deliberately, and both say so in the file.
+
+---
 ### 2026-09-16 — The warm start, decided: a world run forward, founded in waves
 
 Four calls taken by the human today, after a scope pass on **KAN-99** found that most of its ticket

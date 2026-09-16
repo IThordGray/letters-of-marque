@@ -1249,6 +1249,40 @@ access · ground for houses · hands.**
 mechanism.** A trade-fed town of 1,500 falls back toward 450 when its quay burns. Nothing separate
 implements "raiding hurts" — it is this.
 
+> **CLOSED 2026-09-16 by KAN-112 — `[HC-87]` is now statable at world scale, and it is measured.**
+> *(The paragraph below is kept because it records why it took a story to get here.)*
+>
+> **`access` is REACH × READINESS.** *Reach* is the share of a place's sea lanes still calling —
+> cuttable from outside. *Readiness* is its own quays, its strand and its guns. A **product** is the
+> only combination under which both ratified sentences hold: drop readiness and a quayless shore
+> trades freely because ships pass, which makes `[HC-85]` false; drop reach and a blockade stays
+> inexpressible.
+>
+> **The demonstration**, on the most sea-fed port each world produced, run 60 years then 40 more:
+>
+> | seed | at 60y | its own ground feeds | untouched at 100y | waterfront BURNED | **BLOCKADED** |
+> |---|---|---|---|---|---|
+> | 20260910 | 240 | 182 | 237 | 162 | **122** |
+> | 1660 | 293 | 126 | 282 | **282** | **94** |
+> | 7 | 257 | 182 | 243 | **243** | **152** |
+> | 99 | 237 | 182 | 233 | 175 | **128** |
+>
+> Under the cordon: access 0.00, offer 0, want 0, earned 0, bought 0 — `[HC-85]` both ways.
+> **And the contrast IS the finding:** burning the same port's entire waterfront instead recovers to
+> the untouched figure *exactly* on two of four seeds, because the hamlet floor raises the shacks
+> again for nothing. Burning is a season's inconvenience; a cordon is a siege. Both are now tests.
+>
+> **The bug underneath was SATURATION, not arithmetic.** Three free fishing shacks bought 0.9 of the
+> scale, so **half the world sat at exactly 1.00 access** — median 1.00 across four seeds. A ceiling
+> every place already touches cannot be fragile. The strand is now capped at two berths: however many
+> boats are drawn up on the same sand, past that somebody has to build something fire can take away
+> for good.
+>
+> **`[HC-67]`'s scope, made precise by this story and worth carrying:** the hamlet floor raises a
+> place's **works** for nothing. It does not, and must not, raise a place's **standing in the world**.
+> Free to rebuild fabric, never free to rebuild reach — that line is what makes raiding and blockade
+> different acts with different costs.
+
 > **Holds at town scale; NOT yet statable at world scale, and the reason is structural.** KAN-91
 > built it and reported the limit rather than claiming the criterion. A sea-fed town of 640 does fall
 > below 130 when its quay stops — but **`access` built from works alone cannot express a blockade**,

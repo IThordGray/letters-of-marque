@@ -61,6 +61,15 @@ conquest by bombardment + landing party. EA since Feb 2026, ~78% positive of ~50
 reviews, ~12-month EA plan. The nearest neighbour to what we are building — which
 makes both its solved problems and its gaps unusually informative.
 
+> **The human reads it as heavily Cutthroats-influenced** (2026-09-16) — worth
+> recording, since he is the domain expert on that title and the press framing is all
+> *Mount & Blade*, not Cutthroats. If he is right, this is not merely a competitor but
+> a **living, playable instance of the Cutthroats formula** — which makes it usable as
+> a check on the lineage section above wherever our recall of the original is thin, and
+> makes its failures (below) a preview of where that formula breaks under modern
+> expectations. His standing interest is its **naval controls**; those are catalogued in
+> full below, taken from the developer's own command list.
+
 *Sources:* official Quick Start Guide (press-kit command list + "Tips & Tactics"),
 Steam store page, top-rated Steam reviews, the dev's Steam Q&A thread, and a 43-min
 Splattercat review (2026-08-25, `youtube.com/watch?v=7No0QOJWMyQ`).

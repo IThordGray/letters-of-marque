@@ -155,6 +155,35 @@ the drawing to the sea is the honest answer. **Before writing a cull, count the 
 correctness surface, and it only pays above the count where drawing them all is measurable.**
 
 
+
+**`[P-52]` A clamped quantity whose MEDIAN is its clamp is a bug report.** `access` is a 0..1 ceiling
+that decides how much of the world a place can reach, and on the shipped world **half of all places
+sat at exactly 1.00** — because three fishing shacks, which the hamlet floor raises for nothing, bought
+0.9 of the scale. The arithmetic was correct throughout. The *scale* had stopped meaning anything,
+and that is why `[HC-87]`'s "fragile ceiling" could not be stated: **a ceiling every place already
+touches is not fragile, it is furniture.**
+
+- **The check is one line and costs nothing: print the median of any clamped derived quantity and see
+  whether it is the clamp.** Do it when the quantity is written, not when something built on it fails.
+- Saturation is the symptom; the cause is almost always **a free input reaching the top of a scale
+  that was meant to be earned.** Ask what a place gets for nothing, and what fraction of the range
+  that buys.
+- The mirror case is worth the same glance: a clamped quantity whose median is *zero* has the same
+  disease at the other end.
+
+**`[P-53]` Where two numbers price the same underlying fact, only ONE of them may be a normaliser.**
+Reach was nearly built as `openLanes / fullAt` — a count against a constant, which reads perfectly
+natural and would have charged every place a **third** time for where the siting roll put it:
+`MARKET.reachNm` already decides who counts as a neighbour, and the clearing's own ratio already makes
+a thin market dear.
+
+> **The general form, and it is worth pausing on before writing any denominator: a SHARE (denominator
+> = the thing's own total) prices INTERRUPTION; a COUNT (denominator = a constant) prices ENDOWMENT —
+> and endowment is usually already priced somewhere else in the model.** So: before normalising a
+> quantity against a constant, ask what else already prices the same thing. Getting this wrong does
+> not produce a wrong number, it produces a number that is *right twice*, which is much harder to see.
+
+
 ---
 
 ## §2. Doing less — where the wins actually are
