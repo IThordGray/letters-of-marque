@@ -291,6 +291,17 @@ The general rule: **before writing a claim, ask what input would distinguish the
 the plausible one.** If no input in the fixture can, the claim is decoration however carefully it is
 worded — and a mutation survivor is how you find out.
 
+> **The quantitative form, found 2026-09-16 by an unpredicted survivor.** A claim that *"cities sit on
+> better ground than the median"* passed with the term it was testing **removed** — by luck, on one
+> seed. The measured distributions overlap (1.57–3.31× with the term, 1.12–2.03× without), so **one
+> sample cannot separate them.**
+>
+> **A single-seed statistical claim about five things out of fifty is a decoration.** If the
+> with-behaviour and without-behaviour distributions overlap at all, the fixture must draw enough
+> samples — more seeds, more places — to put the claim outside the overlap, and the measured ranges
+> belong in the test so the next reader can see why. **The mutation survivor is how you find out, and
+> it is the only thing that will tell you.**
+
 ### A stability claim needs a liveness guard
 
 **Found 2026-09-15 by an unpredicted mutation survivor**, exactly as the section above predicts.

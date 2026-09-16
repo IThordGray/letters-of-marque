@@ -10,6 +10,69 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-16 (third) — A warm start that RUNS needs no second way to build a town
+
+KAN-99 is built. `warmStart(seed)` generates the cold map, winds the clock back to the earliest
+founding, and runs the **real driver** forward to day 0 — founding places in waves as their dates come.
+Weather, global clearing, fifty governors and the footprint all run for the whole pre-run.
+
+**Why the method was worth the 810 ms.** `[HC-22]` asks for a ledger *"the ordinary rules could have
+produced"*. A ledger the ordinary rules **did** produce satisfies it by construction, on all four axes
+at once, and leaves nothing for `[P-47]` to catch. Population, works, wealth, footprint and dependency
+all fall out for free — every one of which a solver would have had to get right separately.
+
+**Day 0 now**: ages **20–96 years**, populations **19–810**, capital works median 1 (there were
+**zero in the entire world** before), 4 places reading *fed from the sea* on the canonical seed, core
+grades 0–4. `settleOpening` is deleted; `SIZES.population/wealth` are now explicitly **founding
+parties and founding purses**, not target sizes.
+
+**Five findings worth keeping past this story:**
+
+- **Running a world forward flattens exactly ONE axis: age.** Ground, climate, market position,
+  purpose and weather luck all vary by themselves. The human's objection was right and narrow, and
+  **waves are the minimum intervention** — not a hybrid, since every place still runs the same rules,
+  just from its own date.
+- **Arithmetic that is only right on one side of zero is a bug waiting for its first negative input.**
+  `calendar.ts` was corrected in advance (KAN-107) and read negative days correctly. **`dispatch.ts`
+  was not**: `world.day % RING_DAYS` keeps the sign of the dividend, so the very first day of the
+  pre-run indexed `ring[-1]` and threw. **The check, when a quantity is about to go negative for the
+  first time: grep every `%` that takes it.** There were exactly two.
+- **An input a system CANNOT RECEIVE beats a guard a system must REMEMBER.** An unfounded coast holds
+  `awaitingSettlers` — no people, no ground, no works, no purse — so it is inert because it can
+  receive nothing, not because four loops in the clearing check a date. **`market.ts` changed by zero
+  lines.** `[P-17b]` applied to a struct rather than a signature.
+- **Ask what a ranking can SEE.** `standingOf` decided which harbours became great ports from shelter,
+  company and a roll — **three facts, none of which is about whether the ground will feed anybody.**
+  Designation and outcome were driven by disjoint inputs, so class and size were uncorrelated on day 0
+  and `[HC-69]`'s *"readable before you land"* was false in the dimension a player cares about most.
+  It now reads the hinterland.
+- **Where the expensive half of a generator lives is a design decision, not a detail.** Keeping the
+  810 ms pre-run OUT of `generateWorld` is what let a 0.8 s cost land as **+8 s** on the suite rather
+  than **+30 s**, because ~40 calls want the map and not the ledgers. **Split a generator at the line
+  where most callers stop needing it.**
+
+**The criterion that failed, reported rather than tuned — and it is worse than the band being wrong.**
+The ratified day-0 city is 450–600 souls; the median came out at ~150. But measuring it directly
+showed the real fault: **a designated city is frequently indistinguishable from a settlement.** Seed 99
+designates a city of **45 souls in a world whose median place is 47.** That is `[HC-69]` broken, not a
+dial being off.
+
+**The cause is a cliff in the materials gate, and it is measured.** A place with *zero* capital works
+consumes no materials, so its first build is free; a place with **one** is frozen for ever unless its
+neighbourhood holds a sawpit. Only **7–12 of 50 places** produce timber or stone, and **11–32 places
+sit frozen at exactly one capital work**, up to 13 of them holding over 1,000 coin they cannot spend.
+More producers measurably means fewer frozen and bigger cities, so the chain holds.
+
+**And the asymmetry underneath it:** `guaranteeVictuals` guarantees **every place bears food**, citing
+`[HC-22]`. **Nothing guarantees timber, and timber has no substitute in the catalogue.**
+
+**Ratified 2026-09-16: materials are guaranteed per MARKET NEIGHBOURHOOD, not per place** — every
+place can *reach* timber; most must **buy** it. Chosen over giving materials a second source precisely
+because it makes trade matter **more**: it turns a dead end into a trade route. With `access` now
+reading routes, it should also mean **cutting a port's lanes stops it building as well as eating** —
+`[HC-87]`'s fragile ceiling reaching a second system.
+
+---
 ### 2026-09-16 (second) — The ceiling was never fragile, because half the world already touched it
 
 KAN-112 landed and `[HC-87]` is statable at world scale for the first time. The story was framed as

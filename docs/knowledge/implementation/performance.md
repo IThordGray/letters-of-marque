@@ -184,6 +184,22 @@ a thin market dear.
 > not produce a wrong number, it produces a number that is *right twice*, which is much harder to see.
 
 
+
+**`[P-54]` Split a generator at the line where most callers stop needing it.** The warm start costs
+**810 ms** — a real price for running a world eighty years before anyone sees it. Put inside
+`generateWorld` it would have been charged to roughly forty map-only calls across the suite and cost
+**+30 s**; kept as a separate `warmStart`, the same work costs the suite **+8 s** and `generateWorld`
+stays at map price.
+
+- **The question is not "how expensive is this?" but "who is forced to pay?"** An expensive stage that
+  most callers do not need is not an expensive stage — it is a stage in the wrong function.
+- The tell is a caller list where the majority want only the cheap prefix: a map without ledgers, a
+  header without a body, a schema without data.
+- **And a pure function may honestly be computed twice.** The land is cut once to ask what it bears
+  and once to hand it to the town. `[P-17]`'s answer to *"store it instead?"* is still no, and `[P-2]`
+  settles it: 17 ms once per world against nothing per tick.
+
+
 ---
 
 ## §2. Doing less — where the wins actually are
