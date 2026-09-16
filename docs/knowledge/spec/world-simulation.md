@@ -314,6 +314,20 @@ world for twenty years and check nothing falls over.**
 > trade-fed ceiling** exist. That is a constraint on KAN-99, not a defect in the generator — and the
 > ~80–450 figure in the town's constants is optimistic at day 0.
 
+> **RESTATED 2026-09-16, because the old wording made a ratified outcome impossible.** The founding
+> rule as written — *a place is founded at a population its own GROUND can feed* — caps every opening
+> population at what its fields grow. A city fed partly from the sea has less food than mouths **by
+> design** (`[HC-74]`), so a sea-fed day-0 city could not exist, while §6's *"cities already cities"*
+> demanded one. Both sentences were ratified and neither resolved the other.
+>
+> **The rule is now: a place is founded at a population it can SUSTAIN — from its ground or from its
+> quay** — and `[HC-22]`'s twenty-year test is the arbiter, not the founding arithmetic. A day-0 city
+> is **450–600 souls** and may read as *fed from the sea*.
+>
+> **And the twenty-year test itself has to change, because it runs the wrong world.** It steps each
+> town alone — no weather, no trade, no clearing — so the cheapest test of the whole generator has
+> never met the world the generator now feeds. It must run through the real driver.
+
 **`[HC-22a]` A neutral place must never be DESIGNATED a city.** `[HC-51]` gives neutrals no patron
 and `[HC-65]` says a neutral place can never be chartered — so designating one a city at generation
 would start the world with an unpromotable great port that the size class cannot explain. *(Found by

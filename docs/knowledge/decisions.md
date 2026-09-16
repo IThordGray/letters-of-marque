@@ -10,6 +10,70 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-16 — The warm start, decided: a world run forward, founded in waves
+
+Four calls taken by the human today, after a scope pass on **KAN-99** found that most of its ticket
+body predates this week's work.
+
+**1. The warm start RUNS THE WORLD FORWARD, and places are founded in WAVES.** Generate a cold world
+around 1580, run it forward with the real weather, trade and governor, and call the end day 0.
+
+> **The human's objection, and it was the right one:** *"if we run the world forward, that will create
+> equal warm start places… I do however want the world to have some variety."* Running forward does
+> not make places equal — ground, climate exposure, market position, purpose and sheer weather luck
+> all differ. **But it does make them the same AGE**, and that is a real flattening: no old outposts,
+> no new settlements, every port eighty years old to the day.
+>
+> **The answer is staggered founding, not a hybrid.** Found places at different points *during* the
+> pre-run and run each from its own founding date. At day 0 the sea holds century-old cities with deep
+> works beside raw outposts still on their first garden plots. This keeps `[HC-22]` true **by
+> construction**, needs no second way to build a town — which the ticket forbids and `[P-47]` names as
+> a bug class — and uses machinery that already exists: `calendar.ts` was built and tested for
+> **negative founding days** precisely because a warm start would need them. It is also the right
+> period: a 1660s Caribbean was old Spanish cities beside brand-new English and French footholds.
+>
+> *Default for what makes a place old:* age correlates with crown, with derived jitter so it is not
+> mechanical. Overrulable.
+
+**2. A day-0 city is 450–600 souls, and MAY be fed from the sea.** `[HC-22]`'s founding rule is
+restated: **a place is founded at a population it can SUSTAIN — from its ground or from its quay** —
+and the twenty-year test is the arbiter. The old wording capped opening population at what a place's
+own ground grows, which made a sea-fed day-0 city **impossible by construction** while another
+ratified sentence demanded exactly that. Both were on the spec; neither resolved the other.
+
+**3. KAN-112 lands BEFORE KAN-99**, and the reason is sharper than the ticket's. `access` is **not a
+blockade switch — it is the coin ceiling.** It multiplies *both* directions of commerce, so it sets
+`[HC-87a]`'s cargo-funded appetite, which is **the only mechanism by which a place can be larger than
+its own ground will feed.** So the warm start cannot avoid assuming an access *value*; redefining
+`access` re-prices every opening ledger. Calibrate once, against the final meaning.
+
+**4. Day 0 fixes all four axes** — population, works, wealth **and** footprint. Largely free under
+decision 1, since a world run forward grows its own.
+
+**What the scope pass found, and these are facts rather than opinions:**
+
+- **There is not one capital work anywhere in the world on day 0.** `settleOpening` calls `stepWorks`
+  but never `governorTurn`, and *every* earner in the catalogue is capital-class. **That is why
+  nothing is fed from the sea: the works half of KAN-99 IS the sea-fed half.**
+- **`settleOpening` solves a steady state that no longer exists, structurally.** Its three-pass loop
+  finds a *local* fixed point, but since the trade seam landed the fixed point is **coupled** across
+  neighbours (`carryingCapacity` reads cleared trade, and clearing is global by `[HC-7]`) and
+  **stochastic** (weather has a mean, not a steady state). General form: **a fixed-point solver
+  written before a system was coupled stays green and stops being right.**
+- **`[HC-22]`'s twenty-year test runs the wrong world.** It steps each town *alone* — no weather, no
+  trade, no clearing. The spec calls it "the cheapest test of the whole generator", and it has never
+  met the world the generator now feeds.
+- **Three currently-green assertions forbid what KAN-99 exists to build**, including one capping a
+  city at 150 souls. They pin pre-KAN-99 behaviour the spec has superseded, so they are **rewritten,
+  not deleted** — that is the ratified-only rule, and the rewrite is part of the story.
+- **There is no founding rule for WEALTH**, though `[HC-22]` demands one — `SIZES.wealth` is a flat
+  120/340/900. Since maintenance was priced against standing works, a mature works list owes roughly
+  **4% of its raise cost per year**, so a day-0 city as currently classed is under water.
+- **`guaranteeVictuals` is a third mechanism holding world dependency down** — the generator
+  guarantees every place bears food, citing `[HC-22]`. Worth knowing before anyone tries to make the
+  world hungrier.
+
+---
 ### 2026-09-15 (fifth) — The world has a face, and the line says it stopped
 
 KAN-100 is built, and it is the first thing in this project a person can look at. Everything before it
