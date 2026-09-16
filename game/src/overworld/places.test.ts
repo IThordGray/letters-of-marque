@@ -307,8 +307,8 @@ describe("generating the places at all", () => {
     const nations = makeNations();
     const shape = makeShape(SEED);
     const zones = makeZones(SEED);
-    const once = makePlaces(SEED, shape, zones, nations);
-    const twice = makePlaces(SEED, shape, zones, makeNations());
+    const once = makePlaces(SEED, shape, zones, nations).places;
+    const twice = makePlaces(SEED, shape, zones, makeNations()).places;
     expect(twice).toEqual(once);
   });
 });

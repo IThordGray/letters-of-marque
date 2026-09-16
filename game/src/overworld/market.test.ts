@@ -14,6 +14,7 @@ import {
 import { PAYLOAD, inFlightCount, sendDispatch } from "./dispatch";
 import { skyOf, takesOf, type Storm } from "./weather";
 import { derive, produceSeason, settleSeason } from "../town/sim";
+import { canBuild } from "../town/trade";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { FOOD, TRADE } from "../town/constants";
@@ -97,7 +98,7 @@ function placeAt(id: number, x: number, faction = 0): Place {
   return {
     id, name: `P${id}`, governor: "", x, y: 0, sx: 0, sy: 1, zone: 0, shelter: 0.5,
     size: "town", purpose: "trade", faction, seed: id + 1,
-    foundedDay: -40 * DAYS_PER_YEAR, population: 100, wealth: 100,
+    foundedDay: -40 * DAYS_PER_YEAR, population: 100, wealth: 100, timberGranted: false,
   };
 }
 
@@ -612,6 +613,53 @@ describe("the ceiling is fragile, by design", () => {
     }
     expect(towns[id].market.allotted.every((a) => a === 0)).toBe(true);
     expect(towns[id].market.bought.every((b) => b === 0)).toBe(true);
+  });
+
+  it("stops a blockaded port BUILDING as well as eating, however full its coffers", () => {
+    // THE CEILING REACHING A SECOND SYSTEM, and it is new since the covering
+    // landed. [HC-87c]: "a town that cannot GET timber and stone cannot build,
+    // however rich it is" — and until `access` read routes, the only way to take
+    // a town's materials away was to take away the neighbours who sold them.
+    // Now a cordon does it, because `access` gates the WANT as well as the offer
+    // ([HC-85]), so a blockaded port registers no demand for planks at all and
+    // its shipways stand idle for want of them.
+    //
+    // THE PORT IS PICKED FOR BUYING ITS PLANKS, and that is the whole of what
+    // makes this a claim rather than a decoration. Two other kinds of port
+    // cannot answer it: one with no capital works owes no materials bill at all,
+    // so its shortfall is zero and the gate CANNOT fire on it — the cliff the
+    // covering was measured against — and one with its own sawpit goes on
+    // cutting its own timber through a cordon, because `producedOf` reads the
+    // works and not the quay. A blockade starves the port that BUYS.
+    const open = bench();
+    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 60);
+
+    let id = -1;
+    for (let i = 0; i < open.towns.length; i++) {
+      const c = derive(open.towns[i]).commerce;
+      if (c.produced[1] >= c.consumed[1] || !canBuild(c)) continue;
+      if (id < 0 || open.towns[i].wealth > open.towns[id].wealth) id = i;
+    }
+    expect(id, "no port in this world buys its planks and can still build").toBeGreaterThanOrEqual(0);
+
+    // THE CONTROL, because the claim is about the cordon and not about the
+    // coffers: the same port, the same hundred thousand coin, nobody offshore.
+    open.towns[id].wealth = 100000;
+    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 1);
+    expect(canBuild(derive(open.towns[id]).commerce), "a rich port at peace cannot build either").toBe(true);
+
+    const { world, towns, markets, wars, routes } = bench();
+    runYears(world, towns, markets, wars, routes, 60);
+    towns[id].wealth = 100000;
+    blockade(routes, id);
+    runYears(world, towns, markets, wars, routes, 1);
+
+    const d = derive(towns[id]);
+    expect(d.access).toBe(0);
+    expect(d.commerce.want[1]).toBe(0); // it cannot even ask for planks
+    expect(d.commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate);
+    expect(canBuild(d.commerce), "a hundred thousand coin bought planks through a cordon").toBe(false);
+    expect(governorTurn(towns[id], world.day)).toBe(null);
   });
 
   it("still lets a blockaded place crawl back to a hamlet, because the floor is never gated on trade", () => {

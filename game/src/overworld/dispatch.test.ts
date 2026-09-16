@@ -37,7 +37,7 @@ const placeAt = (id: number, x: number, y: number, faction: number): Place => ({
   id, name: `Place ${id}`, governor: "Someone",
   x, y, sx: 0, sy: 1, zone: 0, shelter: 0.5,
   size: "settlement", purpose: "trade", faction,
-  seed: 1, foundedDay: -14400, population: 60, wealth: 120,
+  seed: 1, foundedDay: -14400, population: 60, wealth: 120, timberGranted: false,
 });
 
 // The seat sits well away from the origin deliberately: a fixture anchored at

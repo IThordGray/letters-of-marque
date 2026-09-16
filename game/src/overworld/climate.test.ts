@@ -62,6 +62,23 @@ describe("a climate is a complete rulebook or it is a hole in the system", () =>
     }
   });
 
+  it("gives every zone timber of its own to cut, on ground that zone can actually grow", () => {
+    // THE SAME TWO RULES AS THE CLAIM ABOVE, TURNED ON THE SECOND GUARANTEE
+    // (2026-09-16). Every market neighbourhood must be able to reach timber —
+    // nothing quarries stone, so a sawpit is the only source of materials there
+    // is and a market with none can never build anything ([HC-87c]). The
+    // guarantee therefore argues with the MAP, and this is what stops it arguing
+    // with the CLIMATE: whatever a zone calls a stand of timber has to be ground
+    // that zone's own palette permits, or [HC-28] would be traded away for
+    // planks. It is why `timberedHills` joined the Dry Cays' palette rather than
+    // being planted there over its head.
+    for (const id of CLIMATE_IDS) {
+      const g = CLIMATES[id].ground;
+      expect(g.palette, id).toContain(g.materials);
+      expect(TERRAIN_BEARS[g.materials], id).toContain("timber");
+    }
+  });
+
   it("keeps its type honest against its own table, so a new climate cannot be half-added", () => {
     // [HC-91]: the table is the source of truth and the type comes from it.
     expect(CLIMATE_IDS.length).toBe(Object.keys(CLIMATES).length);

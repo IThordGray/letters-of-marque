@@ -29,6 +29,7 @@ import { FACTIONS, makeNations } from "./factions";
 import { groundAt } from "./ground";
 import { makeMarkets, noWars, openRoutes, runDays, type Markets, type Routes, type Wars } from "./market";
 import { makePlaces, SIZES, type Place } from "./places";
+import type { Land } from "../town/land";
 import { makeShape } from "./shape";
 import { skyOf, type Sky } from "./weather";
 
@@ -41,8 +42,124 @@ export function generateWorld(seed: number): World {
   world.nations = makeNations();
   // The places take the nations because seating a crown is part of deciding who
   // holds what: the five great harbours ARE the five seats ([HC-39]).
-  world.places = makePlaces(world.seed, world.shape, world.zones, world.nations);
+  const sited = makePlaces(world.seed, world.shape, world.zones, world.nations);
+  world.places = sited.places;
+  // ...and then the one decision no single coast can make for itself, read off
+  // the same cut the classing was decided on.
+  grantTimber(world, sited.land);
   return world;
+}
+
+// ---- Every market can reach timber -----------------------------------------
+//
+// RATIFIED 2026-09-16: materials are guaranteed at the MARKET NEIGHBOURHOOD,
+// never per place. Every place must be able to REACH timber; most must BUY it.
+//
+// WHY THE WORLD OWES ANYTHING AT ALL. `guaranteeVictuals` has undertaken since
+// KAN-98 that every place bears food, citing [HC-22] — and nothing undertook
+// anything about timber, which has no substitute: `sawpit` is the only work in
+// the catalogue that produces materials, `shipway` requires a working sawpit,
+// and nothing quarries stone at all. So materials come from one plant, and they
+// come across a market ([HC-83] clears per neighbourhood, and a flow balance
+// holds no stock, so planks never make two hops). Measured on master: 5 to 22 of
+// a world's fifty neighbourhoods held no timber anywhere, and a place inside one
+// froze at its FIRST capital work for two centuries — [HC-87c]'s build gate
+// firing correctly against a world that had nowhere to buy from.
+//
+// WHY A COVERING AND NOT A LOOP. Neighbourhoods OVERLAP ([HC-82]), so a place
+// sits in several and one stand of timber can answer for all of them. Granting
+// one per hood would put timber behind half the coasts on the map, and a world
+// where everybody grows their own planks has no plank trade in it — which is the
+// outcome the human rejected when he chose this over giving materials a second
+// source. So: take the coast that answers the most markets still wanting one,
+// grant it, and ask again. Fewest stands, most markets fed.
+//
+// WHAT IT NEVER OVERRULES. [HC-28]: the stand is whatever the zone's own table
+// calls a stand, and a test holds that every zone's answer is on its own palette
+// — the guarantee argues with the map, never with the climate. [HC-22]: the
+// stand is cut out of ground that bears no food, so a coast that is all fields
+// has nothing to spare and the covering passes it over and rescues its market
+// through a neighbour instead.
+//
+// [P-1]: IT CUTS NOTHING. The ground it reads is the cut `makePlaces` already
+// made to class the fifty, handed straight on — a third pass over fifty towns'
+// ground to learn fifty booleans measured 34 ms and did not fight to be there.
+// The neighbourhoods ARE asked a second time ([P-2]: 2,500 distances, once per
+// world) because positions never move, so the two answers cannot differ and the
+// alternative is a derived fact stored on the World ([HC-14], [P-47]).
+export function grantTimber(world: World, land: Land[]): void {
+  const places = world.places;
+  const n = places.length;
+  const markets = makeMarkets(places);
+
+  // What the map gave, and what a coast could spare if asked. Ground that bears
+  // food is never eligible to carry a stand — [HC-22] is not traded for planks —
+  // so a place with nothing but fields cannot be granted and the covering passes
+  // it over.
+  const bears: boolean[] = [];
+  const canSpare: boolean[] = [];
+  for (let i = 0; i < n; i++) {
+    let timber = false;
+    let spare = false;
+    for (const r of land[i].regions) {
+      if (r.bears.timber !== undefined) timber = true;
+      if (r.bears.food === undefined && !isWater(r.terrain)) spare = true;
+    }
+    bears.push(timber);
+    canSpare.push(spare);
+  }
+
+  // The markets that cannot reach a plank today.
+  const wanting = new Set<number>();
+  for (const h of markets.hoods) {
+    if (!h.members.some((id) => bears[id])) wanting.add(h.id);
+  }
+
+  while (wanting.size > 0) {
+    let best = -1;
+    let bestAnswers = 0;
+    for (let i = 0; i < n; i++) {
+      if (bears[i] || !canSpare[i]) continue;
+      let answers = 0;
+      for (const h of markets.hoods) {
+        if (wanting.has(h.id) && h.members.indexOf(i) >= 0) answers++;
+      }
+      // A total order with an explicit direction ([P-10]): the most markets
+      // answered, and the lower id on a tie — so which coast is planted is never
+      // decided by which one the loop reached first.
+      if (answers > bestAnswers) {
+        best = i;
+        bestAnswers = answers;
+      }
+    }
+    // Nothing left that can carry a stand. The markets still wanting one are
+    // reported rather than papered over — `describeWorld` says so, and a test
+    // holds that this world has none.
+    if (best < 0) break;
+    places[best].timberGranted = true;
+    bears[best] = true;
+    for (const h of markets.hoods) {
+      if (h.members.indexOf(best) >= 0) wanting.delete(h.id);
+    }
+  }
+}
+
+const isWater = (t: string): boolean => t === "openSea" || t === "reef" || t === "roadstead";
+
+// How many of the fifty bear timber, and how many markets still cannot reach
+// any — the sentence a person checks the covering against ([HC-16] applied to
+// the generator). The second number should always read none.
+export function describeTimber(world: World): string {
+  const markets = makeMarkets(world.places);
+  const bears = world.places.map((p) => groundAt(world, p).regions.some((r) => r.bears.timber !== undefined));
+  const n = bears.filter(Boolean).length;
+  const granted = world.places.filter((p) => p.timberGranted).length;
+  const dry = markets.hoods.filter((h) => !h.members.some((id) => bears[id])).length;
+  return (
+    `${n} of ${world.places.length} coasts bear timber (${granted} of them because the covering said so); ` +
+    `the rest must buy their planks. ` +
+    (dry === 0 ? "Every market can reach a sawpit." : `${dry} markets cannot reach one.`)
+  );
 }
 
 // ---- Founding a place on the ground the world gives it ---------------------
@@ -234,7 +351,8 @@ export function describeWorld(world: World): string {
   return (
     `A sea of ${world.shape.widthNm} by ${world.shape.heightNm} nautical miles in ${yearOf(world)}: ` +
     `${world.places.length} places — ${byClass} — across ${world.zones.length} zones ` +
-    `(${[...new Set(zones)].join(", ")}). ${neutral} of them answer to no crown. ${describeFoundings(world)}`
+    `(${[...new Set(zones)].join(", ")}). ${neutral} of them answer to no crown. ${describeFoundings(world)} ` +
+    describeTimber(world)
   );
 }
 
