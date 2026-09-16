@@ -18,20 +18,28 @@
 //
 //   1. where the coasts are          (shape.ts — the map)
 //   2. where a port can stand        (siting, below)
-//   3. what the map gives it         (its zone, its shelter, its true bearing)
+//   3. what the map gives it         (its zone, its shelter, its true bearing,
+//                                     and what the ground behind it will bear)
 //   4. what it therefore became      (size, then faction, then purpose)
 //   5. what it is called             (its holder's name pool)
+//   6. when it was founded           (its holder's wave — KAN-99)
 //
 // Step 4 reads step 3 and never the other way round. A good anchorage argues for
-// a trade port; a frontier argues for a garrison; and a place with neighbours
-// within a few days' sail is where a great port grew. Nothing is hand-placed and
-// no axis is rolled in a vacuum.
+// a trade port; a frontier argues for a garrison; a place with neighbours within
+// a few days' sail is where a great port grew; and ground that will feed people
+// is what lets a great port be LARGE. Step 6 reads step 4, because a crown's
+// seat is the first thing that crown planted. Nothing is hand-placed and no axis
+// is rolled in a vacuum.
 
+import type { Land } from "../town/land";
+import { SUIT_YIELD } from "../town/constants";
+import { CALENDAR } from "./calendar";
 import { CHANNEL, rollOf, seedFor } from "./chance";
 import { CLIMATES, exposureOf, zoneAt, type Zone } from "./climate";
+import { groundAt, type Fields, type Site } from "./ground";
 import {
   CROWN_IDS, FACTION_IDS, FACTIONS, NEUTRAL_IDS, governorFor, nameFor,
-  type Nation, type PoolId,
+  type FactionId, type Nation, type PoolId,
 } from "./factions";
 import {
   WORLD_BOX, DAY_RUN_NM, RAYS, coastAlong, distanceNm, isLandAt, seawardAt, shelterAt,
@@ -40,12 +48,88 @@ import {
 
 // ---- The axes, as tables ([HC-90], [HC-91]) --------------------------------
 
+// THESE ARE FOUNDING NUMBERS, NOT DAY-0 NUMBERS, and the difference is the whole
+// of KAN-99. They used to be both at once: the generator wrote a place's opening
+// ledger here and the world started on the next line, so a "city" was a hundred
+// and fifty souls for ever. The warm start runs the world FORWARD from these,
+// each place from its own founding day, so what a city IS on day 0 is whatever
+// eighty or ninety years of ordinary rules made of it ([HC-22]: a state the
+// ordinary rules COULD HAVE PRODUCED — here, literally did).
+//
+// So what a class buys is the size of the party that landed: a crown's seat was
+// a planned expedition, a fishing village was a dozen families. Everything after
+// that is ground, market position, weather and age.
+//
+// THE FLOOR UNDER THE LOW END IS `[HC-67]`'s, and it is not a guess: a place
+// must be founded with enough hands to man a garden plot, which is
+// `gardenPlots.hands x min(q,1) x farHands / labourShare` — at worst 14.73 souls,
+// over the ridge on ground that suits it. Below that the plot idles, feeds
+// nobody, and the place empties on its own. `worldgen.test.ts` writes the
+// threshold out and holds every founding above it.
 export const SIZES = {
-  settlement: { name: "settlement", rank: 0, population: [40, 80], wealth: 120 },
-  town: { name: "town", rank: 1, population: [75, 115], wealth: 340 },
-  city: { name: "city", rank: 2, population: [115, 150], wealth: 900 },
+  settlement: { name: "settlement", rank: 0, population: [22, 38], wealth: 90 },
+  town: { name: "town", rank: 1, population: [30, 50], wealth: 170 },
+  city: { name: "city", rank: 2, population: [44, 70], wealth: 320 },
 } as const;
 export type SizeId = keyof typeof SIZES;
+
+// ---- When each of them was founded — the warm start's waves ----------------
+//
+// [HC-22], and the human's call of 2026-09-16: the warm start RUNS THE WORLD
+// FORWARD and places are founded IN WAVES. Running forward alone would leave
+// every port exactly the same age — no old cities, no raw outposts — which is
+// the one axis on which it genuinely flattens the world. So each place is
+// founded at its own point during the pre-run and runs from there, and day 0
+// holds a century-old seat beside a haven on its first garden plots.
+//
+// AGE CORRELATES WITH CROWN, WITH DERIVED JITTER. Spain and Portugal were here
+// first and the northern crowns came later, which is the period truth; the
+// abbey predates all the trading crowns and the Brethren are the newest thing on
+// this sea. The bands OVERLAP heavily, so the correlation is a tendency and not
+// a rule — a Dutch port can be older than a Spanish one, it is simply less
+// likely to be.
+//
+// A CROWN'S SEAT IS THE OLDEST THING IT HOLDS, at the top of its own band: the
+// first foothold is where the crown planted itself, and everything else followed
+// from it. That is also what makes `[HC-62]`'s authored cities read as cities on
+// day 0 — they are designated at generation AND they have had the longest to
+// become one, which is one decision showing up twice rather than two decisions.
+//
+// HOW LONG THE PRE-RUN LASTS IS NOT WRITTEN DOWN ANYWHERE, deliberately: it is
+// the earliest day this table produced, and `warmStart` winds the clock back to
+// exactly that. A `PRERUN_YEARS` constant beside the table would be a second
+// number for a fact the table already holds, and it would be the one that went
+// stale ([P-47], and the reason `POP.floor` and `SEASONS_PER_YEAR` were deleted).
+export const FOUNDING = {
+  // Years before the world's epoch: [the oldest a place of this holder may be,
+  // the newest]. A place rolls uniformly inside its holder's band.
+  years: {
+    spain: [96, 58],
+    england: [70, 24],
+    france: [76, 30],
+    netherlands: [66, 22],
+    portugal: [90, 52],
+    brethren: [38, 8],
+    order: [72, 28],
+    maroons: [44, 12],
+  } as Record<FactionId, readonly [number, number]>,
+} as const;
+
+// The day a place was founded — NEGATIVE, because it is before the epoch, and
+// the first negative day anything in this project has ever written.
+// `calendar.ts` was built for exactly this and reads it correctly: `Math.floor`
+// rather than `Math.trunc`, so day −1 is the last day of 1659 and not the first
+// of 1660.
+//
+// SNAPPED TO A SEASON BOUNDARY, because the sim has two beats and only two
+// ([HC-2]): a place founded between them would sit out its first harvest for no
+// reason anyone could name.
+function foundedDayOf(seed: number, id: number, holder: FactionId, seat: boolean): number {
+  const [oldest, newest] = FOUNDING.years[holder];
+  const roll = seat ? 0 : rollOf(seed, CHANNEL.worldgen, SLOT.founded + id, 0);
+  const seasons = Math.floor((oldest - roll * (oldest - newest)) * CALENDAR.seasonsPerYear);
+  return -seasons * CALENDAR.daysPerSeason;
+}
 
 export const PURPOSES = {
   civilian: { name: "civilian", base: 1.0 },
@@ -86,7 +170,9 @@ export const SITING = {
   neighbourNm: DAY_RUN_NM * 1.5,
 } as const;
 
-const SLOT = { site: 4000, standing: 4700, purpose: 4900, crown: 6000, faction: 6100 } as const;
+// `site` walks up to `SITING.attempts` from its base, so the founding slot is put
+// well clear of everything the siting pass could reach.
+const SLOT = { site: 4000, standing: 4700, purpose: 4900, crown: 6000, faction: 6100, founded: 20000 } as const;
 
 // ---- The struct ------------------------------------------------------------
 
@@ -122,11 +208,18 @@ export interface Place {
   // fifty-first place cannot shift the other fifty.
   seed: number;
 
-  // The opening ledger, and deliberately a MODEST one. [HC-22] wants a warm
-  // start that is internally consistent, and the mature ledgers a 1660s map
-  // needs — a city already a city, with the works to feed itself — are KAN-99's.
-  // A young place that grows is consistent; a large place with no works would
-  // fall over in its first decade, which is precisely the bug [HC-22] names.
+  // WHEN IT WAS FOUNDED, in days since the world's epoch — and therefore
+  // NEGATIVE, because every place on this map predates day 0. This is the wave
+  // it landed in, and it is what makes day 0 a moment in a history rather than
+  // the beginning of one: the warm start runs each place forward from here.
+  foundedDay: number;
+
+  // The FOUNDING ledger — what the party that landed brought with it. It is not
+  // the day-0 ledger and must not be read as one: the warm start runs the
+  // ordinary rules forward from this, so what a place HAS on day 0 is on its
+  // Town and nowhere else. [HC-22] is then true by construction rather than by
+  // arithmetic — there is no second way to build a town, so there is nothing for
+  // the ordinary rules to disagree with.
   population: number;
   wealth: number;
 }
@@ -193,11 +286,49 @@ export function sitePlaces(seed: number, s: WorldShape, target: number = SITING.
 
 // ---- Which harbours grew ---------------------------------------------------
 
-// How much of a port this position was always going to be. Two map facts and a
-// roll: a sheltered harbour, and neighbours close enough to trade with. The roll
-// is a third of the argument, never the whole of it, so a great port is somewhere
-// you can see the reason for.
-function standingOf(seed: number, sites: { x: number; y: number }[], i: number, shelter: number): number {
+// HOW MUCH OF THE GROUND BEHIND THIS BEACH WILL BEAR FOOD, 0..1 — the third map
+// fact, and the one `standingOf` was missing.
+//
+// A harbour is what lets a port trade; a hinterland is what lets it be LARGE.
+// Without this term, "which harbours grew into great ports" was decided by
+// shelter, company and a roll — none of which has anything to say about whether
+// the ground will feed anybody — so the generator was designating cities on
+// coasts that could never carry one, while the biggest place in every world was
+// some settlement on good earth. MEASURED, before this term existed: seed 1660's
+// five designated cities came out at 83 to 290 souls on day 0 and its largest
+// place, a settlement, at 910.
+//
+// It is a MAP READING and not a preview of anything the ledger computes ([P-47]):
+// it says what share of this ground bears victuals and how well, on the same 0..1
+// scale as `shelter`, and it is never compared against a carrying capacity.
+function hinterlandOf(land: Land): number {
+  let fed = 0;
+  let all = 0;
+  for (const r of land.regions) {
+    if (r.terrain === "openSea" || r.terrain === "reef" || r.terrain === "roadstead") continue;
+    all += r.hexes.length;
+    const suit = r.bears.food;
+    if (suit) fed += r.hexes.length * SUIT_YIELD[suit];
+  }
+  // Against the best the scale allows, so all-ideal ground reads exactly 1 and
+  // the top of the range is reachable rather than clipped ([P-52]: a ceiling
+  // everything touches is furniture, and so is one nothing can).
+  return all > 0 ? fed / (all * SUIT_YIELD.ideal) : 0;
+}
+
+// The same reading, taken straight off the map at a position — the public form,
+// so the generator and anything that wants to check its designations ask the one
+// function ([P-47]). It cuts the ground to answer, which is what makes it a
+// reading of the real geography rather than a second guess at it ([HC-19]).
+export const hinterlandAt = (fields: Fields, site: Site): number => hinterlandOf(groundAt(fields, site));
+
+// How much of a port this position was always going to be. THREE map facts and a
+// roll: a sheltered harbour, neighbours close enough to trade with, and ground
+// behind it that will feed people. The roll is a sixth of the argument, never the
+// whole of it, so a great port is somewhere you can see the reason for.
+function standingOf(
+  seed: number, sites: { x: number; y: number }[], i: number, shelter: number, hinterland: number,
+): number {
   let near = 0;
   for (let j = 0; j < sites.length; j++) {
     if (j === i) continue;
@@ -205,7 +336,7 @@ function standingOf(seed: number, sites: { x: number; y: number }[], i: number, 
   }
   const company = near / 6 > 1 ? 1 : near / 6;
   const luck = rollOf(seed, CHANNEL.worldgen, SLOT.standing + i, 0);
-  return shelter * 0.4 + company * 0.35 + luck * 0.25;
+  return shelter * 0.28 + company * 0.28 + hinterland * 0.28 + luck * 0.16;
 }
 
 // ---- Purpose ---------------------------------------------------------------
@@ -243,15 +374,28 @@ const byStanding = (a: { score: number; id: number }, b: { score: number; id: nu
 export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: Nation[]): Place[] {
   const sites = sitePlaces(seed, s);
 
-  // 3. What the map gives each of them. All three are pure readings of the
+  // 3. What the map gives each of them. All four are pure readings of the
   //    field at the position, so nothing here is a decision yet.
   const shelter = sites.map((p) => shelterAt(s, p.x, p.y));
   const seaward = sites.map((p) => seawardAt(s, p.x, p.y));
   const zone = sites.map((p) => zoneAt(zones, p.x, p.y));
+  // ...and the fourth is the ground itself. THE CUT IS MADE TWICE PER PLACE —
+  // once here, to ask what the ground will bear, and once at founding, to hand
+  // it to the town — and that is the right trade rather than a slip. It is a
+  // pure function of (seed, position, zone), so the two answers cannot differ
+  // ([P-17]: derive on demand, never store); the alternative is a second copy of
+  // a derived fact living on the World, which [HC-14] and [P-47] both refuse.
+  // [P-2]: it costs ~17 ms ONCE per world, against nothing per tick.
+  const fields = { seed, shape: s, zones };
+  const hinterland = sites.map((p, i) =>
+    hinterlandAt(fields, { id: i, x: p.x, y: p.y, sx: seaward[i].dx, sy: seaward[i].dy, zone: zone[i] }),
+  );
 
   // 4a. SIZE. Designated, in one pass, from a total order — [HC-62]: cities are
   //     authored and no town ever becomes one.
-  const ranked = sites.map((_, i) => ({ id: i, score: standingOf(seed, sites, i, shelter[i]) })).sort(byStanding);
+  const ranked = sites
+    .map((_, i) => ({ id: i, score: standingOf(seed, sites, i, shelter[i], hinterland[i]) }))
+    .sort(byStanding);
   const size: SizeId[] = sites.map(() => "settlement");
   const cityCount = Math.min(CROWN_IDS.length, ranked.length);
   const townCount = Math.round((ranked.length - cityCount) * CLASSING.townShare);
@@ -356,6 +500,7 @@ export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: 
       purpose,
       faction: faction[i],
       seed: seedFor(seed, CHANNEL.place, i),
+      foundedDay: foundedDayOf(seed, i, nation.faction, nation.seat === i),
       population: def.population[0] + popRoll * (def.population[1] - def.population[0]),
       wealth: def.wealth,
     });

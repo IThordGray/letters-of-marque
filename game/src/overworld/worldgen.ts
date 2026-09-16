@@ -1,29 +1,36 @@
-// The world generator — one seed in, one world out, and then it stops.
+// The world generator — one seed in, one world out — and then the warm start,
+// which runs that world forward until it has a past.
 //
-// The build order's first step: "generate a world against a seed" (ratified
-// 2026-09-09). This file is that step and nothing more. There is NO TICK LOOP
-// here: weather (KAN-90), nations acting (KAN-101), dispatches (KAN-105), the
-// mature warm-start ledgers (KAN-99) and any view of it (KAN-100) are all
-// somebody else's, and the generator's contract is the table in §6:
+// THE TWO HALVES ARE DELIBERATELY SEPARATE, and the split is the answer to §6's
+// table rather than a convenience. `generateWorld` writes the MAP:
 //
 //   landmasses and coastlines · climate zones · the ~50 place positions ·
 //   each place's size x purpose x faction at day 0 · each place's land, cut
-//   from the map at its position · the opening ledger · which crown holds what ·
-//   the neutral set
+//   from the map at its position · which crown holds what · the neutral set ·
+//   and, since KAN-99, the DAY EACH PLACE WAS FOUNDED
+//
+// None of that is a ledger, none of it costs a tick, and every test that only
+// wants a map pays only for a map. `warmStart` writes the LEDGERS, and it writes
+// them the only way [HC-22] can be satisfied without a second way to build a
+// town: by running the ordinary rules.
 //
 // [HC-11] Reproducible means the whole history, not the starting state. Every
 //         number below is a pure function of the seed, so `generateWorld(n)`
-//         twice over is the same world twice over, on any machine.
+//         twice over is the same world twice over, on any machine — and
+//         `warmStart(n)` twice over is the same eighty years twice over.
 
 import type { Archetype, Town } from "../town/types";
-import { carryingCapacity, foundTown } from "../town/sim";
+import { foundTown } from "../town/sim";
 import { stepWorks } from "../town/works";
 import { makeWorld, yearOf, type World } from "./clock";
+import { yearOfDay } from "./calendar";
 import { makeZones, CLIMATES } from "./climate";
 import { FACTIONS, makeNations } from "./factions";
 import { groundAt } from "./ground";
+import { makeMarkets, noWars, openRoutes, runDays, type Markets, type Routes, type Wars } from "./market";
 import { makePlaces, SIZES, type Place } from "./places";
 import { makeShape } from "./shape";
+import { skyOf, type Sky } from "./weather";
 
 // ---- Generating -----------------------------------------------------------
 
@@ -64,6 +71,9 @@ function archetypeOf(world: World, place: Place): Archetype {
   return place.purpose === "military" ? "royalOutpost" : "colony";
 }
 
+// A place, on the day its settlers landed. THE ONLY WAY A TOWN IS EVER BUILT —
+// the warm start calls this and nothing else, which is what keeps [HC-22] true
+// by construction and keeps `[P-47]` from acquiring a second path to a ledger.
 export function foundPlace(world: World, place: Place): Town {
   const nation = world.nations[place.faction];
   const faction = FACTIONS[nation.faction];
@@ -80,49 +90,136 @@ export function foundPlace(world: World, place: Place): Town {
       grant: nation.crown ? STANDING_GRANT[place.purpose] : 0,
       population: place.population,
       wealth: place.wealth,
-      // The day the world is standing on, handed straight across — a place keeps
-      // days since world epoch and nothing else, so there is no conversion here
-      // and no second clock to start (KAN-107). Every place the generator founds
-      // is founded TODAY; a warm start that founds a city eighty years before the
-      // epoch writes a negative day and the calendar reads it correctly (KAN-99).
-      foundedDay: world.day,
+      // THE DAY IT WAS FOUNDED, AND IT IS NEGATIVE. Every place on this map was
+      // founded before the epoch — the waves are in `places.ts` — so this is the
+      // first thing in the project ever to write a day below zero, which
+      // `calendar.ts` was built and tested for (KAN-107, KAN-99).
+      foundedDay: place.foundedDay,
     },
     groundAt(world, place),
   );
-  settleOpening(town, place.population);
+  // The settlers put up their own huts and break their own ground on the day
+  // they land. This is the ledger's own `stepWorks` and the hamlet floor doing
+  // exactly what they do every season afterwards ([HC-67]) — NOT a second way to
+  // build a town, and not a solver. What replaced `settleOpening` is the
+  // pre-run: there is nothing here that decides how big the place ought to be.
+  stepWorks(town, town.foundedDay);
   return town;
 }
 
-// [HC-22], and the whole of the generator's answer to it: A PLACE IS FOUNDED AT
-// A POPULATION ITS OWN GROUND CAN FEED. Its class says how big it is ALLOWED to
-// be at day 0; its land says how big it can actually be, and the smaller of the
-// two wins.
+// A coast where the settlers have not landed yet. It is on the map, it belongs
+// to somebody, and there is nothing there.
 //
-// Without this the generator writes exactly the bug [HC-22] names. Measured: a
-// designated city of 144 souls on thin ground fell to 108 within twenty years,
-// because its own subsistence works only ever fed 114. Nothing had gone wrong in
-// the simulation — the OPENING STATE was one the ordinary rules could not have
-// produced, which is the definition of the fault.
-//
-// Two passes, because the two facts depend on each other: how many subsistence
-// works appear depends on the population, and what the population can be depends
-// on the works. It settles immediately — a hamlet's works are a step function of
-// its size — and the works it leaves standing are themselves part of the warm
-// start, which is why this reads as a place that has been there a while rather
-// than as bare ground with people on it.
-function settleOpening(town: Town, allowed: number): void {
-  town.population = allowed;
-  for (let pass = 0; pass < 3; pass++) {
-    stepWorks(town, town.foundedDay);
-    const canFeed = carryingCapacity(town);
-    town.population = Math.min(allowed, canFeed);
-  }
+// WHY IT IS A TOWN AT ALL: the clearing indexes towns by place id ([HC-82]'s
+// neighbourhoods hold ids, and `reachOf` reads a place's own row), so the array
+// has to stay parallel to `world.places` from the first day of the pre-run. It
+// holds nobody, no ground, no works, no patron and no purse — so it produces
+// nothing, offers nothing, wants nothing and bids nothing, and the clearing
+// needs no rule about it. THAT is the reason it is built this way rather than
+// guarded for in four places ([P-17b]: the fact cannot arrive, so nothing has to
+// remember to check for it).
+function awaitingSettlers(place: Place): Town {
+  return foundTown(
+    {
+      name: place.name,
+      seed: place.seed,
+      governor: place.governor,
+      foundedDay: place.foundedDay,
+      population: 0,
+      wealth: 0,
+      prosperity: 0,
+      grant: 0,
+    },
+    { land: [], water: [], regions: [] },
+  );
 }
 
-// Every place, founded. This is what a headless run of the world stands on, and
-// it is deliberately a function rather than state: the world holds its places,
-// not their ledgers.
-export const foundAll = (world: World): Town[] => world.places.map((p) => foundPlace(world, p));
+// Every place, AS THE WORLD STANDS TODAY: founded where its day has come, an
+// empty coast where it has not. This is what a headless run of the world stands
+// on, and it is deliberately a function rather than state: the world holds its
+// places, not their ledgers.
+export const foundAll = (world: World): Town[] =>
+  world.places.map((p) => (world.day >= p.foundedDay ? foundPlace(world, p) : awaitingSettlers(p)));
+
+// ---- The warm start --------------------------------------------------------
+//
+// §6: "The generator writes a believable 1660s map — cities already cities, a
+// great port here, a hamlet there — and the simulation runs on from that day. It
+// is not a cold world watched from its origin."
+//
+// RATIFIED 2026-09-16, and this is the whole of the method: GENERATE A COLD
+// WORLD, FOUND ITS PLACES IN WAVES, RUN IT FORWARD WITH THE REAL WEATHER, TRADE
+// AND GOVERNOR, AND CALL THE END DAY 0.
+//
+// WHY THIS AND NOT A SOLVER. [HC-22] asks for a day-0 ledger "the ordinary rules
+// COULD HAVE PRODUCED and can sustain". A world that was produced by the
+// ordinary rules satisfies that by construction, and — the part that matters
+// more — it needs no second way to build a town, which is the bug class [P-47]
+// names and which the ticket forbids outright. Everything day 0 holds, on all
+// four axes, is the ledger's own: population, works, wealth AND footprint.
+//
+// WHY WAVES. Running forward alone would make every place the same AGE, and that
+// is the one axis on which it genuinely flattens the world — no old cities, no
+// raw outposts, every port eighty years old to the day. So each place is founded
+// at its own point during the pre-run and runs from there. It is also the right
+// period: a 1660s Caribbean was old Spanish cities beside brand-new English and
+// French footholds.
+//
+// WHAT IT COSTS, honestly ([P-39]). The pre-run is the real cost of the method
+// and it is not small: roughly two and a half thousand town-years of the full
+// seasonal tick, which is most of a second. That is why it is NOT inside
+// `generateWorld`: a test that wants a coastline should not buy a century of
+// history, and the suite generates worlds constantly.
+
+export interface WarmWorld {
+  world: World;
+  towns: Town[]; // indexed by place id, every one of them founded and run
+  markets: Markets;
+  wars: Wars;
+  routes: Routes;
+  sky: Sky;
+}
+
+// The distinct founding days, earliest first. A wave is however many places
+// share a day; there are usually a few dozen waves across the pre-run, and the
+// list is built once ([P-2] — this is generation, not a tick).
+function wavesOf(places: Place[]): number[] {
+  const days: number[] = [];
+  for (let i = 0; i < places.length; i++) {
+    if (days.indexOf(places[i].foundedDay) < 0) days.push(places[i].foundedDay);
+  }
+  return days.sort((a, b) => a - b);
+}
+
+export function warmStart(seed: number): WarmWorld {
+  const world = generateWorld(seed);
+  const markets = makeMarkets(world.places);
+  const wars = noWars(world.nations.length);
+  const routes = openRoutes(markets);
+  // Built ONCE and carried across every leg of the pre-run ([P-18]): it is
+  // per-zone and per-place scratch that the daily tick refills, and a second one
+  // would be the same numbers computed again.
+  const sky = skyOf(world);
+
+  const waves = wavesOf(world.places);
+  // The clock winds back to the first landing. Everything from here is the
+  // ordinary driver — the same `runDays` the view calls, so there is exactly one
+  // copy of the tick order in the project ([P-47]).
+  world.day = waves.length > 0 ? waves[0] : 0;
+  const towns = foundAll(world);
+
+  for (let k = 1; k < waves.length; k++) {
+    runDays(world, towns, markets, wars, routes, waves[k] - world.day, sky);
+    // ...and the next party comes ashore. They join the season that begins on
+    // the day they land, because a founding day is snapped to a season boundary.
+    for (let i = 0; i < world.places.length; i++) {
+      if (world.places[i].foundedDay === waves[k]) towns[i] = foundPlace(world, world.places[i]);
+    }
+  }
+  runDays(world, towns, markets, wars, routes, 0 - world.day, sky);
+
+  return { world, towns, markets, wars, routes, sky };
+}
 
 // ---- Reading a world back --------------------------------------------------
 
@@ -137,6 +234,21 @@ export function describeWorld(world: World): string {
   return (
     `A sea of ${world.shape.widthNm} by ${world.shape.heightNm} nautical miles in ${yearOf(world)}: ` +
     `${world.places.length} places — ${byClass} — across ${world.zones.length} zones ` +
-    `(${[...new Set(zones)].join(", ")}). ${neutral} of them answer to no crown.`
+    `(${[...new Set(zones)].join(", ")}). ${neutral} of them answer to no crown. ${describeFoundings(world)}`
   );
+}
+
+// The warm start's own sentence, and the one a person checks the WAVES against:
+// a map on which every port was founded in the same decade is a map that has
+// flattened the one axis running the world forward cannot vary by itself.
+function describeFoundings(world: World): string {
+  if (world.places.length === 0) return "Nobody has landed anywhere.";
+  let oldest = world.places[0].foundedDay;
+  let newest = world.places[0].foundedDay;
+  for (let i = 1; i < world.places.length; i++) {
+    const d = world.places[i].foundedDay;
+    if (d < oldest) oldest = d;
+    if (d > newest) newest = d;
+  }
+  return `The eldest was founded in ${yearOfDay(oldest)} and the youngest in ${yearOfDay(newest)}.`;
 }

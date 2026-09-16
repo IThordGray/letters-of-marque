@@ -7,7 +7,7 @@
 
 import type { Town } from "./types";
 import { derive, summarise, prosperityWord, wealthWord } from "./sim";
-import { generateWorld, foundPlace, describeWorld } from "../overworld/worldgen";
+import { warmStart, describeWorld } from "../overworld/worldgen";
 import type { Place } from "../overworld/places";
 import { CALENDAR, yearOfDay } from "../overworld/calendar";
 import { seasonOf, stepDay, yearOf } from "../overworld/clock";
@@ -33,8 +33,15 @@ import { planTown, describePlan } from "./plan";
 // below it. The harness already holds a World, so it advances the real clock and
 // prints it, and every town it steps is handed the same day. That is [HC-71] in
 // the smallest possible form: the world drives, the ledger takes what it is given.
+//
+// AND IT IS A WARM WORLD, as of KAN-99. The harness used to found its three
+// towns cold and step them from nothing, which was the only thing it could do
+// while the generator wrote hamlets; it now takes the day-0 ledgers the warm
+// start ran forward, so the three cards open on places with a past and the
+// step-buttons carry them on from there.
 const WORLD_SEED = 1660;
-const world = generateWorld(WORLD_SEED);
+let warm = warmStart(WORLD_SEED);
+let world = warm.world;
 
 // Fifty cards would be a wall. Three, chosen to be unalike, are a test: the
 // greatest port the world designated, a garrison on somebody's frontier, and a
@@ -54,7 +61,7 @@ function showcase(): Place[] {
   return chosen.slice(0, 3);
 }
 
-const seedTowns = (): Town[] => showcase().map((p) => foundPlace(world, p));
+const seedTowns = (): Town[] => showcase().map((p) => warm.towns[p.id]);
 
 let towns = seedTowns();
 let journal: string[][] = towns.map(() => []);
@@ -155,9 +162,11 @@ document.getElementById("season")!.addEventListener("click", () => advance(1));
 document.getElementById("year")!.addEventListener("click", () => advance(CALENDAR.seasonsPerYear));
 document.getElementById("twenty")!.addEventListener("click", () => advance(20 * CALENDAR.seasonsPerYear));
 document.getElementById("reset")!.addEventListener("click", () => {
-  // Reset winds the world's clock back too, or the "new" towns would be founded
-  // on whatever day the last run reached. A reset is not a simulation step.
-  world.day = 0;
+  // A reset runs the warm start again rather than winding a clock back: day 0 is
+  // the END of eighty-odd years of history, so "back to the start" means that
+  // history run afresh, not the same towns handed an earlier date.
+  warm = warmStart(WORLD_SEED);
+  world = warm.world;
   towns = seedTowns();
   journal = towns.map(() => []);
   render();

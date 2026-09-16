@@ -36,7 +36,8 @@ function placeAt(over: Partial<Place>): Place {
   return {
     id: 0, name: "Testport", governor: "Nobody",
     x: 700, y: 400, sx: 0, sy: 1, zone: 0, shelter: 0,
-    size: "town", purpose: "trade", faction: 0, seed: 1, population: 100, wealth: 100,
+    size: "town", purpose: "trade", faction: 0, seed: 1,
+    foundedDay: -40 * DAYS_PER_YEAR, population: 100, wealth: 100,
     ...over,
   };
 }

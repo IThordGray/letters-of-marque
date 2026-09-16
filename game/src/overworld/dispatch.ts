@@ -112,6 +112,18 @@ export const passageDays = (nm: number): number => Math.max(1, Math.ceil(daysToS
 // once per world.
 export const RING_DAYS = 64;
 
+// Which bucket a day falls in. ONE DEFINITION, because filing and collecting have
+// to agree or a dispatch is posted into a slot nobody ever opens ([P-47]).
+//
+// THE `% n + n` DANCE IS NOT DECORATION: JavaScript's remainder keeps the sign of
+// its left operand, so `-1 % 64` is `-1` and `ring[-1]` is `undefined`. Nothing
+// had ever handed this function a negative day until KAN-99's warm start ran the
+// world forward from eighty-odd years before the epoch — at which point the very
+// first day of the pre-run read a bucket that does not exist and threw. It is the
+// same correction `calendar.ts` carries for the same reason, and the same class
+// of bug: arithmetic that is only right on one side of zero.
+const bucketOf = (day: number): number => ((day % RING_DAYS) + RING_DAYS) % RING_DAYS;
+
 // ---- The object ------------------------------------------------------------
 //
 // Every field readonly, and that is a design statement rather than a nicety:
@@ -216,7 +228,7 @@ export function sendDispatch(
     toY: place.y,
   };
   world.dispatches.sent++;
-  world.dispatches.ring[dispatch.dueDay % RING_DAYS].push(dispatch);
+  world.dispatches.ring[bucketOf(dispatch.dueDay)].push(dispatch);
   return dispatch;
 }
 
@@ -239,7 +251,7 @@ export function interceptDispatches(_world: World): void {
 // The bucket is handed over whole and replaced, so the caller gets the live array
 // rather than a copy and a quiet day allocates nothing.
 export function arriveDispatches(world: World): readonly Dispatch[] {
-  const slot = world.day % RING_DAYS;
+  const slot = bucketOf(world.day);
   const bucket = world.dispatches.ring[slot];
   if (bucket.length === 0) return NOTHING;
   world.dispatches.ring[slot] = [];
