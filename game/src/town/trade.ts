@@ -66,6 +66,18 @@ export interface MarketState {
   allotted: number[]; // what the clearing found for it to buy
   bought: number[]; // ...and what it could actually pay for
   paid: number; // the coin that cost, this season
+  // 0..1 — THE SHARE OF THIS PLACE'S SEA LANES THAT STILL CALL. It is written by
+  // the world in the seasonal clear, exactly as `price` and `allotted` are, and
+  // for exactly the same reason: no function of this ledger could recompute it
+  // ([HC-14]). Which places are near enough to trade with is the world's fact
+  // ([HC-82]), and whether a squadron is sitting across those lanes is the
+  // world's fact too. The town multiplies and asks nothing ([HC-71]).
+  //
+  // PAR IS ONE, and par is what an uncleared town faces — the shipping calls as
+  // usual, which is the town the module shipped with. A town that has never met
+  // a world therefore reads exactly its own readiness, and a blockade is
+  // something that can only ever arrive from outside.
+  reach: number;
 }
 
 // One factory, every field present, same order, same types ([P-26]).
@@ -74,6 +86,7 @@ export const makeMarket = (): MarketState => ({
   allotted: [0, 0, 0],
   bought: [0, 0, 0],
   paid: 0,
+  reach: 1,
 });
 
 // ---- Access ---------------------------------------------------------------
@@ -81,13 +94,69 @@ export const makeMarket = (): MarketState => ({
 // A beach and a longboat will move some cargo; a quay and a garrison move all of
 // it. [HC-85] gates both directions on this one number, which is why burning a
 // warehouse is an economic act and a blockade is the same act from the sea.
+//
+// ACCESS IS REACH x READINESS, and until KAN-112 it was readiness alone.
+//
+//   READINESS is what the place has made of its own shore: quays, a strand, and
+//             whether anyone dares call at it. It is bounded at 1 — a town can
+//             be completely ready and no readier.
+//   REACH     is how much of the shipping still calls, and it is a fact about
+//             the SEA LANES rather than about the town ([HC-86]: "access reads
+//             real routes and blockades"). The town cannot raise it, mend it or
+//             rebuild it, which is the whole point: it is cuttable from outside.
+//
+// WHY THE PRODUCT, AND WHY BOTH HALVES SURVIVE. Readiness alone could not
+// express a blockade, and that is the bug: the waterfront works that carried it
+// are subsistence, so the hamlet floor raised them again for nothing every
+// season and burning a quay was an inconvenience rather than a siege ([HC-87]'s
+// fragile ceiling, which held at town scale and could not be stated at world
+// scale). Reach alone would let a place with no quay at all trade freely
+// because ships happen to pass, which contradicts [HC-85] in the ratified
+// words: "no quay, no security -> nothing moves either way". A product is the
+// only combination under which BOTH sentences are true, and it is what makes
+// the number a CEILING: everything has to be in order for anything to move.
+//
+// [P-47] ONE PATH TO THE NUMBER. This is the only function that computes an
+// access, `commerceOf` calls it once, and `derive` copies that one value onto
+// `Derived.access` for the governor to read. There is no second preview of it
+// anywhere, and the earnings equation still multiplies by it exactly once.
+//
+// [P-17b] It is handed `reach` as a NUMBER. There is no argument through which a
+//         world, a route, a neighbour or a squadron could arrive, so this file
+//         cannot start reading one.
 
-const isQuay = (w: Work): boolean => CATALOGUE[w.kind].zone === "waterfront";
+const isWaterfront = (w: Work): boolean => CATALOGUE[w.kind].zone === "waterfront";
 
-export function accessOf(working: Work[], security: number): number {
+// What the place itself has ready, 0..1, before anything asks whether the
+// shipping still calls. Deliberately NOT exported: it is a component of access
+// and never a second answer to the question access answers ([P-47]).
+//
+// A BERTH IS A BERTH AND A STRAND IS CAPPED. Every working waterfront work is
+// still worth the same `perQuay` — a quay is a quay whoever built it — but what
+// the HAMLET FLOOR draws up on the sand is capped at `strandQuays` berths'
+// worth. That is the whole of the KAN-112 readiness change, and it is aimed at
+// exactly one thing: subsistence works raise themselves again for nothing every
+// season ([HC-67]), so with three fishing shacks allowed by the catalogue the
+// free floor alone reached the top of the scale and burning a town's waterfront
+// cost it nothing beyond a season. Now it cannot: past two berths' worth,
+// somebody has to build something that fire can take away for good.
+function readinessOf(working: Work[], security: number): number {
   let quays = 0;
-  for (let i = 0; i < working.length; i++) if (isQuay(working[i])) quays++;
-  return clamp(quays * ACCESS.perQuay + (security / 100) * ACCESS.securityWeight, 0, 1);
+  let beached = 0;
+  for (let i = 0; i < working.length; i++) {
+    const w = working[i];
+    if (!isWaterfront(w)) continue;
+    if (CATALOGUE[w.kind].cls === "capital") quays++;
+    else beached++;
+  }
+  const cap = ACCESS.strandQuays * ACCESS.perQuay;
+  const strand = beached * ACCESS.perQuay;
+  const shore = quays * ACCESS.perQuay + (strand > cap ? cap : strand);
+  return clamp(shore + (security / 100) * ACCESS.securityWeight, 0, 1);
+}
+
+export function accessOf(working: Work[], security: number, reach: number): number {
+  return readinessOf(working, security) * clamp(reach, 0, 1);
 }
 
 // ---- The flow balance ------------------------------------------------------
@@ -173,7 +242,7 @@ export function commerceOf(
   food: number,
   security: number,
 ): Commerce {
-  const access = accessOf(working, security);
+  const access = accessOf(working, security, town.market.reach);
   const produced = producedOf(working, food);
   // [HC-6]'s yield modifier reaching the CARGO. `food` arrives already scaled —
   // `derive` is the one place that counts it — but materials and luxury are read

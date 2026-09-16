@@ -147,12 +147,38 @@ export const TRADE = {
 // A beach and a longboat move some cargo; a quay and a garrison move all of it.
 // [HC-85] gates participation BOTH WAYS on this, so it is also the whole of why
 // burning a warehouse is an economic act — and [HC-87]'s fragile ceiling.
+//
+// THIS IS ONLY HALF OF `access`, AND IT IS THE HALF THE PLACE OWNS. It is its
+// READINESS to work cargo, and it is multiplied by the REACH of the sea lanes
+// that still call ([HC-86], `overworld/market.ts`). Neither half is worth
+// anything alone: a port whose lanes are all cut has nothing to load, and a
+// beach nobody has built a quay on cannot load what does call.
+//
 // NO BASE TERM, and its absence is the rule rather than a tuning choice:
 // [HC-85] says "no quay, no security -> nothing moves either way", so a place
-// with neither must come out at exactly zero. A single fishing shack is enough
-// to open it, which is why it needs no threshold to say so.
+// with neither must come out at exactly zero.
+//
+// A STRAND IS NOT A HARBOUR, AND THAT IS WHAT `strandQuays` SAYS. Fishing shacks
+// are SUBSISTENCE works: they raise themselves again for nothing every season
+// ([HC-67]), and the catalogue allows three — so the hamlet floor used to buy
+// 0.9 of the scale free of charge and, with any garrison at all, HALF THE WORLD
+// SAT AT EXACTLY FULL ACCESS ON A BEACH (measured: median access 1.00 across
+// four seeds). That is why burning a quay was a season's inconvenience rather
+// than a siege, and why [HC-87] could not be stated at world scale.
+//
+// So what the floor draws up on the sand is CAPPED: however many boats there
+// are, a strand carries at most this many quays' worth, and past that somebody
+// has to build something. It is written as a MULTIPLE OF `perQuay` rather than
+// as a second rate, so there is one number for what a berth is worth and the cap
+// is visibly two of them ([P-47]).
+//
+// NOTE THE SHAPE OF THE CHANGE, because it is the 2026-09-15 clamp rule again: a
+// place with one or two shacks is untouched, and only the place already at the
+// TOP of the free floor gives anything up. It can only ever ask less of the
+// places that had the most for nothing, never more of the places that have least.
 export const ACCESS = {
   perQuay: 0.3, // each working waterfront work — shacks, warehouse, customs, shipway
+  strandQuays: 2, // ...but the boats on the sand are worth no more than this many berths
   securityWeight: 0.45, // ...and a place nobody dares call at moves nothing either
 };
 

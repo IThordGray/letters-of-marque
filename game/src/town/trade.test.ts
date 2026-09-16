@@ -25,6 +25,11 @@ const DAY0 = 0;
 const SEASON = CALENDAR.daysPerSeason;
 const AFTER_OPENING = DAY0 + SEASON;
 
+// The shipping calling as usual — what an uncleared town faces, and what the
+// world writes when no squadron is holding anything. Spelled out rather than
+// written `1` because a bare one here is a whole half of `access`.
+const FULL_REACH = 1;
+
 // A place with a quay, so it can trade at all — access gates both directions and
 // a town with neither quay nor guns is deliberately shut out ([HC-85]).
 function open(town: Town): Town {
@@ -40,6 +45,165 @@ function clearedWith(town: Town, cls: number, allotted: number, price = 1): Town
   town.market.price[cls] = price;
   return town;
 }
+
+// ...and the other half of what the world hands in: how much of the shipping
+// still calls. A squadron across every lane is `0`; nothing holding anything is
+// `FULL_REACH`. The world writes this in the clearing (`overworld/market.ts`);
+// written by hand here for the same reason the price is — a town-scale claim
+// must not depend on the clearing, which is pinned separately.
+function reaching(town: Town, reach: number): Town {
+  town.market.reach = reach;
+  return town;
+}
+
+describe("access is reach times readiness", () => {
+  // KAN-112. `access` used to be built entirely out of the place's own works and
+  // its own security, which is why a blockade could not be expressed at all: the
+  // waterfront works that carried it are SUBSISTENCE, so the hamlet floor raised
+  // them again for nothing every season ([HC-67] doing exactly its job) and
+  // burning a quay was a season's inconvenience rather than a siege. §11.6 says
+  // in as many words that this is not an upgrade — it is the thing that makes
+  // [HC-87] true of the world rather than of one town.
+
+  it("moves nothing when the shipping stops calling, however sound the quay", () => {
+    // The blockade, at town scale. Nothing about the place has changed: same
+    // warehouse, same customs house, same guns.
+    const town = open(seaTown({ population: 300, wealth: 5000 }));
+    raise(town, "customsHouse", DAY0);
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, AFTER_OPENING);
+    const before = derive(town);
+    expect(before.access).toBeGreaterThan(0);
+
+    reaching(town, 0);
+    const after = derive(town);
+    expect(after.access).toBe(0);
+    expect(after.commerce.offer[1]).toBe(0);
+    expect(after.commerce.want[0]).toBe(0);
+    expect(after.commerce.earned).toBe(0);
+  });
+
+  it("moves nothing over a shore with no quay and no guns, though every lane is open", () => {
+    // ...and the other half of the product. [HC-85] in its ratified words — "no
+    // quay, no security -> nothing moves either way" — survives the change, so
+    // routes reaching a place are never on their own enough to trade.
+    const town = bareTown({ population: 160 });
+    stepYears(town, 5);
+    reaching(town, FULL_REACH);
+    expect(derive(town).access).toBe(0);
+  });
+
+  it("needs both halves, and neither one of them twice", () => {
+    // A product, and the arithmetic is written out rather than read back off the
+    // code under test: half the lanes open halves what the same quay can move.
+    const build = (reach: number) => {
+      const t = open(seaTown({ population: 300, wealth: 5000 }));
+      raise(t, "customsHouse", DAY0);
+      stepSeason(t, AFTER_OPENING);
+      return derive(reaching(t, reach)).access;
+    };
+    expect(build(0.5)).toBeCloseTo(build(1) * 0.5, 12);
+    expect(build(0.25)).toBeCloseTo(build(1) * 0.25, 12);
+  });
+
+  it("gates a shut port in BOTH directions — it cannot sell and it cannot buy", () => {
+    // [HC-85], and the whole reason raiding and trade are one mechanism seen
+    // from two sides. A town with corn to sell and timber to buy does neither.
+    const town = open(mixedTown({ population: 400, wealth: 8000 }));
+    raise(town, "caneField", DAY0);
+    raise(town, "boilingHouse", DAY0);
+    stepSeason(town, AFTER_OPENING);
+    const before = derive(town);
+    expect(before.commerce.offer[2] + before.commerce.want[1]).toBeGreaterThan(0);
+
+    reaching(town, 0);
+    const after = derive(town);
+    for (let c = 0; c < after.commerce.offer.length; c++) {
+      expect(after.commerce.offer[c]).toBe(0);
+      expect(after.commerce.want[c]).toBe(0);
+    }
+  });
+});
+
+describe("the hamlet floor opens a beach; it cannot build a port", () => {
+  // The bug [HC-87]'s note on the spec names: the waterfront works that carried
+  // access are subsistence, so three fishing shacks bought nine tenths of the
+  // scale for nothing and, with any garrison at all, HALF THE WORLD SAT AT FULL
+  // ACCESS ON A STRAND (measured: median access 1.00 across four seeds).
+
+  // Waterfront works, as a bare list — the arithmetic stated directly rather
+  // than through a fixture that could be raising something else as well.
+  const beached = (n: number, ...also: string[]): never[] => {
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) out.push("fishingShacks");
+    return [...out, ...also].map((kind) => ({ kind, trade: 0 })) as never[];
+  };
+
+  it("counts a second boat on the sand and not a third, because a strand is not a harbour", () => {
+    // The cap, in the one place it can be said without ambiguity. It is stated
+    // as a relationship and never as a value: `strandQuays` is a starting guess
+    // like every other number in `constants.ts`, and what must not move is the
+    // SHAPE — the strand stops, and a berth somebody paid for does not.
+    const one = accessOf(beached(1), 0, FULL_REACH);
+    const two = accessOf(beached(2), 0, FULL_REACH);
+    const three = accessOf(beached(3), 0, FULL_REACH);
+    expect(two).toBeGreaterThan(one);
+    expect(three).toBe(two); // ...and there it stops
+    expect(accessOf(beached(3, "warehouse"), 0, FULL_REACH)).toBeGreaterThan(three);
+  });
+
+  // A place with a crown at its back, a wall, a reef to fish and no quay anyone
+  // paid for: the hamlet floor and nothing else on the waterfront. Before
+  // KAN-112 this fixture read access 1.00 — full, on a beach, for nothing.
+  function strand(): Town {
+    const t = mixedTown({ population: 300, wealth: 400 });
+    t.patron = { kind: "crown", name: "the crown", owns: true };
+    raise(t, "palisade", DAY0);
+    stepYears(t, 6, DAY0);
+    return t;
+  }
+
+  it("cannot reach full access on boats the floor drew up for nothing", () => {
+    const t = strand();
+    expect(t.works.some((w) => w.kind === "fishingShacks" && w.condition === "working")).toBe(true);
+    expect(
+      t.works.every((w) => CATALOGUE[w.kind].zone !== "waterfront" || CATALOGUE[w.kind].cls === "subsistence"),
+    ).toBe(true);
+    const d = derive(t);
+    expect(d.access).toBeGreaterThan(0); // a beach still moves some cargo
+    expect(d.access).toBeLessThan(1); // ...and never all of it
+  });
+
+  it("is what a quay is FOR: building one moves what the strand could not", () => {
+    // The pair, differing in exactly one respect. Somebody has to pay for the
+    // difference, which is the whole of the rule.
+    const beach = strand();
+    const ported = strand();
+    raise(ported, "warehouse", DAY0);
+    raise(ported, "customsHouse", DAY0);
+    stepSeason(ported, DAY0);
+    expect(derive(ported).access).toBeGreaterThan(derive(beach).access);
+  });
+
+  it("does not come back to full access when the floor raises the shacks again", () => {
+    // THE CLAIM THE STORY EXISTS FOR, at town scale. Burn the whole waterfront;
+    // the floor raises it again for nothing, exactly as [HC-67] says it must —
+    // and the place is not a port again, because a strand never was one.
+    const t = strand();
+    const before = derive(t).access;
+
+    for (const w of t.works) if (CATALOGUE[w.kind].zone === "waterfront") w.condition = "ruin";
+    expect(derive(t).access).toBeLessThan(before);
+
+    stepSeasons(t, 4, DAY0);
+
+    // [HC-67] IS NOT WEAKENED: the shacks are back, free, and they move cargo.
+    expect(t.works.some((w) => w.kind === "fishingShacks" && w.condition === "working")).toBe(true);
+    expect(derive(t).access).toBeGreaterThan(0);
+    // ...and a free rebuild still cannot buy the top of the scale.
+    expect(derive(t).access).toBeLessThan(1);
+  });
+});
 
 describe("wealth is earned, not emitted", () => {
   it("earns more from the same sawpit where its timber fetches more", () => {
@@ -91,8 +255,8 @@ describe("wealth is earned, not emitted", () => {
     // A customs house fills no hold; it takes a share of what crosses the beach.
     // So it earns on access and dies with it.
     const working = [{ kind: "customsHouse", trade: 16 } as never];
-    expect(accessOf(working, 0)).toBeGreaterThan(0);
-    expect(accessOf([], 0)).toBe(0);
+    expect(accessOf(working, 0, FULL_REACH)).toBeGreaterThan(0);
+    expect(accessOf([], 0, FULL_REACH)).toBe(0);
   });
 });
 

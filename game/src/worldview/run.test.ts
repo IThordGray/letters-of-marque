@@ -100,7 +100,7 @@ describe("looking at the world does not change what is true in it", () => {
     // hooks attached at all.
     const watched = runFor(DAYS_PER_YEAR * 30, 11);
     const unwatched = makeRun(SEED);
-    runYears(unwatched.world, unwatched.towns, unwatched.markets, unwatched.wars, 30);
+    runYears(unwatched.world, unwatched.towns, unwatched.markets, unwatched.wars, unwatched.routes, 30);
     expect(fingerprint(unwatched)).toBe(fingerprint(watched));
   });
 
