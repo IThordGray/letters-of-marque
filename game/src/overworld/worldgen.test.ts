@@ -22,9 +22,10 @@ import { CALENDAR, DAYS_PER_YEAR, dayInSeason, startsSeasonOn, yearOfDay } from 
 import { yearOf } from "./clock";
 import { inFlightCount } from "./dispatch";
 import { FACTIONS } from "./factions";
-import { runYears } from "./market";
-import { FOUNDING, SIZES, type Place } from "./places";
-import { describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
+import { makeMarkets, runYears } from "./market";
+import { FOUNDING, SIZES, hinterlandAt, type Place } from "./places";
+import { groundAt } from "./ground";
+import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
 import { derive, failureWord } from "../town/sim";
 import { dependencyWord } from "../town/trade";
 import { CATALOGUE } from "../town/works";
@@ -403,6 +404,125 @@ describe("day 0 holds a world with a past", () => {
     expect(ageYears(eldest) - ageYears(youngest)).toBeGreaterThan(40);
     // ...and the eldest has had eighty years of works the youngest has not.
     expect(WARM.towns[eldest.id].works.length).toBeGreaterThan(WARM.towns[youngest.id].works.length);
+  });
+});
+
+// ---- Every market can reach timber, and most places must buy it -------------
+//
+// RATIFIED 2026-09-16. Timber has no substitute: `sawpit` is the only work in
+// the catalogue that produces materials, `shipway` requires a working sawpit,
+// and NOTHING QUARRIES STONE — so a market neighbourhood with no timbered ground
+// in it can never build anything, ever, which is [HC-87c]'s build gate firing
+// correctly against a world with nowhere to buy from. Measured on master: 5, 8,
+// 14 and 22 of a world's fifty neighbourhoods held no timber at all.
+//
+// THE GUARANTEE IS OWED TO THE MARKET AND NOT TO THE PLACE, which is the whole
+// of the design: every place must be able to REACH timber; most must BUY it.
+// A world where everybody grows his own planks has no plank trade in it, and
+// that is the outcome the human rejected when he chose this over giving
+// materials a second source.
+//
+// ONE SEED CANNOT SAY THIS. A claim about a covering over fifty places, asserted
+// on one world, is a decoration — so every claim below is enumerated across a
+// spread of seeds, and the count of seeds is asserted so a thinned list fails
+// loudly rather than silently.
+describe("every market can reach timber, and most places must buy it", () => {
+  const SEEDS = [1660, 20260910, 7, 99, 1, 2, 42, 777];
+  const worlds = SEEDS.map((s) => generateWorld(s));
+
+  // What the ground bears, and what it WOULD have borne had the covering never
+  // spoken — written out from the cut rather than read back off the flag, so a
+  // grant that quietly did nothing cannot pass for one that worked.
+  const bearsTimber = (w: typeof worlds[0], p: Place, granted = p.timberGranted) =>
+    groundAt(w, { ...p, timberGranted: granted }).regions.some((r) => r.bears.timber !== undefined);
+
+  it("is asked of a spread of worlds, not of one", () => {
+    expect(worlds.length).toBeGreaterThan(4);
+    for (const w of worlds) expect(w.places.length).toBeGreaterThan(40);
+  });
+
+  it("leaves no market on the map unable to reach a plank", () => {
+    // THE CLAIM THE STORY EXISTS FOR.
+    for (const w of worlds) {
+      const bears = w.places.map((p) => bearsTimber(w, p));
+      for (const h of makeMarkets(w.places).hoods) {
+        expect(h.members.some((id) => bears[id]), `a market off ${w.places[h.id].name} cannot reach timber`)
+          .toBe(true);
+      }
+    }
+  });
+
+  it("still leaves most of the world buying its planks rather than growing them", () => {
+    // The other half, and the half that distinguishes this fix from the one the
+    // human turned down. If every coast grew timber there would be no trade in
+    // it — so a minority bear it, and the generator's own hand is smaller again
+    // than what the map gave for nothing.
+    for (const w of worlds) {
+      const bears = w.places.filter((p) => bearsTimber(w, p)).length;
+      const granted = w.places.filter((p) => p.timberGranted).length;
+      expect(bears, "half the world grows its own planks").toBeLessThan(w.places.length / 2);
+      expect(granted, "the generator planted more forest than the map did").toBeLessThan(bears - granted);
+    }
+  });
+
+  it("plants no stand that was not needed, and none that another stand makes needless", () => {
+    // [P-1] applied to a covering: the neighbourhoods OVERLAP ([HC-82]), so one
+    // stand answers for several markets and granting one per market would put
+    // timber behind half the coasts on the map. Every grant must therefore be
+    // LOAD-BEARING, and the strong form of that is what is asserted — take any
+    // one stand away and some market goes dark.
+    //
+    // THE WEAK FORM IS NOT ENOUGH, and a mutation proved it: "every grant
+    // rescues a market the MAP left bare" survives a covering that walks the
+    // places in order and takes the first that answers anything, because two
+    // such grants can land in the same market and each of them still rescues a
+    // market the map left bare. The strong form measures the stands against each
+    // other, which is exactly what minimality means. Measured across 40 seeds:
+    // 1 to 4 stands a world, not one of them redundant.
+    for (const w of worlds) {
+      const natural = w.places.map((p) => bearsTimber(w, p, false));
+      const timber = w.places.map((p) => bearsTimber(w, p));
+      const hoods = makeMarkets(w.places).hoods;
+      for (const p of w.places) {
+        if (!p.timberGranted) continue;
+        expect(natural[p.id], `${p.name} was granted timber it already had`).toBe(false);
+        const sole = hoods.some(
+          (h) => h.members.indexOf(p.id) >= 0 && !h.members.some((id) => id !== p.id && timber[id]),
+        );
+        expect(sole, `${p.name}'s stand answers no market that another does not`).toBe(true);
+      }
+    }
+  });
+
+  it("can say what it did, in one sentence", () => {
+    // [HC-16] turned on the covering. The second half of the sentence is the
+    // one worth reading: it says whether any market was left without.
+    for (const w of worlds) {
+      expect(describeTimber(w)).toContain("Every market can reach a sawpit.");
+    }
+    expect(describeWorld(WORLD)).toContain("must buy their planks");
+  });
+
+  it("grants the same stands to the same seed, twice over", () => {
+    // [HC-11]. The covering is a greedy solve over fifty places and it must be a
+    // pure function of the seed, tie-breaks included.
+    expect(generateWorld(SEED).places.map((p) => p.timberGranted))
+      .toEqual(WORLD.places.map((p) => p.timberGranted));
+  });
+
+  it("does not change what a coast will FEED by giving it something to cut", () => {
+    // THE INVARIANT THAT LICENSES THE ORDERING, and it is why the covering can be
+    // solved after the classing rather than in the middle of it. `standingOf`
+    // reads `hinterlandAt` to decide which harbours grew into great ports, and
+    // `makePlaces` has to take that reading before the covering has spoken. It is
+    // safe because the stand is cut out of ground that bears NO food and
+    // `hinterlandOf` counts food and acreage and nothing else — so the two cuts
+    // cannot disagree about the one number the classing actually reads.
+    for (const p of WORLD.places) {
+      const bare = hinterlandAt(WORLD, { ...p, timberGranted: false });
+      const wooded = hinterlandAt(WORLD, { ...p, timberGranted: true });
+      expect(wooded, `${p.name}'s hinterland moved when it was given a stand`).toBe(bare);
+    }
   });
 });
 

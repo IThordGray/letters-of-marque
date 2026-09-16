@@ -74,9 +74,20 @@ export interface Markets {
 // enormous one — which is [HC-82]'s "a small, fixed set of OVERLAPPING market
 // neighbourhoods" exactly.
 //
-// [P-2]: this is O(N^2) and it runs ONCE, at world generation. Positions never
-// move, so it is never recomputed.
-export function makeMarkets(places: Place[]): Markets {
+// IT READS POSITIONS AND NOTHING ELSE, which is why the parameter is a list of
+// points rather than a list of places. The generator needs the neighbourhoods
+// BEFORE a place has a size, a crown, a name or a founding day — the timber
+// covering in `worldgen.ts` is decided from them — and siting fixes positions
+// first of all, so this can honestly be asked at that moment. A `Place[]`
+// satisfies it structurally, so every existing call site is unchanged.
+//
+// [P-2]: this is O(N^2), and it is asked twice per world — once for the
+// covering and once for the season that follows. That is the same trade the cut
+// makes in `places.ts` and the same reason: it is a pure function of positions
+// that never move, so the two answers cannot differ, and the alternative is a
+// second copy of a derived fact living on the World, which [HC-14] and [P-47]
+// both refuse. Fifty places is 2,500 distances, once, against nothing per tick.
+export function makeMarkets(places: readonly { x: number; y: number }[]): Markets {
   const n = places.length;
   const hoods: Neighbourhood[] = [];
   const hoodsOf: number[] = [];

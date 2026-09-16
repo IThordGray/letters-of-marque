@@ -240,6 +240,122 @@ describe("what the map owes every place", () => {
   });
 });
 
+// ---- The second guarantee --------------------------------------------------
+//
+// `guaranteeVictuals` has undertaken since KAN-98 that every place bears food.
+// Nothing undertook anything about TIMBER, and timber has no substitute: the
+// sawpit is the only work in the catalogue that produces materials, the shipway
+// requires a working sawpit, and nothing quarries stone at all. So a market
+// neighbourhood with no timber in it can never build anything ([HC-87c]) — which
+// is why the guarantee exists, and why it is owed to the MARKET and not to the
+// place. `worldgen.test.ts` holds the covering; this file holds the cut.
+describe("a stand of timber, where the map left a market none", () => {
+  const withGrant = (p: Place) => groundAt(WORLD, { ...p, timberGranted: true });
+  const without = (p: Place) => groundAt(WORLD, { ...p, timberGranted: false });
+  const timbered = (g: { regions: { bears: { timber?: unknown } }[] }) =>
+    g.regions.some((r) => r.bears.timber !== undefined);
+
+  // A coast the map left bare, and one it did not. Both are found rather than
+  // authored, and the claims below are worth nothing without both.
+  const bare = WORLD.places.filter((p) => !timbered(without(p)));
+  const wooded = WORLD.places.filter((p) => timbered(without(p)));
+  // ...and the third kind, which is the reason the first claim is conditional: a
+  // place whose every stretch of country bears food has nothing to spare, and
+  // the guarantee will not take its bread. The covering passes such a coast over
+  // and rescues its market through a neighbour instead.
+  const spared = (p: Place) => without(p).regions.some((r) => r.bears.food === undefined && !isWater(r.terrain));
+
+  it("finds the world all three kinds of coast to ask about", () => {
+    // The precondition the claims below stand on. A fixture that could not tell
+    // a bare coast from a wooded one would make either of them a decoration —
+    // and one with no coast that has nothing to spare could not tell the
+    // conditional claim from the unconditional one.
+    expect(bare.length).toBeGreaterThan(0);
+    expect(wooded.length).toBeGreaterThan(0);
+    expect(WORLD.places.filter((p) => !spared(p)).length).toBeGreaterThan(0);
+  });
+
+  it("gives a bare coast timber to cut, wherever it has ground to spare", () => {
+    for (const p of bare) {
+      if (!spared(p)) continue;
+      expect(timbered(withGrant(p)), `${p.name} was granted a stand and has none`).toBe(true);
+    }
+  });
+
+  it("plants a stand only where one was ASKED FOR, and never off its own bat", () => {
+    // THE LIVENESS GUARD UNDER EVERY CLAIM IN THIS BLOCK, and it was written
+    // because a mutation walked through the lot of them. Ignore the flag and
+    // plant a stand on every coast, and `withGrant` and `without` become the
+    // same cut — so every claim that compares the two passes by being
+    // tautological, and the partition above quietly empties instead of failing.
+    //
+    // So this counts. It asserts that the world holds coasts the guarantee
+    // CHANGES, which is the thing a flag ignored in either direction destroys.
+    let changed = 0;
+    for (const p of WORLD.places) {
+      if (!spared(p)) continue;
+      const asked = timbered(withGrant(p));
+      const unasked = timbered(without(p));
+      if (!unasked) {
+        expect(asked, `${p.name} refused a stand it was asked for`).toBe(true);
+        changed++;
+      }
+    }
+    expect(changed, "no coast on this map is any different for being granted a stand")
+      .toBeGreaterThan(0);
+  });
+
+  it("refuses a coast that is all fields, rather than taking the fields", () => {
+    // The other half of the same rule, and the half that keeps [HC-22] whole.
+    for (const p of WORLD.places) {
+      if (spared(p)) continue;
+      expect(withGrant(p), `${p.name} was ploughed under for planks`).toEqual(without(p));
+    }
+  });
+
+  it("changes nothing at all on a coast the map already wooded", () => {
+    // The undertaking is "make sure this market can reach timber", not "convert
+    // a region" — so on ground that already bears it, it is a no-op down to the
+    // last hex, and the covering may grant freely without disturbing anything.
+    for (const p of wooded) {
+      expect(withGrant(p), `${p.name} was disturbed by a grant it did not need`).toEqual(without(p));
+    }
+  });
+
+  it("never takes the stand out of the town's own bread", () => {
+    // [HC-22] IS NOT TRADED FOR PLANKS. `guaranteeVictuals` runs first and the
+    // stand is cut from ground that bears no food at all, so what a place can
+    // feed itself is the same either way — at every grade, not merely in total.
+    for (const p of WORLD.places) {
+      const fed = (g: ReturnType<typeof without>) =>
+        g.regions
+          .filter((r) => r.bears.food !== undefined)
+          .map((r) => `${r.id}:${r.terrain}:${r.bears.food}:${r.hexes.length}`)
+          .sort();
+      expect(fed(withGrant(p)), `${p.name} sold its fields for timber`).toEqual(fed(without(p)));
+    }
+  });
+
+  it("cuts the stand out of the largest ground the place has to spare", () => {
+    // [P-10]: biggest first, id as the tie-break, so which stretch of country
+    // becomes the timbered hills never depends on the order a loop reached it.
+    for (const p of bare) {
+      const before = without(p);
+      const after = withGrant(p);
+      const moved: number[] = [];
+      for (let i = 0; i < before.regions.length; i++) {
+        if (after.regions[i].terrain !== before.regions[i].terrain) moved.push(i);
+      }
+      if (!moved.length) continue; // nothing to spare; the covering passes it over
+      expect(moved.length, `${p.name} lost more than one stretch of country`).toBe(1);
+      const spare = before.regions.filter((r) => r.bears.food === undefined && !isWater(r.terrain));
+      const largest = Math.max(...spare.map((r) => r.hexes.length));
+      expect(before.regions[moved[0]].hexes.length, `${p.name} cut its stand out of the wrong ground`)
+        .toBe(largest);
+    }
+  });
+});
+
 describe("cutting the same ground twice", () => {
   it("gives the same answer, so a history can be replayed", () => {
     for (const { place, ground } of CUTS.slice(0, 10)) {

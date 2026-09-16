@@ -59,6 +59,18 @@ export interface Site {
   sx: number;
   sy: number;
   zone: number;
+  // WHETHER THE GENERATOR PUT A STAND OF TIMBER BEHIND THIS BEACH. It is not a
+  // reading of the map and it is not a property of this coast alone: it is
+  // decided for a whole MARKET NEIGHBOURHOOD at once, in `worldgen.ts`, because
+  // what has to be true is that every market can REACH timber — not that every
+  // port grows its own (§11.4, and the human's call of 2026-09-16).
+  //
+  // FALSE DOES NOT MEAN "BEARS NO TIMBER". Most coasts that bear timber bear it
+  // because the map says so and were never granted anything; the flag says only
+  // that the generator undertook to make sure. [P-17b] again — a boolean is the
+  // whole of what arrives here, so the cut cannot start reading a neighbourhood,
+  // a market or a ledger.
+  timberGranted: boolean;
 }
 
 // ---- The scale of a town's own ground --------------------------------------
@@ -272,6 +284,9 @@ export function groundAt(world: Fields, place: Site): Land {
 
   absorbSlivers(regions);
   guaranteeVictuals(rng, regions, climate);
+  // SECOND, AND NEVER FIRST. The stand of timber is cut out of ground the place
+  // does not eat off, so the bread has to be settled before the planks are.
+  guaranteeMaterials(rng, regions, climate, place.timberGranted);
 
   for (const kind of ["roadstead", "reef", "openSea"] as const) {
     const hexes = waterCells.filter((c) => waterKind(c) === kind);
@@ -351,6 +366,41 @@ function guaranteeVictuals(rng: Rng, regions: Region[], climate: Climate): void 
   if (!best) return;
   best.terrain = climate.ground.victuals;
   best.bears = rollBears(rng, best.terrain, climate);
+}
+
+// THE SECOND GUARANTEE, and it is owed to a MARKET, not to a place.
+//
+// [HC-87c] a town that cannot GET timber and stone cannot build, however full
+// its coffers — "the shipways stand idle for want of planks". Nothing in the
+// catalogue quarries stone, so a sawpit is the only source of materials anywhere
+// in the world, and a place can buy planks only from a port it shares a market
+// neighbourhood with ([HC-82], [HC-83]: a flow balance holds no stock, so
+// materials never make two hops). A neighbourhood with no timber in it is
+// therefore not short of planks — it is frozen, for two centuries, at whatever
+// it had raised before the bill appeared.
+//
+// So the generator undertakes that EVERY MARKET NEIGHBOURHOOD CAN REACH TIMBER,
+// and deliberately no more than that: most places must still BUY their materials
+// off a neighbour, which is the difference between a trade route and fifty
+// self-sufficient ports. `worldgen.ts` solves the covering; this cuts the stand.
+//
+// WHAT IT TAKES, AND WHAT IT WILL NOT TAKE. The largest stretch of ground the
+// place does not eat off, biggest first with an id tie-break ([P-10]). Ground
+// that bears FOOD is never taken, at any size: `guaranteeVictuals` has just run
+// and [HC-22] is not traded away for planks. A coast with nothing to spare is
+// left alone and the covering falls to another port in the market.
+function guaranteeMaterials(rng: Rng, regions: Region[], climate: Climate, granted: boolean): void {
+  if (!granted) return;
+  // Most granted coasts turn out to grow their own — the covering grants only
+  // where the map gave none, and this makes the undertaking idempotent rather
+  // than making it a conversion.
+  if (regions.some((r) => r.bears.timber !== undefined)) return;
+  const spare = regions
+    .filter((r) => r.bears.food === undefined)
+    .sort((a, b) => b.hexes.length - a.hexes.length || a.id - b.id)[0];
+  if (!spare) return;
+  spare.terrain = climate.ground.materials;
+  spare.bears = rollBears(rng, spare.terrain, climate);
 }
 
 // ---- A region --------------------------------------------------------------

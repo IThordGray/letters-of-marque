@@ -214,6 +214,18 @@ export interface Place {
   // the beginning of one: the warm start runs each place forward from here.
   foundedDay: number;
 
+  // WHETHER THE GENERATOR UNDERTOOK THAT THIS COAST BEARS TIMBER. Not a reading
+  // of the map and not a property of this place alone: it is decided for a whole
+  // MARKET NEIGHBOURHOOD at once, by `grantTimber` in `worldgen.ts`, because
+  // what [HC-87c] needs true is that every market can REACH timber — not that
+  // every port grows its own. It is written here rather than derived because it
+  // is not derivable: it is the answer to a covering problem over the fifty,
+  // exactly as `faction` is the answer to a reach-weighted draw over the five.
+  //
+  // FALSE DOES NOT MEAN "BEARS NO TIMBER" — most timber on this map is the map's
+  // own, and was never granted anything.
+  timberGranted: boolean;
+
   // The FOUNDING ledger — what the party that landed brought with it. It is not
   // the day-0 ledger and must not be read as one: the warm start runs the
   // ordinary rules forward from this, so what a place HAS on day 0 is on its
@@ -371,7 +383,16 @@ function purposeOf(
 const byStanding = (a: { score: number; id: number }, b: { score: number; id: number }) =>
   b.score - a.score || a.id - b.id;
 
-export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: Nation[]): Place[] {
+// THE FIFTY, AND THE GROUND THEY WERE CLASSED ON. The second half is not a
+// second source of truth and is never stored ([HC-14]): it is the very cut the
+// classing read, handed to the one caller that has another question to ask of
+// it, and dropped the moment `generateWorld` returns.
+export interface Sited {
+  places: Place[];
+  land: Land[]; // parallel to `places`, cut before any stand of timber was granted
+}
+
+export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: Nation[]): Sited {
   const sites = sitePlaces(seed, s);
 
   // 3. What the map gives each of them. All four are pure readings of the
@@ -385,11 +406,27 @@ export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: 
   // pure function of (seed, position, zone), so the two answers cannot differ
   // ([P-17]: derive on demand, never store); the alternative is a second copy of
   // a derived fact living on the World, which [HC-14] and [P-47] both refuse.
-  // [P-2]: it costs ~17 ms ONCE per world, against nothing per tick.
+  // [P-2]: it costs ~35 ms ONCE per world, against nothing per tick.
+  //
+  // AND IT IS HANDED BACK RATHER THAN THROWN AWAY, which is the whole reason this
+  // function returns a pair. The timber covering (`grantTimber`) has two more
+  // questions for this same cut — which coasts the map wooded, and which have
+  // ground to spare — and a THIRD pass over fifty towns' ground to learn fifty
+  // booleans measured 34 ms and did not fight to be there ([P-1]).
+  //
+  // THE STAND OF TIMBER IS NOT DECIDED YET, so `timberGranted` is false here —
+  // and the hinterland reading is the same either way: the stand is cut out of
+  // ground that bears NO food (`guaranteeMaterials`), and `hinterlandOf` counts
+  // food and total acreage and nothing else. A test holds that invariant,
+  // because it is what lets the covering be solved after the classing rather
+  // than in the middle of it.
   const fields = { seed, shape: s, zones };
-  const hinterland = sites.map((p, i) =>
-    hinterlandAt(fields, { id: i, x: p.x, y: p.y, sx: seaward[i].dx, sy: seaward[i].dy, zone: zone[i] }),
+  const land = sites.map((p, i) =>
+    groundAt(fields, {
+      id: i, x: p.x, y: p.y, sx: seaward[i].dx, sy: seaward[i].dy, zone: zone[i], timberGranted: false,
+    }),
   );
+  const hinterland = land.map(hinterlandOf);
 
   // 4a. SIZE. Designated, in one pass, from a total order — [HC-62]: cities are
   //     authored and no town ever becomes one.
@@ -501,11 +538,17 @@ export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: 
       faction: faction[i],
       seed: seedFor(seed, CHANNEL.place, i),
       foundedDay: foundedDayOf(seed, i, nation.faction, nation.seat === i),
+      // 7. WHETHER IT WAS GIVEN A STAND OF TIMBER — settled by `grantTimber` in
+      //    `worldgen.ts` once all fifty stand, because the question is about a
+      //    MARKET and not about a coast, and a market is a handful of places.
+      //    Every field is present from the factory and only its value changes
+      //    afterwards, so no object here ever grows a property ([P-26]).
+      timberGranted: false,
       population: def.population[0] + popRoll * (def.population[1] - def.population[0]),
       wealth: def.wealth,
     });
   }
-  return places;
+  return { places, land };
 }
 
 // Which crown takes which of the great harbours. A derived permutation, so the

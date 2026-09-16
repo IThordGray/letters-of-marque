@@ -68,6 +68,20 @@ interface Ground {
   // this is what its largest stretch turns out to be. Every zone answers
   // `tilledGround` today; the field exists so that a zone could answer otherwise.
   victuals: TerrainKind;
+  // The ground this zone's people cut their planks out of — the SECOND
+  // guarantee, and it is owed to a MARKET NEIGHBOURHOOD rather than to a place
+  // (§11.4, [HC-82]). Nothing in the catalogue quarries stone, so timber is the
+  // only source of materials in the world and a neighbourhood with none can
+  // never build anything, for ever ([HC-87c]). `worldgen.ts` decides WHICH
+  // coasts carry the stand; this says what a stand looks like in this climate.
+  //
+  // IT MUST BE SOMETHING THE ZONE'S OWN PALETTE GROWS, and a test holds that of
+  // every row. [HC-28] is not traded away for planks any more than [HC-22] is:
+  // the guarantee overrules the MAP — which stretch of country turned out to be
+  // wooded — never the CLIMATE. Every zone answers `timberedHills` today; the
+  // field exists so that a zone could answer otherwise, a logwood coast say, the
+  // day somebody wants one.
+  materials: TerrainKind;
   // Everything the ground in this zone can be. The gate [HC-28] describes.
   palette: readonly TerrainKind[];
   // How the zone shifts the moisture the ground is read at — a dry zone reads
@@ -102,6 +116,7 @@ export const CLIMATES = {
     storms: { seasons: [false, true, true, false], perSeason: 1.6, formsUpwindNm: 420 },
     ground: {
       victuals: "tilledGround",
+      materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "rockyGround", "bluff", "marsh", "scrub"],
       wetBias: 0.1,
       favours: ["cane", "timber"],
@@ -116,13 +131,21 @@ export const CLIMATES = {
     storms: { seasons: [false, true, true, false], perSeason: 0.5, formsUpwindNm: 300 },
     ground: {
       victuals: "tilledGround",
+      materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "cottonGround", "rockyGround", "bluff", "scrub"],
       wetBias: 0.0,
       favours: ["cane", "grain"],
       prefers: { fx: 0.45, fy: 0.42 },
     },
   },
-  // Low, dry, and salt to the horizon.
+  // Low, dry, and salt to the horizon — with one wooded ridge somewhere behind
+  // the pans. `timberedHills` joined this palette on 2026-09-16 and it is the
+  // only palette change the timber guarantee needed: it was the one climate on
+  // the map that could not grow the only material anyone builds with, so a
+  // market whose every port was a cay was frozen by construction. It wants high
+  // AND wet ground, and a zone reading its rainfall a third of the scale lower
+  // hardly ever has both — so a cay chain is still scrub and salt, and the ridge
+  // is the exception the guarantee was going to have to invent anyway.
   dryCays: {
     name: "the Dry Cays",
     baseline: [wet(0.2, 0.8), wet(0.25, 0.7), wet(0.3, 0.6), wet(0.15, 0.75)],
@@ -130,7 +153,8 @@ export const CLIMATES = {
     storms: { seasons: [false, true, true, false], perSeason: 0.7, formsUpwindNm: 380 },
     ground: {
       victuals: "tilledGround",
-      palette: ["cottonGround", "saltPans", "rockyGround", "bluff", "scrub", "tilledGround"],
+      materials: "timberedHills",
+      palette: ["cottonGround", "saltPans", "rockyGround", "bluff", "scrub", "tilledGround", "timberedHills"],
       wetBias: -0.3,
       favours: ["salt", "cotton"],
       prefers: { fx: 0.62, fy: 0.62 },
@@ -144,6 +168,7 @@ export const CLIMATES = {
     storms: { seasons: [false, true, true, false], perSeason: 2.6, formsUpwindNm: 500 },
     ground: {
       victuals: "tilledGround",
+      materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "rockyGround", "bluff", "marsh", "scrub"],
       wetBias: 0.15,
       favours: ["timber", "cane"],
@@ -158,6 +183,7 @@ export const CLIMATES = {
     storms: { seasons: [true, true, false, false], perSeason: 1.0, formsUpwindNm: 260 },
     ground: {
       victuals: "tilledGround",
+      materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "cottonGround", "bluff", "marsh", "scrub"],
       wetBias: 0.2,
       favours: ["cane", "timber", "grain"],
@@ -172,6 +198,7 @@ export const CLIMATES = {
     storms: { seasons: [true, false, true, true], perSeason: 1.2, formsUpwindNm: 340 },
     ground: {
       victuals: "tilledGround",
+      materials: "timberedHills",
       palette: ["timberedHills", "tilledGround", "cottonGround", "rockyGround", "bluff", "scrub"],
       wetBias: -0.05,
       favours: ["grain", "timber"],
