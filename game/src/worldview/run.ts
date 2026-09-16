@@ -28,7 +28,10 @@ import { type World } from "../overworld/clock";
 import { CLIMATES } from "../overworld/climate";
 import { inFlight, type Dispatch } from "../overworld/dispatch";
 import { FACTIONS, FACTION_IDS } from "../overworld/factions";
-import { makeMarkets, noWars, runDays, type Markets, type Wars, type WorldSeason } from "../overworld/market";
+import {
+  makeMarkets, noWars, openRoutes, runDays,
+  type Markets, type Routes, type Wars, type WorldSeason,
+} from "../overworld/market";
 import { SIZES, type Place } from "../overworld/places";
 import { bandAt, feltAt, skyOf, type Sky } from "../overworld/weather";
 import { foundAll, generateWorld } from "../overworld/worldgen";
@@ -134,6 +137,7 @@ export interface Run {
   towns: Town[];
   markets: Markets;
   wars: Wars;
+  routes: Routes;
   sky: Sky;
 
   places: PlaceView[];
@@ -166,14 +170,19 @@ export function makeRun(seed: number): Run {
   const world = generateWorld(seed >>> 0);
   const towns = foundAll(world);
   const n = world.places.length;
+  const markets = makeMarkets(world.places);
   const run: Run = {
     seed: seed >>> 0,
     world,
     towns,
-    markets: makeMarkets(world.places),
+    markets,
     // Nations do not declare war yet (KAN-101). The seam is real and the answer
     // is "nobody", which is the honest state of the world rather than a stub.
     wars: noWars(FACTION_IDS.length),
+    // ...and nothing blockades anything yet either, so every sea lane the
+    // neighbourhoods imply is open. Same shape, same honesty: the answer is
+    // "nobody is holding a harbour", not a stub standing in for one.
+    routes: openRoutes(markets),
     sky: skyOf(world),
     places: [],
     xs: new Float64Array(n),
@@ -239,6 +248,7 @@ export function pump(run: Run, days: number): void {
     run.towns,
     run.markets,
     run.wars,
+    run.routes,
     days,
     run.sky,
     (s) => takeSeason(run, s),

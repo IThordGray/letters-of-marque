@@ -271,6 +271,10 @@ export interface Derived {
   // surface on the ledger (§3.5.3: "derive() gains a commerce block computed
   // from the ledger exactly as food and trade are today").
   commerce: Commerce;
-  access: number; // 0..1 — what reaches the quay, both ways ([HC-85])
+  // 0..1 — what reaches the quay, both ways ([HC-85]). REACH x READINESS since
+  // KAN-112: how much of the shipping still calls, times what this place has
+  // made of its own shore. One is the world's fact and the other is the town's,
+  // and neither is worth anything without the other.
+  access: number;
   dependency: number; // 0..1 — how much of its bread is not off its own ground
 }
