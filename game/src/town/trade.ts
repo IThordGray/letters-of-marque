@@ -311,10 +311,41 @@ export function commerceOf(
   };
 }
 
-// Whether the town can raise anything new at all. A hard gate, and deliberately:
-// "a town that cannot get timber and stone CANNOT BUILD, however rich it is."
-// Its coffers may be full; it simply cannot get the stone.
+// Whether the town can get timber and stone at all. A hard gate, and
+// deliberately: "a town that cannot get timber and stone CANNOT BUILD, however
+// rich it is." Its coffers may be full; it simply cannot get the stone.
 export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.buildGate;
+
+// A WORK THAT PRODUCES MATERIALS IS NOT GATED BY MATERIALS (ratified
+// 2026-09-16). You do not need planks to dig a sawpit.
+//
+// THE CLIFF IT CLOSES, measured on four seeds at day 0. The standing bill is
+// `capitalWorks x materialsPerWork` ([HC-87b]), so a place with NO capital work
+// consumes nothing, is short of nothing, and its FIRST build is free — and every
+// build after it is gated. Fifty-two places across those seeds sat frozen at
+// exactly one capital work, and forty-eight of them had spent that one free
+// build on a TAVERN: the auction puts "the men have nowhere to drink" above
+// "there is money in it" in a small place, which is reasonable on its own terms,
+// and the consequence was that the sawpit standing on its own timbered hills was
+// out of reach FOR EVER. One such place held 3,398 coin and a tavern.
+//
+// THE EXEMPTION IS READ OFF THE CATALOGUE, NEVER OFF A LIST OF KINDS. The rule
+// is "a work that produces materials is not gated by materials", and
+// `exports: "materials"` is already the catalogue's own answer to which those
+// are. A second list beside it would be [P-47]: one fact with two sources, and
+// the day somebody adds a quarry the list is the half that gets forgotten.
+//
+// [HC-87c] IS UNTOUCHED, and this is the part worth being precise about. The
+// gate still fires at "cannot GET them" and still bites on everything else —
+// the shipways still stand idle for want of planks, because a `shipway`
+// REQUIRES a working `sawpit` ([HC-87c]'s texture is carried by the dependency
+// edge, not by the bill). What is exempted is one class of work from the
+// materials BILL, not the gate from the world.
+export const producesMaterials = (kind: WorkKind): boolean => CATALOGUE[kind].exports === "materials";
+
+// The gate as a governor actually asks it: about THIS work, in THIS town.
+export const canBuildKind = (c: Commerce, kind: WorkKind): boolean =>
+  producesMaterials(kind) || canBuild(c);
 
 // The clause that goes with the refusal, so [HC-16] holds even for a decision
 // that comes to nothing.

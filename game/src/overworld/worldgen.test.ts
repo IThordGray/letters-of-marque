@@ -27,9 +27,10 @@ import { FOUNDING, SIZES, hinterlandAt, type Place } from "./places";
 import { groundAt } from "./ground";
 import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
 import { derive, failureWord } from "../town/sim";
-import { dependencyWord } from "../town/trade";
-import { CATALOGUE } from "../town/works";
+import { canBuild, dependencyWord } from "../town/trade";
+import { CATALOGUE, regionsFor } from "../town/works";
 import { WORKS } from "../town/constants";
+import { wants } from "../town/governor";
 
 // THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
 // being a second number laid over the floor the catalogue already raises, so the
@@ -523,6 +524,98 @@ describe("every market can reach timber, and most places must buy it", () => {
       const wooded = hinterlandAt(WORLD, { ...p, timberGranted: true });
       expect(wooded, `${p.name}'s hinterland moved when it was given a stand`).toBe(bare);
     }
+  });
+});
+
+// ---- Nobody sits on his own timber for want of planks -----------------------
+//
+// RATIFIED 2026-09-16: A WORK THAT PRODUCES MATERIALS IS NOT GATED BY MATERIALS.
+// You do not need planks to dig a sawpit.
+//
+// WHAT IT FIXED, and it is the reason the day-0 world had so little standing on
+// it. The materials bill is `capitalWorks x materialsPerWork` ([HC-87b]), so a
+// place with NONE owes nothing, is short of nothing, and its FIRST build is
+// free; every build after it is gated. The cliff was therefore at the first
+// capital work and not the second, and a place's one free build decided its
+// fate: fifty-two places across these four seeds sat frozen at exactly one
+// capital work, and forty-eight of them had spent it on a TAVERN. One held
+// 3,398 coin and could never dig the pit on its own timbered hills.
+//
+// ONE SEED CANNOT SAY THIS EITHER, for the same reason the covering above needs
+// a spread: it is a claim about a distribution over fifty places.
+describe("nobody sits on his own timber for want of planks", () => {
+  const SEEDS = [1660, 20260910, 7, 99];
+  const days = SEEDS.map((s) => warmStart(s));
+
+  // The places whose ground still bears uncut timber, and what is in their
+  // purses. `regionsFor` asks the LAND, not the gate.
+  const uncut = (warm: (typeof days)[0]) =>
+    warm.towns.filter(
+      (t) => regionsFor(t, "sawpit").length > 0 && !t.works.some((w) => w.kind === "sawpit" && w.condition !== "ruin"),
+    );
+
+  it("is asked of four worlds run forward, not of one", () => {
+    expect(days.length).toBe(4);
+    for (const w of days) expect(w.towns.length).toBeGreaterThan(40);
+  });
+
+  it("leaves no man standing on timbered hills with the price of a pit in his purse", () => {
+    // THE CLAIM THE RULE EXISTS FOR, and the measurement that separates it from
+    // the world before it. Counted at day 0, places bearing uncut timber whose
+    // coffers hold what a sawpit costs:
+    //
+    //   before the rule   4 · 3 · 2 · 2        (one of them with 3,398 coin)
+    //   after it          0 · 0 · 1 · 1
+    //
+    // The distributions do not overlap, which is what makes "at most one a
+    // world" a claim rather than a decoration — before the rule every one of the
+    // four seeds fails it. The survivors are not gated: they are places the
+    // auction wants something else in, and the gate has nothing to say about
+    // what a town WANTS.
+    for (let i = 0; i < days.length; i++) {
+      const idle = uncut(days[i]).filter((t) => t.wealth >= CATALOGUE.sawpit.cost);
+      expect(idle.length, `${SEEDS[i]}: ${idle.map((t) => `${t.name} (${Math.round(t.wealth)} coin)`).join(", ")}`)
+        .toBeLessThan(2);
+    }
+  });
+
+  it("still cuts most of the timber the map bears, and leaves a few coasts uncut", () => {
+    // THE LIVENESS GUARD, because "nobody is sitting on uncut timber with money"
+    // is also satisfied by a world with no timber in it and by a world where
+    // nobody has a coin. Measured: 13–22 coasts a world bear timber, 9–15 of
+    // them have cut it, and 4–7 have not — the last because they are poor or
+    // young, never because they could not get planks.
+    for (const warm of days) {
+      const bears = warm.towns.filter((t) => regionsFor(t, "sawpit").length > 0 || t.works.some((w) => w.kind === "sawpit"));
+      const cut = warm.towns.filter((t) => t.works.some((w) => w.kind === "sawpit" && w.condition !== "ruin"));
+      expect(bears.length).toBeGreaterThan(8);
+      expect(cut.length).toBeGreaterThan(bears.length / 2);
+      expect(cut.length).toBeLessThan(bears.length); // ...and the world is not all sawpits
+    }
+  });
+
+  it("goes on refusing everything else to a place that can get no planks", () => {
+    // [HC-87c] UNTOUCHED, at world scale, and this is the half that must not
+    // have moved: the exemption is one class of work out of the BILL, never the
+    // gate out of the world. For every place at day 0 that cannot get timber or
+    // stone, every want it publishes is refused — except the pit that would end
+    // the shortage, where it has ground for one.
+    //
+    // Measured: 23 · 4 · 17 · 23 places of fifty cannot get planks at day 0, so
+    // the sample is a real one rather than a lucky seed.
+    let gated = 0;
+    for (const warm of days) {
+      for (const t of warm.towns) {
+        const d = derive(t);
+        if (canBuild(d.commerce)) continue;
+        gated++;
+        for (const w of wants(t, warm.world.day, 12, d)) {
+          const producesMaterials = w.kind === "sawpit" || w.kind === "shipway"; // the oracle, written out
+          expect(w.supplied, `${t.name} answered the wrong way about ${w.kind}`).toBe(producesMaterials);
+        }
+      }
+    }
+    expect(gated, "no place in four worlds is short of timber and stone").toBeGreaterThan(10);
   });
 });
 

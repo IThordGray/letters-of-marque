@@ -12,7 +12,7 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived } from "./types";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf } from "./works";
 import { compass, LABEL } from "./land";
-import { DEPENDENCY_CLAUSE, canBuild, fetchOf } from "./trade";
+import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
 import { PLAN } from "./constants";
@@ -40,6 +40,11 @@ export interface Want {
   // the same kind as the other two: it says nothing about what the town wants,
   // only about what it can start. A stone-poor island with full coffers and idle
   // hands still cannot rebuild its wall.
+  //
+  // IT IS PER-WORK AND NOT PER-TOWN, because a work that PRODUCES materials is
+  // not gated by materials (ratified 2026-09-16): the same stone-poor island can
+  // still dig a sawpit in its own hills. See `producesMaterials` in trade.ts for
+  // the cliff that rule closes.
   supplied: boolean;
   // ...and it is a thing a place of this purpose would ever raise (§11.3). A
   // military settlement wishes for a farm, publishes the wish, and never builds
@@ -213,7 +218,6 @@ function whereFor(town: Town, kind: WorkKind): string {
 export function wants(town: Town, day: number, limit = 3, derived = derive(town)): Want[] {
   const d = derived;
   const spare = spareHands(d);
-  const supplied = canBuild(d.commerce);
   const out: Want[] = [];
   for (const kind of CHOOSABLE) {
     if (!buildable(town, kind)) continue;
@@ -231,7 +235,7 @@ export function wants(town: Town, day: number, limit = 3, derived = derive(town)
       cost: def.cost,
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
-      supplied,
+      supplied: canBuildKind(d.commerce, kind),
       permitted: permits(town, kind),
     });
   }
@@ -290,14 +294,20 @@ const spareHands = (d: Derived): number => Math.max(0, d.hands.available - d.han
 // active set would need maintaining by `devolve`, by this function and by every
 // future raid that damages a work, to save a property compare on ~20 works once a
 // season. It has not earned that; the loop's first test is a single compare.
+//
+// THE SAME EXEMPTION APPLIES HERE, and it has to, or the rule would be true of
+// one verb and false of the next: a sawpit that has rotted is still a work that
+// produces materials, and a place that could dig a new one but not put the old
+// one back in order would be the cliff again with the sentence reversed. The
+// gate is therefore asked per work rather than once at the door.
 function mendTurn(town: Town, d: Derived, day: number): Built | null {
-  if (!canBuild(d.commerce)) return null; // no timber, no stone, no repairs either
   const spare = spareHands(d);
 
   let best: Work | null = null;
   let bestWorth = 0;
   for (const w of town.works) {
     if (!mendable(town, w)) continue;
+    if (!canBuildKind(d.commerce, w.kind)) continue; // no timber, no stone, no repairs either
     if (w.hands > spare) continue; // "he will not mend what nobody can work"
     if (town.wealth < repairCost(w.kind)) continue; // ...nor what he cannot pay for
     const v = worthOf(w);
