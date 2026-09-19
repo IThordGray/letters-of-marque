@@ -65,6 +65,42 @@ at all** — it is only the rot sitting on top of it that goes.
 
 ---
 
+### Work takes time — and that is NOT what §1.1 bans
+
+**Ratified the same day, after the manager over-applied the timer ban.** His words:
+
+> *"Here a timer is needed; construction isn't instant. It takes time. Repairing should therefore also
+> take time. A fully destroyed building takes the same amount of time as building it from scratch. A
+> building with half health takes half the time. I don't know what those numbers are yet. It ties into
+> the zoning tile upgrade mechanism which we haven't really done too much with yet. So don't need to
+> try and get the timer values perfect."*
+
+**Three different things had been collapsed into the word "timer", and only the middle one was ever
+rejected.** Worth separating permanently, because it will be collapsed again otherwise:
+
+| | What it is | Verdict |
+|---|---|---|
+| **§1.1's ban** | *"No system may require a recurring DECISION on a timer"* — a chore the player must service: a weekly loyalty tick, per-officer upkeep, morale accounting to audit. | **Banned, and rightly.** |
+| **The decay clock** | A work degrading because nobody tended it. | **Deleted** — because things should not rot from neglect. **Not because it was a timer.** |
+| **Build and repair duration** | How long work takes. | **Required.** It demands no decision at all; it is a *consequence*, not a chore, and §1.1 does not reach it. |
+
+**What this settles:**
+
+- **Damage is a DEGREE, not a grade.** *"A building with half health"* is a proportion of the fabric
+  missing, not a rung on a ladder. **`destroyed` is therefore just the endpoint — everything gone —
+  and needs no rules of its own.**
+- **Repair time is proportional to what is missing, and the constant of proportionality is the work's
+  own build time.** Half gone, half the time. Wholly gone, the full build. **One rule covers both
+  repair and construction; do not write two mechanisms where one does.**
+- **Construction is not instant either**, which has a consequence for the governor's one-decision-a-
+  season cadence: a build may span seasons, and what he does meanwhile is *"the town is still mending"*.
+
+**The numbers are deliberately unfixed.** They tie into a zoning tile upgrade mechanism that does not
+exist yet. **The shape is ratified; the constants are not**, and a placeholder that says so is better
+than a false precision somebody later mistakes for a settled figure.
+
+---
+
 ### The interaction with the region focus, which is the part worth noticing
 
 The human chose a **permanent** production focus over a reversible one. **Deleting rot makes that
