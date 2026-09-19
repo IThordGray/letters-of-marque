@@ -10,6 +10,93 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-19 — A region has a potential; a focus decides what you get from it
+
+**A design pivot on the town's production half, ratified after discussion.** Three stories of chasing
+a day-0 city of 450–600 souls hit three successive ceilings, and the human's read of *why* turned out
+to be the important half: the model is a brittle **chain**, and this is not that kind of game.
+
+**His words, and they are the specification:**
+
+> *"This is a sandbox age of pirates game. Not a city manager… I don't really want to get too much
+> into production chains. It's not that type of game. However, I do still want towns to feel alive.*
+>
+> *So in terms of how the saw pit was thought about. It's not about timber, planks, boats chain. It's
+> more that there's a forest tile (zone) at this area. Focussing on production (on this tile) unlocks
+> that potential better… In terms of trade, it means more timber will be got from this town. If
+> however you focus housing zones / 'growth' and this tile gets locked behind a growth 'upgrade', it
+> means you lose the benefit of this town producing trees, and you will still be able to trade timber,
+> but it's not nearly what it would have been. It does mean there are more people though."*
+
+**THE SHAPE.** A region has a **potential** given by its ground. A **focus** is chosen per region —
+production or growth. Focus production and the region yields more of what its ground bears. Focus
+growth and the ground becomes housing: more people, and the production is largely spent.
+
+**GOODS SURVIVE; CHAINS DO NOT.** Timber is still a real thing that moves on real ships. *Timber →
+sawpit → planks → shipway* is what goes.
+
+**Potential is the CAP; development is the CLAIM.** Potential is ground, and un-burnable. What stands
+on a region is burnable, and burning it collapses production while the potential sits there waiting —
+which is what keeps `[HC-87]` alive and what makes a place worth **occupying rather than razing**. It
+also satisfies the heritage test: *the number carrying the town's size stays destructible at the
+building level.*
+
+**Who chooses:** the **governor**, publishing his reason (`[HC-1]` — no engine system prompts the
+player). The **player** steers only where he owns the place, through the ratified *guns · coin · hands*
+steer (§5.8), which a region focus becomes a fourth target of.
+
+**Three of the four pieces already ship**, which is why this is smaller than it sounds:
+
+- Regions already bear specific produce, already scaled by how well the ground suits it.
+- **Claiming a hex for housing already idles the work standing on it** — §2.11's *"growth eats its own
+  cause"* is the human's trade-off, already the model's spine.
+- `FOOTPRINT.densifyCost` already ends in `Infinity` — his *"even that can only be done so far"*.
+
+**What actually changes is that the choice is nobody's.** `stepFootprint` spills a town outward
+automatically on a fixed relief order, so no town ever decides *"this is a timber town"* or *"this is
+a big town"*. **Making that a direction rather than a side effect is the whole of the proposal.**
+Second change: the catalogue's two dependency edges flatten, so a work becomes a development of a
+region rather than a building with prerequisites.
+
+---
+
+**Three findings from the survey that shaped this, worth keeping:**
+
+**1. Galactic Civilizations does not work the way the proposal's anchor assumed** — worth recording
+because the title was the reference point. GalCiv III's planet "potential" is a **hard cap equal to
+usable tile count**, fixed at generation, raised only by terraforming, and **claimed by the cities you
+build on those tiles.** No floating cap, no overshoot collapse. (GalCiv IV replaced it with rising
+growth thresholds modified by approval and pollution; the overshoot-strain is its *empire*-scale
+administration mechanic.) **And the shape it really has — an authored ceiling from the ground, claimed
+by what you build — is already what §2.3 ("area is capacity") and §2.11 say.** The model was already
+there; what was missing was a name for the ceiling.
+
+**2. The genre's only consensus is negative.** GalCiv, Civ VI, Victoria 3, Anno 1800, Port Royale and
+Tropico disagree completely about what a capacity score is made of — authored tiles, a sum of built
+things, no cap at all, per-building met needs, civic unlocks. They agree on exactly one thing:
+**no game that wants the town to be a worthwhile target makes its capacity out of terrain alone.**
+
+**3. The three ceilings were never a materials problem — they were a FIRST-MOVE problem, and it is
+four constants agreeing badly.** `basePrice[0] = 0.15` prices victuals so that **selling food cannot
+fund growth** (deliberate, and correct), so the only route above local subsistence is a capital
+earner — **exactly one door**. `PLAN.weights.need = 1.5` is the auction's **largest** weight. `tavern`
+is the **cheapest** capital work, has `needsGround: null` so it fits anywhere, and serves that heaviest
+term — so it wins the first build essentially everywhere, **by construction**, and earns about nine
+souls' worth of growth appetite. Then the flat materials bill locks the door behind it. Measured:
+**48 of 52 frozen places had built a tavern**, and all 52 had built something that exports nothing.
+
+**Two collisions the design must keep avoiding:**
+
+- **`[HC-75]`** — *no place oscillates with growing amplitude across two hundred years* is a named
+  acceptance test, and **overshoot → collapse → regrow IS that oscillation.** The die-off the human
+  wants already exists and is caused by the cap *falling*; nothing in the model would deliberately
+  overshoot, and it should stay that way.
+- **A trade economy whose only consumer is the player is a shop, not an economy.** If growth stopped
+  reading goods entirely, materials would lose their only consumer — growth is the reason trade matters
+  *to a town*, which is the reason a blockade is a siege. The ratified shape avoids this because a
+  region's yield is still a good, and a town still buys what its own ground will not give it.
+
+---
 ### 2026-09-16 (third) — A warm start that RUNS needs no second way to build a town
 
 KAN-99 is built. `warmStart(seed)` generates the cold map, winds the clock back to the earliest
