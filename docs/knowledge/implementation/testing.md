@@ -368,6 +368,24 @@ them, which no unit test is even shaped to look for.
 - **Corollary for briefs:** when a story's acceptance criteria are all expressible against one
   module, that is a signal the story delivers a component. Ask what would observe it from outside.
 
+### Select and assert at the same instant
+
+**Found 2026-09-19.** A blockade claim picked its victim port from the world's state at **sixty
+years** and then asserted against it at **sixty-one**. It passed, and it was a coin-toss: the
+quantity it asserted on, `materialsShort`, is a seasonal **flow**, not a standing level — so the port
+could satisfy the claim simply by drawing no planks that season, for reasons having nothing to do
+with the blockade.
+
+- **A claim that selects its subject on one state and asserts on another is a coin-toss against
+  whatever moved in between.** Select and assert at the same instant, or run both arms the whole
+  distance and compare them.
+- **The tell is a quantity that is a FLOW rather than a LEVEL.** A level survives being looked at a
+  season later; a flow is a different number every season and may be zero for ordinary reasons.
+  Before asserting on a derived value, ask which of the two it is.
+- The same claim also had to be told that its port must own no timbered ground — **a cordon cannot
+  stop a man walking up his own hill.** A negative claim about an outside force needs the inside
+  route closed, or it is measuring the wrong thing.
+
 ### Claim a reversible process in BOTH directions
 
 **Found 2026-09-14, KAN-108.** `works.test.ts` covered the devolution ladder thoroughly — going

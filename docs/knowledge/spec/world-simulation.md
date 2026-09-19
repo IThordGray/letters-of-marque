@@ -1240,6 +1240,29 @@ bill exists before any supply does and **the whole map deadlocks on day one.**
 **`[HC-87c]` The materials build-gate fires at "cannot GET them", never at "is a little short".**
 Measured at zero tolerance: the world loses a third of its works and two thirds of its largest town.
 
+> **AMENDED 2026-09-16, built 2026-09-19: a work that PRODUCES materials is not gated by materials.**
+> You do not need planks to dig a sawpit. The exemption is derived from the catalogue's own
+> `exports: "materials"`, never from a list of kinds.
+>
+> **The cliff this fixed was at the FIRST capital work, not the second, and the shape of it
+> generalises: a bill keyed to what a place has BUILT is zero for a place that has built nothing —
+> so its first purchase is free and its second is the real gate.** Worth checking anywhere else a
+> charge counts standing works. Measured: **48 of 52 frozen places had spent that one free build on
+> a tavern** — the cheapest capital work, buildable on any ground, serving the auction's heaviest
+> term — and all 52 had built something that exports nothing. Frozen places fell 52 → 33.
+>
+> **And a texture correction, because this section's own example is true for a different reason than
+> it implies.** *"The shipways stand idle for want of planks"* is carried by the **dependency edge**
+> — `shipway requires sawpit` — and not by the materials bill at all. A shipway is only raisable once
+> the place is already cutting its own timber, so the bill could never bind on it. Measured:
+> **there is not one shipway anywhere in the world at day 0, on any of four seeds.** The sentence
+> survives; its mechanism is the requirement, not the gate.
+>
+> **This did NOT move the city band** (84–834 against a ratified 450–600), and `[HC-69]` got slightly
+> worse, because the world's median place rose faster than its cities did. That confirms the next
+> ceiling rather than removing it: freeing the first build buys a place its earner, and `[HC-87a]`'s
+> cargo-funded appetite then binds.
+
 #### §11.6 The fragile ceiling
 
 Bought food lifts the old food cap, and the replacement limits are already ratified: **coin ·
