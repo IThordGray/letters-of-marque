@@ -564,20 +564,25 @@ preference**, which is the part worth writing down:
 > **`[HC-95]` A region's focus is set once and never changed.** `null → production` and
 > `null → growth` are the only transitions. There is no unfocus, no re-focus, no swap.
 
-**A growth focus is covered by the same rule, and the manager's reasoning is recorded so it can be
-overruled.** The human ratified permanence for *production*. Growth is made permanent too because:
+**A GROWTH focus is narrower, and it needs no rule of its own.** *Ruled by the human 2026-09-19, and
+it replaced a reading that locked growth on being set.*
 
-- **Its effects already are.** Every hex a growth focus takes is **claimed**, and claiming is
-  permanent with no exception (§2.11, struck 2026-09-09). Lifting the flag would not give one hex
-  back, so a reversible growth focus would be a lever that reads as undoable and is not.
-- **It inherits §7.6's ratified irreversibility.** Focus is the successor to *grant the ground*
-  (§2.12.8), and a grant was *"one grant per hex, ever; irreversible without razing what stands"*.
-  Keeping that word is the conservative reading.
-- **It keeps "six decisions in the life of a town" true.** 3–5 live regions, one decision each, never
-  revisited — squarely inside §1.1.
+**A growth focus over empty ground may be redirected. It becomes irrevocable the moment the first hex
+is claimed under it.** The permanence is not a new promise — it is **inherited from one the model
+already has**: claiming is permanent, with no exception (§2.11, struck 2026-09-09). So the lock lands
+when something on the ground has visibly changed, rather than when a governor merely made up his mind.
 
-*Flagged as the manager's extension of a ratified line. Overrule freely — the cost of overruling is
-one enum transition, not a redesign.*
+- **No new state and no threshold.** The condition is a question the footprint already answers: *does
+  this region hold a claimed hex?*
+- **The clause writes itself** — ***"there are houses on it now."*** A governor who redirects growth
+  before anyone has built says so; one who cannot, says why.
+- **It keeps "six decisions in the life of a town" true**, because redirection is only available in
+  the window where nothing has happened yet, and stops being a decision the moment it would matter.
+
+> **Why the asymmetry is right rather than merely convenient.** A production focus has no such
+> moment — with rot deleted, its works simply stand there, so there is no point at which reversal
+> starts costing something. Growth has one, and it is the same event that already spends the ground.
+> **Each rule locks at the instant its own cost becomes real**, and neither needed inventing.
 
 **A focus costs no coin.** It is a landlord's decision, exactly as the grant it replaces was. What it
 costs is **the season's one decision** and **the fact that it is forever**. That is the whole of the
@@ -1331,12 +1336,25 @@ raiding has another. They become **one state with one bill**:
 | **An invasion** | Subtracts a share over an area | Nothing. `[HC-49]` still transfers a place with its ledger intact |
 
 **And the weather's existing `maintenanceShare` is the same idea at its smallest size** — a blow that
-scuffs a town and costs it a little coin. **They are kept distinct for now, and the reason is
-legibility rather than principle:** the maintenance bill is *unnamed wear* (coin, no work enters a
-visible state) and damage is the *named* form (this work, this share, visible from the beach).
-**Folding them entirely is available and would be cheaper — flagged for the human, not decided
-here.** `[HC-36]` is untouched either way: *"contents spoil"* remains a one-off wealth loss and there
-is still no stockpile to deduct from.
+scuffs a town and costs it a little coin.
+
+> **RATIFIED 2026-09-19: the two are KEPT DISTINCT, and the boundary is the weather band table's own.**
+> *Wear* is unnamed — coin only, no work enters a visible state. *Damage* is named — this work, this
+> share of fabric, visible from the beach until it is mended.
+>
+> **The reason is that §7.4's band table already draws exactly this line**, and folding them would
+> erase it. A Blow is *"loose roof shingles, a broken gate or fence"* and a Tempest is *"the warehouse
+> falls over and its contents spoil"*. Those are not the same event at two sizes; they are wear and
+> damage, and the table has said so since it was written.
+>
+> **The measured rates are the second argument.** A place sees roughly **47.6 blow-days a year**
+> against 2.26 gale-days and 0.44 tempest-days. Folding would put a visible dent in something on
+> nearly one day in seven, for ever — which reads as noise rather than as consequence, and would
+> drown the thing the human actually asked for: *land after a storm and see what has not been mended
+> yet.* **A mark you see every week is not a mark.**
+
+`[HC-36]` is untouched either way: *"contents spoil"* remains a one-off wealth loss and there is
+still no stockpile to deduct from.
 
 ### 4.9 The point, in one line
 

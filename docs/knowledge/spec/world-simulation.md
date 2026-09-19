@@ -1194,11 +1194,21 @@ therefore AREA** — the founding roll's own variance. A flat multiplier is reje
 an instant dial, and works store their scaled yields at raise time, so a later flip would silently
 fail to re-price everything already standing.
 
-**`[HC-95]` A region's focus is set once and never changed.** `null → production` and `null → growth`
-are the only transitions. **This is structural, not a preference:** the case for reversibility rested
-entirely on idle works *rotting* as the reversal cost, and `[HC-99]` deletes rot — so a reversible
-focus would cost nothing to lift and flip back, which is the instant dial the whole direction exists
-to avoid. **`[HC-95]` and `[HC-99]` hold each other up and neither is safe to revisit alone.**
+**`[HC-95]` A PRODUCTION focus is set once and never changed. A GROWTH focus locks the moment ground
+is actually claimed under it.** *Narrowed by the human 2026-09-19, from an earlier reading that locked
+both on being set.*
+
+**Production is structural, not a preference:** the case for reversibility rested entirely on idle
+works *rotting* as the reversal cost, and `[HC-99]` deletes rot — so a reversible production focus
+would cost nothing to lift and flip back, which is the instant dial the whole direction exists to
+avoid. **`[HC-95]` and `[HC-99]` hold each other up and neither is safe to revisit alone.**
+
+**Growth needs no rule of its own, and that is why it is narrower.** It inherits its permanence from
+one the model already has: **claiming is permanent, with no exception.** So a growth focus over empty
+ground may be redirected — nothing has happened yet — and becomes irrevocable the moment the first
+hex is built on, because *that hex* is. The clause writes itself: **"there are houses on it now."**
+No new state, no threshold, and the lock lands when something visibly changed rather than when a
+governor merely made up his mind.
 
 **`[HC-96]` The focus auction is four-termed — land, need, market, agenda. `fear` is structurally
 absent.** **Fear never argues for what ground is FOR.** It is a correct argument for a battery on a
