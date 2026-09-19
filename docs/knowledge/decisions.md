@@ -10,6 +10,85 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-19 (second) — Damage has a cause, never a clock; and the town remembers
+
+**Ratified after the human rejected the decay ladder outright.** The town's works no longer degrade
+from neglect. They are hurt by **events** — a storm, a raid, an invasion — and they are mended with
+**money**.
+
+**His words, and they are the specification:**
+
+> *"I like that the town remembers. I like that if a pirate sets buildings alight, or if an invasion
+> force hits an area, that viewing it later still shows the repair process. I also want storms to tie
+> into this damage mechanic. A storm hits, afterwards we land, and everything that hasn't fully been
+> repaired yet, shows it.*
+>
+> *I don't like the 'rot' part. If a town of 2000 had a booming industry, and got invaded, and pop is
+> down to 500, it makes sense that production takes a hit, because they can't man everything.*
+>
+> *The supplier part seems a bit confusing. Again, this is not a city builder where production chains
+> exist. When I spoke about the maintenance cost associated with things, it was monetary… having to
+> repair something because of storm, invasion, raid just has an income impact until everything is
+> restored."*
+
+**THE MODEL:**
+
+| | What it is | Reversible? |
+|---|---|---|
+| **Idle** | Under-manned. Not enough hands to work it. | **Free and instant**, both ways. Already built; needs no change. |
+| **Damaged** | Hurt by a named event. Visible on the ground. | Mended with **coin**, over time. |
+| **Destroyed** | Taken outright — a tempest's tail, or deliberate razing. | Never. And the ruin **stays on the map.** |
+
+**Repair is automatic and comes OFF THE TOP.** The town mends itself; the governor never chooses
+between a repair and a warehouse. The consequence is legible without surfacing a choice:
+
+> ***"Sarmiento builds nothing this year; the town is still mending."***
+
+**What this deletes** — all of it in the direction of *"not a city manager"*:
+- **The whole decay clock.** `DECAY.idleToDecayed`, `decayedToRuin`, and the `idleSinceDay` each work
+  carries. **No timers.**
+- **Rot as a concept.** Nothing degrades from being poor, idle or unloved.
+- **Supplier chains** (`requires`) — the edge that made a shipway need a sawpit.
+- **Most of KAN-108's mend decision.** It was a per-building governor choice priced at a fraction of
+  the raise cost; it becomes an automatic bill. Said plainly rather than pretended to survive.
+
+**What it gets right that the shipped model does not.** *A raid stops costing you buildings and starts
+costing you **years**.* You spend on repairs instead of on growing, and that is a far better answer to
+*"why does being raided hurt"* than watching sawpits rot. It also **unifies three systems that are
+currently separate** — storm damage, raid damage and invasion damage become one state with one repair
+bill, where today weather has its own path into the works ladder and raiding has another.
+
+**And the under-manning half already works exactly as described.** `allocateLabour` idles what cannot
+be manned and un-idles it the moment hands return, free and instantly. A town of 2,000 cut to 500
+loses production because the hands are gone, not because anything broke. **That part needs no change
+at all** — it is only the rot sitting on top of it that goes.
+
+---
+
+### The interaction with the region focus, which is the part worth noticing
+
+The human chose a **permanent** production focus over a reversible one. **Deleting rot makes that
+choice structurally necessary rather than merely preferred.**
+
+The case for reversibility rested entirely on the works idling and *rotting* as the reversal cost —
+free within three years, 40% within seven, full price after. **With no rot, lifting a focus costs
+nothing and can be flipped back instantly**, which is precisely the *instant dial* the whole direction
+exists to avoid. The two decisions hold each other up, and neither is safe to revisit alone.
+
+---
+
+### Deferred deliberately, at the human's request
+
+**A lockdown of every terrain kind the map generator can paint**, and what each is for, before any
+more per-terrain decisions are taken one at a time. Prompted by stone: the measured finding is that
+**12–22% of every town's bearing ground is inert** — `cottonGround`, `saltPans` and `rockyGround`
+that the generator paints, names, describes and draws, and which no work in the catalogue can touch.
+
+**Rocky ground stays dead for now.** No quarry; stone does not become a second materials source, so
+the 2026-09-16 neighbourhood guarantee is untouched. Noted as possible later uses: a defence bonus,
+or ground that is only good for housing. Salt's trade class is deferred to the same pass.
+
+---
 ### 2026-09-19 — A region has a potential; a focus decides what you get from it
 
 **A design pivot on the town's production half, ratified after discussion.** Three stories of chasing
