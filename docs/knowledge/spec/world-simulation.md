@@ -101,9 +101,16 @@ In this order, every simulated day:
    adding it later does not reorder anything.
 
 **`[HC-6]` Weather has two output paths and they must not be mixed.** *Damage* is an **event** and
-applies the day it happens — a work drops a grade, or at the top of the spectrum is destroyed.
-*Yield* is a **modifier** and accumulates into the current season's harvest, applied once when the
-season resolves. A downpour does not reach into a ledger that has not been struck yet.
+applies the day it happens — ~~a work drops a grade~~ **a work loses a share of its fabric**, or at
+the top of the spectrum is destroyed. *Yield* is a **modifier** and accumulates into the current
+season's harvest, applied once when the season resolves. A downpour does not reach into a ledger that
+has not been struck yet.
+
+> **AMENDED 2026-09-19 — the rule survives; only what the damage path WRITES has changed.** The two
+> paths, their separation and the reason for it are all untouched. With the devolution ladder
+> deleted (§10.8), damage no longer moves a work down a grade — **it subtracts a share of `standing`,
+> a continuous degree**, and the work is put back with coin and time. The tail still destroys, capped
+> by `[HC-35]`. **Everything `[HC-6]` was protecting is protected by the same sentence.**
 
 ### §2.3 The seasonal tick
 
@@ -194,6 +201,14 @@ possible at all.
 > allotted, bought, paid), because both are `[HC-72]` input rows rather than ledger derivations.
 > Neither holds *stock*, so the ban on an in-town goods inventory survives untouched. The test to
 > apply is **"could this have been recomputed?"** — not "how many fields are there?".
+>
+> **Applied to the two 2026-09-19 directions, which is the best worked example this rule has had.**
+> A region's **`focus`** passes: it is a decision that was taken, and no function of the ledger could
+> recover it. A work's **`standing`** passes: an event did it, and nothing in the ledger remembers
+> the storm — and it *replaces* the `idleSinceDay` the decay clock needed, so the field count does
+> not even rise. A region's **depth fails outright** and is therefore counted, never stored
+> (`[HC-93]`): it is exactly a derived quantity, free to drift away from the works that explain it.
+> **Three fields, one rule, three different answers** — which is what a good test looks like.
 
 **`[HC-15]` Nothing pairwise.** See `[HC-7]`. Any design that compares every place to every other
 place is wrong, however cheap it looks at fifty.
@@ -512,9 +527,30 @@ illustrations of it. Numbers are tuning; the *sentences* are the rule.
 **`[HC-34]` Damage moves works down the existing ladder** — `working → idle → decayed → ruin` — one
 grade at a time. It never skips to ruin, and it never touches more works than the severity warrants.
 
+> **SUPERSEDED 2026-09-19 — there is no ladder to move down.** The devolution ladder is deleted
+> (§10.8, `[HC-99]`). **What replaces it, and it is the same promise in a better shape:**
+>
+> > **`[HC-34]` Damage subtracts a SHARE OF A WORK'S FABRIC, proportional to the sampled severity,
+> > and it never takes more works than that severity warrants.**
+>
+> **Both halves of the old rule survive, and one of them is now true by construction rather than by
+> a check.** *"It never skips to ruin"* used to need a guard — a drop had to be stopped at `decayed`
+> so that only the tail could write `ruin`. **A continuous share cannot skip**: a severity that takes
+> a fifth of a warehouse takes a fifth of it, and only the tail writes zero. *"Never more works than
+> the severity warrants"* is unchanged and still needs its rate.
+>
+> **And `[HC-33]` is untouched and still wins where it always did:** effects read the sampled
+> severity and nothing else. The share subtracted is a function of that number, and no code path may
+> know that a storm happened here.
+
 **`[HC-35]` The extreme tail may destroy exactly ONE work PER CONTACT, never a sweep.** This is what
 preserves the distinction the human drew: **razing is deliberate and wholesale; the storm is random
 and singular.** A town can lose its quay to the sea; it cannot lose its town to the sea.
+
+> **`[HC-35]` SURVIVES VERBATIM, and it matters more now.** With damage continuous, *destroyed* is
+> the one thing that is still categorical — the endpoint of the scale, and the only outcome that
+> never comes back. The cap that keeps a storm from taking a town is therefore **the whole of the
+> difference between weather and a razing**, where it used to share that job with a ladder.
 
 > **Reworded 2026-09-10 from "per event" to "per contact", because the two readings are not both
 > reachable.** KAN-90 built this and reported the tension rather than tuning it away.
@@ -916,8 +952,23 @@ fortification, none of which is size class.
 | Reading | What it is | Recovery |
 |---|---|---|
 | **Poor** | Works still working; wealth and prosperity low | **Unaided.** Ordinary recovery. |
-| **Ruined** | Sitting on the hamlet floor — subsistence works only, the rest decayed or ruin | **Only with substantial outside help** |
+| **Ruined** | Sitting on the hamlet floor — subsistence works only, the rest ~~decayed or ruin~~ **hurt or destroyed** | **Only with substantial outside help** |
 | **Abandoned** | No people and no works | **Never** |
+
+> **REWORDED 2026-09-19, because the word it used no longer exists.** `decayed` is deleted with the
+> devolution ladder (§10.8). *Ruined* still requires **the wreck** — the thing that tells a fallen
+> town from a young hamlet that never had more — and the wreck is now **works standing hurt and
+> unmended, and ruins on the ground.**
+>
+> **`[HC-66]` is untouched and is arguably better served.** It stores no failure state, and *"the
+> ruins are the memory"* is now literally true: a ruin is permanent, and a work still showing its
+> damage seasons later is exactly the human's *"viewing it later still shows the repair process."*
+> **What is stored is a work's `standing` — a fact about a building, not a reading about a place**,
+> and `[HC-66]` has only ever forbidden the second.
+>
+> **And the recovery column still works, for the same reason it did before:** `idle` revives for
+> free and a hurt work does not. What changed is that the second one is now put right by a **bill**
+> instead of by a decision.
 
 > **Two clarifications the implementation needed (KAN-106), because the table as written was not
 > quite implementable.** *Abandoned* requires **both** halves of its clause: subsistence works never
@@ -1034,9 +1085,18 @@ The ledger's core survives untouched, because it was built to be driven from out
 
 Also unchanged: prosperity stays *stored* because it must **lag**; the causal chain (land → works →
 population → yield → wealth → prosperity); the governor's **five-term auction** and the rule that
-**the explanation is the score**; the **hamlet floor**; the works **devolution ladder**; the
+**the explanation is the score**; the **hamlet floor**; ~~the works **devolution ladder**~~; the
 footprint; and the four-sentence player read. **`[HC-70]` None of these is reopened by the world
 layer.** If a world-layer change appears to require touching one, the change is wrong.
+
+> **AMENDED 2026-09-19 — the devolution ladder is struck from this list, and `[HC-70]` is not what
+> struck it.** The ladder was deleted by **the human**, ratifying *"damage has a cause, never a
+> clock"* (§10.8). `[HC-70]` says the **world layer** may not reopen these; it has never bound the
+> human or the design, and this is the distinction worth keeping sharp — a rule that stops an
+> engineer reaching sideways is not a rule that freezes a design.
+>
+> **Everything else on the list survives**, including the five-term auction, which gains a second
+> candidate type rather than a sixth term (§10.7).
 
 #### §10.2 Inversion of control — the one architectural rule
 
@@ -1108,6 +1168,88 @@ its exports fund → coffers empty → food unbought → population falls → re
 drift should damp it, and a two-hundred-year run is the first thing that can actually prove it does.
 **This is a named acceptance test, not a hope.**
 
+> **Two 2026-09-19 notes against this, one in each direction.** **(1)** The region focus adds
+> **rising returns** on a deepened region, which is an overshoot engine if it is unbounded — so it is
+> **capped at the region's area**, and the loop then terminates on the founding roll rather than on a
+> constant (`[HC-94]`, town-economy §2.12.5). **(2)** Deleting rot removes a *second*, quieter
+> oscillator that was already in the model: poor → neglect → decay → smaller → poorer. Nothing
+> degrades from being poor any more (`[HC-99]`).
+
+#### §10.7 The region focus — six constraints
+
+*Added 2026-09-19. The design lives in [`town-economy.md`](town-economy.md) §2.12; what is recorded
+here is the constraint set, because this document is where the `[HC-n]` register lives.*
+
+> **A region has a POTENTIAL given by its ground. A FOCUS decides what the town takes off it** —
+> `production` or `growth`. **Goods survive; production chains do not.**
+
+**`[HC-93]` A region's DEPTH is how many works stand on its hexes. It is counted, never stored.**
+No development integer, no level, no tier on a region. Storing it would break `[HC-14]` (a derived
+quantity stored is a quantity free to drift from its explanation) and the ratified work-visibility
+requirement (*"I want to see the lumber mill"*) at the same time.
+
+**`[HC-94]` A focus buys CAPACITY, never a multiplier.** Unfocused, a region carries a token work;
+focused on production, it may be worked to its free area. **The focused-to-unfocused ratio is
+therefore AREA** — the founding roll's own variance. A flat multiplier is rejected twice over: it is
+an instant dial, and works store their scaled yields at raise time, so a later flip would silently
+fail to re-price everything already standing.
+
+**`[HC-95]` A region's focus is set once and never changed.** `null → production` and `null → growth`
+are the only transitions. **This is structural, not a preference:** the case for reversibility rested
+entirely on idle works *rotting* as the reversal cost, and `[HC-99]` deletes rot — so a reversible
+focus would cost nothing to lift and flip back, which is the instant dial the whole direction exists
+to avoid. **`[HC-95]` and `[HC-99]` hold each other up and neither is safe to revisit alone.**
+
+**`[HC-96]` The focus auction is four-termed — land, need, market, agenda. `fear` is structurally
+absent.** **Fear never argues for what ground is FOR.** It is a correct argument for a battery on a
+bluff — a work, on a hex, answering a threat — and no land use makes a town safer. A fifth term here
+would be defence claiming a fourth home, which `[P-47]` forbids.
+
+**`[HC-97]` A decision about a region that already carries works is scored from THAT REGION'S OWN
+GROUND** — `potential × free capacity × local price` — **never from the catalogue's figures for a
+kind.** This is KAN-108's kind-versus-instance finding, which **outlived the decision it was made
+for**: the mend decision it constrained is gone, and a *deepening* immediately took its place beside
+the auction.
+
+**`[HC-98]` A subsistence work is never gated on focus, on depth, or on anything a decision can
+withhold.** Gate them and `[HC-67]`'s hamlet floor and `[HC-18]`'s *only a deliberate hand empties a
+town* fail together, silently, as a number drifting to zero in a two-hundred-year run.
+
+#### §10.8 Damage has a cause, never a clock — four constraints
+
+*Added 2026-09-19. The design lives in [`town-economy.md`](town-economy.md) §4, which replaces that
+document's devolution ladder outright.*
+
+**`[HC-99]` Damage has a cause, never a clock.** Nothing degrades from being poor, idle or unloved,
+and **no work carries a neglect clock**. Works are hurt by **named events** — a storm, a raid, an
+invasion — and put back with coin and time. **If a work is worse off than it was, some named thing
+did it, and the chronicle can name it.**
+
+**`[HC-100]` Repair is automatic and comes off the top.** The governor never chooses between a repair
+and a warehouse. The consequence stays legible without a choice being surfaced: *"Sarmiento builds
+nothing this year; the town is still mending."* It sits in **phase 3 (SETTLE)**, after imports and
+before the governor decides anything — which **extends `[HC-78]`** from *bread before batteries* to
+***bread, then mending, then batteries.***
+
+**`[HC-101]` Raising a work and mending one are the same act, priced and timed by the share of fabric
+missing.** Half gone: half the coin and half the time. Wholly gone: the whole of both. A work's
+`standing` is a **degree** (0 to 1), not a grade on a ladder; **destroyed is the endpoint of that
+scale**, and a work that is not whole does not work. **Every duration is deliberately unfixed** — the
+human has tied them to a zoning tile upgrade mechanism that does not exist yet, and per `[HC-90]`
+they are a table while this is the behaviour.
+
+**`[HC-102]` A work in hand requires no decision from anyone while it stands unfinished.
+Commissioning is the decision; the duration is a consequence.** `design-doc.md` §1.1 bans a
+**recurring decision** on a timer — a chore the player services — not the passage of time. **This is
+the same shape the world already ratified** in `[HC-8]` (a promotion is decided in phase 5 and
+delivered later) and `[HC-45]` (a dispatch is credited on arrival), and it earns the same virtue: a
+thing in progress is a thing that can be interrupted.
+
+> **Recorded because it was got wrong once.** Three things were conflated: §1.1's ban on recurring
+> *decisions*, the decay clock the human deleted (rejected for making things **degrade from
+> neglect**, not for being a clock), and how long work takes (fine, normal, and now required). Only
+> the middle one was ever refused.
+
 ### How it impacts the game
 
 Nothing directly, and that is the point: the ledger has no player surface at all. Its output is
@@ -1130,6 +1272,24 @@ parked suite has to come back before fifty of these run for two centuries.
 - **No place oscillates with growing amplitude across two hundred years** (`[HC-75]`).
 - **A town's local map agrees with its world position**, and still draws water to the south
   (`[HC-73]`).
+
+*Added 2026-09-19, for §10.7 and §10.8:*
+
+- **No region stores a number that counting its works would give** (`[HC-93]`). Checkable by the
+  shape of the struct, which is the cheapest kind of test there is.
+- **Two towns on identical ground with different focuses produce different export classes** — and
+  **two towns with the same focus on differently-sized dominant regions produce different depths**
+  (`[HC-94]`: the ratio is area).
+- **No focus is ever set twice on the same region**, across a two-hundred-year run (`[HC-95]`).
+- **No place's works get worse without a named cause in its chronicle** (`[HC-99]`). This is the
+  single most important test in §10.8 — a rot that crept back in would look exactly like ordinary
+  decline until somebody read a chronicle.
+- **A place that has been hurt and cannot pay builds nothing, and says which** — the coin limit and
+  the time limit write different clauses (`[HC-101]`).
+- **A destroyed work never returns**, and its ground is free for a new one (`[HC-87]`: the potential
+  is un-burnable, the claim is not).
+- **The warm start is RE-MEASURED with build durations in it** before any conclusion is drawn from
+  the city band, which was measured without them (`[HC-22]`).
 
 ---
 
@@ -1162,6 +1322,12 @@ it is.
 
 **`[HC-78]` Imports are paid before construction — bread before batteries.** This is what produces
 the good failure state: *"they spend all they make on corn."*
+
+> **EXTENDED 2026-09-19, not superseded: bread, then MENDING, then batteries.** Repair is automatic
+> and comes off the top (`[HC-100]`), and it sits between the two — after the quay is paid, before
+> the governor decides anything. The good failure state gains a sibling: ***"they spend all they
+> make putting the place back together."*** The ordering argument is the original one, unchanged:
+> nothing may spend coin before the town has bought its corn.
 
 **`[HC-79]` Luxury is a need with teeth, not a second prosperity meter.** A place with victuals and
 materials covered wants luxury and **goes short without it** — that is why it was restored. But its
@@ -1262,6 +1428,26 @@ Measured at zero tolerance: the world loses a third of its works and two thirds 
 > worse, because the world's median place rose faster than its cities did. That confirms the next
 > ceiling rather than removing it: freeing the first build buys a place its earner, and `[HC-87a]`'s
 > cargo-funded appetite then binds.
+>
+> **FOLLOW-UP 2026-09-19, and it retires this block's own example.** The texture correction above
+> records that *"the shipways stand idle for want of planks"* is carried by the **dependency edge**
+> and not by the materials bill. **The dependency edges are deleted** with the region focus, and the
+> shipway is reclassified as a harbour work — so **the sentence is retired with its mechanism**
+> rather than quietly kept. What replaces it is the market term arguing in coin, which §3.5.4 already
+> ratified: *"timber fetches well here."*
+>
+> **`[HC-87c]` itself is untouched** — the gate still fires at *"cannot GET them"* and never at *"is
+> a little short"*. **The 2026-09-16 exemption is untouched and re-keys**: *a work that produces
+> materials is not gated by materials* now reads off the **produce** (`timber`, `stone`) rather than
+> off a work's `exports` column, which is the same single source one indirection shorter
+> (town-economy §2.12.13). **One live consequence to expect:** a `shipway` has no produce, so it
+> stops being exempt and must be supplied to be laid down. *You do need planks to lay down a
+> shipway* — which is the only half of the old chain worth keeping, and the bill keeps it for free.
+>
+> **And the first-build cliff this block found is worth re-checking after the focus lands**, because
+> the shape it generalised — *a bill keyed to what a place has BUILT is zero for a place that has
+> built nothing* — is exactly the shape a **focus-gated depth** also has. Measure it; do not assume
+> it either way.
 
 #### §11.6 The fragile ceiling
 
@@ -1370,6 +1556,10 @@ officers — the player's systems, to be specced once this runs.
 **Eighty-nine hard constraints.** The ones most likely to be broken by accident, and worth re-reading
 before writing any code:
 
+> **`[HC-93]`–`[HC-102]` were added 2026-09-19** — six for the region focus (§10.7) and four for the
+> damage model (§10.8). The count in the line above dates from `[HC-89]` and is kept rather than
+> re-arithmetised on every entry; **the register is the numbers, not the total.**
+
 - **`[HC-10]`** randomness derived, never consumed in traversal order — silently rewrites history.
 - **`[HC-7]` / `[HC-83]`** trade clears globally, by summation — order dependence is invisible until
   it isn't.
@@ -1377,6 +1567,10 @@ before writing any code:
 - **`[HC-33]`** effects read sampled severity, never "a storm happened here".
 - **`[HC-48]`** a war ends when will breaks — the one spine, not a body count.
 - **`[HC-71]`** the world drives the ledger; the ledger never reaches out.
+- **`[HC-93]`** depth is counted, never stored — the development integer is the obvious shortcut and
+  it silently breaks *"I want to see the lumber mill"*.
+- **`[HC-97]`** a standing region is an instance — scoring it from the catalogue is the second path
+  `[P-47]` forbids, and it looks correct right up until the ground is anything but default.
 
 **`[HC-89]` The milestone is done when a century reads as plausible and every change in it has a
 nameable cause.** Not when it is fun. Fun is three systems that are not in this document.

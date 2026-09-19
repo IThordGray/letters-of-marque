@@ -53,6 +53,14 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
   footprint** (`town-economy.md` §2.5) is **our addition, not inherited** — unlike town persistence
   above, which was restoration. The human's requirement that motivates it: *"if a new lumber mill
   is built and I land there with my units, I want to see the lumber mill."*
+  - **And the same finding settles the REGION FOCUS, 2026-09-19.** If towns grew in wealth and not
+    in extent, **the original had no land-use decision at all** — so `town-economy.md` §2.12's
+    *potential · focus · claim · yield* is **our addition, exactly like the footprint, and not a
+    restoration.** It has to earn its place on its own terms.
+  - **What IS lineage sits inside the same direction, and it is why goods survive while chains do
+    not:** per-town goods prices you trade against are part of the original (confirmed below,
+    2026-09-08 — *"yes, that allows for trade"*). **Timber is inherited; timber → planks → hulls is
+    not.** Keeping those two straight is the whole of *"goods survive; chains do not."*
 - _(Add confirmed mechanics and feel here as we go.)_
 
 ## Rise of Piracy (2026, Early Access) — the closest living competitor

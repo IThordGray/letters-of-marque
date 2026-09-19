@@ -2,10 +2,18 @@
 
 **Layer:** WHAT (tool-agnostic) · **Scope:** land / strategic · **Authority:** human edits win.
 
-*What a town **is**, how it grows and decays on its own, and how its ledger becomes a raid map.
-Ratified 2026-09-07 — see [`../decisions.md`](../decisions.md). Comparables and the
+*What a town **is**, how it grows and ~~decays~~ **is hurt** on its own, and how its ledger becomes a
+raid map. Ratified 2026-09-07 — see [`../decisions.md`](../decisions.md). Comparables and the
 ADOPT/ADAPT/REJECT reasoning live in [`design-references.md`](design-references.md). This spec
 must not contradict [`../../design-doc.md`](../../design-doc.md) §1.1, §7.1, §7.3.*
+
+> **Two directions ratified 2026-09-19, and they are the largest change to this document since it was
+> written.** **§2.12 — the region focus:** a region has a **potential** given by its ground, and a
+> **focus** decides what the town takes off it. *Goods survive; production chains do not.*
+> **§4 — damage has a cause, never a clock:** nothing degrades from neglect; works are hurt by named
+> events and put back with coin and time. **The two hold each other up and neither is safe to revisit
+> alone** (§2.12.6). Between them they supersede §3's devolution ladder and its two dependency edges,
+> and they fold §7.6's *grant the ground* into the focus.
 
 ---
 
@@ -50,6 +58,16 @@ Two consequences that make the whole feature cheap:
 | `investment` | Standing coin-per-season commitment from the patron (§6). |
 | `chronicle[]` | One clause per notable event, **including the player's raids**. |
 | `labour` | Population composition, incl. bonded labour where the archetype has it (§8). |
+
+> **What 2026-09-19 changes in this table, and it is three lines.** **(1)** A **region** gains one
+> field — `focus`: `production` · `growth` · `null` (§2.12). It is the only new stored thing in
+> either of that day's two directions. **(2)** A **work** gains `standing` — the share of its fabric
+> that is built — and **loses** the `idleSinceDay` it carried for the decay clock (§4.2). Net zero.
+> **(3)** `grantedToTown` is **deleted** from the town: it was the region focus under another name
+> (§2.12.8).
+>
+> **Nothing else on this table moves**, and in particular **no region gains a development number** —
+> depth is counted, never stored (`[HC-93]`).
 
 ### Derived every tick, never stored
 
@@ -133,6 +151,12 @@ Sizes come from a **budgeted, skewed** draw — never uniform:
 
 **Area is capacity.** Five timber hexes means room for five sawpits, and each stands on its own
 named hex.
+
+> **AMENDED 2026-09-19 — area is capacity *once a focus has been set*.** A region a town has decided
+> nothing about carries one token work, however big it is; a region focused on production may be
+> worked to its free area. So **the focused-to-unfocused ratio IS area**, and the skewed sizes
+> budgeted above stop being only a matter of prose and the map and finally pay off in the economy
+> (§2.12.4). Nothing about how the sizes are rolled changes.
 
 ### 2.4 The four rules that protect identity (R1–R4)
 
@@ -245,6 +269,14 @@ A bay may bite north into the land; a headland may jut south; the shore may run 
 **Still forbidden everywhere:** worker allocation · re-founding · choosing where a building stands ·
 and the new line to defend — **the player never chooses which hex the town claims next.**
 
+> **AMENDED 2026-09-19 — the third state collapses into the second.** *Grantable* and *Steerable*
+> were two names for one verb: both answer *what is this piece of ground for*, once, irreversibly.
+> **Grant-a-region becomes the REGION FOCUS** (§2.12), which is **thematic**, so it sits on the
+> Steerable row where it always belonged. What survives of the distinction is the only part that was
+> ever load-bearing: **the governor sets a focus everywhere; the owner sets one in his own haven,
+> directly and for free.** The forbidden list above is untouched, including its last line — **a
+> growth focus says which REGION the town may spread into, never which hex it takes next.**
+
 ### 2.9 Acceptance tests for the land
 
 > **NARROWED 2026-09-10 (KAN-103), because the broad version is false.** Test 3 below asserts that
@@ -336,6 +368,11 @@ reluctantly · **the bluff** last · **never marsh, never open sea**.
 release valve. A town with scrub to the north sprawls north for a century and keeps every good
 acre; a town ringed by rich cane must eat its cane to grow.
 
+> **And a FOURTH time, 2026-09-19.** Scrub is the only ground a **growth focus** costs nothing to
+> take (§2.12.7), because there was no production on it to spend. The clause says exactly why:
+> *"nothing else was ever coming off that ground."* A town with dead ground to grow into can be
+> **both** a big town and a timber town; a town ringed by cane has to choose which.
+
 **It grows lobes, not rings**, because the order is strongly ordered, dead ground breaks the
 symmetry, and a wall holds one side rigid while the other sprawls.
 
@@ -391,12 +428,395 @@ village living in a ruined fort.
 caps a colony near **~450 souls**. Calibrate thresholds to that band; **do not** pull grain-buying
 forward from the trade tail to make this work.
 
+## 2.12 The region focus — potential, focus, claim, yield
+
+*Ratified 2026-09-19. Authority: [`../decisions.md`](../decisions.md), **"A region has a potential; a
+focus decides what you get from it"**. This section and §4 were ratified in the same sitting and
+**neither is safe to revisit alone** — see §2.12.6.*
+
+> **A region has a POTENTIAL given by its ground. A FOCUS decides what the town takes off it.**
+> Focus production and the region yields more of what its ground bears. Focus growth and the ground
+> becomes housing: more people, and the production is largely spent.
+
+**GOODS SURVIVE; CHAINS DO NOT.** Timber is still a real thing that moves on real ships and fetches a
+local price. What goes is *timber → sawpit → planks → shipway*. This is a **sandbox age-of-pirates
+game, not a city manager**, and a brittle production chain is the shape of the other thing.
+
+**What actually changes is that the choice is nobody's.** The footprint spills a town outward
+automatically on a fixed relief order (§2.11), so no town has ever decided *"this is a timber town"*
+or *"this is a big town"*. **Making that a direction rather than a side effect is the whole of this
+section.**
+
+### 2.12.1 Four nouns, and only one of them is new state
+
+| Noun | What it is | Where it lives | Burnable? |
+|---|---|---|---|
+| **Potential** | What this ground will bear, and how well — `region.bears`. Set once at founding by the profile supplier (§2.5). | Already stored | **No. Un-burnable.** Ground is ground. |
+| **Focus** | `production` · `growth` · `null`. **The one new field**, and it sits on the **region**. | New | No — but see §2.12.6: it is never taken back either. |
+| **Claim** | The works standing on that region's hexes, and the hexes the town has built over. | Already stored | **Yes.** This is the half a raider can reach. |
+| **Yield** | What comes off it this season. | **Derived every tick**, as today | — |
+
+**Potential is the CAP; the claim is what has actually been taken up.** Burning the claim collapses
+production while the potential sits there waiting, which is what keeps `[HC-87]`'s fragile ceiling
+alive and what makes a place worth **occupying rather than razing**. It also satisfies the heritage
+test: *the number carrying the town's size stays destructible at the building level.*
+
+### 2.12.2 Depth is DERIVED — never a stored number
+
+> **`[HC-93]` A region's DEPTH is how many works stand on its hexes. It is counted, never stored.**
+> There is no development integer, no level, no tier on a region.
+
+**Record the resolution explicitly, because the shortcut is obvious and someone will later believe it
+was sanctioned.** Collapsing a region's works into a single *development* number would be smaller
+code and it would break two ratified things at once:
+
+- **`[HC-14]`** says store almost nothing and derive the rest — and its own test is *"could this have
+  been recomputed?"* A development integer is exactly a derived quantity stored, free to drift away
+  from the sentence that explains it.
+- **§7's work-visibility requirement**, in the human's words: *"If a new lumber mill is built and I
+  land there with my units, I want to see the lumber mill."* A development number has no lumber mill
+  in it to see.
+
+Counting the works keeps both true at once, at the cost of a filter over ~20 ledger lines once a
+season. **That is the cheapest thing in this document and it is load-bearing.**
+
+**Two readings of the same count, and they are deliberately different:**
+
+| Reading | Counts | Because |
+|---|---|---|
+| **Yield depth** | works **whole and working** on the region | A mill that is not whole saws nothing (§4). |
+| **Installation depth** — what the label and the projection read | works **standing**: working, idle, or **in hand** (§4) | You can see a mill with scaffolding on it, whether it is going up or being put right. A ruin is not standing. |
+
+Both are derived. Neither is stored. §7 contracts 3 and 9 are what they are for.
+
+### 2.12.3 Exactly two focuses, and the candidates that were rejected
+
+**There are exactly two things a population can do with ground: work it, or live on it.** That is the
+structural bound, in the same shape as §5.8's *"a fourth focus would need a fourth thing a work can
+produce"* — not a taste call.
+
+**Rejected, recorded so they are not re-proposed:**
+
+| Candidate | Why not |
+|---|---|
+| **Defence** | Not something ground *yields*. Defence already has three homes — the `fear` term, the `guns` steer, and the defensive works themselves — and `[P-47]` forbids a fourth path to one value. A bluff's answer is **a battery, which is a town work**, not a land use. |
+| **The port** | One legal target per town. A choice with one option is not a choice. |
+| **Trade** | Has no ground to stand on. Trade is what happens to a yield after it reaches the quay. |
+| **Fallow** | That is `null`, and `null` already means it. |
+| **Extraction vs. agriculture** | **The produce already knows.** `region.bears` says timber or cane; a second axis saying "extract" would be the same fact twice. |
+
+### 2.12.4 A focus buys CAPACITY, not a multiplier
+
+> **`[HC-94]` A focus buys CAPACITY, never a multiplier.** Unfocused, a region's depth caps at a
+> token work. Focused on production, its depth may reach its free area. **The focused-to-unfocused
+> ratio is therefore AREA** — the founding roll's own variance — and nothing anywhere multiplies a
+> yield because a focus was set.
+
+**Why a flat multiplier is REJECTED, and it is two separate objections:**
+
+1. **It is an instant dial.** *"Set focus, yields rise 40%"* is a number the player watches rather
+   than a place he shapes, and it reads as a spreadsheet the moment it is surfaced (§1.1).
+2. **It would silently fail.** Works **store their scaled yields at the moment they are raised** —
+   that is how suitability, the sweet spot and `far` ground are already priced. A focus flipped later
+   would not re-price the works already standing, so the dial would be a lie on every existing work
+   and true only on new ones. A rule that is true of some rows and not others is worse than no rule.
+
+**And the ratio being area is the payoff, not a side effect.** §2.3's budgeted, skewed region sizes —
+a dominant of 5–9 hexes against a minor of 1–2 — have until now paid off only in prose and in the
+map. **Focus is what finally makes them pay in the economy:** a town whose dominant region came out
+at nine hexes can become a timber town in a way a town whose best came out at three never can, and
+nobody tuned that.
+
+**The token cap, for an unfocused region: ONE capital work.** A region nobody has decided anything
+about still gets worked a little — a hamlet takes what timber it needs off the ridge — but it never
+becomes an industry. The clause: *"there is timber over the ridge; they take what they need of it."*
+Subsistence works are outside this entirely (§2.12.11).
+
+### 2.12.5 Rising returns, capped at the region's own area
+
+> **The Nth work on a region is worth more than the first — a mill and its yards, not a pit.**
+
+A second sawpit on the same hills shares a track, a pond and a crew; a fifth is a works. So the
+premium rises with depth, and it is **minted into the new work at the moment it is raised**, exactly
+as suitability and reach already are. **The standing works are never re-priced** — same rule as
+§2.12.4, for the same reason, and if the fifth burns, the *yards* are what the town lost.
+
+**The cap is the region's area, and it is not a separate number.** Depth can never exceed free
+hexes, so the premium runs out of ground before it runs out of anything else. **This is deliberate
+and it is `[HC-75]`:** unbounded rising returns are an overshoot engine — more works, more yield,
+more growth, more works — and *"no place oscillates with growing amplitude across two hundred
+years"* is a named acceptance test, not a hope. **Capped at area, the loop terminates on the
+founding roll.**
+
+*The curve's shape is a tuning table, not a rule ([HC-90]) — what this spec fixes is that it rises,
+that it is minted at raise time, and that area is its ceiling.*
+
+### 2.12.6 A focus is set once, and never taken back
+
+**A production focus is PERMANENT — ratified.** And the reason is **structural rather than a
+preference**, which is the part worth writing down:
+
+> The case for a reversible focus rested entirely on the works idling and **rotting** as the reversal
+> cost. §4 deletes rot. **With nothing rotting, lifting a focus costs nothing and it can be flipped
+> back the next season** — which is precisely the *instant dial* this whole direction exists to
+> avoid. **The two directions hold each other up, and neither is safe to revisit alone.**
+
+> **`[HC-95]` A region's focus is set once and never changed.** `null → production` and
+> `null → growth` are the only transitions. There is no unfocus, no re-focus, no swap.
+
+**A growth focus is covered by the same rule, and the manager's reasoning is recorded so it can be
+overruled.** The human ratified permanence for *production*. Growth is made permanent too because:
+
+- **Its effects already are.** Every hex a growth focus takes is **claimed**, and claiming is
+  permanent with no exception (§2.11, struck 2026-09-09). Lifting the flag would not give one hex
+  back, so a reversible growth focus would be a lever that reads as undoable and is not.
+- **It inherits §7.6's ratified irreversibility.** Focus is the successor to *grant the ground*
+  (§2.12.8), and a grant was *"one grant per hex, ever; irreversible without razing what stands"*.
+  Keeping that word is the conservative reading.
+- **It keeps "six decisions in the life of a town" true.** 3–5 live regions, one decision each, never
+  revisited — squarely inside §1.1.
+
+*Flagged as the manager's extension of a ratified line. Overrule freely — the cost of overruling is
+one enum transition, not a redesign.*
+
+**A focus costs no coin.** It is a landlord's decision, exactly as the grant it replaces was. What it
+costs is **the season's one decision** and **the fact that it is forever**. That is the whole of the
+scarcity, and there is deliberately no budget in it.
+
+### 2.12.7 A growth focus needs no new mechanism at all
+
+It acts entirely through machinery that already ships:
+
+> **growth focus → `nextHex` takes that region's ground first → crowding falls → the `shelter` need
+> is met → prosperity rises → `prosperityPull` rises → carrying capacity rises → more souls.**
+
+And **its cost is already literal**: a claimed hex leaves its region's capacity and **idles the work
+standing on it** (§2.11, *"growth eats its own cause"*). The human's trade-off was already the
+model's spine; all that was missing was somebody choosing where it landed.
+
+**Two smaller things fall out, and both are worth having:**
+
+- **A growth focus aimed outside the wall's frozen circuit deliberately manufactures a FAUBOURG.**
+  §2.11 froze the circuit at the moment the wall was raised, and §7 contract 8 says a claimed hex
+  outside it *simply is* the suburb. So the owner of a haven can now **choose to build a town outside
+  its own gate** — houses under the wall, approach cover for the next raider, a two-stage raid the
+  generator gets for nothing. It needs no new machinery and it is a real decision with a real cost.
+- **Dead ground now pays a FOURTH time.** It was the economic ceiling, the defensive gift, and the
+  release valve (§2.11). Now it is **the only ground you can grow on for free** — a growth focus on
+  scrub costs a town nothing at all, and the clause says exactly why:
+  *"nothing else was ever coming off that ground."* A town with scrub to the north can be **both** a
+  big town and a timber town; a town ringed by cane must choose.
+
+### 2.12.8 Who chooses — and `Town.grantedToTown` is deleted
+
+**§5.8's governing principle holds unchanged: the governor sets a focus everywhere; the owner sets it
+in his own haven.** A focus is **thematic** — *what is this land for* — not spatial, so it sits on the
+steerable side of §2.8's three states, not the grantable one.
+
+- **The governor chooses, and publishes his reason** (`[HC-1]`: no engine system prompts the player;
+  `[HC-16]`: every decision publishes its reason). *"Sarmiento gives the cane flats over to the
+  town — there is nowhere left for people to sleep."*
+- **The player steers only where he owns the ground**, through the ratified *guns · coin · hands*
+  steer — and **the region focus takes §5.8's existing OPTIONAL NAMED PRODUCTION LINE slot. It is
+  NOT a fourth arm.** The three-armed steer and its structural bound survive verbatim. What changes
+  is only that the optional line stops being named by its output and starts being named by its
+  ground: *"the cane"* becomes ***"the cane flats to the south-east."***
+
+> **`Town.grantedToTown` is DELETED.** §7.6's *grant the ground* and the region focus are **one
+> concept, discovered twice.** Both answer *what is this piece of ground for*, both are one-time and
+> irreversible, both are the owner's to set and the governor's to publish. Keeping both would be
+> `[P-47]` written into the struct: two fields for one fact, and a `nextHex` that has to consult
+> them both. **Grant-to-the-town becomes `focus: "growth"`, and nothing else changes.**
+> See §7.6 for the superseded text and what survives of it.
+
+### 2.12.9 The focus auction is FOUR-termed
+
+A focus is a decision, so it is scored and it writes its own clause — the same discipline as every
+other decision in this module. But it is scored by **four** of the five terms, not five:
+
+| Term | The clause it writes about a piece of ground |
+|---|---|
+| **The land calls for it** | *"the hills are timbered, and deeply"* |
+| **The town wants it** | *"there is nowhere left for people to sleep"* |
+| **The market wants it** | *"timber fetches well here"* |
+| **The patron's agenda** | *"the Company wants a return on this place"* |
+
+> **`[HC-96]` The focus auction is four-termed — land, need, market, agenda. `fear` is structurally
+> absent, and it stays absent: FEAR NEVER ARGUES FOR WHAT GROUND IS FOR.**
+
+**Say it as a rule so nobody adds it later.** Fear is a real and correct argument for *a battery on
+the bluff* — a work, on a hex, that answers a threat. It is not an argument about what the cane flats
+are **for**, because no land use makes a town safer; only guns do. A `fear` term in this auction
+would be defence claiming a fourth home, which §2.12.3 already refused and `[P-47]` already forbids.
+
+### 2.12.10 The live trap — a DEEPENING names an instance, not a kind
+
+**This is the sharpest thing in the section and it is easy to get wrong.** KAN-108 established a
+structural limit on the five-term auction and it is recorded at §5.1:
+
+> **The five terms score a KIND, not an INSTANCE.** The land term reads the best *free* ground for a
+> kind; the market term reads the catalogue's trade figure. A standing work has neither — its ground
+> is underneath it, and its trade is already scaled by that ground's suit and reach.
+
+**A region is kind-like, so the focus auction above transfers cleanly.** A region with no focus has
+no works claiming it, its ground is free, and asking "what is this ground best for" is exactly the
+question the land term already answers.
+
+**A DEEPENING is not.** *"Put a fourth sawpit on the north hills"* names a region that **already
+carries works** — free area partly spent, a suit already known, a premium already owed. That is an
+instance.
+
+> **`[HC-97]` A decision about a region that already carries works is scored from THAT REGION'S OWN
+> GROUND — `potential × free capacity × local price` — never from the catalogue's figures for a
+> kind.**
+
+**Scoring a deepening from `CATALOGUE[kind].trade` would reopen exactly the second-path problem
+`[P-47]` names and KAN-108 ended on:** the catalogue figure is the *unscaled* value, the region
+already holds the scaled one, and the two would disagree the moment ground, reach or depth differed
+from the default — which is always. Worse, KAN-108 found that the auction **cannot always see the
+want at all**: while works hold a region's hexes, its free capacity falls and the kind can drop out
+of the wants-list entirely.
+
+**So a deepening sits BESIDE the eight capital works in the season's one decision, competing with
+them, scored by its own rule** — which is precisely the shape KAN-108 prescribed for instance-level
+verbs, now with a second occupant. The auction's candidate set is therefore **eight works and N
+deepenings**, and the two candidate types never share a scoring path.
+
+### 2.12.11 Never gate a subsistence work on focus
+
+> **`[HC-98]` A subsistence work is never gated on focus, on depth, or on anything else a decision
+> can withhold.** Garden plots, fishing shacks and dwellings raise themselves on any ground the town
+> holds, focused or not.
+
+**Because the hamlet floor and the focus would break together.** `[HC-67]` says the floor *requires
+survivors* and nothing else: subsistence works cost no wealth, raise themselves, and are why a sacked
+town crawls back. Gate them on a focus and a razed town whose governor is dead has no way to raise a
+garden plot — the floor fails, `[HC-18]`'s *"only a deliberate hand empties a town"* fails with it,
+and both fail silently, in a two-hundred-year run, as a number that drifts to zero.
+
+### 2.12.12 What it does to the catalogue — twelve capital works resolve 3 / 1 / 8
+
+| Fate | Works | What happens |
+|---|---|---|
+| **Become focus expressions** | `sawpit` · `caneField` · `provisionGround` | **The work survives; the MENU CHOICE dies.** They are no longer things a governor picks off a list — they are what a production focus on that ground *is*. A deepening raises the work the region's best-borne produce implies. |
+| **Deleted, folded into depth** | `boilingHouse` | See the label ladder below. |
+| **Survive untouched** | `shipway` · `warehouse` · `customsHouse` · `battery` · `palisade` · `barracks` · `tavern` · `church` | Still chosen, still scored by the five terms, still gated on ground, coin, hands and materials. |
+
+> **The auction's candidate set of WORKS falls 12 → 8.** The deepenings are a second candidate type
+> (§2.12.10) and are never counted among them.
+
+**`shipway` is reclassified from chain-downstream to a HARBOUR WORK, and `requires: "sawpit"` is
+deleted.** It is a sited work on a roadstead, in the same family as the warehouse and the customs
+house: a town with sheltered water may build ships there. It no longer needs a sawpit standing first,
+because **that was the chain, and the chain is what goes.**
+
+**The label ladder — what replaces the boiling house.** At depth ≥ N the region's installation is
+**relabelled** rather than joined by a new menu item:
+
+> *"cane fields"* → *"cane fields and a boiling house"*
+> *"sawpits"* → *"a mill and its yards"*
+
+§7's contracts 3 and 9 already ratify that works of one kind on one region draw as **ONE
+INSTALLATION SIZED BY COUNT**. **The label ladder is that rule's prose twin** — the same fact, said
+in words instead of drawn — so it adds no machinery and no stored state. **The sweet-spot rule
+survives untouched:** a region still carries one flagged best-of-it hex, and it is still *why the
+boiling house stands where it does*. It is now why the boiling house is **named** where it does.
+
+*The depth threshold N is DEFERRED — see §2.12.15.*
+
+### 2.12.13 `exports` moves from the work to the PRODUCE
+
+**One table, and the ground fills it in:**
+
+| Class | Produce |
+|---|---|
+| **victuals** | `food` · `fish` · `grain` |
+| **materials** | `timber` · `stone` |
+| **luxury** | `cane` · `cotton` |
+
+**This is what makes THE GROUND decide a town's export class**, which is `[HC-77]`'s pyramid meaning
+*more* than it did rather than less: a town's place in the pyramid stops being a property of which
+buildings its governor happened to pick and becomes a property of the coast it was founded on. Two
+towns with the same works and different ground are now different towns on the world market.
+
+**What is untouched.** `[HC-77]` (a place reaches for a tier only once the tier below is secure) and
+`[HC-83]` (clearing is summation, per neighbourhood, per class, in tier order) are **unchanged** —
+the gate governs **demand**, and demand is keyed to population and to capital-work count, neither of
+which this touches. What changes is only **which class a town's offer lands in.**
+
+**Three consequences to carry into implementation, because they are not obvious:**
+
+- **A work with no produce has no cargo class**, and earns as a cut of the traffic riding on `access`
+  alone — a warehouse, a customs house, a tavern, a market. **`shipway` joins them**, which is right
+  for a harbour work and is a real change: its earnings now ride on access, and it is no longer
+  exempt from the materials build-gate. *You do need planks to lay down a shipway.*
+- **The columns are unchanged.** Victuals are counted in a work's `food` column and materials and
+  luxury in its `trade` column, exactly as today. Only the *keying* moves.
+- **The materials exemption re-keys to the produce**, and stays one fact with one source
+  (2026-09-16, `[HC-87c]`'s amendment): *a work that produces materials is not gated by materials* is
+  read as `produce ∈ {timber, stone}` rather than as `exports === "materials"`. Same rule, same
+  single source, one indirection shorter.
+
+> **A follow-up `[HC-87c]` needs, flagged rather than buried.** Its 2026-09-19 texture correction
+> records that *"the shipways stand idle for want of planks"* is carried by **the dependency edge,
+> not by the materials bill**. Deleting the edge deletes the sentence. The mechanism that replaces
+> it is the market term arguing in coin — *"timber fetches well here"* — which §3.5.4 already
+> ratified. **The sentence is not preserved; it is retired with its mechanism**, and that is the
+> honest version.
+
+### 2.12.14 The measured finding that justifies the whole direction
+
+**Four of the world's eight produces have no work in the catalogue at all** — `grain`, `cotton`,
+`stone`, `salt`. The generator paints, names, describes and draws their ground, and nothing a town
+can build will touch it. Measured across every seed:
+
+- **12–22% of every town's bearing regions are inert** — `cottonGround`, `saltPans`, `rockyGround`.
+- **9–13% of its hexes.**
+
+Meanwhile **§2.5 has named all eight works since it was written**: *cotton walk · grain fields · cane
+field · provision grounds · sawpit · quarry · salt works · fishing shacks*.
+
+> **The spec has been ahead of the catalogue since KAN-85.** The region focus is what closes the gap
+> without widening the auction, because a focus expression is not a menu item: **`grainFields` and
+> `cottonWalk` are added as focus expressions**, raised by a deepening on ground that bears them, and
+> **the governor's list stays eight items long.** That is the structural argument for this direction
+> over any alternative that adds works: it is the only one where the catalogue can grow and the
+> choice cannot.
+
+### 2.12.15 Deferred, deliberately, to the terrain-kind lockdown
+
+The human has asked for **a lockdown pass over every terrain kind the map generator can paint, and
+what each is for**, before any more per-terrain decisions are taken one at a time. Three questions
+wait on it, and they are recorded here rather than left as holes:
+
+1. **A quarry, and stone as a second materials source.** **Rocky ground stays dead for now**, so the
+   2026-09-16 neighbourhood guarantee (*every market neighbourhood can reach timber*) is untouched.
+   Noted as possible later uses: a defence bonus, or ground that is only good for housing.
+2. **Salt's trade class.** Absent from §2.12.13's table on purpose.
+3. **The depth threshold N for the label ladder** (§2.12.12).
+
+### 2.12.16 Heritage — this is our addition, and the record says which half is not
+
+**Do not invent lineage.** `design-references.md` records, confirmed by the human 2026-09-08, that
+*Cutthroats* towns grew in **wealth but not in extent** — so **the original had no land-use decision
+at all.** A region focus is **our addition, exactly like the town footprint, and not a restoration.**
+
+**What IS lineage, and it sits inside this direction:** per-town goods prices you trade against,
+confirmed by the human as part of the original — *"yes, that allows for trade."* **That is why
+goods survive and chains do not.** The half of this that is inherited is the half about prices and
+cargo; the half about what a town decides its ground is for is ours, and has to earn its place on its
+own terms rather than on the original's.
+
 ---
 
 ## 3. Works — the ledger
 
 A work has: `kind`, the `parcel` it draws on (if any), a **zone** and **bearing hint** for
-placement, a footprint, `since` (year), and a condition on the devolution ladder.
+placement, a footprint, `since` (the day it first stood whole), and its **standing** — the share of
+its fabric that is built (§4).
+
+> **AMENDED 2026-09-19.** The last item read *"and a condition on the devolution ladder"*. The
+> devolution ladder is deleted; what replaces it is one number and a cause. See §4.
 
 ### Two classes, and the distinction is the anti-spiral floor
 
@@ -410,6 +830,19 @@ placement, a footprint, `since` (year), and a condition on the devolution ladder
 ~16 **choosable** works (*was ~12; widened 2026-09-08 for the new terrains*) + ~6 **automatic**
 civic/defensive ones.
 
+> **AMENDED 2026-09-19 — the choosable set falls to EIGHT, and the catalogue is free to grow past
+> it.** The region focus (§2.12.12) turns `sawpit`, `caneField` and `provisionGround` into focus
+> expressions and deletes `boilingHouse`, leaving eight works a governor chooses between:
+> `shipway` · `warehouse` · `customsHouse` · `battery` · `palisade` · `barracks` · `tavern` ·
+> `church`. The works that left the menu **did not leave the ledger** — they are still buildings on
+> the ground, still burnable, still counted.
+>
+> **The line below is now truer than when it was written.** *"The catalogue may grow freely because
+> the land is the filter"* had to hold against a menu that grew with it. It no longer does:
+> `grainFields` and `cottonWalk` arrive as focus expressions (§2.12.14) and **the governor's list
+> does not lengthen by one item.** The filter is no longer only the land — it is the land *and* the
+> fact that most of the catalogue is never offered as a choice at all.
+
 > **The catalogue may grow freely because THE LAND IS THE FILTER.** A town with cane, fields and a
 > roadstead offers its governor a shortlist of five or six works whatever the catalogue's size, so
 > the five-term auction never gets noisier.
@@ -422,14 +855,46 @@ to the trade epic.
 
 ### Exactly two dependency edges in the first slice
 
-`sugar → rum` and `timber → shipways`. One level only. Burn the sawpit and *"the shipways stand
+> **STRUCK 2026-09-19 — both edges are deleted, and with them the concept.** Ratified with the
+> region focus: ***"I don't really want to get too much into production chains. It's not that type
+> of game."*** `sugar → rum` goes with the `boilingHouse` (§2.12.12) and `timber → shipways` goes
+> with the shipway's reclassification as a harbour work. **A work is now a development of a region
+> rather than a building with prerequisites.**
+>
+> **Kept below for the record.** Note what is *not* deleted along with it: **timber is still a real
+> good that moves on real ships and fetches a local price.** Goods survive; chains do not.
+>
+> And the sentence it was written for is retired with its mechanism, honestly rather than quietly —
+> see §2.12.13's note against `[HC-87c]`.
+
+~~`sugar → rum` and `timber → shipways`. One level only. Burn the sawpit and *"the shipways stand
 idle for want of planks."* That is a production chain the player can feel and we never have to
-simulate.
+simulate.~~
 
-### The devolution ladder
+### The devolution ladder — SUPERSEDED 2026-09-19
 
-Works decay in **recoverable grades** — `working → idle → decayed → ruin` — not straight to
-death. Each step is legible and each is reversible.
+> **STRUCK, and the direction that struck it deletes more than it adds.** The human rejected the
+> decay ladder outright: ***"I don't like the 'rot' part."*** Works no longer degrade from neglect at
+> all. **Damage has a cause, never a clock** — see §4, which replaces this section entirely.
+>
+> **What goes with it, said plainly rather than pretended to survive:** the `decayed` grade · the
+> whole decay clock (`idleToDecayed`, `decayedToRuin`, and the `idleSinceDay` each work carries) ·
+> **rot as a concept** · and **most of KAN-108's mend decision**, which was a per-building governor
+> choice priced at a fraction of the raise cost and becomes an **automatic bill** (`[HC-100]`).
+>
+> **What survives from KAN-108, and it is the best line in it:** *a mend buys a rung, never a jump —
+> **labour allocation remains the only thing that ever writes `working`.*** §4 keeps that verbatim: a
+> work that finishes mending comes back **whole but idle**, and the hands take the last step. That is
+> still what stops a priced repair quietly bypassing the labour ceiling.
+>
+> **And the under-manning half was always right and is untouched.** `idle` is free and instant in
+> both directions, and a town of 2,000 cut to 500 loses production because the hands are gone, not
+> because anything broke.
+>
+> **The original text is kept below.**
+
+~~Works decay in **recoverable grades** — `working → idle → decayed → ruin` — not straight to
+death. Each step is legible and each is reversible.~~
 
 > **Built and sharpened by KAN-108 (2026-09-14), because "reversible" was not true below the first
 > rung.** The grades differ in **what coming back COSTS**, not in whether it is possible:
@@ -502,6 +967,12 @@ colony buys, only that it buys its bread:
 **THREE classes, as amended 2026-09-09:** **victuals** (population) · **materials** (construction) ·
 **luxury** (the top of the pyramid). The first slice ships **victuals only**; materials follow, then
 luxury.
+
+> **AMENDED 2026-09-19 — a cargo's class is a property of the PRODUCE, not of the work that gets
+> it.** One table: **victuals** = `food` · `fish` · `grain` · **materials** = `timber` · `stone` ·
+> **luxury** = `cane` · `cotton`. See §2.12.13 for the table, its three non-obvious consequences, and
+> why it makes `[HC-77]`'s pyramid mean *more* rather than less. **The three classes, the tier gate
+> and the clearing are untouched** — only the keying moves.
 
 > **AMENDED 2026-09-09 — luxury is restored; munitions stay cut.** The line below read *"comforts and
 > munitions were CUT"*. The human restored the comforts half as **luxury**, and as a **need with
@@ -613,9 +1084,298 @@ harbourmaster**, which gives rung 1 of the ratified bribery ladder a second thin
 
 ---
 
-## 4. Damage — what raiding actually does
+## 4. Damage — what a storm, a raid and an invasion all do
+
+*Rewritten 2026-09-19, and it replaces §3's devolution ladder outright. Authority:
+[`../decisions.md`](../decisions.md), **"Damage has a cause, never a clock; and the town remembers"**,
+plus the human's correction on durations of the same date (§4.6). Ratified alongside §2.12, and
+**neither is safe to revisit alone** (§2.12.6).*
+
+> **`[HC-99]` DAMAGE HAS A CAUSE, NEVER A CLOCK.** Nothing in a town degrades from being poor, idle
+> or unloved, and **no work carries a neglect clock.** Works are hurt by **named events** — a storm,
+> a raid, an invasion — and they are put back with **coin and time**.
+
+**`[HC-99]` is the one that makes the rest cheap**, and it is worth saying what it forbids: no
+`idleSinceDay`, no threshold in days after which an unworked shed is worth less, no maintenance
+condition that falls if the town is poor. **If a work is worse off than it was, some named thing did
+it, and the chronicle can name it.** That is also what makes `[HC-18]` — *only a deliberate hand
+empties a town* — stronger than it was: with rot deleted, **nothing decays to ruin at all**, so the
+only routes to `Abandoned` are a player, a war (`[HC-50]`), and running out of people.
+
+**The human's words, and they are the specification:**
+
+> *"I like that the town remembers. I like that if a pirate sets buildings alight, or if an invasion
+> force hits an area, that viewing it later still shows the repair process. I also want storms to
+> tie into this damage mechanic…*
+>
+> *I don't like the 'rot' part. If a town of 2000 had a booming industry, and got invaded, and pop
+> is down to 500, it makes sense that production takes a hit, because they can't man everything.*
+>
+> *The supplier part seems a bit confusing. Again, this is not a city builder where production
+> chains exist. When I spoke about the maintenance cost associated with things, it was monetary…
+> having to repair something because of storm, invasion, raid just has an income impact until
+> everything is restored."*
+
+### 4.1 Three states, and only one of them is new
+
+| State | What it is | Reversible? |
+|---|---|---|
+| **Idle** | **Under-manned.** Not enough hands to work it. | **Free and instant, both ways.** Already built; needs no change at all. |
+| **Damaged** | Hurt by a named event. **Visible on the ground.** | Put back with **coin and time**. |
+| **Destroyed** | Taken outright — a tempest's tail, or deliberate razing. | **Never.** And the ruin **stays on the map.** |
+
+**The under-manning half already works exactly as described and is not touched.** Labour allocation
+idles what cannot be manned and un-idles it the moment hands return. A town of 2,000 cut to 500 loses
+production because the hands are gone, not because anything broke. **It was only the rot sitting on
+top of it that went.**
+
+### 4.2 `standing` — one number, and it is a DEGREE, not a grade
+
+> **A work's `standing` is the share of its fabric that is built: 0 to 1.** Whole is 1. A building
+> with half its fabric gone stands at 0.5. **Destroyed is the endpoint of the same scale**, not a
+> separate category with rules of its own.
+
+*Ratified by the human 2026-09-19 in correction: **"A building with half health takes half the
+time."*** Half health is a proportion of the fabric missing. It is not a rung on a ladder, and the
+spec does not give it one — **discrete damage grades are rejected for the same reason
+`ParcelQuality` was struck:** a second axis with the meaning taken out of it, and two dials for one
+feeling is a tuning trap.
+
+**A work that is not whole does not work.** It contributes nothing to the ledger until `standing`
+reaches 1 — no food, no trade, no defence, no `serves`.
+
+**Why not a proportional yield, which looks more natural:** a half-built sawpit obviously saws no
+timber, so a half-mended one does not either — **the same rule, which is the whole point of writing
+one mechanism instead of two.** It also keeps the yield arithmetic untouched: works already store
+their scaled yields at the moment they are raised (suit, sweet spot, reach, depth premium), and a
+second per-season scaler over the top of that is `[P-47]` waiting to happen. And it reads in one
+sentence — *"the mill is down while they mend it"* — where a fraction reads as a spreadsheet (§1.1).
+
+**Stored state is unchanged, not increased.** `standing` **replaces** the `idleSinceDay` each work
+carried for the decay clock. One number out, one number in, and the new one passes `[HC-14]`'s own
+test — *could this have been recomputed?* — with a flat no: a storm's bill is history, and nothing in
+the ledger remembers the storm.
+
+### 4.3 Construction and repair are ONE act
+
+> **`[HC-101]` Raising a work and mending one are the same act: `standing` rising toward 1.**
+> **Both are priced and timed by the share of fabric missing.** Half gone: half the coin and half the
+> time. Wholly gone: the whole of both — a work destroyed and raised again costs exactly what it cost
+> to raise the first time, because that is exactly what is being done.
+
+*The human, ratifying it:* ***"A fully destroyed building takes the same amount of time as building
+it from scratch. A building with half health takes half the time."***
+
+**So construction is not instant either, and never was in fiction.** A work is **commissioned**, and
+then it is **in hand** — standing rising, producing nothing, visible on the ground as scaffolding —
+until it is whole.
+
+**`in hand` is one state with two causes, and that is deliberate.** A work going up and a work being
+put right are the same arithmetic; the only thing that distinguishes them is whether there was ever a
+whole work there, and the ledger already knows that from `since` (the day it first stood whole, and
+absent until it does). **The projection draws scaffolding on the one and scorching on the other off
+that single bit.** No second field, no second mechanism.
+
+**Four readings, and only `in hand` is new:**
+
+| Reading | `standing` | Manned? | Produces |
+|---|---|---|---|
+| **working** | 1 | yes | everything it is worth |
+| **idle** | 1 | no | nothing — free and instant both ways |
+| **in hand** | 0 < s < 1 | — | nothing, and the ledger says why |
+| **ruin** | 0, by damage | — | nothing, ever. Holds no ground; the scar stays on the map |
+
+**A ruin is not a work.** It is struck from the working ledger, **its hex is freed**, and it stays on
+the books only so the map can draw it (§7, contract 5 — *a ruin on the hex is a burnt shell on the
+ground*). **Freeing the hex is what keeps `[HC-87]` alive**: the potential sits there waiting, and a
+town that was burned can be a town again — which is the whole argument for occupying rather than
+razing. Raising a new work on that ground is **a new work**, at full cost and full time. It is not
+the old one returning, and the human's *never* survives exactly.
+
+**Weather may knock back a work in hand**, and it needs no special case: the same subtraction from
+the same number. *"They had the warehouse half up when the second blow came."*
+
+### 4.4 What it costs — coin and time, and the two bind differently
+
+The two constants of proportionality are **the work's own raise cost** and **the work's own build
+time**. Both are catalogue columns, both scale by the missing share, and the second is new.
+
+```
+to put a work right:   coin = (1 − standing) × cost       time = (1 − standing) × buildTime
+```
+
+**Why the bill is priced against THE WORK and never against the coffers.** This is already ratified,
+2026-09-15, and the reasoning transfers verbatim: a bill taken as a share of the purse means *a town
+with a million pays a thousand times more to mend the same fence than a town with a thousand.*
+Priced against the work, **the same storm sends the same bill to every town, and only the share of
+the purse it takes differs** — which is the right way round, and is why a poor town still feels a
+storm more sharply.
+
+**Coin and time are two ceilings on one thing — the fabric restored this season — and they bind in
+different places.** This is §5.6's two-gate shape a third and fourth time, and it reads the same way:
+
+| Limit | The clause |
+|---|---|
+| **Coin** | *"the masons are idle for want of coin"* |
+| **Time** | *"they have the money; the masons are still at it"* |
+
+A rich town is limited by the calendar; a poor one by the purse. **Nothing needs to decide which** —
+whichever is scarcer binds, and the town card says which.
+
+### 4.5 Repair is automatic and comes off the top
+
+> **`[HC-100]` Repair is automatic and comes off the top. The town mends itself, and the governor
+> never chooses between a repair and a warehouse.**
+
+**The consequence is legible without surfacing a choice**, which is the whole design:
+
+> ***"Sarmiento builds nothing this year; the town is still mending."***
+
+**Where it sits in the season: bread, then mending, then batteries.** `[HC-78]` pays imports before
+construction; mending goes between them, in **phase 3 (SETTLE)** — after the quay is paid and before
+the governor decides anything in phase 4. That placement is forced rather than chosen, and §5.6
+already states the rule: **nothing in phase 1 may spend coin**, because it would come out of the
+purse the town buys its corn with.
+
+> **`[HC-78]` is EXTENDED, not superseded.** *Bread before batteries* becomes ***bread, then
+> mending, then batteries***. The failure state it was written to produce — *"they spend all they
+> make on corn"* — gains a sibling: *"they spend all they make putting the place back together."*
+
+**Order of repair: `worthOf` — food first, then guns, then coin, and the elder work on a tie.** This
+is the existing order, hoisted out of the labour allocator precisely so that one function decides who
+gets the last hands *and* which hurt work is put right first. **Do not write a second order**
+(`[P-47]`).
+
+**No cap on the share of a season's yield that repair may take, and none is needed.** A town pays
+what it can; whatever is left, the governor may spend. A small bill is settled in a season and he
+still builds. A big one eats the purse and he builds nothing — **the sentence falls out of the
+arithmetic rather than being tuned into it.**
+
+### 4.6 A duration is not a decision — and this is where §1.1 was misread
+
+> **`[HC-102]` A work in hand requires no decision from anyone while it stands unfinished.
+> Commissioning is the decision; the duration is a consequence.**
+
+**§1.1's ban is on a RECURRING DECISION on a timer** — *"no weekly loyalty tick, no per-officer
+upkeep, no morale accounting the player has to service."* It bans a **chore**. A build that takes
+three seasons asks nobody for anything in the second and third, so it is not what §1.1 forbids, and
+saying otherwise would forbid the passage of time.
+
+**And the decay clock the human deleted was not rejected for being a clock.** It was rejected because
+things should not **degrade from neglect**. Those are three separate things and only the middle one
+was ever refused. *Recorded here because the manager conflated them, and the human corrected it.*
+
+**The world already has this pattern ratified.** `[HC-8]` — *a promotion is decided in phase 5 and
+delivered later* — and `[HC-45]` — *a dispatch is credited on arrival, never on decision* — are the
+same shape: **decided now, arrives later.** Construction joins them, and gains the same virtue:
+**a thing in transit is a thing a raider can interrupt.**
+
+**What the governor does meanwhile.** Three rules, and they are all about keeping the cadence he
+already has:
+
+1. **The season's ONE decision is to commission** a work. That is unchanged.
+2. **ONE COMMISSIONED WORK IN HAND AT A TIME.** He does not start a second while the first is up. It
+   is the same scarcity the one-decision-a-season rule already expresses, told honestly across a
+   duration — and it is what stops a rich town starting six things at once and turning the
+   wants-list into a build queue somebody would want to manage (§1.1).
+3. **Mending is not commissioning, so the limit does not bind it.** A town mends everything it can
+   pay for at once. A town the week after a hurricane is a town full of scaffolding, and it should
+   look like one.
+
+**The wants-list gains a head, not a change of shape.** It is still three deep, still inspectable,
+still not controllable — its top line is now sometimes a thing already begun:
+
+> *A warehouse on the quay — **in hand, half raised** · a battery on the bluff · a second tavern.*
+
+**Balance consequence, flagged because it is real and not yet measured.** Build durations slow every
+town's development, and `[HC-22]`'s warm start — the day-0 world founded by running forward — was
+measured **without** them. **The city band (84–834 against a ratified 450–600) will move, and it will
+move down.** This must be re-measured on the warm start before any conclusion is drawn from it, and
+it may well want compensating elsewhere. Do not tune the durations to rescue the band without saying
+so.
+
+### 4.7 Two gates on a repair, inherited whole from §5.6
+
+§5.6 states the general form: **never buy a state change unless the work would actually go back to
+work.** With repair automatic rather than chosen, that rule stops being prudence and becomes
+**necessary**, because nobody is left to exercise judgement:
+
+1. **The ground must still be there.** A work whose hex the footprint has claimed can *never* work
+   again — claimed ground is permanent — so paying to mend one is an **unbounded leak by
+   construction**. **Resolution: a work whose ground the town builds over is DESTROYED, not
+   mended.** The bill is written off, the ruin stands, and the leak is closed by construction rather
+   than by a check anybody has to remember.
+2. **There must be materials to be had.** Timber and stone gate repair exactly as they gate raising
+   (§3.5.3, `[HC-87c]`). A town that cannot get them simply does not mend — the bill stands
+   outstanding and says so: *"there is no timber to mend it with."* **And the 2026-09-16 exemption
+   applies here too, or the rule would be true of one verb and false of the next:** a sawpit that
+   has been burnt is still a work that produces materials.
+
+**Hands are deliberately NOT a gate.** A mended work returns **whole and idle**, and hands take the
+last step for free. That is KAN-108's surviving rule (§3) and it is what keeps **labour allocation
+the only thing that ever writes `working`.**
+
+### 4.8 What this deletes, and what it unifies
+
+**Deleted, plainly:** the whole decay clock · `decayed` as a grade · **rot as a concept** · supplier
+chains (§3) · and **most of KAN-108's mend decision**, which becomes an automatic bill.
+
+**Unified — and this is the part that pays for the rewrite.** Storm damage, raid damage and invasion
+damage are today **three separate paths**: weather has its own route into the works ladder and
+raiding has another. They become **one state with one bill**:
+
+| Cause | What it does | What is left of the old special case |
+|---|---|---|
+| **A storm** | Subtracts a share of fabric, sampled at the place and the moment of contact | Nothing. It is the general case now. |
+| **A raid** | Subtracts a share — a torched work is heavily damaged; a razed one is destroyed | Loot is untouched: it takes wealth and leaves the work standing |
+| **An invasion** | Subtracts a share over an area | Nothing. `[HC-49]` still transfers a place with its ledger intact |
+
+**And the weather's existing `maintenanceShare` is the same idea at its smallest size** — a blow that
+scuffs a town and costs it a little coin. **They are kept distinct for now, and the reason is
+legibility rather than principle:** the maintenance bill is *unnamed wear* (coin, no work enters a
+visible state) and damage is the *named* form (this work, this share, visible from the beach).
+**Folding them entirely is available and would be cheaper — flagged for the human, not decided
+here.** `[HC-36]` is untouched either way: *"contents spoil"* remains a one-off wealth loss and there
+is still no stockpile to deduct from.
+
+### 4.9 The point, in one line
+
+> **A raid stops costing you buildings and starts costing you YEARS.**
+
+You spend on repairs instead of on growing, and the years you lose are the years you would have used
+to get bigger. **That is a far better answer to *"why does being raided hurt"* than watching sawpits
+rot** — and it is the answer the human asked for: *"an income impact until everything is restored."*
+
+### 4.10 The numbers are deliberately unfixed
+
+**No build time in this spec is a ratified figure, and none should be quoted as one.** The human is
+explicit:
+
+> *"I don't know what those numbers are yet. It ties into the zoning tile upgrade mechanism which we
+> haven't really done too much with yet. So don't need to try and get the timer values perfect."*
+
+**What this document fixes is the SHAPE:** one act for construction and repair · both proportional to
+the fabric missing · the work's own raise cost and build time as the constants · coin and time as two
+ceilings on one thing. **What it leaves open:** every duration, the placeholder scale, and how build
+time relates to the **zoning tile upgrade mechanism** that does not exist yet. Per `[HC-90]`, the
+durations are a **table**; what is in this section is the **behaviour**, and only the behaviour is
+being ratified.
+
+**Placeholder, so the first story has something to run against and nobody mistakes it for a
+decision:** *build time rises with raise cost* — a tavern is a season's work, a stone battery is
+several years'. **Written as a derivation from `cost` rather than as a second hand-tuned column**, so
+there is one number a person tunes until the zoning work says otherwise (`[P-47]`).
+
+### 4.11 What raiding does — the actions
 
 **Loot and raze must do different things**, or pillage-vs-raze is a flavour choice.
+
+> **AMENDED 2026-09-19 — read the Recovery column against §4.3 above.** *"Torch / raze"* splits into
+> two acts with two costs: **torching** a work takes a share of its fabric and it is put back with
+> coin and time; **razing** it destroys it, and that never comes back — a new work on that ground is
+> a new work. The *"since the burning"* bonus applies to the second, because there is a decision to
+> bias: something must be raised anew. **The recovery times below are superseded** by *(1 −
+> standing) × build time*, which is the same claim with a mechanism under it.
 
 | Raid action | Effect | Recovery |
 |---|---|---|
@@ -654,7 +1414,7 @@ budget gate. The score decides *what the town wants most*; wealth decides *what 
 |---|---|
 | **The land calls for it** (parcel affinity) | *"the hills are timbered"* |
 | **The town wants it** (unmet need) | *"the men have nowhere to drink"* |
-| **The market wants it** (export demand / an idle downstream work) | *"the shipways want planks"* |
+| **The market wants it** (export demand ~~/ an idle downstream work~~) | ~~*"the shipways want planks"*~~ → *"timber fetches well here"* |
 | **Fear** (security deficit vs. recent threat) | *"since the burning, the town wants guns"* |
 | **The patron's agenda** (crown / company / **you**) | *"the Governor of Cartagena wants a customs house here"* |
 
@@ -670,7 +1430,51 @@ budget gate. The score decides *what the town wants most*; wealth decides *what 
 > creates the need to mend is the thing that hides it from the auction.**
 >
 > Instance-level verbs therefore sit **beside** the auction, competing for the season's one decision,
-> rather than inside it. Mending is priced below raising, so a governor who can mend does so first.
+> rather than inside it. ~~Mending is priced below raising, so a governor who can mend does so
+> first.~~
+>
+> **AMENDED 2026-09-19, twice over, and the structural finding is worth MORE than it was.**
+> **(1)** Mending is no longer a governor's decision at all — it is an automatic bill taken off the
+> top (`[HC-100]`, §4.5), so the last sentence goes. **(2)** The slot it vacates beside the auction
+> is immediately re-occupied: **a DEEPENING is the new instance-level verb**, it names a region that
+> already carries works, and it must be scored from that region's own ground rather than from the
+> catalogue (`[HC-97]`, §2.12.10). **KAN-108's finding outlived the decision it was made for**, which
+> is the strongest possible argument that it is structural.
+
+### 5.1.1 What the auction weighs after the region focus
+
+*Added 2026-09-19. The five terms are unchanged; what changes is the set of things they are asked
+about.*
+
+**Two candidate types, and they never share a scoring path:**
+
+| Candidate | How many | Scored by |
+|---|---|---|
+| **A capital work** | **eight** (§2.12.12) | The five terms, on the KIND, exactly as today |
+| **A deepening of a focused region** | one per focused region with free ground | The region's own ground — `potential × free capacity × local price` (`[HC-97]`) |
+| **A focus for an unfocused region** | one per unfocused region | The **four-termed** focus auction — land, need, market, agenda; **never `fear`** (`[HC-96]`, §2.12.9) |
+
+**Wealth remains the budget gate and is still not a term.** A focus costs no coin at all (§2.12.6),
+which means it is the one candidate the budget gate never touches — so a town with empty coffers can
+still decide **what its ground is for**, and that is right: deciding is free, doing is not.
+
+### 5.1.2 The purpose gate re-keys to the produce
+
+`[HC-81]` survives **verbatim**: *dependency is scored identically for every place, whatever its
+purpose*, and importing never silences the wish for a farm. What purpose changes is still only
+**what the governor may do about it** (§11.3 of [world-simulation.md](world-simulation.md)).
+
+**But the gate's key has to move.** It currently names a `WorkKind` — *a royal outpost never raises
+`provisionGround`* — and after the collapse **there is no per-crop kind left to name**: provision
+grounds are a focus expression, not a menu item.
+
+> **Re-key the gate to the PRODUCE, and apply it to the FOCUS rather than to the work:**
+> ***"A military purpose never sets a production focus on food ground."***
+
+That is the same rule, one level up, and it is strictly better: the outpost still **publishes** the
+wish (*"too much of their bread comes off a ship"*), still never fulfils it, and now cannot fulfil it
+by a side door either. **And subsistence works stay outside it entirely** (`[HC-98]`) — the outpost
+still keeps its garden plots, exactly as today.
 
 
 ### 5.2 The explanation IS the score
@@ -678,9 +1482,16 @@ budget gate. The score decides *what the town wants most*; wealth decides *what 
 The one-line reason is **assembled from the top two contributing terms** — never written
 separately, never a rationalisation after the fact:
 
-> *The governor sets sawpits above the creek — the hills are timbered and the shipways want planks.*
+> *The governor sets sawpits above the creek — the hills are timbered and ~~the shipways want
+> planks~~ **timber fetches well here**.*
 > *Sarmiento raises a stone battery on the bluff — since the burning, the town wants guns.*
 > *Quartermaster Roche throws up a careenage in the cove — your ships need somewhere to heel, and there is money for it.*
+
+*Amended 2026-09-19: the first example's second clause was carried by a dependency edge and the edges
+are deleted (§3). **The form of the sentence is untouched** — top two terms, in their own words — and
+the market term now argues in coin, which is what §3.5.4 ratified it to do. The focus auction writes
+sentences of the same shape from four terms rather than five: **"Sarmiento gives the north hills over
+to timber — the hills are timbered and it fetches well here."***
 
 ### 5.3 The wants-list contract — inspectable, not controllable
 
@@ -749,6 +1560,27 @@ named by its **output**, never by a building, one at a time. Naming a second rep
 **The land refuses what it cannot bear**: ask a town with no cane flats for rum and you get
 *"there is no ground for cane here."*
 
+> **AMENDED 2026-09-19 — the REGION FOCUS takes this slot. It is NOT a fourth arm.**
+>
+> The optional named line stops being named by its **output** and starts being named by its
+> **ground**: *"the cane"* becomes ***"the cane flats to the south-east."*** What the player sets is
+> a **focus on a named region** (§2.12) — one at a time, naming a second replaces the first, and the
+> land still answers in the same three registers below.
+>
+> **The three-armed steer is untouched and its structural bound survives verbatim.** *Guns · coin ·
+> hands* are the three yield columns on a work, and *"a fourth focus would need a fourth thing a
+> work can produce"* is still the reason there are three. **A region focus is not a fourth arm
+> because it is not an arm at all** — it answers a different question. The steer says *which way to
+> lean this town*; a focus says *what this piece of ground is for.*
+>
+> **And it is still thematic, so §5.8's governing principle still decides who may set it:** the
+> governor sets a focus everywhere, the owner sets one in his own haven, and the player never points
+> at a hex in a town he does not own. **`Town.grantedToTown` is deleted** and the spatial steer of
+> §7.6 becomes this — see §2.12.8.
+>
+> **The refusal register does more work than it used to.** *"There is no ground for cane here"* is
+> now the answer to a focus as well as to a line, and it is answered by the same `bears` table.
+
 **It renders as a spatial growth front for free.** Every work sits on a parcel with a bearing, so
 leaning toward guns puts the battery on the NW bluff and leaning toward coin marches sawpits up
 the northern creek. The player never points at a hex in a town he does not own, yet the town
@@ -799,8 +1631,16 @@ legible as the reason it is.
 > **The gate generalises, and any new verb that spends coin on a work needs it (KAN-108, 2026-09-14).**
 > *raise → rot → raise* and *mend → rot → mend* are the same pathology wearing different clothes. The
 > general form: **never buy a state change unless the work would actually go back to work.** Four
-> conditions, and they are the allocator's own — hands spare, supplier standing, materials in the
+> conditions, and they are the allocator's own — hands spare, ~~supplier standing~~, materials in the
 > market, and **ground not built over**.
+>
+> **AMENDED 2026-09-19.** *Supplier standing* is deleted with the dependency edges (§3). The general
+> form is **untouched and matters more, not less** — with rot gone there is no *raise → rot → raise*
+> loop left, but repair is now **automatic**, so nobody is left to exercise judgement and the two
+> surviving conditions have to hold by construction. See §4.7 for how each is closed: **ground built
+> over destroys the work rather than billing for it**, and materials gate a repair exactly as they
+> gate a raising. Hands are deliberately not a gate, because a mended work comes back **idle** and
+> the allocator takes the last step for free.
 >
 > The buried case is the sharpest, because claimed ground is permanent (§2.5): a work the footprint
 > has claimed can *never* be worked again, so paying to mend one is an unbounded leak by construction,
@@ -1069,10 +1909,15 @@ so the next raid is visibly a burnt town, and **your own arson gives you cover n
 > **The centre hex IS the town. The four-stage grammar is what happens inside it. The ring hexes
 > are the land, and they become the raid map's edges.**
 
-The ledger already splits this way: `sawpit`, `caneField`, `boilingHouse`, `provisionGround` sit
+The ledger already splits this way: `sawpit`, `caneField`, ~~`boilingHouse`~~, `provisionGround` sit
 `beyondThePale`; `shipway`, `warehouse`, `customsHouse` sit `waterfront`; `battery`/`palisade` sit
 `outworks`; everything else is in the town. **Parcel-works are on the ring; civic works are in the
 centre.** The split we need is already there.
+
+*Amended 2026-09-19: `boilingHouse` is deleted and folded into the cane region's depth (§2.12.12), so
+what stands beyond the pale on that ground is the **deepened cane installation** wearing the boiling
+house in its label. **The split itself is untouched**, and `shipway` stays on the waterfront — it is
+now there as a harbour work rather than as the end of a chain, which is where it always stood.*
 
 **Two rules, both absolute:**
 1. **No hex is ever visible in a raid.** Hexes are units of land tenure, not blocks. (This is
@@ -1127,6 +1972,27 @@ ground, the projection works.
 ### 7.6 Grant the ground — the one placement verb
 
 *Ratified by the human 2026-09-08. **Haven you own only.***
+
+> **SUPERSEDED 2026-09-19 — this IS the region focus, and it is kept because every argument in it
+> still holds.** §2.12 and this section answer the same question — *what is this piece of ground
+> for* — and both answer it once, irreversibly, from a shortlist the terrain allows. Keeping two
+> mechanisms for one concept would be `[P-47]` written into the struct, so **`Town.grantedToTown` is
+> deleted and a grant becomes a `focus`.**
+>
+> **What carries over unchanged, and it is most of the section:** it is a landlord's decision and not
+> an architect's · **no spatial degrees of freedom**, so there is nothing to pack and no adjacency to
+> farm · it adds **choice without adding solution space** · it is **irreversible** · and *"six
+> decisions in the life of a town"* is still the right count, because 3–5 live regions is where it
+> lands.
+>
+> **What changes:** a grant named a **vocation** and a focus names one of **two** things (§2.12.3), so
+> the shortlist is shorter and the decision is sharper. The *seventh grant — "to the town"* — is
+> exactly `focus: "growth"`, and the human's argument for allowing it is unchanged and now applies to
+> one of the two focuses rather than to a special case.
+>
+> **And it moves out of the "grantable" state into the "steerable" one** (§2.8), because a focus is
+> thematic. The haven-you-own guard survives as **who may set it without going through a governor**,
+> which is what it was always protecting.
 
 > **You don't place buildings. You choose what a piece of ground is *for* — once per hex.**
 
@@ -1183,6 +2049,10 @@ Spec-level requirements on the existing land module — *what* must connect, not
 
 - **`BuildingKind` gains the new work kinds.** Extend, don't replace.
 - **`Building` gains a back-reference to its work**, so raid damage writes to the ledger.
+  *Sharpened 2026-09-19: **what it writes is a share of `standing`**, which is the same thing the
+  weather writes (§4.8). The raid layer needs no damage model of its own — torching subtracts a
+  share, razing destroys, and looting takes wealth and leaves the work standing. **Three verbs, one
+  number**, and the unification is the point.*
 - **`LOOT[kind]` stops being a constant table** and becomes **the town's wealth apportioned across
   its works** — closing the KAN-54 hook end to end.
 - **`SettlementTier` becomes derived** from population + security works + patron, replacing the
@@ -1201,6 +2071,22 @@ Spec-level requirements on the existing land module — *what* must connect, not
 5. **Razed works appear as ruins** on the next projection.
 6. No town **ever prompts** the player for anything.
 7. At most **five surfaced values** per town; everything else is prose.
+
+*Added 2026-09-19, for §2.12 and §4:*
+
+8. **Every focus a governor sets prints a reason**, and **no region is ever focused twice**
+   (`[HC-95]`, `[HC-16]`).
+9. **No region stores a number that counting its works would give** (`[HC-93]`).
+10. **Two towns on the same ground with different focuses read as different towns** — different
+    depths, different export classes, different sentences.
+11. **No work ever gets worse without a named cause in the chronicle** (`[HC-99]`). The sharpest test
+    in §4, because a rot that crept back would look exactly like ordinary decline.
+12. **A town that has been hurt and cannot pay builds nothing, and says which of coin and time is
+    stopping it** (`[HC-101]`).
+13. **A raided town is still visibly mending seasons later** — the human's *"viewing it later still
+    shows the repair process"*, which is only testable because `standing` is a degree.
+14. **A destroyed work never returns, and the ground it stood on is free for a new one.** Both
+    halves, or `[HC-87]`'s fragile ceiling loses one of its two ends.
 
 ---
 
@@ -1341,6 +2227,107 @@ then — and only then — anything the player can touch.~~
 > there is no longer anything to gain by writing it first. The *last* clause survives untouched and
 > is the part that mattered: **anything the player can touch comes last.** See
 > [world-simulation.md](world-simulation.md) §0 and `../decisions.md` (2026-09-09).
+
+### The region focus and the damage model (2026-09-19) — eight stories
+
+*Proposed breakdown for §2.12 and §4. **The smallest sequence that gets from here to there without a
+big-bang rewrite**, ordered so that nothing is deleted before the thing that replaces it exists.*
+
+**Migration cost, measured, for sizing:** catalogue kind names appear **218 times across 23 files** —
+`works.test.ts` 44, `trade.test.ts` 29, `sim.test.ts` 19, `governor.test.ts` 13, `market.test.ts` 10.
+**That number is what the ordering below is designed around:** stories 1 and 2 touch none of it, and
+the cost arrives in stories 3–5 where it can be paid deliberately.
+
+> **Per the testing rules: a count that moves is a number that got pinned; a BEHAVIOUR test that
+> breaks is a real regression and a stop-and-think, not a number to update.** Each story below says
+> which kind to expect.
+
+| # | Story | What moves | Tests |
+|---|---|---|---|
+| **1** | **A region can be given over to the town, and the footprint goes there first** | `Region` gains `focus`; `Town.grantedToTown` deleted; `nextHex` reads the growth focus instead of the grant set | **Zero move.** One added |
+| **2** | **The governor sets a focus, and publishes his reason** | The four-term focus auction beside the five-term work auction; the purpose gate re-keys to the produce | Zero should move — first place one legitimately might |
+| **3** | **A focused region may be deepened** | Capacity becomes focus-aware; the deepening candidate; rising returns minted at raise time | `works.test.ts`, `governor.test.ts` |
+| **4** | **The chains are cut and the boiling house folds into depth** | `requires` deleted; `boilingHouse` deleted; `shipway` becomes a harbour work; the label ladder | `works.test.ts`, `sim.test.ts` |
+| **5** | **A cargo's class comes off the ground** | `exports` re-keys to the produce; `grainFields` and `cottonWalk` arrive as focus expressions | `trade.test.ts`, `market.test.ts` |
+| **6** | **Damage is a degree, and rot is deleted** | `standing` replaces the ladder; the decay clock, `devolve` and `idleSinceDay` go | `works.test.ts`, `sim.test.ts` |
+| **7** | **Repair is automatic and comes off the top** | A phase-3 charge in `worthOf` order; the two gates; the mend decision retires | `governor.test.ts` |
+| **8** | **Construction and repair take time** | Build durations; one commissioned work in hand; the wants-list gains a head | Broad, and a re-measure |
+
+**1 — A region can be given over to the town, and the footprint goes there first.**
+Add `focus: production | growth | null` to `Region`. Delete `Town.grantedToTown`. In `nextHex`,
+`granted.has(r.id)` becomes `r.focus === "growth"`. **Ships nothing player-visible** — it is the
+field arriving and the one existing consumer re-pointed at it.
+
+> **VERIFIED: this moves zero of the 645 tests.** `grantedToTown` has **two references in the whole
+> codebase**, both in production code (`types.ts`, `footprint.ts`) and **none in any test file** — so
+> no test can observe the substitution. **Every `Region` in the entire suite is built by one
+> test-fixture helper**; there are exactly **two** construction sites in the codebase, the world
+> generator and that helper, and neither holds an assertion. The suite is run by `vitest run`, which
+> transforms without typechecking, so the field's arrival cannot break a run; `npm run build` runs
+> `tsc` and is covered by the same two sites.
+>
+> **One correction to the estimate:** it is **three line-edits in one function**, not one — the
+> `granted` set is deleted and its two reads are replaced — for a net of **one line fewer.**
+
+**2 — The governor sets a focus, and publishes his reason.**
+The **four-term** focus auction (`[HC-96]`) beside the existing five-term one, as a second candidate
+type for the season's one decision. A focus costs no coin and is set once (`[HC-95]`). The purpose
+gate re-keys from `WorkKind` to the produce (§5.1.2), and `[HC-81]` survives verbatim. Still nothing
+reads a focus except `nextHex` — **so this story is measurable without being consequential**, which
+is exactly what you want of the one before the expensive ones. *Acceptance: after the warm start,
+every place has focused most of its live regions and every focus has a reason a person can read.*
+
+> **The first story where a behaviour test could legitimately move**, and the reason is worth
+> anticipating: `governorTurn` now sometimes spends the season on a focus rather than a build, so
+> long-run works counts in `sim.test.ts` may shift. **If one does, stop and read it** — that is the
+> cadence changing, which is the thing this story is actually about.
+
+**3 — A focused region may be deepened.**
+Capacity becomes focus-aware: unfocused caps at a token work, focused reaches free area (`[HC-94]`).
+The **deepening** arrives as the second instance-level candidate, scored `potential × free capacity ×
+local price` and **never from the catalogue** (`[HC-97]`). Rising returns are **minted into the new
+work at raise time**, capped by area. The three crop works leave the choosable set and become
+reachable only through a deepening. **This is where the 218 names start to cost**, and it is the
+first story with a real balance surface.
+
+**4 — The chains are cut and the boiling house folds into depth.**
+Delete `requires` from the work definition and both edges. Delete `boilingHouse` — its luxury is
+carried by the deepened cane region raised in story 3, which is why this story follows that one.
+`shipway` becomes a harbour work on a roadstead. The **label ladder** ships with a placeholder
+threshold (§2.12.15). `starvedFor` and the *"the shipways want planks"* clause retire with their
+mechanism (§2.12.13).
+
+**5 — A cargo's class comes off the ground.**
+`exports` re-keys from the work to the **produce**; `producesMaterials` re-keys with it and stays one
+fact with one source. `grainFields` and `cottonWalk` arrive **as focus expressions, so the governor's
+list does not lengthen** (§2.12.14). *Acceptance: inert bearing regions fall from 12–22% to the
+deferred set — rocky ground and salt pans — and nothing else.*
+
+**6 — Damage is a degree, and rot is deleted.**
+`standing` replaces `condition`'s lower rungs; `in hand` replaces `decayed`. Delete the decay clock,
+`devolve`, `idleSinceDay` and the repair-share price. Weather subtracts a **share** rather than a
+grade (`[HC-34]` as amended); the tail still destroys exactly one work per contact (`[HC-35]`,
+untouched). **No durations in this story** — a repair completes when it is paid — so the deletion
+lands without the balance shock, and the shock arrives on its own in story 8.
+
+**7 — Repair is automatic and comes off the top.**
+A phase-3 charge between imports and the governor (`[HC-100]`, extending `[HC-78]`), in the existing
+`worthOf` order. The two gates of §4.7: a work whose ground is claimed is **destroyed rather than
+billed**, and materials gate a repair as they gate a raising. **KAN-108's mend decision retires
+here**, which is what the governor tests will see.
+
+**8 — Construction and repair take time.**
+Build durations derived from `cost` as a single placeholder (§4.10). One commissioned work in hand at
+a time; the wants-list gains a head that is sometimes already begun. **Re-measure the warm start**,
+because `[HC-22]`'s day-0 world was measured without durations and **the city band will move down**.
+This is the balance story and it is last deliberately.
+
+**Two notes on the sequence.** The focus stories (1–5) and the damage stories (6–8) are **independent
+in code** and may interleave freely; what is *not* free is shipping one direction and calling the
+other reconsidered, because `[HC-95]`'s permanence is held up by `[HC-99]`'s deletion of rot
+(§2.12.6). And **a ninth thing gates the tail rather than following it**: the **terrain-kind
+lockdown pass** the human has asked for, which is what unblocks the quarry, salt's trade class and
+the label ladder's threshold (§2.12.15).
 
 ### Withdrawn (2026-09-08, fifth)
 
