@@ -10,7 +10,8 @@ import { describe, it, expect } from "vitest";
 import type { Town } from "./types";
 import { scoreWork, reasonFrom, wants, governorTurn, stepTownSeason, stepTownYears } from "./governor";
 import { CHOOSABLE, CATALOGUE, raise } from "./works";
-import { stepYears, stepSeason } from "./sim";
+import { derive, stepYears, stepSeason } from "./sim";
+import { canBuild } from "./trade";
 import { PLAN, DECAY } from "./constants";
 import { CALENDAR, DAYS_PER_YEAR } from "../overworld/calendar";
 import { mixedTown, townOf, reg, RING1, RING2 } from "./fixtures";
@@ -24,6 +25,16 @@ const SEASON = CALENDAR.daysPerSeason;
 // spills, so the town claims no new ground and no work of its is ever built over:
 // what is under test below is the mend decision and nothing else.
 const presidio = (init: Partial<Town> = {}): Town => mixedTown({ archetype: "royalOutpost", ...init });
+
+// §3.5.3's own island: a roadstead, scrub, and not one timbered hill. It is the
+// only ground on which the materials gate can still be stated since a work that
+// PRODUCES materials stopped being gated by them (2026-09-16) — a place with
+// hills digs its own pit and is never stone-poor for long.
+const stonePoorIsland = (init: Partial<Town> = {}): Town =>
+  townOf([reg(0, "roadstead", RING1.slice(0, 3)), reg(1, "scrub", RING2.slice(0, 6))], {
+    archetype: "royalOutpost",
+    ...init,
+  });
 
 // A presidio with one sawpit, already rotted down to `decayed`. Set directly
 // rather than starved down the ladder, because what these claims are about is the
@@ -240,15 +251,40 @@ describe("he mends what he can still save", () => {
     // §3.5.3, and the spec's own example of that gate is a REPAIR: "razing the
     // quay of a stone-poor island stops it rebuilding its wall." A mend is
     // construction and the same gate holds it.
-    const { town, pit } = withRottedSawpit();
+    //
+    // THE WORK IS A WALL AND THE GROUND IS STONE-POOR, and both halves changed
+    // for the same reason (2026-09-16): a sawpit is exempt from the materials
+    // bill because it PRODUCES materials, so neither a rotted sawpit nor a town
+    // with timbered hills can state this claim any more. The claim underneath is
+    // the one the spec wrote, word for word.
+    const town = stonePoorIsland({ population: 400, wealth: 9000 });
+    const wall = raise(town, "palisade", DAY0)!;
+    stepSeason(town, DAY0);
+    wall.condition = "decayed";
+    wall.idleSinceDay = DAY0;
     raise(town, "tavern", AFTER_ROTTING); // something standing, to want timber and stone
     stepSeason(town, AFTER_ROTTING);
 
     expect(governorTurn(town, AFTER_ROTTING)).toBeNull();
-    expect(pit.condition).toBe("decayed"); // full coffers, hands to spare, no planks
+    expect(wall.condition).toBe("decayed"); // full coffers, hands to spare, no planks
 
     town.market.bought[1] = 100; // a shipload of them
+    expect(governorTurn(town, AFTER_ROTTING)?.work).toBe(wall);
+  });
+
+  it("mends the pit that would END the shortage, planks or no planks", () => {
+    // THE OTHER DIRECTION OF THE SAME RULE, and it has to be written or the rule
+    // would be true of raising and false of mending — which is the cliff again
+    // with the sentence reversed, and worse: a decayed sawpit holds its own hex,
+    // so `roomFor` drops and its kind falls out of the auction entirely (§5.1).
+    // The place could then neither mend the pit nor dig another.
+    const { town, pit } = withRottedSawpit();
+    raise(town, "tavern", AFTER_ROTTING); // something standing, to want timber and stone
+    stepSeason(town, AFTER_ROTTING);
+
+    expect(canBuild(derive(town).commerce), "the fixture can get planks after all").toBe(false);
     expect(governorTurn(town, AFTER_ROTTING)?.work).toBe(pit);
+    expect(pit.condition).toBe("idle"); // one rung up, and the hands take the last step
   });
 
   it("buys a repair and not immunity — a mended work rots again if the hands go", () => {

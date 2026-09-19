@@ -9,8 +9,8 @@
 
 import { describe, it, expect } from "vitest";
 import { derive, stepSeason, stepSeasons, stepYears, carryingCapacity, prosperityTarget } from "./sim";
-import { CATALOGUE, raise } from "./works";
-import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
+import { CATALOGUE, CHOOSABLE, raise } from "./works";
+import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, producesMaterials, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE } from "./constants";
 import { governorTurn, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
@@ -503,6 +503,18 @@ describe("materials gate construction", () => {
   // cannot get timber and stone CANNOT BUILD, however rich it is. Razing the
   // quay of a stone-poor island stops it rebuilding its wall. Its coffers may be
   // full; it simply cannot get the stone.
+  //
+  // WITH ONE EXEMPTION, RATIFIED 2026-09-16: a work that PRODUCES materials is
+  // not gated by materials. You do not need planks to dig a sawpit — and without
+  // that line the gate had a cliff at the FIRST capital work rather than the
+  // second, because a place with none owes no materials bill and its first build
+  // is free. Fifty-two places across four seeds sat frozen at exactly one capital
+  // work and forty-eight had spent that one free build on a tavern; one of them
+  // held 3,398 coin and could never dig the pit on its own timbered hills.
+  //
+  // `seaTown` is the fixture for both halves BECAUSE it has timbered hills and a
+  // roadstead and nothing else: the one work it may raise is the one the
+  // exemption is about.
   function stonePoor(): Town {
     const t = seaTown({ population: 200, wealth: 200000 });
     raise(t, "warehouse", DAY0);
@@ -511,18 +523,81 @@ describe("materials gate construction", () => {
     return t;
   }
 
-  it("stops a town with full coffers and idle hands raising anything at all", () => {
+  it("stops a town with full coffers and idle hands raising anything but the pit", () => {
     const town = stonePoor();
     expect(town.wealth).toBeGreaterThan(100000);
-    expect(wants(town, AFTER_OPENING, 12).every((w) => !w.supplied)).toBe(true);
+    // THE ORACLE IS WRITTEN OUT rather than read back off the catalogue, so a
+    // second kind quietly acquiring `exports: "materials"` shows up here as a
+    // failure rather than as agreement with itself.
+    const PRODUCES_MATERIALS = ["sawpit", "shipway"];
+    for (const w of wants(town, AFTER_OPENING, 12)) {
+      expect(w.supplied, `${w.kind} answered the wrong way to a town that can get no planks`)
+        .toBe(PRODUCES_MATERIALS.includes(w.kind));
+    }
+    expect(governorTurn(town, AFTER_OPENING)?.work.kind).toBe("sawpit");
+  });
+
+  it("digs the pit with no timber or stone to be had, and still cannot raise a warehouse", () => {
+    // THE RULE ITSELF, in one sentence: timbered hills, coin, hands and not a
+    // plank to be had — and the work that would END the shortage is the one work
+    // he may start. The warehouse beside it is the control: same town, same
+    // season, same purse, gated.
+    const town = stonePoor();
+    const d = derive(town);
+    expect(d.commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate); // it can get none
+    expect(d.commerce.bought[1]).toBe(0);
+    expect(d.hands.available - d.hands.needed).toBeGreaterThan(CATALOGUE.sawpit.hands); // and hands to spare
+
+    const ranked = wants(town, AFTER_OPENING, 12);
+    const pit = ranked.find((w) => w.kind === "sawpit");
+    const store = ranked.find((w) => w.kind === "warehouse");
+    expect(pit, "the hills bear timber and no pit was published").toBeDefined();
+    expect(store, "the roadstead takes a warehouse and none was published").toBeDefined();
+    expect(pit!.supplied).toBe(true);
+    expect(store!.supplied).toBe(false);
+  });
+
+  it("exempts exactly the works the catalogue says send materials to the quay", () => {
+    // THE DERIVATION ITSELF, guarded — and it needs guarding because the world
+    // cannot guard it. A `shipway` is exempt too and no measurement will ever
+    // show it: a shipway REQUIRES a working sawpit, so by the time one may be
+    // raised the place is already cutting its own timber and the bill was never
+    // what stopped it. Measured at day 0 across four seeds: not one shipway
+    // stands anywhere. So deriving the exemption from `produces` rather than
+    // `exports` — which drops the shipway — breaks nothing in any world, and
+    // this claim is the only thing that would notice.
+    const PRODUCES_MATERIALS = ["sawpit", "shipway"]; // the oracle, written out
+    for (const kind of CHOOSABLE) {
+      expect(producesMaterials(kind), `${kind} answered the wrong way`)
+        .toBe(PRODUCES_MATERIALS.includes(kind));
+    }
+  });
+
+  it("still cannot dig a pit where there are no hills to dig it in", () => {
+    // The exemption is about the materials BILL, never about the ground. A place
+    // with no timber is refused by `buildable` before the gate is ever asked, and
+    // it must stay refused — otherwise the rule would have quietly handed every
+    // stone-poor island a sawpit out of nowhere.
+    const town = townOf([reg(0, "roadstead", RING1.slice(0, 3)), reg(1, "scrub", RING2.slice(0, 6))], {
+      population: 200,
+      wealth: 200000,
+    });
+    raise(town, "warehouse", DAY0);
+    stepSeason(town, DAY0);
+    expect(derive(town).commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate);
+    expect(raise(town, "sawpit", AFTER_OPENING)).toBeNull();
+    expect(wants(town, AFTER_OPENING, 12).some((w) => w.kind === "sawpit")).toBe(false);
     expect(governorTurn(town, AFTER_OPENING)).toBeNull();
   });
 
   it("lets it build again the season the timber arrives", () => {
+    // The gate lifting, asserted on a work the gate actually HOLDS — a warehouse,
+    // not the exempt pit, or the claim would be true before the shipload landed.
     const town = stonePoor();
     const before = town.works.length;
+    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(false);
     town.market.bought[1] = 100; // a shipload of planks
-    expect(wants(town, AFTER_OPENING, 12).some((w) => w.supplied)).toBe(true);
+    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(true);
     governorTurn(town, AFTER_OPENING);
     expect(town.works.length).toBeGreaterThan(before);
   });

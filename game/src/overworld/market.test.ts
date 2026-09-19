@@ -19,7 +19,7 @@ import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { FOOD, TRADE } from "../town/constants";
 import { mixedTown, seaTown } from "../town/fixtures";
-import { CATALOGUE, raise } from "../town/works";
+import { CATALOGUE, raise, roomFor } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
 import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
@@ -625,28 +625,35 @@ describe("the ceiling is fragile, by design", () => {
     // its shipways stand idle for want of them.
     //
     // THE PORT IS PICKED FOR BUYING ITS PLANKS, and that is the whole of what
-    // makes this a claim rather than a decoration. Two other kinds of port
+    // makes this a claim rather than a decoration. Three other kinds of port
     // cannot answer it: one with no capital works owes no materials bill at all,
     // so its shortfall is zero and the gate CANNOT fire on it — the cliff the
-    // covering was measured against — and one with its own sawpit goes on
-    // cutting its own timber through a cordon, because `producedOf` reads the
-    // works and not the quay. A blockade starves the port that BUYS.
+    // covering was measured against — one with its own sawpit goes on cutting
+    // its own timber through a cordon, because `producedOf` reads the works and
+    // not the quay, and — since 2026-09-16 — one with timbered ground still to
+    // cut, because a work that PRODUCES materials is not gated by materials and
+    // a cordon does not stop a man walking up his own hill. A blockade starves
+    // the port that BUYS.
+    //
+    // THE CONTROL ARM IS RUN THE FULL SIXTY-ONE YEARS AND THE PORT IS PICKED OFF
+    // IT, which is the fix for a fragility that had nothing to do with the claim:
+    // `materialsShort` is a SEASONAL FLOW, so a port that could build at sixty
+    // years may simply have been allotted no planks in the sixty-first, and
+    // picking on one state to assert on another made this test a coin-toss
+    // against the clearing. The arms now differ by the cordon and the coffers
+    // alone — and the coffers can only help, so the contrast is sharper for it.
     const open = bench();
-    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 60);
+    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 61);
 
     let id = -1;
     for (let i = 0; i < open.towns.length; i++) {
       const c = derive(open.towns[i]).commerce;
       if (c.produced[1] >= c.consumed[1] || !canBuild(c)) continue;
+      if (roomFor(open.towns[i], "sawpit") > 0) continue; // it could dig its own way out
       if (id < 0 || open.towns[i].wealth > open.towns[id].wealth) id = i;
     }
     expect(id, "no port in this world buys its planks and can still build").toBeGreaterThanOrEqual(0);
-
-    // THE CONTROL, because the claim is about the cordon and not about the
-    // coffers: the same port, the same hundred thousand coin, nobody offshore.
-    open.towns[id].wealth = 100000;
-    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 1);
-    expect(canBuild(derive(open.towns[id]).commerce), "a rich port at peace cannot build either").toBe(true);
+    expect(canBuild(derive(open.towns[id]).commerce), "the port at peace cannot build either").toBe(true);
 
     const { world, towns, markets, wars, routes } = bench();
     runYears(world, towns, markets, wars, routes, 60);
