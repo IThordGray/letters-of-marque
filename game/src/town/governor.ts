@@ -1,12 +1,15 @@
 // The development plan — what the governor builds next, what he decides his
 // ground is FOR, and why he says he did either.
 //
-// TWO CANDIDATE TYPES, ONE DECISION A SEASON (spec §5.1.1). A five-term auction
-// over the capital works, and a FOUR-term auction over the town's unfocused
-// regions. They never share a scoring path and they compete for the same scarce
-// thing: the season. THE HARD RULE holds across both: no term without a clause.
-// The one-line reason is assembled from the top two contributing terms, so the
-// explanation IS the score rather than a rationalisation written afterwards.
+// THREE CANDIDATE TYPES, ONE DECISION A SEASON (spec §5.1.1). A five-term
+// auction over the capital works; a FOUR-term auction over the town's unfocused
+// regions; and a DEEPENING of ground already given over, scored from three
+// readings of that region's own ground and from nothing in the catalogue
+// ([HC-97]). NO TWO OF THEM SHARE A SCORING PATH, and all three compete for the
+// same scarce thing: the season. THE HARD RULE holds across all of them: no term
+// without a clause. The one-line reason is assembled from the top two
+// contributing terms, so the explanation IS the score rather than a
+// rationalisation written afterwards.
 //
 // Wealth is NOT a term. The score decides what the town wants most; wealth
 // decides what it can start now. Keeping those separate is what makes an
@@ -17,12 +20,15 @@
 
 import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived, Region, Produce } from "./types";
 import { key } from "./hex";
-import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf } from "./works";
+import {
+  CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf,
+  countOf, depthOf, roomInRegion, takenHexes, TOKEN_DEPTH,
+} from "./works";
 import { compass, LABEL, bestBorne, capacityOf, claimedKeys, isBuildable, regionOf } from "./land";
-import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf } from "./trade";
+import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf, cargoOf, dearnessOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
-import { PLAN, FOOTPRINT } from "./constants";
+import { PLAN, FOOTPRINT, WORKS } from "./constants";
 import { stepFootprint, crowding, type Grew } from "./footprint";
 
 export type TermKey = "land" | "need" | "market" | "fear" | "agenda";
@@ -264,7 +270,12 @@ export function scoreWork(town: Town, kind: WorkKind, day: number, derived = der
 }
 
 // The sentence IS the score: the top two contributors, in their own words.
-export function reasonFrom(terms: Term[]): string {
+//
+// IT TAKES A CLAUSE AND NOTHING ELSE, so all THREE candidate types share one
+// implementation ([P-47]) although they are scored by three different rules. A
+// deepening's readings multiply rather than sum and it has its own term keys;
+// none of that reaches this function, and it should not.
+export function reasonFrom(terms: { clause: string }[]): string {
   const top = terms.slice(0, 2).map((t) => t.clause);
   if (!top.length) return "there is nothing pressing";
   return top.length === 1 ? top[0] : `${top[0]} and ${top[1]}`;
@@ -611,6 +622,197 @@ export function describeFocus(town: Town, want: FocusWant): string {
   return `${who} gives ${want.label}${want.where} over to ${over}${instead} — ${want.reason}.`;
 }
 
+// ---- The deepening (§2.12.10) ----------------------------------------------
+//
+// THE THIRD CANDIDATE TYPE, and it exists because of the sharpest thing in §2.12.
+//
+// [HC-97] A DECISION ABOUT A REGION THAT ALREADY CARRIES WORKS IS SCORED FROM
+// THAT REGION'S OWN GROUND — `potential x free capacity x local price` — NEVER
+// FROM THE CATALOGUE'S FIGURES FOR A KIND. The five terms score a KIND: the land
+// term reads the best FREE ground and the market term reads `CATALOGUE[kind].
+// trade`, which is the UNSCALED figure. A region already holds the scaled one —
+// its suit is bought, its reach is priced into what stands there, its premium is
+// owed — so the two disagree the moment ground, reach or depth differs from the
+// default, WHICH IS ALWAYS. That is the second path [P-47] names and KAN-108
+// ended on, and nothing below reads a `trade` figure out of the catalogue.
+//
+// AND THE SECOND HALF OF THE TRAP, also KAN-108's: THE AUCTION CANNOT ALWAYS SEE
+// THE WANT. While works hold a region's hexes its free capacity falls, and since
+// the auction may only ever put the FIRST work on a region ([HC-94]) the kind
+// drops out of the wants-list ENTIRELY the moment one stands there — so the very
+// thing that creates the need to deepen is the thing that hides it. A deepening
+// therefore has to be its own candidate with its own scoring path, and can never
+// be a work that happens to be re-offered.
+
+export const DEEP_TERMS = ["ground", "room", "market"] as const;
+export type DeepTermKey = (typeof DEEP_TERMS)[number];
+
+// The same shape as a `Term` and a different key set, for the same reason
+// `FocusTerm` narrows rather than widens: a `fear` or a `need` cannot be pushed
+// onto this list without the compiler saying no ([P-17b]).
+export interface DeepTerm {
+  key: DeepTermKey;
+  weight: number; // 0..1 — a FACTOR here, because the readings multiply
+  clause: string;
+}
+
+export interface DeepWant {
+  region: number; // the region's ID, not its index — a handle ([P-37])
+  kind: WorkKind; // the work the region's best-borne produce implies (§2.12.12)
+  produce: Produce;
+  label: string; // "the timbered hills"
+  where: string; // " to the north"
+  score: number;
+  terms: DeepTerm[]; // strongest factor first
+  reason: string; // assembled from the top two, exactly as the other two are
+  depth: number; // what already stands there — COUNTED, never stored ([HC-93])
+  room: number; // ...and how much of its own ground is left
+  cost: number;
+  affordable: boolean;
+  manned: boolean;
+  supplied: boolean;
+  permitted: boolean;
+}
+
+// WHAT THE GROUND HAS ALREADY SHOWN IT WILL BEAR, said in its own terms. It is
+// the past tense on purpose: this is ground with works on it, and the governor
+// is arguing from what they have done rather than from what a catalogue says a
+// sawpit is worth.
+// IT SAYS "THAT GROUND" RATHER THAN NAMING THE TERRAIN, and that is grammar
+// rather than style: the sentence around it has already said which stretch, and
+// the labels are a mix of plurals and mass nouns — "the timbered hills already
+// bear" and "the tilled ground already bear" cannot both be written with one
+// verb. A singular subject agrees with every one of them, and a table of
+// plurals to fix it would be a table earning nothing.
+const PROVED_CLAUSE: Record<Suit, (produce: string) => string> = {
+  ideal: (p) => `that ground already bears ${p} well`,
+  fair: (p) => `that ground bears ${p} well enough`,
+  poor: (p) => `that ground grudges its ${p}, but bears it`,
+};
+
+// The other half of the brief's own sentence — "the north hills already saw
+// well, AND THERE IS ROOM FOR MORE". It is one clause however much room there
+// is, because [HC-16] asks for a sentence and not an audit.
+export const ROOM_FOR_MORE = "there is room for more";
+
+// THE THREE READINGS MULTIPLY, AND THAT IS NOT A STYLISTIC CHOICE. §2.12.10
+// writes the score as a PRODUCT, and the product is what makes the area cap bite
+// in the scoring as well as in the ground: a region with no room left is worth
+// NOTHING to deepen, not merely less, and no amount of dear timber recovers it.
+// A sum would let a full region keep arguing for ever, which is the overshoot
+// engine [HC-75] exists to watch for, wearing an auction's clothes.
+export function scoreDeepening(
+  town: Town,
+  r: Region,
+  index: number,
+  kind: WorkKind,
+  produce: Produce,
+  suit: Suit,
+  taken: Set<string>,
+  claimed: Set<string>,
+): DeepTerm[] {
+  // 1. POTENTIAL — what THIS ground bears and how well, plus the one other fact
+  //    the region itself holds about what it pays: ground over the ridge yields
+  //    a little less, and it yields a little less however many works stand on it.
+  const potential = PLAN.affinity[suit] * (r.reach === "far" ? WORKS.farPenalty : 1);
+
+  // 2. FREE CAPACITY — how much of its own ground is left. This is the term the
+  //    cap lives in, and it is not a separate number: it is the hexes.
+  const room = roomInRegion(town, r, index, kind, "deepen", taken, claimed);
+  const capacity = room >= PLAN.focusDeepAt ? 1 : room / PLAN.focusDeepAt;
+
+  // 3. LOCAL PRICE — what this place would get for it, and nowhere else's price
+  //    exists to be read ([HC-82]). Note what is NOT here: the catalogue's trade
+  //    figure for a sawpit. The region is an instance and the figure is a kind's.
+  const cargo = cargoOf(kind);
+  const price = cargo === null ? 0 : dearnessOf(town, cargo);
+
+  const word = PRODUCE_WORD[produce];
+  const terms: DeepTerm[] = [
+    { key: "ground", weight: potential, clause: PROVED_CLAUSE[suit](word) },
+    { key: "room", weight: capacity, clause: ROOM_FOR_MORE },
+    { key: "market", weight: price, clause: `${word} fetches well here` },
+  ];
+  // [P-10]: a total order with an explicit tie-break, and its direction is the
+  // order the readings are NAMED in — ground, room, market.
+  return terms.sort((a, b) => b.weight - a.weight || DEEP_TERMS.indexOf(a.key) - DEEP_TERMS.indexOf(b.key));
+}
+
+// The product, put on the same footing as the two auctions it competes with.
+export function deepScore(terms: DeepTerm[]): number {
+  let out = PLAN.deepenVoice;
+  for (let i = 0; i < terms.length; i++) out *= terms[i].weight;
+  return out;
+}
+
+// The deepening wants-list, published for the same reason the other two are: the
+// sim is INSPECTABLE WITHOUT BEING CONTROLLABLE (§5.3).
+export function deepWants(town: Town, derived = derive(town), limit = 3): DeepWant[] {
+  const d = derived;
+  // [P-18]: neither set can change while the auction runs, so both are built
+  // once and handed to every region rather than rebuilt per candidate.
+  const taken = takenHexes(town);
+  const claimed = claimedKeys(town);
+  const spare = spareHands(d);
+  const out: DeepWant[] = [];
+  for (let i = 0; i < town.regions.length; i++) {
+    const r = town.regions[i];
+    // ONLY GROUND SOMEBODY GAVE OVER. [HC-94]: unfocused ground carries a token
+    // work and never becomes an industry, so there is nothing here to offer —
+    // and ground marked for HOUSES is being spent, not worked.
+    if (r.focus !== "production") continue;
+    // ...AND ONLY GROUND THAT ALREADY CARRIES ONE. A region with nothing on it is
+    // still a kind-like question and belongs to the five-term auction, which
+    // reads its best FREE ground quite legitimately (§5.1). The instance starts
+    // at the first work.
+    const depth = depthOf(town, i);
+    if (depth < TOKEN_DEPTH) continue;
+    const best = bestBorne(r);
+    if (!best) continue;
+    // FOUR OF THE WORLD'S EIGHT PRODUCES HAVE NO WORK AT ALL (§2.12.14), so
+    // ground that bears only grain, cotton, stone or salt cannot be deepened
+    // today. That is not a bug here; closing it is KAN-125's business.
+    const kind = WORK_FOR_PRODUCE[best.produce];
+    if (kind === undefined) continue;
+    if (countOf(town, kind) >= CATALOGUE[kind].max) continue; // the catalogue's own limit
+    const room = roomInRegion(town, r, i, kind, "deepen", taken, claimed);
+    const terms = scoreDeepening(town, r, i, kind, best.produce, best.suit, taken, claimed);
+    const score = deepScore(terms);
+    // THE GROUND BEING SPENT IS NOT A SEPARATE GATE, and deliberately not: a
+    // full region's capacity reading is zero, and zero times anything is zero,
+    // so the product refuses it here. An `if (room <= 0) continue` above this
+    // line said the same thing twice — it survived mutation for exactly that
+    // reason, and a rule stated twice is a rule no test can break ([P-1]).
+    if (score <= 0) continue;
+    const def = CATALOGUE[kind];
+    out.push({
+      region: r.id,
+      kind,
+      produce: best.produce,
+      label: theGround(r),
+      where: ` to the ${compass(r.bearing)}`,
+      score,
+      terms,
+      reason: reasonFrom(terms),
+      depth,
+      room,
+      cost: def.cost,
+      affordable: town.wealth >= def.cost,
+      manned: def.hands <= spare,
+      supplied: canBuildKind(d.commerce, kind),
+      permitted: permits(town, kind),
+    });
+  }
+  // [P-10]: the loudest argument, then the elder ground.
+  out.sort((a, b) => b.score - a.score || a.region - b.region);
+  return out.slice(0, limit);
+}
+
+export function describeDeepening(town: Town, want: DeepWant): string {
+  const who = town.governor?.trim() ? town.governor : "The governor";
+  return `${who} sets more ${CATALOGUE[want.kind].label} in ${want.label}${want.where} — ${want.reason}.`;
+}
+
 // ---- Building --------------------------------------------------------------
 
 export interface Built {
@@ -638,13 +840,26 @@ export interface Focused {
   sentence: string;
 }
 
-// THE SEASON'S ONE DECISION, whichever kind it turned out to be (§5.1.1). Two
+// ...and what he decided when the season bought MORE OF WHAT HE ALREADY HAS. It
+// carries a work like a `Built` does and a region like a `Focused` does, because
+// a deepening is exactly the thing between them: a work raised on ground whose
+// purpose was settled seasons ago (§2.12.10).
+export interface Deepened {
+  kind: "deepening";
+  work: Work;
+  region: number; // the region's ID
+  want: DeepWant;
+  day: number;
+  sentence: string;
+}
+
+// THE SEASON'S ONE DECISION, whichever kind it turned out to be (§5.1.1). THREE
 // candidate types that never share a scoring path, competing for the one thing
 // that is actually scarce.
 // `kind` is the discriminant and the only one: a reader asks `d.kind === "work"`
 // and the compiler narrows. No `isBuilt`/`isFocused` helpers, because nothing
 // outside a test would have called them.
-export type Decision = Built | Focused;
+export type Decision = Built | Focused | Deepened;
 
 // ---- Mending what is rotting (the devolution ladder, spec §3) ---------------
 //
@@ -725,19 +940,28 @@ function describeMend(town: Town, w: Work): string {
 }
 
 // WHAT HE WOULD ACTUALLY START THIS SEASON, once every gate has had its say —
-// or nothing, and the nothing has three different causes. Split out of
-// `governorTurn` when the focus auction arrived beside it, so the two candidate
-// types are chosen by two functions that share no line of scoring.
-function workTurn(town: Town, day: number, d: Derived): Want | null {
-  const ranked = wants(town, day, CHOOSABLE.length, d);
+// or nothing, and the nothing has three different causes.
+//
+// ONE FUNCTION FOR BOTH THINGS A GOVERNOR CAN START ([P-47]). The two candidate
+// types are SCORED by rules that share no line; the GATES they then pass are the
+// same four gates and "he holds out for the better thing" is the same rule, so
+// writing it twice would be two copies free to drift. What arrives here is
+// already ranked by its own auction, and this function cannot see which.
+//
+// He will not raise what nobody can work. A town with money and no men simply
+// waits — building anyway would leave a shed to rot, which is the loop this
+// guard exists to prevent. Nor will he raise what there is nothing to raise it
+// WITH: timber and stone gate construction outright (§3.5.3), which is what
+// makes razing the quay of a stone-poor island a lasting act.
+interface Startable {
+  score: number;
+  affordable: boolean;
+  manned: boolean;
+  supplied: boolean;
+  permitted: boolean;
+}
 
-  // He will not raise what nobody can work. A town with money and no men simply
-  // waits — and building anyway would just leave a shed to rot, which is exactly
-  // the loop this guard exists to prevent.
-  //
-  // Nor will he raise what there is nothing to raise it WITH. Timber and stone
-  // gate construction outright (§3.5.3), which is what makes razing the quay of a
-  // stone-poor island a lasting act rather than a season's inconvenience.
+function startable<T extends Startable>(ranked: T[]): T | null {
   const achievable = ranked.filter((w) => w.manned && w.supplied && w.permitted);
   if (!achievable.length) return null;
 
@@ -749,6 +973,12 @@ function workTurn(town: Town, day: number, d: Derived): Want | null {
   if (now !== best && now.score < best.score * PLAN.settleFor) return null;
   return now;
 }
+
+const workTurn = (town: Town, day: number, d: Derived): Want | null =>
+  startable(wants(town, day, CHOOSABLE.length, d));
+
+const deepenTurn = (town: Town, d: Derived): DeepWant | null =>
+  startable(deepWants(town, d, town.regions.length));
 
 // WHICH CANDIDATE TAKES THE SEASON when both auctions have something to say.
 // HOISTED OUT OF `governorTurn`'S CONDITION ([P-48]): it is a rule, not a
@@ -762,10 +992,21 @@ function workTurn(town: Town, day: number, d: Derived): Want | null {
 // candidates of different KINDS land on exactly the same sum. Measured on a
 // mixed town's first season: four tied pairs.
 //
-// [P-10]'s stated direction is A THING RAISED OVER A THING DECIDED. A focus is
-// free; if it could take the season on a tie it would take every tie for ever,
-// and a rule that settles nothing is not a tie-break.
-export const takesTheSeason = (work: number, focus: number): "work" | "focus" => (work >= focus ? "work" : "focus");
+// [P-10]'S STATED DIRECTION, AND IT IS NOW TWO STEPS RATHER THAN ONE:
+//
+//   A THING RAISED OVER A THING DECIDED. A focus is free; if it could take the
+//   season on a tie it would take every tie for ever, and a rule that settles
+//   nothing is not a tie-break.
+//
+//   A NEW THING OVER MORE OF AN OLD ONE. Both a work and a deepening are things
+//   raised and paid for, so the tie between THEM needs its own direction: a town
+//   with no tavern at all wants a tavern more than it wants a fourth sawpit. It
+//   also leans the safe way on [HC-75] — the tie never goes to the candidate
+//   that makes the region deeper.
+//
+// An absent candidate arrives as 0, which every real score is above.
+export const takesTheSeason = (work: number, deepening: number, focus: number): "work" | "deepening" | "focus" =>
+  work >= deepening && work >= focus ? "work" : deepening >= focus ? "deepening" : "focus";
 
 // One decision per season. The governor builds the best thing he can afford —
 // but he HOLDS OUT for something better rather than always buying the cheapest
@@ -791,12 +1032,29 @@ export function governorTurn(town: Town, day: number): Decision | null {
 
   const focus = focusWants(town, d, 1)[0] ?? null;
   const work = workTurn(town, day, d);
+  const deep = deepenTurn(town, d);
+  if (work === null && deep === null && focus === null) return null;
 
-  if (work !== null && (focus === null || takesTheSeason(work.score, focus.score) === "work")) {
+  const takes = takesTheSeason(work?.score ?? 0, deep?.score ?? 0, focus?.score ?? 0);
+
+  if (work !== null && takes === "work") {
     const raised = raise(town, work.kind, day);
     if (!raised) return null;
     town.wealth -= work.cost;
     return { kind: "work", work: raised, want: work, day, sentence: describeBuild(town, work) };
+  }
+
+  if (deep !== null && takes !== "focus") {
+    const r = regionOf(town, deep.region);
+    if (!r) return null;
+    // THE SAME MINT AS EVERY OTHER WORK, through the one door a deepening has:
+    // `raise` is handed the region the governor named rather than left to find
+    // the best FREE ground for the kind. The rising-returns premium is minted
+    // inside it, into the new line only ([HC-97], §2.12.5).
+    const raised = raise(town, deep.kind, day, r);
+    if (!raised) return null;
+    town.wealth -= deep.cost;
+    return { kind: "deepening", work: raised, region: r.id, want: deep, day, sentence: describeDeepening(town, deep) };
   }
 
   if (focus !== null) {
@@ -828,10 +1086,11 @@ export interface Season {
   // The day the season began, days since world epoch. The harness turns it into a
   // year when it writes its journal line; nothing in the sim ever needs one.
   day: number;
-  // WHAT THE SEASON'S ONE DECISION CAME TO — a work raised, a work mended, or a
-  // stretch of ground given a purpose. It was `built: Built | null` until the
-  // focus auction landed beside the work auction; one field rather than two,
-  // because they are one decision and a season can only hold one of them.
+  // WHAT THE SEASON'S ONE DECISION CAME TO — a work raised, a work mended, a
+  // stretch of ground given a purpose, or ground already given over worked
+  // deeper. It was `built: Built | null` until the focus auction landed beside
+  // the work auction; one field rather than three, because they are one decision
+  // and a season can only hold one of them.
   decided: Decision | null;
   grew: Grew | null;
 }

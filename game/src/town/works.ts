@@ -10,7 +10,7 @@ import type { Axial } from "./hex";
 import type { TradeClass } from "./trade";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
-import { isDead, SUIT_RANK } from "./land";
+import { isDead, SUIT_RANK, capacityOf } from "./land";
 
 // Where a work sits when the ledger is projected onto a raid map (KAN-76).
 export type Zone = "waterfront" | "lowerTown" | "plaza" | "backTown" | "outworks" | "beyondThePale";
@@ -117,22 +117,110 @@ export function regionsFor(town: Town, kind: WorkKind): { region: Region; suit: 
 }
 
 // Ground already spoken for: built over by the town, or carrying a work.
-function takenHexes(town: Town): Set<string> {
+export function takenHexes(town: Town): Set<string> {
   const taken = new Set(town.footprint.claimed.map(key));
   for (const w of town.works) if (w.hex && w.condition !== "ruin") taken.add(key(w.hex));
   return taken;
 }
 
-// How much ground is left for this work. AREA IS CAPACITY — and the town eating
-// its own land is what makes growth cost something.
+// ---- [HC-94] A focus buys CAPACITY, never a multiplier ---------------------
+//
+// TWO VERBS PUT A WORK ON A REGION, AND THE ONLY THING THAT DIFFERS BETWEEN THEM
+// IS WHAT THE GROUND ALLOWS. That is the whole of §2.12.4 in code, and it is
+// deliberately not two rules:
+//
+//   raise  — the five-term auction scores a KIND on FREE ground (§5.1), which is
+//            only legitimate while the ground IS free. So it may put the FIRST
+//            work on a region and no more: "there is timber over the ridge; they
+//            take what they need of it", and it never becomes an industry.
+//   deepen — ground somebody has GIVEN OVER to production may be worked to its
+//            free area. The cap is not a separate number — it is the ground.
+//
+// So the focused-to-unfocused ratio is AREA, the founding roll's own variance,
+// and NOTHING ANYWHERE MULTIPLIES A YIELD BECAUSE A FOCUS WAS SET. The second of
+// §2.12.4's two objections is the one to hold on to: a work stores its scaled
+// yields AT THE MOMENT IT IS RAISED, so a focus flipped later could not re-price
+// what already stands — a dial true of new rows and false of old ones is worse
+// than no dial.
+export type Verb = "raise" | "deepen";
+
+// The token cap, and it is a RULE rather than a dial — §2.12.4 states the number
+// in words ("ONE capital work") and nothing downstream divides by it.
+export const TOKEN_DEPTH = 1;
+
+// [HC-93] A REGION'S DEPTH IS COUNTED, NEVER STORED. There is no development
+// integer, no level, no tier: the filter below over ~20 ledger lines is the
+// cheapest thing in the module and it is load-bearing, because a stored depth is
+// exactly a derived quantity free to drift from the works that explain it
+// ([HC-14]) — and it would have no lumber mill in it to see (§7).
+//
+// WHAT IS COUNTED IS A WORK SOMEBODY CHOSE FOR THIS GROUND: a capital work that
+// stands on what the region BEARS. Two exclusions, each for its own reason:
+//
+//  * SUBSISTENCE WORKS ([HC-98], and its second edge found by KAN-123). A garden
+//    plot raises itself on any ground the town holds, is never chosen, never
+//    priced and never gated — so it claims no purpose for the ground under it.
+//    Counted here, it would spend a region's token allowance before any governor
+//    ever looked at it.
+//  * SITED WORKS (§2.12.12). A quay, a battery and a customs house stand on named
+//    ground rather than on what the ground bears; they survive the collapse
+//    untouched and stay gated on ground, coin, hands and materials — never on
+//    what a region is FOR. No land use makes a town safer.
+export function depthOf(town: Town, index: number): number {
+  let n = 0;
+  for (let i = 0; i < town.works.length; i++) {
+    const w = town.works[i];
+    if (w.region !== index || w.condition === "ruin") continue;
+    const def = CATALOGUE[w.kind];
+    if (def.cls === "capital" && def.produces !== null) n++;
+  }
+  return n;
+}
+
+// How deep this region's ground may go, by this verb. `claimed` is the set
+// `capacityOf` would build for itself, handed in by a caller asking about
+// several regions ([P-18]) — and it is never consulted by `raise`, which is why
+// the auction's own path allocates nothing new.
+export function depthAllowed(town: Town, r: Region, verb: Verb, claimed?: Set<string>): number {
+  if (verb === "raise") return TOKEN_DEPTH;
+  return r.focus === "production" ? capacityOf(town, r, claimed) : 0;
+}
+
+// WHAT THIS REGION WILL STILL TAKE OF THIS WORK, by this verb. ONE FUNCTION
+// ([P-47]): the score that says "there is room for more", the gate that refuses a
+// deepening and the mint that puts the work on the ground all ask this, so they
+// cannot drift apart.
+export function roomInRegion(
+  town: Town,
+  r: Region,
+  index: number,
+  kind: WorkKind,
+  verb: Verb,
+  taken: Set<string>,
+  claimed?: Set<string>,
+): number {
+  let free = 0;
+  for (let i = 0; i < r.hexes.length; i++) if (!taken.has(key(r.hexes[i]))) free++;
+  const def = CATALOGUE[kind];
+  // Outside the capacity rule entirely: a subsistence work ([HC-98]) and a sited
+  // work (§2.12.12) both stand on ground whose purpose is not in question.
+  if (def.cls !== "capital" || def.produces === null) return verb === "raise" ? free : 0;
+  const room = depthAllowed(town, r, verb, claimed) - depthOf(town, index);
+  return free < room ? free : room < 0 ? 0 : room;
+}
+
+// How much ground is left for this work, as the AUCTION asks it. AREA IS
+// CAPACITY — and the town eating its own land is what makes growth cost
+// something. A deepening never comes through here: it names one region and asks
+// `roomInRegion` about that one ([HC-97]).
 export function roomFor(town: Town, kind: WorkKind): number {
   const def = CATALOGUE[kind];
   if (!def.produces && !def.needsGround) return Math.max(0, def.max - countOf(town, kind)); // a civic work
   const taken = takenHexes(town);
-  const free = regionsFor(town, kind).reduce(
-    (n, { region }) => n + region.hexes.filter((h) => !taken.has(key(h))).length,
-    0,
-  );
+  let free = 0;
+  for (const { region } of regionsFor(town, kind)) {
+    free += roomInRegion(town, region, town.regions.indexOf(region), kind, "raise", taken);
+  }
   return Math.min(free, Math.max(0, def.max - countOf(town, kind)));
 }
 
@@ -146,18 +234,38 @@ export function buildable(town: Town, kind: WorkKind): boolean {
   return true;
 }
 
-// The best free ground for this work: the best-suited region, and within it the
-// sweet spot if it is still open — which is why the boiling house stands where
-// it does.
-export function groundFor(town: Town, kind: WorkKind): { hex: Axial; region: Region; suit: Suit | null } | null {
+export interface Ground {
+  hex: Axial;
+  region: Region;
+  index: number; // the region's index on the town, which is what a Work stores
+  suit: Suit | null;
+}
+
+// WHERE IN THIS REGION the work would stand: the sweet spot if it is still open
+// — which is why the boiling house stands where it does — and otherwise the
+// first ground free of the town and of anything already on it.
+export function groundIn(r: Region, index: number, kind: WorkKind, taken: Set<string>): Ground | null {
+  const def = CATALOGUE[kind];
+  const free = r.hexes.filter((h) => !taken.has(key(h)));
+  if (!free.length) return null;
+  const sweet = r.sweetSpot && free.find((h) => key(h) === key(r.sweetSpot!));
+  const suit = def.needsGround ? null : def.produces ? (r.bears[def.produces] ?? null) : null;
+  return { hex: sweet ?? free[0], region: r, index, suit };
+}
+
+// The best free ground for this work, as the AUCTION asks it: the best-suited
+// region that will still take one. Ground a work already stands on is not free
+// ground and the auction may not have it — that region is an INSTANCE now, and
+// deciding anything more about it is a deepening ([HC-97]).
+export function groundFor(town: Town, kind: WorkKind): Ground | null {
   const def = CATALOGUE[kind];
   if (!def.produces && !def.needsGround) return null;
   const taken = takenHexes(town);
-  for (const { region, suit } of regionsFor(town, kind)) {
-    const free = region.hexes.filter((h) => !taken.has(key(h)));
-    if (!free.length) continue;
-    const sweet = region.sweetSpot && free.find((h) => key(h) === key(region.sweetSpot!));
-    return { hex: sweet ?? free[0], region, suit };
+  for (const { region } of regionsFor(town, kind)) {
+    const index = town.regions.indexOf(region);
+    if (roomInRegion(town, region, index, kind, "raise", taken) <= 0) continue;
+    const ground = groundIn(region, index, kind, taken);
+    if (ground) return ground;
   }
   return null;
 }
@@ -223,13 +331,47 @@ const handsOn = (def: WorkDef, q: number, far: boolean): number => {
   return def.hands * Math.min(q, 1) * walk;
 };
 
+// RISING RETURNS, AND THEY RISE WITH DEPTH (§2.12.5). The Nth work on a region
+// is worth more than the first — a second sawpit shares a track, a pond and a
+// crew; a fifth is a works, with yards. The curve's SHAPE is a tuning table
+// ([HC-90]); what the spec fixes is that it rises, that it is minted at raise
+// time, and that AREA IS ITS CEILING.
+//
+// THE CAP IS NOT IN HERE AND MUST NOT BE, and that is the point of `[HC-75]`.
+// Unbounded rising returns are an overshoot engine — more works, more yield,
+// more growth, more works — and "no place oscillates with growing amplitude
+// across two hundred years" is a named acceptance test. The premium runs out of
+// GROUND before it runs out of anything else, because `roomInRegion` will not
+// give it a hex to stand on past the region's free area, so the loop terminates
+// on the founding roll rather than on a constant. A second clamp here would be a
+// separate number doing the same job, which §2.12.5 refuses outright.
+export const depthPremium = (depth: number): number => 1 + depth * WORKS.premiumPerDepth;
+
 // Mint a work on a named hex, scaled by how well that ground suits it. Ground
 // that was made for a crop is worth more of it; ground that merely grudges it
 // pays a fraction — which is adaptability with a visible price.
-export function raise(town: Town, kind: WorkKind, day: number): Work | null {
-  if (!buildable(town, kind)) return null;
+//
+// `onRegion` IS THE DEEPENING'S OWN DOOR, and it is the only difference between
+// the two verbs at the mint. Without it a work goes where the auction's best
+// FREE ground is; with it, on the region a governor named and scored from that
+// region's own ground ([HC-97]). Everything below — the scaling, the premium,
+// the ledger line — is one path, so the two verbs can never mint differently.
+export function raise(town: Town, kind: WorkKind, day: number, onRegion: Region | null = null): Work | null {
   const def = CATALOGUE[kind];
-  const ground = groundFor(town, kind);
+  if (countOf(town, kind) >= def.max) return null; // the catalogue's own limit
+  if (def.requires && !working(town, def.requires)) return null;
+  const taken = takenHexes(town);
+  let ground: Ground | null;
+  if (onRegion === null) {
+    if (!buildable(town, kind)) return null;
+    ground = groundFor(town, kind);
+  } else {
+    const index = town.regions.indexOf(onRegion);
+    ground = roomInRegion(town, onRegion, index, kind, "deepen", taken) > 0
+      ? groundIn(onRegion, index, kind, taken)
+      : null;
+    if (!ground) return null;
+  }
   if ((def.produces || def.needsGround) && !ground) return null;
   let q = ground?.suit ? SUIT_YIELD[ground.suit] : 1;
   if (ground && ground.region.sweetSpot && ground.hex && key(ground.hex) === key(ground.region.sweetSpot)) {
@@ -237,6 +379,11 @@ export function raise(town: Town, kind: WorkKind, day: number): Work | null {
   }
   const far = ground?.region.reach === "far";
   if (far) q *= WORKS.farPenalty; // ground over the ridge yields a little less...
+  // ...and a work that joins others of its own kind on the same ground is worth
+  // more than the first was. It is minted HERE, into the new line, exactly as
+  // suitability and reach are — and the works already standing are never
+  // touched, so if the fifth burns, the YARDS are what the town lost.
+  if (ground && def.cls === "capital" && def.produces !== null) q *= depthPremium(depthOf(town, ground.index));
 
   const work: Work = {
     id: town.nextWorkId++,
@@ -246,7 +393,7 @@ export function raise(town: Town, kind: WorkKind, day: number): Work | null {
     circuit: kind === "palisade" ? town.footprint.claimed.map((h) => ({ ...h })) : undefined,
     kind,
     name: def.label,
-    region: ground ? town.regions.indexOf(ground.region) : null,
+    region: ground ? ground.index : null,
     hex: ground ? ground.hex : null,
     sinceDay: day,
     condition: "working",
