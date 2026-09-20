@@ -288,6 +288,21 @@ export const PLAN = {
     agenda: 0.9, // "the crown wants this place held"
   },
   affinity: { poor: 0.2, fair: 0.6, ideal: 1.0 }, // how strongly the ground argues for a work
+  // FREE HEXES AT WHICH A REGION'S SIZE IS THE ARGUMENT — the focus auction's
+  // one new number, and the only one it needed. [HC-94] says a focus buys
+  // CAPACITY and never a multiplier, so "the focused-to-unfocused ratio is
+  // AREA"; this is what turns that into a weight, and the founding roll's own
+  // variance is then what decides which ground a town gives over. Nobody tuned
+  // that; the land did.
+  //
+  // CALIBRATED BY MEASUREMENT, NOT BY §2.3's TABLE, and the difference matters.
+  // It was written as 5 against LAND.dominant's 6-9, and [P-52] caught it: the
+  // median came out AT THE CLAMP (55.8% of regions at 1.00), because the world's
+  // cut is not the retired generator those numbers describe — free hexes run
+  // 0-23 with a median of 6. A ceiling half the regions already touch prices
+  // nothing. At 9 the median is 0.67 and 23% sit at the top, so the scale
+  // discriminates across the range it is actually handed.
+  focusDeepAt: 9,
   wantSecurity: 45, // the security a town would like to have before it relaxes
   starvedBonus: 1.0, // a downstream work standing idle for want of this one
   tradeScale: 34, // normalises a work's earnings into roughly 0..1

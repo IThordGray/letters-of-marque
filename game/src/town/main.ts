@@ -149,7 +149,7 @@ function advance(seasons: number) {
     towns.forEach((t, i) => {
       const season = stepTownSeason(t, day);
       const when = yearOfDay(season.day);
-      if (season.built) journal[i].push(`${when} — ${season.built.sentence}`);
+      if (season.decided) journal[i].push(`${when} — ${season.decided.sentence}`);
       // Stalling is a standing condition, not news — don't repeat it every season.
       if (season.grew && season.grew.kind !== "stalled") journal[i].push(`${when} — ${season.grew.sentence}`);
     });

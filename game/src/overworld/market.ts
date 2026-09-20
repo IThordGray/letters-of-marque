@@ -485,7 +485,7 @@ export function stepWorldSeason(
   const seasons: (TownSeason | null)[] = [];
   for (let i = 0; i < towns.length; i++) {
     const grew = stepFootprint(towns[i]);
-    seasons.push({ day, built: governorTurn(towns[i], day), grew });
+    seasons.push({ day, decided: governorTurn(towns[i], day), grew });
     // ...and the books are struck, so the weather's account against THIS
     // harvest is closed with them ([HC-6]). It is closed here rather than in
     // phase 1 or 3 because every one of the four phases above has to read the

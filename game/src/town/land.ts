@@ -49,11 +49,49 @@ export interface Land {
 export const regionOf = (town: Town, id: number) => town.regions.find((r) => r.id === id) ?? null;
 export const liveRegions = (town: Town) => town.regions.filter((r) => !isDead(r.terrain));
 
+// The hexes the town has built over, as a key set. HOISTED so a caller with
+// several regions to ask about builds it ONCE ([P-18]) — the focus auction asks
+// about every region in the town in one breath, and the claimed set cannot
+// change while it does.
+export const claimedKeys = (town: Town): Set<string> => new Set(town.footprint.claimed.map(key));
+
 // Ground still available to work: a region's area LESS whatever the town has
 // built over. Growth eats its own cause.
-export function capacityOf(town: Town, r: Region): number {
-  const claimed = new Set(town.footprint.claimed.map(key));
+//
+// ONE PATH TO THE NUMBER ([P-47]): the optional second argument is the same set
+// this function would have built for itself, handed in by a caller who is asking
+// about more than one region. It is never a different rule, only a cheaper way
+// to ask the same one.
+export function capacityOf(town: Town, r: Region, claimed = claimedKeys(town)): number {
   return r.hexes.filter((h) => !claimed.has(key(h))).length;
+}
+
+// WHAT A STRETCH OF GROUND IS BEST FOR — the question a region focus asks, and
+// the only reading of `bears` that answers it.
+//
+// [P-10] THE TIE-BREAK NEEDS A STATED DIRECTION, and this one is the module's
+// own: BREAD FIRST, THEN WHAT BUILDS, THEN WHAT SELLS. It is the same order
+// `worthOf` ranks works by and the same order [HC-78] pays in — so ground that
+// bears food as well as it bears cane is food ground, and a town whose best
+// acre could go either way feeds itself with it. Reading `Object.keys(r.bears)`
+// instead would have ordered it by however the world's cut happened to fill the
+// record in, which is a producer's order and not a rule.
+export const PRODUCE_ORDER: Produce[] = ["food", "fish", "grain", "timber", "stone", "cane", "cotton", "salt"];
+
+// How good a grade is, as a number. ONE TABLE ([P-47]) — `regionsFor` ranks the
+// ground a work may stand on by it, and `bestBorne` ranks what a region bears by
+// it, and those are the same question asked from two ends.
+export const SUIT_RANK: Record<Suit, number> = { ideal: 3, fair: 2, poor: 1 };
+
+export function bestBorne(r: Region): { produce: Produce; suit: Suit } | null {
+  let best: { produce: Produce; suit: Suit } | null = null;
+  for (let i = 0; i < PRODUCE_ORDER.length; i++) {
+    const p = PRODUCE_ORDER[i];
+    const s = r.bears[p];
+    if (!s) continue;
+    if (!best || SUIT_RANK[s] > SUIT_RANK[best.suit]) best = { produce: p, suit: s };
+  }
+  return best;
 }
 
 export const dominantOf = (town: Town): Region | null =>
