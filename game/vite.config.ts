@@ -36,7 +36,20 @@ export default defineConfig({
   //
   // So: performance is policed by measurement, in the tests written to measure
   // it. This number only has to be long enough that a HANG is still obvious.
+  //
+  // RAISED 30 s -> 120 s on 2026-09-20, and the reason is worth keeping because
+  // it will happen again. `run.test.ts`'s "a century watched at any speed is the
+  // same century" runs THREE centuries — a day at a time, in 173-day chunks, and
+  // all at once — and compares them. That is [HC-11], and it is honestly slow
+  // rather than wasteful. It measured 35 s the day the region focus landed and
+  // went red at random; it was 30-odd before.
+  //
+  // THE PATTERN TO EXPECT: this test costs whatever a century costs, so it grows
+  // every time the world learns to do something. It is the suite's long pole and
+  // it will keep lengthening. When it next crosses the line, raise this again —
+  // do NOT shorten the century, because the misaligned chunking across many
+  // season boundaries is the whole of what the claim is testing.
   test: {
-    testTimeout: 30_000,
+    testTimeout: 120_000,
   },
 });
