@@ -1225,6 +1225,19 @@ the auction.
 withhold.** Gate them and `[HC-67]`'s hamlet floor and `[HC-18]`'s *only a deliberate hand empties a
 town* fail together, silently, as a number drifting to zero in a two-hundred-year run.
 
+> **A SECOND EDGE, found by building it (KAN-123) — a subsistence work must not make a region an
+> INSTANCE either.** `[HC-97]` says a region that already carries works is scored from its own
+> ground rather than from the catalogue, and the natural way to write that filter is *"has any work
+> standing on it"*. **Written literally, that is silently wrong**: a garden plot raises itself on
+> any ground, so it would take the question of what that ground is FOR permanently away from the
+> governor. Measured: it leaves a **median of one unfocused live region per place** — 75 of 213
+> across 49 places — which makes §2.12's own acceptance unreachable by construction.
+>
+> **The rule is *a region carrying a work somebody CHOSE*.** A subsistence work is never chosen,
+> never priced and never gated, so it claims no purpose for its ground. The same sentence that keeps
+> the hamlet floor alive keeps the focus auction reachable, and both fail the same way — quietly,
+> and only in a long run.
+
 #### §10.8 Damage has a cause, never a clock — four constraints
 
 *Added 2026-09-19. The design lives in [`town-economy.md`](town-economy.md) §4, which replaces that
@@ -1290,7 +1303,16 @@ parked suite has to come back before fifty of these run for two centuries.
 - **Two towns on identical ground with different focuses produce different export classes** — and
   **two towns with the same focus on differently-sized dominant regions produce different depths**
   (`[HC-94]`: the ratio is area).
-- **No focus is ever set twice on the same region**, across a two-hundred-year run (`[HC-95]`).
+- **A PRODUCTION focus is never revisited. A region is decided at most twice, and the second decision
+  is always the redirection of an unbuilt growth focus** (`[HC-95]`), across a two-hundred-year run.
+
+  > **CORRECTED 2026-09-20, and it was FALSE as written.** This bullet used to read *"no focus is
+  > ever set twice on the same region"* — which predates the 2026-09-19 narrowing, and the narrowing
+  > legitimises exactly one second decision. **The old wording was not merely stale, it was
+  > unachievable:** KAN-123 wrote its test to it first, and the test **failed on an ordinary
+  > two-hundred-year run**, because redirecting an unbuilt growth focus happens unprompted in normal
+  > play. The replacement is stricter where it matters — production terminal, never a third decision,
+  > and the second always a redirection.
 - **No place's works get worse without a named cause in its chronicle** (`[HC-99]`). This is the
   single most important test in §10.8 — a rot that crept back in would look exactly like ordinary
   decline until somebody read a chronicle.

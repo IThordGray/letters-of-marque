@@ -171,6 +171,20 @@ touches is not fragile, it is furniture.**
 - The mirror case is worth the same glance: a clamped quantity whose median is *zero* has the same
   disease at the other end.
 
+> **EXTENDED 2026-09-20: do the same for any constant you DIVIDE BY.** The rule above reads as being
+> about a derived quantity, and the second instance was not — the quantity was fine and **the scale
+> was wrong**. A depth term was written as `free hexes / focusDeepAt` with `focusDeepAt = 5`, taken
+> from a constants table describing region sizes of 6–9. **The median came out at the clamp: 55.8% of
+> regions read 1.00.** A ceiling that half the world already touches prices nothing, which is
+> `[P-52]`'s own failure wearing a tuning knob.
+>
+> **The cause generalises and is worth stating: a denominator calibrated against a TABLE rather than
+> against the DATA it will be handed.** The table in question described a generator that had since
+> been deleted, so the constant was documentation of a world that no longer existed. Measured against
+> the real cut, free hexes per region run **0–23 with a median of 6**, and the right denominator was
+> 9. **Before dividing by a constant, measure the thing you are dividing** — and if the constant came
+> from another file, check that file still describes something real.
+
 **`[P-53]` Where two numbers price the same underlying fact, only ONE of them may be a normaliser.**
 Reach was nearly built as `openLanes / fullAt` — a count against a constant, which reads perfectly
 natural and would have charged every place a **third** time for where the siting roll put it:

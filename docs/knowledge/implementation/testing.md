@@ -250,6 +250,20 @@ measurement rather than indicting the test, and a companion claim guards the pre
 if a non-adjacent tie ever appears, that claim fails and the second key starts mattering.
 **A predicted survivor validates a precondition; only an unpredicted one indicts a test.**
 
+> **And PREDICT BY MEASURING, not by reasoning — found 2026-09-20, by getting it wrong.** A
+> tie-break between two candidate *types* was predicted to survive as a float coincidence: two
+> different kinds of thing landing on exactly the same score, surely never in practice. **Measuring
+> said otherwise.** Two constants in different tables happened to carry the same weight while both
+> needs terms saturated, putting **four tied pairs in one town's first season** — the tie is
+> *structural*, not coincidental, and it is reached in ordinary play.
+>
+> **The rule this leaves:** a prediction that a survivor is unreachable is itself a claim about the
+> data, and the only honest way to make it is to go and look. **If you cannot measure the
+> precondition, you have not predicted the survivor — you have excused it.** And per `[P-48]`, a
+> tie-break living inside a loop condition is unreachable by any test; hoisted into a named function
+> it becomes a rule with a claim beside it, which is what turned this one from an excuse into a
+> guard.
+
 ### Write the oracle out independently
 
 **A test that asks the code under test what the answer should be cannot catch a term added to it.**
