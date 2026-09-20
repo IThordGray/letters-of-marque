@@ -11,10 +11,15 @@ import {
   raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, damageWorks, mendable, repairCost,
   CATALOGUE, SUBSISTENCE,
 } from "./works";
-import { stepTownSeason } from "./governor";
+import { stepTownSeason, type Decision, type Built } from "./governor";
 import { DECAY, POP, SUIT_YIELD, WORKS } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
 import { mixedTown, bareTown, townOf, reg, RING1, RING2 } from "./fixtures";
+
+// A season's one decision may be a work or a region focus, so a claim about a
+// MEND narrows to the work half rather than reading `.work` off whatever came
+// back (see governor.test.ts for the same helper and the same reason).
+const built = (d: Decision | null): Built | null => (d !== null && d.kind === "work" ? d : null);
 
 // The town keeps no clock (KAN-107): the world hands it the day, and here the
 // test plays the world. These fixtures stand on the world's first day.
@@ -358,7 +363,7 @@ describe("coming back up the ladder", () => {
     town.population = 400;
     town.wealth = 9000;
     const mended = stepTownSeason(town, rotted);
-    expect(mended.built?.work).toBe(pit);
+    expect(built(mended.decided)?.work).toBe(pit);
     expect(pit.condition).toBe("idle"); // the coin buys ONE RUNG, not the men
 
     stepTownSeason(town, rotted + SEASON);
@@ -563,7 +568,7 @@ describe("the weather coming down the same ladder", () => {
     expect(mendable(town, pit)).toBe(true);
 
     const mended = stepTownSeason(town, DAY0 + SEASON);
-    expect(mended.built?.work).toBe(pit);
+    expect(built(mended.decided)?.work).toBe(pit);
     expect(pit.condition).toBe("idle");
     stepTownSeason(town, DAY0 + 2 * SEASON);
     expect(pit.condition).toBe("working");

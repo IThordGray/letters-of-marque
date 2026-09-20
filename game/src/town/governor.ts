@@ -1,29 +1,60 @@
-// The development plan — what the governor builds next, and why.
+// The development plan — what the governor builds next, what he decides his
+// ground is FOR, and why he says he did either.
 //
-// A five-term auction over the twelve capital works. THE HARD RULE: no term
-// without a clause. The one-line reason is assembled from the top two
-// contributing terms, so the explanation IS the score rather than a
-// rationalisation written afterwards.
+// TWO CANDIDATE TYPES, ONE DECISION A SEASON (spec §5.1.1). A five-term auction
+// over the capital works, and a FOUR-term auction over the town's unfocused
+// regions. They never share a scoring path and they compete for the same scarce
+// thing: the season. THE HARD RULE holds across both: no term without a clause.
+// The one-line reason is assembled from the top two contributing terms, so the
+// explanation IS the score rather than a rationalisation written afterwards.
 //
 // Wealth is NOT a term. The score decides what the town wants most; wealth
 // decides what it can start now. Keeping those separate is what makes an
-// investment slider mean something.
+// investment slider mean something — and a FOCUS COSTS NO COIN AT ALL
+// (§2.12.6), so it is the one candidate the budget gate never touches. A town
+// with empty coffers can still decide what its ground is for: deciding is free,
+// doing is not.
 
-import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived } from "./types";
+import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived, Region, Produce } from "./types";
+import { key } from "./hex";
 import { CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf } from "./works";
-import { compass, LABEL } from "./land";
+import { compass, LABEL, bestBorne, capacityOf, claimedKeys, isBuildable, regionOf } from "./land";
 import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
-import { PLAN } from "./constants";
-import { stepFootprint, type Grew } from "./footprint";
+import { PLAN, FOOTPRINT } from "./constants";
+import { stepFootprint, crowding, type Grew } from "./footprint";
 
 export type TermKey = "land" | "need" | "market" | "fear" | "agenda";
+
+// [HC-96] THE FOCUS AUCTION IS FOUR-TERMED — land, need, market, agenda — AND
+// `fear` IS STRUCTURALLY ABSENT. It stays absent, and this type is how:
+// `scoreFocus` returns `FocusTerm[]`, so a `fear` term cannot be pushed onto it
+// without the compiler saying no. That is [P-17b]'s shape — there is no argument
+// through which the forbidden fact could arrive — and it is deliberately
+// stronger than a comment, because the thing being guarded against is somebody
+// later reading the five-term auction and "finishing" this one.
+//
+// WHY, and it is structural rather than a taste call. FEAR NEVER ARGUES FOR WHAT
+// GROUND IS FOR. It is a real and correct argument for A BATTERY ON A BLUFF — a
+// work, on a hex, answering a threat — and it is already heard there, in
+// `scoreWork`. No land use makes a town safer, so a `fear` term here would be
+// defence claiming a FOURTH home beside the term, the steer and the defensive
+// works themselves, which §2.12.3 refused and [P-47] forbids.
+export const FOCUS_TERMS = ["land", "need", "market", "agenda"] as const;
+export type FocusTermKey = (typeof FOCUS_TERMS)[number];
 
 export interface Term {
   key: TermKey;
   weight: number; // contribution to the score
   clause: string; // the plain-language reason this term gives
+}
+
+// The same shape, narrowed at the key. A `FocusTerm` IS a `Term`, so the two
+// auctions share `reasonFrom` and the "explanation is the score" rule is one
+// rule with one implementation ([P-47]).
+export interface FocusTerm extends Term {
+  key: FocusTermKey;
 }
 
 export interface Want {
@@ -119,14 +150,46 @@ export const AGENDA: Record<Archetype, Partial<Record<WorkKind, number>>> = {
 // the town card still reads "too much of their bread comes off a ship" — and it
 // is PERMANENTLY UNFULFILLED. That is the whole implementation: no per-purpose
 // scoring anywhere, and one line of vocabulary here.
-export const OUT_OF_VOCABULARY: Record<Archetype, Partial<Record<WorkKind, true>>> = {
+//
+// IT IS KEYED TO THE PRODUCE, NOT TO A WORK KIND (§5.1.2, re-keyed 2026-09-19).
+// The table used to name `provisionGround`, and the collapse takes the per-crop
+// menu item away: provision grounds become what a production focus on food
+// ground IS, so there would shortly be no kind left to name. Keyed to the
+// produce, the SAME rule reads one level up and governs both verbs at once —
+//
+//     "A military purpose never sets a production focus on food ground."
+//
+// — so the outpost can no longer fulfil the wish by a side door either. The
+// rule, the source and the sentence are unchanged; only the key moved.
+//
+// [HC-98] AND SUBSISTENCE WORKS STAY OUTSIDE IT ENTIRELY. The outpost keeps its
+// garden plots, exactly as today, and that is structural rather than lucky: this
+// gate is only ever asked by `wants()`, which walks `CHOOSABLE`, and a
+// subsistence work is not in that list. Nothing on the path that raises a garden
+// plot can reach this table.
+export const OUT_OF_VOCABULARY: Record<Archetype, Partial<Record<Produce, true>>> = {
   colony: {},
-  royalOutpost: { provisionGround: true }, // it buys its bread with the crown's grant
+  royalOutpost: { food: true }, // it buys its bread with the crown's grant
   pirateHaven: {},
 };
 
-export const permits = (town: Town, kind: WorkKind): boolean =>
-  OUT_OF_VOCABULARY[town.archetype][kind] !== true;
+// The gate as the WORK auction asks it. A work that grows nothing has no produce
+// and is never out of vocabulary — a purpose bans a use of the ground, not a
+// building.
+export const permits = (town: Town, kind: WorkKind): boolean => {
+  const p = CATALOGUE[kind].produces;
+  return p === null || OUT_OF_VOCABULARY[town.archetype][p] !== true;
+};
+
+// ...and as the FOCUS auction asks it. A production focus is FOR the region's
+// best-borne produce (§2.12.12 — "a deepening raises the work the region's
+// best-borne produce implies"), so that is the produce the gate is asked about.
+// A growth focus is never gated: houses are in every place's vocabulary.
+export const permitsFocus = (town: Town, r: Region, focus: "production" | "growth"): boolean => {
+  if (focus === "growth") return true;
+  const best = bestBorne(r);
+  return best === null || OUT_OF_VOCABULARY[town.archetype][best.produce] !== true;
+};
 
 // ---- Scoring ---------------------------------------------------------------
 
@@ -243,9 +306,315 @@ export function wants(town: Town, day: number, limit = 3, derived = derive(town)
   return out.slice(0, limit);
 }
 
+// ---- The focus auction (§2.12.9) -------------------------------------------
+//
+// A REGION HAS A POTENTIAL GIVEN BY ITS GROUND; A FOCUS DECIDES WHAT THE TOWN
+// TAKES OFF IT. Production, and the region yields more of what its ground bears.
+// Growth, and the ground becomes housing: more people, and the production is
+// largely spent. There are exactly two because there are exactly two things a
+// population can do with a piece of ground — work it, or live on it.
+//
+// A FOCUS COSTS NO COIN (§2.12.6). What it costs is the season's one decision
+// and the fact that it is forever, and there is deliberately no budget in it.
+
+export const FOCUS_KINDS = ["production", "growth"] as const;
+export type FocusKind = (typeof FOCUS_KINDS)[number];
+
+// How much each patron cares about what his ground BECOMES. It is the twin of
+// `AGENDA` and deliberately not a second reading of it: whether a place should
+// earn or should grow is an opinion in its own right, and no amount of wanting a
+// customs house recovers it.
+export const FOCUS_AGENDA: Record<Archetype, Record<FocusKind, number>> = {
+  colony: { production: 0.9, growth: 0.4 }, // the Company wants a return
+  royalOutpost: { production: 0.3, growth: 0.2 }, // it need not earn, and it need not swell
+  pirateHaven: { production: 0.6, growth: 0.8 }, // a haven wants hands, and somewhere to put them
+};
+
+// The capital work a produce implies — read OFF THE CATALOGUE rather than listed
+// beside it ([P-47]), because the catalogue already answers "which work grows
+// cane". Built once at module load, never per call ([P-18]).
+//
+// FOUR OF THE WORLD'S EIGHT PRODUCES HAVE NO WORK AT ALL — `grain`, `cotton`,
+// `stone`, `salt` — so ground that bears only those gets no market argument
+// today. That is not a bug in this auction; it is §2.12.14's measured finding
+// seen from inside the code, and closing it is KAN-125's business.
+const WORK_FOR_PRODUCE: Partial<Record<Produce, WorkKind>> = (() => {
+  const out: Partial<Record<Produce, WorkKind>> = {};
+  for (const k of CHOOSABLE) {
+    const p = CATALOGUE[k].produces;
+    if (p && out[p] === undefined) out[p] = k;
+  }
+  return out;
+})();
+
+// WHAT A PRODUCE IS CALLED IN A SENTENCE, and one table for both places that
+// need one ([P-47]). `food` is the ledger's COLUMN name and nobody gives ground
+// over to "food" — the module's own voice has said "too much of their bread
+// comes off a ship" since §3.5.4, so bread it is, in the clause and in the
+// sentence alike. Everything else is already the word a person would use.
+const PRODUCE_WORD: Record<Produce, string> = {
+  food: "bread",
+  fish: "fish",
+  grain: "grain",
+  timber: "timber",
+  stone: "stone",
+  cane: "cane",
+  cotton: "cotton",
+  salt: "salt",
+};
+
+// The land's argument for HOUSES: §2.12.7's own words. Dead ground now pays a
+// fourth time — it is the only ground a town can grow on for nothing.
+const NOTHING_OFF_IT = "nothing else was ever coming off that ground";
+
+// The town's argument for houses. It is the focus's OWN sentence and not
+// `NEED_CLAUSE.shelter`, and the difference is the point: "people are sleeping
+// rough" is a complaint about DWELLINGS, which raise themselves for free; this
+// is a complaint about GROUND, which does not.
+const NOWHERE_TO_SLEEP = "there is nowhere left for people to sleep";
+
+// Why a focus can no longer be changed. [HC-16] holds even for a decision that
+// comes to nothing, and both of these are said in the ground's own terms.
+export const HOUSES_ON_IT = "there are houses on it now";
+export const GIVEN_OVER = "it is given over, and that is not taken back";
+
+// WHAT A GOVERNOR MAY NO LONGER DECIDE ABOUT THIS GROUND, and why — or `null`
+// while it is still a question. ONE FUNCTION ([P-47]): the filter that refuses a
+// candidate and the sentence that says why are the same call, so no governor can
+// ever be refused for a reason nobody can read.
+//
+// [HC-95], AS NARROWED BY THE HUMAN 2026-09-19, AND THE TWO HALVES LOCK FOR
+// DIFFERENT REASONS:
+//
+//  * A PRODUCTION focus is set once and never changed, full stop. That is
+//    structural rather than a preference: the case for reversing one rested
+//    entirely on its works idling and ROTTING as the reversal cost, and [HC-99]
+//    deletes rot — so a reversible production focus would cost nothing to lift
+//    and could be flipped back the next season, which is exactly the instant
+//    dial this whole direction exists to avoid.
+//  * A GROWTH focus needs no rule of its own, and that is why it is narrower. It
+//    INHERITS its permanence from one the model already has — claiming is
+//    permanent, with no exception — so it may be redirected while nothing has
+//    happened on the ground and locks the moment the first hex is built on,
+//    because THAT HEX is. No new state and no threshold: the condition is a
+//    question the footprint already answers.
+//
+// Each rule locks at the instant its own cost becomes real, and neither needed
+// inventing.
+//
+// [P-18]: the claimed set is handed in by a caller asking about several regions,
+// exactly as `capacityOf` takes it. It matters more here than it looks — this
+// runs every season of every town FOR EVER, long after the last focus is set,
+// and `isClaimed` builds two strings per hex-against-claim comparison.
+export function focusLock(town: Town, r: Region, claimed = claimedKeys(town)): string | null {
+  if (r.focus === "production") return GIVEN_OVER;
+  if (r.focus === "growth") return r.hexes.some((h) => claimed.has(key(h))) ? HOUSES_ON_IT : null;
+  return null;
+}
+
+export interface FocusWant {
+  region: number; // the region's ID, not its index — a handle, never a reference ([P-37])
+  focus: FocusKind;
+  produce: Produce | null; // what a production focus would be FOR; `null` for growth
+  label: string; // "the timbered hills"
+  where: string; // " to the north"
+  score: number;
+  terms: FocusTerm[]; // strongest first
+  reason: string; // assembled from the top two, exactly as a work's is
+  // He had marked this ground for houses and has changed his mind, which [HC-95]
+  // allows only while nothing has been built on it. The sentence says so.
+  redirects: boolean;
+}
+
+// Does this region still carry a work somebody CHOSE? A region that does is an
+// INSTANCE and not a kind — free area partly spent, a suit already bought, a
+// premium already owed, and its scaled trade figure standing on the ground — so
+// scoring it from the catalogue would be the second path [P-47] names and
+// KAN-108 ended on ([HC-97]). Such a region is a DEEPENING, and a deepening is
+// scored from that region's own ground, beside this auction rather than in it.
+//
+// SUBSISTENCE WORKS DELIBERATELY DO NOT COUNT, and that is [HC-98] read from the
+// other end: a garden plot is never chosen, never priced and never gated, so it
+// claims no purpose for the ground it stands on. Measured on the warm world, the
+// difference is not a nicety — counting them leaves a MEDIAN OF ONE unfocused
+// live region per town (75 of 213 across 49 places), which is not "most of its
+// live regions" under any reading.
+const carriesChosenWork = (town: Town, index: number): boolean => {
+  for (let i = 0; i < town.works.length; i++) {
+    const w = town.works[i];
+    if (w.region === index && w.condition !== "ruin" && CATALOGUE[w.kind].cls === "capital") return true;
+  }
+  return false;
+};
+
+// HOW BADLY THE TOWN NEEDS GROUND TO PUT PEOPLE ON, 0..1. Two things say it and
+// they are one want: the shelter need, which only bites where dwellings cannot
+// be raised at all, and CROWDING, which is the footprint's own measure of a town
+// with no room left in it. The greater of the two, because it is the same
+// complaint arriving by two roads — and ONE clause, because [HC-16] asks for a
+// sentence and not an audit.
+const growthPressure = (town: Town, d: Derived): number => {
+  const packed = crowding(town) / FOOTPRINT.crowdedAt;
+  const pressure = packed > 1 ? 1 : packed;
+  return d.needs.shelter > pressure ? d.needs.shelter : pressure;
+};
+
+// FOUR TERMS, AND THE FIFTH IS NOT MISSING — it was never invited ([HC-96]).
+export function scoreFocus(
+  town: Town,
+  r: Region,
+  focus: FocusKind,
+  derived = derive(town),
+  claimed = claimedKeys(town),
+): FocusTerm[] {
+  const d = derived;
+  const terms: FocusTerm[] = [];
+  const best = bestBorne(r);
+  // AREA IS THE RATIO ([HC-94]). A focus buys CAPACITY, never a multiplier, so
+  // the land's voice is how well the ground bears TIMES how much of it is still
+  // free. §2.3's budgeted, skewed region sizes have until now paid off only in
+  // prose; this is where they start paying in the economy.
+  const free = capacityOf(town, r, claimed);
+  const depth = free >= PLAN.focusDeepAt ? 1 : free / PLAN.focusDeepAt;
+
+  if (focus === "production") {
+    // 1. THE LAND CALLS FOR IT — and the clause says whichever of the two
+    //    arguments is the louder: the ground was made for it, or there is a
+    //    great deal of it.
+    if (best) {
+      terms.push({
+        key: "land",
+        weight: PLAN.affinity[best.suit] * depth * PLAN.weights.land,
+        clause: depth >= 0.5 ? `there is depth in the ${LABEL[r.terrain]}` : SUIT_CLAUSE[best.suit](LABEL[r.terrain]),
+      });
+    }
+
+    // 2. THE TOWN WANTS IT. On food ground the want is [HC-81]'s and is scored
+    //    IDENTICALLY for every place, whatever its purpose — a royal outpost
+    //    hears it at full volume and may not act on it, which is the whole of
+    //    what purpose changes (§5.1.2).
+    if (best && best.produce === "food" && d.needs.food > 0) {
+      terms.push({ key: "need", weight: d.needs.food * PLAN.weights.need, clause: DEPENDENCY_CLAUSE });
+    }
+
+    // 3. THE MARKET WANTS IT, and it argues IN COIN about THIS place (§3.5.4) —
+    //    the same ground is worth giving over where timber is dear and not where
+    //    it is cheap, and a port whose quay has burned has no market argument for
+    //    anything at all.
+    if (best) {
+      const kind = WORK_FOR_PRODUCE[best.produce];
+      const earns = kind === undefined ? 0 : fetchOf(town, kind, d.access) / PLAN.tradeScale;
+      if (earns > 0) {
+        terms.push({ key: "market", weight: earns * PLAN.weights.market, clause: `${PRODUCE_WORD[best.produce]} fetches well here` });
+      }
+    }
+  } else {
+    // 1. THE LAND CALLS FOR IT — and for houses the land argues by having
+    //    nothing else to give. A town with scrub to the north can be BOTH a big
+    //    town and a timber town; a town ringed by cane must choose.
+    const spare = 1 - (best ? PLAN.affinity[best.suit] : 0);
+    if (spare > 0) terms.push({ key: "land", weight: spare * depth * PLAN.weights.land, clause: NOTHING_OFF_IT });
+
+    // 2. THE TOWN WANTS IT.
+    const pressure = growthPressure(town, d);
+    if (pressure > 0) terms.push({ key: "need", weight: pressure * PLAN.weights.need, clause: NOWHERE_TO_SLEEP });
+
+    // 3. THE MARKET HAS NOTHING TO SAY ABOUT HOUSES. Trade has no ground to
+    //    stand on (§2.12.3) and a hex of dwellings fills no hold. The term is
+    //    ABSENT rather than zero: a term that says nothing is not a term.
+  }
+
+  // 4. THE PATRON'S AGENDA — whoever pays has an opinion about what the ground
+  //    is for, and it is the only term that speaks for both focuses.
+  const agenda = FOCUS_AGENDA[town.archetype][focus];
+  if (agenda > 0) {
+    terms.push({ key: "agenda", weight: agenda * PLAN.weights.agenda, clause: AGENDA_CLAUSE[town.archetype] });
+  }
+
+  // [P-10]: a total order with an explicit tie-break, and its direction is the
+  // order the terms are NAMED in — land, need, market, agenda — so two terms of
+  // equal weight always write their clauses the same way round.
+  return terms.sort((a, b) => b.weight - a.weight || FOCUS_TERMS.indexOf(a.key) - FOCUS_TERMS.indexOf(b.key));
+}
+
+// WHICH GROUND IS STILL A QUESTION, and the three conditions are three different
+// rules:
+//
+//  * IT MUST BE A CHANGE. `focusLock` has already refused everything permanent;
+//    what is left is unfocused ground (either focus) and an unbuilt growth focus
+//    (production, which is the redirection [HC-95] allows).
+//  * PRODUCTION NEEDS GROUND THAT BEARS SOMETHING. Dead ground gives nothing to
+//    focus on, and "the Company wants a return on this place" is not on its own
+//    a reason to give scrub over to industry.
+//  * HOUSES NEED GROUND THAT WILL TAKE THEM. A growth focus acts entirely
+//    through `nextHex` (§2.12.7), which never claims water or mangrove, so a
+//    growth focus on either would be a decision with no consequence at all.
+const offers = (town: Town, r: Region, index: number, focus: FocusKind): boolean => {
+  if (r.focus === focus) return false;
+  if (carriesChosenWork(town, index)) return false;
+  return focus === "production" ? bestBorne(r) !== null : isBuildable(r.terrain);
+};
+
+// "the cane flats", but "a high bluff" brought its own article.
+const theGround = (r: Region): string =>
+  LABEL[r.terrain].startsWith("a ") ? LABEL[r.terrain] : `the ${LABEL[r.terrain]}`;
+
+// The focus wants-list, published for the same reason the work one is: the sim
+// is INSPECTABLE WITHOUT BEING CONTROLLABLE.
+export function focusWants(town: Town, derived = derive(town), limit = 3): FocusWant[] {
+  const d = derived;
+  // [P-18]: the claimed set cannot change while the auction runs, so it is built
+  // once and handed to every region rather than rebuilt per candidate.
+  const claimed = claimedKeys(town);
+  const out: FocusWant[] = [];
+  for (let i = 0; i < town.regions.length; i++) {
+    const r = town.regions[i];
+    if (focusLock(town, r, claimed) !== null) continue; // set once, and never taken back
+    for (let f = 0; f < FOCUS_KINDS.length; f++) {
+      const focus = FOCUS_KINDS[f];
+      if (!offers(town, r, i, focus)) continue;
+      if (!permitsFocus(town, r, focus)) continue;
+      const terms = scoreFocus(town, r, focus, d, claimed);
+      const score = terms.reduce((s, t) => s + t.weight, 0);
+      if (score <= 0) continue;
+      const best = focus === "production" ? bestBorne(r) : null;
+      out.push({
+        region: r.id,
+        focus,
+        produce: best ? best.produce : null,
+        label: theGround(r),
+        where: ` to the ${compass(r.bearing)}`,
+        score,
+        terms,
+        reason: reasonFrom(terms),
+        redirects: r.focus === "growth",
+      });
+    }
+  }
+  // [P-10]: a total order with a stated direction all the way down — the loudest
+  // argument, then the elder ground, then WORK IT BEFORE YOU LIVE ON IT, which
+  // is the same order `worthOf` ranks works by and the same order [HC-78] pays
+  // the bills in.
+  out.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.region - b.region ||
+      FOCUS_KINDS.indexOf(a.focus) - FOCUS_KINDS.indexOf(b.focus),
+  );
+  return out.slice(0, limit);
+}
+
+export function describeFocus(town: Town, want: FocusWant): string {
+  const who = town.governor?.trim() ? town.governor : "The governor";
+  const over = want.produce === null ? "the town" : PRODUCE_WORD[want.produce];
+  const instead = want.redirects ? " instead" : "";
+  return `${who} gives ${want.label}${want.where} over to ${over}${instead} — ${want.reason}.`;
+}
+
 // ---- Building --------------------------------------------------------------
 
 export interface Built {
+  kind: "work";
   work: Work;
   // `null` when he MENDED rather than raised. A repair has no auction behind it:
   // the town is not choosing what it wants, it is keeping what it already has.
@@ -256,6 +625,26 @@ export interface Built {
   day: number;
   sentence: string;
 }
+
+// What he decided instead, when what the season bought was a DIRECTION rather
+// than a building. It carries no work, because none was raised and none will be
+// this season — which is the honest shape of a decision that costs no coin.
+export interface Focused {
+  kind: "focus";
+  region: number; // the region's ID
+  focus: FocusKind;
+  want: FocusWant;
+  day: number;
+  sentence: string;
+}
+
+// THE SEASON'S ONE DECISION, whichever kind it turned out to be (§5.1.1). Two
+// candidate types that never share a scoring path, competing for the one thing
+// that is actually scarce.
+// `kind` is the discriminant and the only one: a reader asks `d.kind === "work"`
+// and the compiler narrows. No `isBuilt`/`isFocused` helpers, because nothing
+// outside a test would have called them.
+export type Decision = Built | Focused;
 
 // ---- Mending what is rotting (the devolution ladder, spec §3) ---------------
 //
@@ -327,7 +716,7 @@ function mendTurn(town: Town, d: Derived, day: number): Built | null {
   // The idle clock restarts on the day the coin was spent, not on a season
   // counted from the town's own founding.
   best.idleSinceDay = day;
-  return { work: best, want: null, day, sentence: describeMend(town, best) };
+  return { kind: "work", work: best, want: null, day, sentence: describeMend(town, best) };
 }
 
 function describeMend(town: Town, w: Work): string {
@@ -335,22 +724,11 @@ function describeMend(town: Town, w: Work): string {
   return `${who} puts ${w.name} back in order — ${MEND_CLAUSE}.`;
 }
 
-// One decision per season. The governor builds the best thing he can afford —
-// but he HOLDS OUT for something better rather than always buying the cheapest
-// option, which is what lets money change what a town becomes and not merely how
-// fast it gets there.
-export function governorTurn(town: Town, day: number): Built | null {
-  // Derived once and handed on ([P-18]): the mend gate and the auction ask the
-  // same town the same question, and asking twice is how the two answers start
-  // disagreeing.
-  const d = derive(town);
-
-  // He puts his own house in order before he raises a new one. Mending is cheaper
-  // than building, so this is not a generosity — it is what a governor who could
-  // count would do, and it is what keeps the ladder's middle rung a rung.
-  const mended = mendTurn(town, d, day);
-  if (mended) return mended;
-
+// WHAT HE WOULD ACTUALLY START THIS SEASON, once every gate has had its say —
+// or nothing, and the nothing has three different causes. Split out of
+// `governorTurn` when the focus auction arrived beside it, so the two candidate
+// types are chosen by two functions that share no line of scoring.
+function workTurn(town: Town, day: number, d: Derived): Want | null {
   const ranked = wants(town, day, CHOOSABLE.length, d);
 
   // He will not raise what nobody can work. A town with money and no men simply
@@ -369,11 +747,69 @@ export function governorTurn(town: Town, day: number): Built | null {
 
   // He holds out for the better thing unless something nearly as good is to hand.
   if (now !== best && now.score < best.score * PLAN.settleFor) return null;
+  return now;
+}
 
-  const work = raise(town, now.kind, day);
-  if (!work) return null;
-  town.wealth -= now.cost;
-  return { work, want: now, day, sentence: describeBuild(town, now) };
+// WHICH CANDIDATE TAKES THE SEASON when both auctions have something to say.
+// HOISTED OUT OF `governorTurn`'S CONDITION ([P-48]): it is a rule, not a
+// comparison, and a rule inside a loop condition is a rule no other reader can
+// see and no test can reach.
+//
+// AND IT IS REACHED IN ORDINARY PLAY, which is why it earns a name. A tie here
+// is not a float coincidence: `AGENDA.colony.tavern` and
+// `FOCUS_AGENDA.colony.growth` are the same weight, and the need term saturates
+// for both a town with no tavern and a town with nowhere to put people — so two
+// candidates of different KINDS land on exactly the same sum. Measured on a
+// mixed town's first season: four tied pairs.
+//
+// [P-10]'s stated direction is A THING RAISED OVER A THING DECIDED. A focus is
+// free; if it could take the season on a tie it would take every tie for ever,
+// and a rule that settles nothing is not a tie-break.
+export const takesTheSeason = (work: number, focus: number): "work" | "focus" => (work >= focus ? "work" : "focus");
+
+// One decision per season. The governor builds the best thing he can afford —
+// but he HOLDS OUT for something better rather than always buying the cheapest
+// option, which is what lets money change what a town becomes and not merely how
+// fast it gets there.
+//
+// AND SOME SEASONS HE BUILDS NOTHING AND DECIDES SOMETHING INSTEAD. A focus and
+// a work are the two candidate types of §5.1.1: scored by different rules, never
+// sharing a path, and competing for the one thing that is scarce. A focus costs
+// no coin, so the budget gate never touches it — which is why a town with empty
+// coffers can still decide what its ground is for.
+export function governorTurn(town: Town, day: number): Decision | null {
+  // Derived once and handed on ([P-18]): the mend gate and both auctions ask the
+  // same town the same question, and asking twice is how the answers start
+  // disagreeing.
+  const d = derive(town);
+
+  // He puts his own house in order before he raises a new one. Mending is cheaper
+  // than building, so this is not a generosity — it is what a governor who could
+  // count would do, and it is what keeps the ladder's middle rung a rung.
+  const mended = mendTurn(town, d, day);
+  if (mended) return mended;
+
+  const focus = focusWants(town, d, 1)[0] ?? null;
+  const work = workTurn(town, day, d);
+
+  if (work !== null && (focus === null || takesTheSeason(work.score, focus.score) === "work")) {
+    const raised = raise(town, work.kind, day);
+    if (!raised) return null;
+    town.wealth -= work.cost;
+    return { kind: "work", work: raised, want: work, day, sentence: describeBuild(town, work) };
+  }
+
+  if (focus !== null) {
+    const r = regionOf(town, focus.region);
+    if (!r) return null;
+    // The one write. Nothing is spent, nothing is raised, and nothing but
+    // `nextHex` and this auction will read it — which is exactly the shape a
+    // decision about what ground is FOR should have.
+    r.focus = focus.focus;
+    return { kind: "focus", region: r.id, focus: focus.focus, want: focus, day, sentence: describeFocus(town, focus) };
+  }
+
+  return null;
 }
 
 export function describeBuild(town: Town, want: Want): string {
@@ -392,7 +828,11 @@ export interface Season {
   // The day the season began, days since world epoch. The harness turns it into a
   // year when it writes its journal line; nothing in the sim ever needs one.
   day: number;
-  built: Built | null;
+  // WHAT THE SEASON'S ONE DECISION CAME TO — a work raised, a work mended, or a
+  // stretch of ground given a purpose. It was `built: Built | null` until the
+  // focus auction landed beside the work auction; one field rather than two,
+  // because they are one decision and a season can only hold one of them.
+  decided: Decision | null;
   grew: Grew | null;
 }
 
@@ -401,7 +841,7 @@ export function stepTownSeason(town: Town, day: number): Season {
   // The town spreads on its own, whatever the governor is minded to build. It is
   // pressure relieved, not a decision taken — so it is not part of the auction.
   const grew = stepFootprint(town);
-  return { day, built: governorTurn(town, day), grew };
+  return { day, decided: governorTurn(town, day), grew };
 }
 
 // The same driver as `stepYears`, one layer up: a local day counter handed to
@@ -412,7 +852,7 @@ export function stepTownYears(town: Town, years: number, from = 0): Season[] {
   const seasons = years * CALENDAR.seasonsPerYear;
   for (let i = 0; i < seasons; i++) {
     const s = stepTownSeason(town, from + i * CALENDAR.daysPerSeason);
-    if (s.built || s.grew) out.push(s);
+    if (s.decided || s.grew) out.push(s);
   }
   return out;
 }

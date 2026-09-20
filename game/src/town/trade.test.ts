@@ -12,7 +12,7 @@ import { derive, stepSeason, stepSeasons, stepYears, carryingCapacity, prosperit
 import { CATALOGUE, CHOOSABLE, raise } from "./works";
 import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, producesMaterials, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE } from "./constants";
-import { governorTurn, scoreWork, wants } from "./governor";
+import { governorTurn, scoreWork, wants, type Built, type Decision } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
 import { CALENDAR } from "../overworld/calendar";
@@ -24,6 +24,12 @@ import { CALENDAR } from "../overworld/calendar";
 const DAY0 = 0;
 const SEASON = CALENDAR.daysPerSeason;
 const AFTER_OPENING = DAY0 + SEASON;
+
+// A season's one decision may be a work or a region focus, and every claim below
+// is about the work half — "he cannot build" is not "the season came to
+// nothing", and after the focus auction landed beside the work auction those
+// stopped being the same sentence.
+const built = (d: Decision | null): Built | null => (d !== null && d.kind === "work" ? d : null);
 
 // The shipping calling as usual — what an uncleared town faces, and what the
 // world writes when no squadron is holding anything. Spelled out rather than
@@ -534,7 +540,7 @@ describe("materials gate construction", () => {
       expect(w.supplied, `${w.kind} answered the wrong way to a town that can get no planks`)
         .toBe(PRODUCES_MATERIALS.includes(w.kind));
     }
-    expect(governorTurn(town, AFTER_OPENING)?.work.kind).toBe("sawpit");
+    expect(built(governorTurn(town, AFTER_OPENING))?.work.kind).toBe("sawpit");
   });
 
   it("digs the pit with no timber or stone to be had, and still cannot raise a warehouse", () => {
@@ -587,7 +593,7 @@ describe("materials gate construction", () => {
     expect(derive(town).commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate);
     expect(raise(town, "sawpit", AFTER_OPENING)).toBeNull();
     expect(wants(town, AFTER_OPENING, 12).some((w) => w.kind === "sawpit")).toBe(false);
-    expect(governorTurn(town, AFTER_OPENING)).toBeNull();
+    expect(built(governorTurn(town, AFTER_OPENING))).toBeNull();
   });
 
   it("lets it build again the season the timber arrives", () => {

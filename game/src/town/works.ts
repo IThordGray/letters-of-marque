@@ -10,7 +10,7 @@ import type { Axial } from "./hex";
 import type { TradeClass } from "./trade";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
-import { isDead } from "./land";
+import { isDead, SUIT_RANK } from "./land";
 
 // Where a work sits when the ledger is projected onto a raid map (KAN-76).
 export type Zone = "waterfront" | "lowerTown" | "plaza" | "backTown" | "outworks" | "beyondThePale";
@@ -101,8 +101,6 @@ export const countOf = (t: Town, kind: WorkKind) => t.works.filter((w) => w.kind
 // The regions that could carry this work, best ground first. A CROP work is
 // offered wherever the ground bears its produce at ANY grade — terrain biases,
 // it does not determine. A SITED work needs its ground exactly.
-const SUIT_RANK: Record<Suit, number> = { ideal: 3, fair: 2, poor: 1 };
-
 export function regionsFor(town: Town, kind: WorkKind): { region: Region; suit: Suit | null }[] {
   const def = CATALOGUE[kind];
   const out: { region: Region; suit: Suit | null }[] = [];
