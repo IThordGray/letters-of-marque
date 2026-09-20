@@ -51,6 +51,22 @@ export const WORKS = {
   sweetSpotBonus: 1.25, // the best of the cane — why the boiling house stands there
   farPenalty: 0.85, // ground over the ridge yields a little less...
   farHands: 1.35, // ...and costs more men, because they must walk to it
+  // RISING RETURNS: how much more the Nth work on a region is worth than the
+  // first, PER WORK ALREADY STANDING THERE (§2.12.5). A second sawpit shares a
+  // track, a pond and a crew; a fifth is a mill with yards. It is minted into
+  // the new line at raise time and never re-prices what already stands.
+  //
+  // THE SHAPE IS A TUNING TABLE ([HC-90]) AND THE CEILING IS NOT IN IT. There is
+  // deliberately no clamp here and no table length to run out of: depth cannot
+  // exceed a region's free area, so the premium runs out of GROUND first and the
+  // loop terminates on the founding roll rather than on a constant ([HC-75]).
+  //
+  // CALIBRATED AGAINST THE REAL CUT, not against a table ([P-52], as extended
+  // 2026-09-20). Free hexes per region run 0–23 with a median of 6, so a median
+  // region's ground is spent at six works and its last is worth 1.6x its first.
+  // The deepest regions on the warm world reach nine — the CATALOGUE's own
+  // per-kind limit rather than the ground's — at 2.08x.
+  premiumPerDepth: 0.12,
   // Population at which each self-raising subsistence work appears. Absent = 0.
   subsistenceAt: {
     dwellings: 0,
@@ -303,6 +319,25 @@ export const PLAN = {
   // nothing. At 9 the median is 0.67 and 23% sit at the top, so the scale
   // discriminates across the range it is actually handed.
   focusDeepAt: 9,
+  // HOW LOUDLY A DEEPENING ARGUES against the season's other two candidates, and
+  // it is ONE number because a deepening's score is ONE PRODUCT rather than a sum
+  // of terms. §2.12.10 writes it as `potential x free capacity x local price`:
+  // three readings each 0..1, so the product lives an order of magnitude below
+  // the sums the other two auctions bid in and has to be put on the same footing
+  // to compete for the season at all.
+  //
+  // MEASURED AGAINST THE REAL CUT, NOT REASONED ([P-52], [P-39]). On the warm
+  // world across four seeds the product runs 0.02–0.56 with a median of 0.14,
+  // while the work auction's winner sits at 0.34–3.18 with a median of 1.95. The
+  // calibration rule is that THE TWO PRICED CANDIDATE TYPES BID IN THE SAME
+  // RANGE — 1.95 / 0.14 is 12 — so a deepening competes with a work rather than
+  // always losing to one or always beating one. Measured at 12: 113 deepenings
+  // against 432 works over forty years of fifty places.
+  //
+  // Its three readings pass [P-52]'s own check, which is why this is a scale and
+  // not a fudge: the room reading has a median of 0.56 with a quarter at the
+  // clamp, and the price reading a median of 0.25 against a ceiling of 1.
+  deepenVoice: 12,
   wantSecurity: 45, // the security a town would like to have before it relaxes
   starvedBonus: 1.0, // a downstream work standing idle for want of this one
   tradeScale: 34, // normalises a work's earnings into roughly 0..1

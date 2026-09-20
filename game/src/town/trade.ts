@@ -363,6 +363,27 @@ export const NO_MATERIALS_CLAUSE = "there is no timber or stone to be had";
 // out to ask a neighbour anything.
 export const priceOf = (town: Town, cls: TradeClass): number => town.market.price[CLASSES[cls].rank];
 
+// WHICH CARGO A WORK'S OUTPUT IS, read off the catalogue's OWN COLUMNS rather
+// than listed beside it ([P-47]). §2.12.13 fixes the reading: materials and
+// luxury are counted in a work's `trade` column and victuals in its `food` one,
+// so a work that feeds the town and ships nothing is carrying victuals. A work
+// that does neither fills no hold at all and has no cargo class.
+export const cargoOf = (kind: WorkKind): TradeClass | null =>
+  CATALOGUE[kind].exports ?? (CATALOGUE[kind].food > 0 ? "victuals" : null);
+
+// HOW DEAR THIS CARGO IS HERE, against the dearest this market may ever make it
+// — 0..1, and it is the "local price" a deepening is scored from ([HC-97]).
+//
+// THE DENOMINATOR IS [HC-82]'S OWN CEILING AND NOT A NEW NUMBER ([P-53]): the
+// clearing already refuses to move a price past `basePrice x priceCeiling`, so
+// this divides by a bound the model already enforces rather than by a constant
+// that would price the same fact a second time. Measured on the warm world, it
+// runs across its range with a median well short of the clamp ([P-52]).
+export const dearnessOf = (town: Town, cls: TradeClass): number => {
+  const rank = CLASSES[cls].rank;
+  return town.market.price[rank] / (TRADE.basePrice[rank] * TRADE.priceCeiling);
+};
+
 // What a work of this kind would ACTUALLY FETCH here — `trade x price x access`,
 // the second of §3.5.4's two edits to the auction. It replaces a flat constant,
 // and that is the whole of what makes the governor's market term an argument

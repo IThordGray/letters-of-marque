@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from "vitest";
 import { nextHex, walledGround, isClaimed, describeFootprint } from "./footprint";
-import { raise, roomFor } from "./works";
+import { raise, roomInRegion, takenHexes } from "./works";
 import { capacityOf } from "./land";
 import { stepSeason, stepYears } from "./sim";
 import { stepTownYears } from "./governor";
@@ -35,18 +35,23 @@ describe("growth eats its own cause", () => {
   });
 
   it("costs the region its capacity, and the town its room to grow", () => {
-    const town = townOf([reg(0, "timberedHills", RING1, { bears: { timber: "ideal" } })], {
-      population: 500,
-      wealth: 9000,
-    });
+    // The ground is GIVEN OVER since KAN-124, and that is what makes the second
+    // half sayable at all: a focus buys capacity ([HC-94]), so area is the cap
+    // only where somebody bought it. On unfocused ground the answer would be a
+    // token work either way and the claim would assert nothing.
+    const town = townOf(
+      [reg(0, "timberedHills", RING1, { bears: { timber: "ideal" }, focus: "production" })],
+      { population: 500, wealth: 9000 },
+    );
     const region = town.regions[0];
+    const room = () => roomInRegion(town, region, 0, "sawpit", "deepen", takenHexes(town));
     const capacityBefore = capacityOf(town, region);
-    const roomBefore = roomFor(town, "sawpit");
+    const roomBefore = room();
 
     town.footprint.claimed.push({ ...region.hexes[0] });
 
     expect(capacityOf(town, region)).toBe(capacityBefore - 1);
-    expect(roomFor(town, "sawpit")).toBe(roomBefore - 1);
+    expect(room()).toBe(roomBefore - 1);
   });
 });
 

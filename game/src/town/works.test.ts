@@ -5,12 +5,14 @@
 // moves works down THIS ladder, one grade at a time).
 
 import { describe, it, expect } from "vitest";
-import type { Town, Work, Suit } from "./types";
+import type { Town, Work, Suit, RegionFocus } from "./types";
+import type { Axial } from "./hex";
 import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
 import {
-  raise, buildable, roomFor, unmetNeeds, starvedFor, countOf, damageWorks, mendable, repairCost,
-  CATALOGUE, SUBSISTENCE,
+  raise, buildable, roomInRegion, takenHexes, depthOf, unmetNeeds, starvedFor, countOf,
+  damageWorks, mendable, repairCost, CATALOGUE, SUBSISTENCE,
 } from "./works";
+import { capacityOf } from "./land";
 import { stepTownSeason, type Decision, type Built } from "./governor";
 import { DECAY, POP, SUIT_YIELD, WORKS } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
@@ -400,20 +402,28 @@ describe("coming back up the ladder", () => {
     // Pinning the REAL behaviour, because it is easy to state wrongly. A decayed
     // work does NOT sterilise its ground: it holds one hex and one slot against
     // `def.max`, and a ruin holds neither.
-    const town = townOf([reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" } })], {
-      population: 900,
-      wealth: 90000,
-    });
+    //
+    // ASKED OF THE DEEPENING'S ROOM SINCE KAN-124, and the change is the rule
+    // rather than the claim. `roomFor` is the AUCTION's question and the auction
+    // may only ever put the FIRST work on a region ([HC-94]), so on unfocused
+    // ground it answers 0 whatever the hex under the rotting pit is doing. Where
+    // area is still the cap is on ground given over to production, so that is
+    // the ground this claim is now made on.
+    const town = townOf(
+      [reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" }, focus: "production" })],
+      { population: 900, wealth: 90000 },
+    );
+    const room = () => roomInRegion(town, town.regions[0], 0, "sawpit", "deepen", takenHexes(town));
     const pit = raise(town, "sawpit", DAY0)!;
-    expect(roomFor(town, "sawpit")).toBe(1);
+    expect(room()).toBe(1);
 
     pit.condition = "decayed";
     expect(countOf(town, "sawpit")).toBe(1); // still on the books
-    expect(roomFor(town, "sawpit")).toBe(1); // still standing on its hex
+    expect(room()).toBe(1); // still standing on its hex
 
     pit.condition = "ruin";
     expect(countOf(town, "sawpit")).toBe(0); // off the books
-    expect(roomFor(town, "sawpit")).toBe(2); // and the ground is free again
+    expect(room()).toBe(2); // and the ground is free again
   });
 
   it("holds that ground for the whole of its decay — a hold, not a sterilising", () => {
@@ -647,17 +657,22 @@ describe("the two gates on the ground", () => {
   });
 
   it("runs out of ground before it runs out of ambition", () => {
-    // AREA IS CAPACITY — the land is the cap, not an arbitrary number.
-    const town = townOf([reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" } })], {
-      population: 900,
-      wealth: 90000,
-    });
-    const before = roomFor(town, "sawpit");
-    expect(before).toBe(2);
-    raise(town, "sawpit", DAY0);
-    raise(town, "sawpit", DAY0);
-    expect(roomFor(town, "sawpit")).toBe(0);
-    expect(raise(town, "sawpit", DAY0)).toBeNull();
+    // AREA IS CAPACITY — the land is the cap, not an arbitrary number. Since
+    // KAN-124 the area is what a PRODUCTION FOCUS buys ([HC-94]): the ground
+    // below has been given over, so it may be worked to its free area and then
+    // it is spent. Nothing but the hexes decides where that is.
+    const town = townOf(
+      [reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" }, focus: "production" })],
+      { population: 900, wealth: 90000 },
+    );
+    const hills = town.regions[0];
+    const room = () => roomInRegion(town, hills, 0, "sawpit", "deepen", takenHexes(town));
+    expect(room()).toBe(2);
+
+    raise(town, "sawpit", DAY0); // the auction's one token work...
+    raise(town, "sawpit", DAY0, hills); // ...and the deepening fills the rest
+    expect(room()).toBe(0);
+    expect(raise(town, "sawpit", DAY0, hills)).toBeNull();
     expect(countOf(town, "sawpit")).toBe(2);
   });
 });
@@ -685,11 +700,19 @@ describe("ground out of the town's way", () => {
     // without an explicit tie-break which of them keeps its men is decided by
     // however the ledger happens to be arranged. The stated direction is the
     // ELDER WORK FIRST.
+    // TWO REGIONS OF IDENTICAL GROUND SINCE KAN-124, and the fixture had to
+    // move: rising returns mean two sawpits on the SAME ground are no longer
+    // worth the same (§2.12.5), so the tie this claim is about would not have
+    // been a tie any more. One work on each of two identical stretches is worth
+    // exactly the same again — both are the first thing on their own hill.
     const run = (reversed: boolean) => {
-      const town = townOf([reg(0, "timberedHills", RING1.slice(0, 2), { bears: { timber: "ideal" } })], {
-        population: 400,
-        wealth: 9000,
-      });
+      const town = townOf(
+        [
+          reg(0, "timberedHills", RING1.slice(0, 1), { bears: { timber: "ideal" } }),
+          reg(1, "timberedHills", RING1.slice(1, 2), { bears: { timber: "ideal" } }),
+        ],
+        { population: 400, wealth: 9000 },
+      );
       const elder = raise(town, "sawpit", DAY0)!;
       const younger = raise(town, "sawpit", DAY0)!;
       if (reversed) town.works.reverse();
@@ -769,5 +792,165 @@ describe("reproducibility", () => {
       return t.works.map((w) => `${w.kind}:${w.condition}`).sort();
     };
     expect(build(true)).toEqual(build(false));
+  });
+});
+
+// ---- [HC-94] A focus buys CAPACITY, never a multiplier ----------------------
+//
+// §2.12.4. Unfocused ground carries a TOKEN work — "there is timber over the
+// ridge; they take what they need of it" — and never becomes an industry. Ground
+// somebody gave over to production may be worked to its free area, so the
+// focused-to-unfocused ratio is AREA: the founding roll's own variance, which
+// nobody tuned.
+
+// Ground of a named size, and whatever purpose somebody has put on it. The two
+// axes this rule turns on are FOCUS and AREA, so the fixture varies exactly
+// those two and nothing else.
+const hillsOf = (hexes: Axial[], focus: RegionFocus): Town =>
+  townOf([reg(0, "timberedHills", hexes, { bears: { timber: "ideal" }, focus })], {
+    population: 900, // souls enough that nothing here is about manning
+    wealth: 900000, // ...nor about coin: this is the GROUND's answer
+  });
+
+// Work the ground for all it is worth: the auction's one token work, and then
+// the deepening door until the region refuses. The loop is bounded, because a
+// test that hangs is worse than a test that fails.
+function worked(town: Town): number {
+  raise(town, "sawpit", DAY0);
+  for (let i = 0; i < 99; i++) if (!raise(town, "sawpit", DAY0, town.regions[0])) break;
+  return countOf(town, "sawpit");
+}
+
+describe("a focus buys capacity, and the ratio is area", () => {
+  it("grows an industry on ground given over, and takes a token work off ground nobody decided", () => {
+    // THE RULE, in one claim. The two towns differ in exactly one respect —
+    // whether anybody ever said what the hills were for — so nothing but the
+    // focus can explain the difference between them.
+    const decided = hillsOf(RING2.slice(0, 6), "production");
+    const nobodys = hillsOf(RING2.slice(0, 6), null);
+
+    expect(worked(decided)).toBeGreaterThan(1); // an industry
+    expect(worked(nobodys)).toBe(1); // ...and a hamlet taking what it needs
+  });
+
+  it("stops at the region's own free area, and that is the whole of the cap", () => {
+    // [HC-75]'s terminating condition, stated on the ground rather than in the
+    // premium. The oracle is written out — the region's unclaimed hexes — rather
+    // than read back out of `roomInRegion` (testing.md, "write the oracle out").
+    const town = hillsOf(RING2.slice(0, 6), "production");
+    const area = capacityOf(town, town.regions[0]);
+    expect(worked(town)).toBe(area);
+    expect(depthOf(town, 0)).toBe(area);
+    expect(raise(town, "sawpit", DAY0, town.regions[0])).toBeNull();
+  });
+
+  it("reaches a different depth on a bigger stretch of the same ground", () => {
+    // world-simulation.md §10.7's acceptance, verbatim: two towns with the SAME
+    // focus on differently-sized regions produce different depths — and the
+    // difference is the area. Same terrain, same grade, same purse.
+    const small = hillsOf(RING1.slice(0, 3), "production");
+    const large = hillsOf(RING2.slice(0, 9), "production");
+
+    const shallow = worked(small);
+    const deep = worked(large);
+    expect(deep).toBeGreaterThan(shallow);
+    expect(deep - shallow).toBe(capacityOf(large, large.regions[0]) - capacityOf(small, small.regions[0]));
+  });
+
+  it("keeps a region's depth OUT of the struct — it is counted, never stored", () => {
+    // [HC-93], and it is the cheapest kind of test there is: the shape of the
+    // struct. A development integer would break [HC-14] (a derived quantity
+    // stored is free to drift from its explanation) and §7's work-visibility
+    // requirement at the same time — a number has no lumber mill in it to see.
+    const town = hillsOf(RING2.slice(0, 6), "production");
+    worked(town);
+    expect(depthOf(town, 0)).toBeGreaterThan(1);
+    expect(Object.keys(town.regions[0]).sort()).toEqual(
+      ["bearing", "bears", "focus", "hexes", "id", "reach", "sweetSpot", "terrain"],
+    );
+  });
+});
+
+describe("rising returns, minted at raise time", () => {
+  // §2.12.5. The Nth work on a region is worth more than the first — a second
+  // sawpit shares a track, a pond and a crew; a fifth is a works.
+
+  it("makes the fifth sawpit worth more than the first", () => {
+    const town = hillsOf(RING2.slice(0, 9), "production");
+    worked(town);
+    const pits = town.works.filter((w) => w.kind === "sawpit");
+    expect(pits.length).toBeGreaterThanOrEqual(5);
+    expect(pits[4].trade).toBeGreaterThan(pits[0].trade);
+    // ...and it rises all the way up rather than stepping once.
+    for (let i = 1; i < pits.length; i++) expect(pits[i].trade).toBeGreaterThan(pits[i - 1].trade);
+  });
+
+  it("never re-prices a work that is already standing", () => {
+    // The whole reason §2.12.4 refuses a multiplier: a work STORES its scaled
+    // yields at the moment it is raised, so a dial applied later would be true of
+    // new rows and false of old ones. Nothing that happens afterwards — more
+    // works beside it, the ground filling up — may touch what already stands.
+    const town = hillsOf(RING2.slice(0, 9), "production");
+    raise(town, "sawpit", DAY0);
+    const first = town.works.find((w) => w.kind === "sawpit")!;
+    const was = { food: first.food, trade: first.trade, hands: first.hands, servesFor: first.servesFor };
+
+    for (let i = 0; i < 99; i++) if (!raise(town, "sawpit", DAY0, town.regions[0])) break;
+
+    expect(countOf(town, "sawpit")).toBeGreaterThan(4);
+    expect({ food: first.food, trade: first.trade, hands: first.hands, servesFor: first.servesFor }).toEqual(was);
+  });
+
+  it("buys yield and not men — a deeper pit is worth more, and wants the same crew", () => {
+    // Capital works keep a FLAT hand cost on purpose (see `handsOn`): scaling it
+    // would silently falsify the auction's `def.hands <= spare` preview, which
+    // reads the CATALOGUE rather than the instance ([P-47]).
+    const town = hillsOf(RING2.slice(0, 9), "production");
+    worked(town);
+    const pits = town.works.filter((w) => w.kind === "sawpit");
+    expect(new Set(pits.map((w) => w.hands)).size).toBe(1);
+  });
+
+  it("leaves the first work on a region worth exactly what it was before any of this", () => {
+    // The premium at depth 0 is exactly 1, and multiplying a double by 1 is
+    // exact — so a region nobody has deepened books the identical work it booked
+    // before rising returns existed. The oracle is the catalogue times the
+    // ground's own scaling, written out here rather than asked of `raise`.
+    const town = hillsOf(RING1.slice(0, 3), null);
+    const pit = raise(town, "sawpit", DAY0)!;
+    expect(pit.trade).toBe(CATALOGUE.sawpit.trade * SUIT_YIELD.ideal);
+  });
+});
+
+describe("a subsistence work is outside the capacity rule entirely", () => {
+  // [HC-98], and its second edge found by KAN-123: a subsistence work is never
+  // gated on focus or depth, AND it never makes a region an instance either. A
+  // garden plot is never chosen, never priced and never gated, so it claims no
+  // purpose for the ground under it.
+
+  it("raises garden plots on ground already worked to its cap", () => {
+    const town = hillsOf(RING2.slice(0, 6), "production");
+    worked(town);
+    expect(raise(town, "sawpit", DAY0, town.regions[0])).toBeNull(); // the ground is spent
+
+    const before = countOf(town, "dwellings");
+    stepYears(town, 2);
+    expect(countOf(town, "dwellings")).toBeGreaterThanOrEqual(before);
+    expect(town.works.some((w) => CATALOGUE[w.kind].cls === "subsistence")).toBe(true);
+  });
+
+  it("never spends a region's token work", () => {
+    // The second edge, at the ledger. Written literally as "has any work standing
+    // on it", the instance filter takes the question of what that ground is FOR
+    // permanently away from the governor — measured on the warm world at a median
+    // of ONE unfocused live region per place.
+    const town = townOf([reg(0, "tilledGround", RING1, { bears: { food: "ideal" } })], {
+      population: 200,
+      wealth: 90000,
+    });
+    stepYears(town, 2);
+    expect(countOf(town, "gardenPlots")).toBeGreaterThan(0);
+    expect(depthOf(town, 0)).toBe(0); // nobody has decided anything about it yet
+    expect(raise(town, "provisionGround", DAY0)).not.toBeNull(); // ...so the token work is still there to take
   });
 });

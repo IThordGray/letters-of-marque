@@ -11,10 +11,11 @@ import type { Town } from "./types";
 import {
   scoreWork, reasonFrom, wants, governorTurn, stepTownSeason, stepTownYears,
   focusWants, focusLock, describeFocus, permitsFocus, takesTheSeason,
-  AGENDA, FOCUS_AGENDA, FOCUS_TERMS, GIVEN_OVER, HOUSES_ON_IT,
-  type Built, type Decision, type Focused, type TermKey,
+  deepWants, AGENDA, FOCUS_AGENDA, FOCUS_TERMS, DEEP_TERMS, GIVEN_OVER, HOUSES_ON_IT, ROOM_FOR_MORE,
+  type Built, type Decision, type Focused, type Deepened, type TermKey,
 } from "./governor";
-import { CHOOSABLE, CATALOGUE, countOf, raise } from "./works";
+import { CHOOSABLE, CATALOGUE, countOf, raise, depthOf, TOKEN_DEPTH } from "./works";
+import { stepWorldSeason } from "../overworld/market";
 import { derive, stepYears, stepSeason } from "./sim";
 import { canBuild, DEPENDENCY_CLAUSE } from "./trade";
 import { bestBorne, liveRegions, regionOf } from "./land";
@@ -557,9 +558,21 @@ describe("a governor decides what his ground is for", () => {
   });
 
   it("hands a tie to the spade — a thing raised over a thing decided", () => {
-    expect(takesTheSeason(1.86, 1.86)).toBe("work"); // the tie
-    expect(takesTheSeason(2, 1)).toBe("work");
-    expect(takesTheSeason(1, 2)).toBe("focus");
+    // A THIRD CANDIDATE SINCE KAN-124, so the rule reads in two steps. The
+    // direction this claim is about is unchanged: a free decision never takes a
+    // tie from a thing that costs coin to do.
+    expect(takesTheSeason(1.86, 0, 1.86)).toBe("work"); // the tie
+    expect(takesTheSeason(2, 0, 1)).toBe("work");
+    expect(takesTheSeason(1, 0, 2)).toBe("focus");
+    expect(takesTheSeason(0, 1.86, 1.86)).toBe("deepening"); // ...and so does a deepening
+  });
+
+  it("...and a tie between two things raised goes to the NEW one", () => {
+    // The second step of the direction, and it leans the safe way on [HC-75]:
+    // the tie never goes to the candidate that makes a region deeper. A town
+    // with no tavern at all wants a tavern more than a fourth sawpit.
+    expect(takesTheSeason(1.5, 1.5, 0)).toBe("work");
+    expect(takesTheSeason(1.4, 1.5, 0)).toBe("deepening");
   });
 
   it("...and that tie is structural, not a float coincidence", () => {
@@ -955,5 +968,323 @@ describe("after a warm start, a place has decided what most of its ground is for
     const b = warmStart(SEEDS[0]);
     const read = (w: typeof a) => w.towns.map((t) => t.regions.map((r) => r.focus).join(","));
     expect(read(b)).toEqual(read(a));
+  });
+});
+
+// ---- The deepening — the third candidate type (§2.12.10) -------------------
+//
+// [HC-97] A DECISION ABOUT A REGION THAT ALREADY CARRIES WORKS IS SCORED FROM
+// THAT REGION'S OWN GROUND — `potential x free capacity x local price` — NEVER
+// FROM THE CATALOGUE'S FIGURES FOR A KIND.
+
+// A timber town that has already decided what its hills are for and put one
+// sawpit on them. THE REGION IS AN INSTANCE FROM THAT MOMENT: free area partly
+// spent, a suit already bought, and its scaled trade figure standing on the
+// ground. It needs a quay for the same reason the market-term fixture does —
+// `access` is readiness times reach, and a town with no waterfront work at all
+// has neither.
+const timberTown = (init: Partial<Town> = {}): Town => {
+  const town = townOf(
+    [
+      reg(0, "timberedHills", RING2.slice(0, 6), { bears: { timber: "ideal" }, focus: "production" }),
+      reg(1, "roadstead", RING1.slice(0, 3)),
+    ],
+    {
+      footprint: { core: 2, claimed: [CENTRE, ...RING1.slice(3, 6)] },
+      population: 300,
+      wealth: 90000,
+      governor: "Sarmiento",
+      ...init,
+    },
+  );
+  raise(town, "warehouse", DAY0);
+  raise(town, "sawpit", DAY0); // the auction's one token work
+  stepSeason(town, DAY0);
+  return town;
+};
+
+const deepened = (d: Decision | null): Deepened | null => (d !== null && d.kind === "deepening" ? d : null);
+
+// Run the place until the governor deepens something, or give up. A decision a
+// season is scarce, so it takes a few.
+function untilDeepened(town: Town, years: number): Deepened | null {
+  for (let i = 1; i <= years * CALENDAR.seasonsPerYear; i++) {
+    const done = deepened(stepTownSeason(town, DAY0 + i * SEASON).decided);
+    if (done) return done;
+  }
+  return null;
+}
+
+describe("a governor deepens ground he has already given over", () => {
+  it("puts more sawpits into hills that already saw well, and says why", () => {
+    // [HC-16]: a deepening publishes its reason like every other decision, and
+    // the sentence is the brief's own — "the north hills already saw well, and
+    // there is room for more".
+    const town = timberTown();
+    const done = untilDeepened(town, 40);
+
+    expect(done).not.toBeNull();
+    expect(done!.work.kind).toBe("sawpit");
+    expect(regionOf(town, done!.region)!.terrain).toBe("timberedHills");
+    expect(done!.sentence).toContain("Sarmiento");
+    expect(done!.sentence).toContain("more sawpits"); // what he did
+    expect(done!.sentence).toContain("the timbered hills"); // ...where
+    expect(done!.sentence).toContain("to the "); // ...and which way it lies
+    expect(done!.sentence).toContain(done!.want.reason); // ...and why
+    expect(done!.sentence.endsWith(".")).toBe(true);
+
+    expect(done!.want.reason).toContain("already bears timber well");
+    expect(done!.want.reason).toContain(ROOM_FOR_MORE);
+  });
+
+  it("assembles that reason from its own top readings, exactly as the other two do", () => {
+    // Clause MEMBERSHIP, never prose text — one rule with one implementation
+    // across all three candidate types ([P-47]).
+    const town = timberTown();
+    for (const want of deepWants(town, derive(town), 99)) {
+      for (const clause of want.terms.slice(0, 2).map((t) => t.clause)) {
+        expect(want.reason).toContain(clause);
+      }
+      for (const term of want.terms) expect(term.clause.trim()).not.toBe("");
+      const weights = want.terms.map((t) => t.weight);
+      expect(weights).toEqual([...weights].sort((a, b) => b - a));
+      expect(want.terms.map((t) => t.key).sort()).toEqual([...DEEP_TERMS].sort());
+    }
+  });
+
+  it("spends the season on it — he deepens OR he builds, never both", () => {
+    const town = timberTown();
+    let before = town.works.length;
+    for (let i = 1; i <= 160; i++) {
+      const season = stepTownSeason(town, DAY0 + i * SEASON);
+      const raisedThisSeason = town.works.length - before;
+      before = town.works.length;
+      if (season.decided?.kind === "deepening") expect(raisedThisSeason).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("pays for it out of the same purse a work comes from", () => {
+    // A focus costs no coin; a deepening is not a focus. It raises a work and
+    // the budget gate is the same gate.
+    const town = timberTown();
+    const purse = town.wealth;
+    const done = untilDeepened(town, 40)!;
+    expect(done.want.cost).toBe(CATALOGUE.sawpit.cost);
+    expect(town.wealth).toBeLessThan(purse);
+  });
+});
+
+describe("a deepening is scored from that region's own ground", () => {
+  // [HC-97], and the two halves of it. The tempting shortcut is
+  // `CATALOGUE[kind].trade`, which is the UNSCALED figure — the region already
+  // holds the scaled one, and the two disagree the moment ground, reach or depth
+  // differs from the default, which is always.
+
+  it("reads the ground under it — the same catalogue, a worse hill, a quieter argument", () => {
+    // The pair differs in exactly one thing: how well that stretch bears timber.
+    // A score read off the catalogue could not tell them apart at all.
+    const ideal = timberTown();
+    const grudging = timberTown();
+    grudging.regions[0].bears = { timber: "poor" };
+
+    const only = (t: Town) => deepWants(t, derive(t), 99).find((w) => w.region === 0)!;
+    expect(only(ideal).score).toBeGreaterThan(only(grudging).score);
+    expect(only(ideal).terms.find((t) => t.key === "ground")!.clause).toContain("already bears timber well");
+    expect(only(grudging).terms.find((t) => t.key === "ground")!.clause).toContain("grudges its timber");
+  });
+
+  it("reads how far out it lies — a stretch over the ridge argues more quietly", () => {
+    // Reach is the region's OWN fact and the region holds it, so the reading
+    // that stands in for what this ground pays has to carry it: ground over the
+    // ridge yields a little less, and it yields a little less however many
+    // works are standing on it. Written without this the claim survived
+    // mutation, because no other fixture in the file puts a deepening on far
+    // ground — which is exactly what an unpredicted survivor is for.
+    const atHand = timberTown();
+    const overTheRidge = timberTown();
+    overTheRidge.regions[0].reach = "far";
+
+    const only = (t: Town) => deepWants(t, derive(t), 99).find((w) => w.region === 0)!;
+    expect(only(atHand).terms.find((t) => t.key === "ground")!.weight)
+      .toBeGreaterThan(only(overTheRidge).terms.find((t) => t.key === "ground")!.weight);
+    expect(only(atHand).score).toBeGreaterThan(only(overTheRidge).score);
+  });
+
+  it("reads the price HERE — the same hills are worth deepening where timber is dear", () => {
+    // §3.5.4's rule applied to the third candidate type: the local price, and
+    // there is no other price anywhere to read ([HC-82]). The catalogue's trade
+    // figure is the same number in both towns.
+    const dear = timberTown();
+    const cheap = timberTown();
+    dear.market.price[1] = TRADE.basePrice[1] * TRADE.priceCeiling;
+    cheap.market.price[1] = TRADE.basePrice[1] * TRADE.priceFloor;
+
+    const only = (t: Town) => deepWants(t, derive(t), 99).find((w) => w.region === 0)!;
+    expect(only(dear).terms.find((t) => t.key === "market")!.weight)
+      .toBeGreaterThan(only(cheap).terms.find((t) => t.key === "market")!.weight);
+    expect(only(dear).score).toBeGreaterThan(only(cheap).score);
+    expect(only(dear).terms.find((t) => t.key === "market")!.clause).toBe("timber fetches well here");
+  });
+
+  it("reads the room left, and stops arguing when the ground is spent", () => {
+    // The readings MULTIPLY (§2.12.10), so a region with no room left is worth
+    // NOTHING to deepen rather than merely less — which is what makes the area
+    // cap bite in the scoring as well as in the ground.
+    const town = timberTown();
+    const roomy = deepWants(town, derive(town), 99).find((w) => w.region === 0)!;
+
+    const packed = timberTown();
+    for (let i = 0; i < 99; i++) if (!raise(packed, "sawpit", DAY0, packed.regions[0])) break;
+
+    const tighter = deepWants(packed, derive(packed), 99).find((w) => w.region === 0);
+    expect(roomy.room).toBeGreaterThan(0);
+    expect(tighter).toBeUndefined(); // no candidate at all, not a quiet one
+  });
+
+  it("never offers one on ground nobody decided anything about", () => {
+    // [HC-94]: unfocused ground carries a token work and never becomes an
+    // industry, so there is nothing to offer however good the hills are.
+    const town = timberTown();
+    town.regions[0].focus = null;
+    expect(deepWants(town, derive(town), 99)).toEqual([]);
+  });
+
+  it("...nor on focused ground with nothing standing on it yet", () => {
+    // That is still a KIND-like question and it belongs to the five-term
+    // auction, which reads its best FREE ground quite legitimately (§5.1). The
+    // instance starts at the first work.
+    const town = timberTown();
+    town.works = town.works.filter((w) => w.kind !== "sawpit");
+    expect(depthOf(town, 0)).toBe(0);
+    expect(deepWants(town, derive(town), 99)).toEqual([]);
+  });
+
+  it("...and a garden plot on the ground does not make it deepenable either", () => {
+    // [HC-98]'s second edge, at the decision. A subsistence work is never
+    // chosen, never priced and never gated, so it claims no purpose for its
+    // ground — and it must not hand the ground to the deepening either.
+    //
+    // It needs FOOD ground, because a garden plot only stands where something
+    // will grow — which is the whole reason the trap is live: that is exactly
+    // the ground a governor most wants to be asked about.
+    const town = townOf(
+      [reg(0, "tilledGround", RING2.slice(0, 6), { bears: { food: "ideal" }, focus: "production" })],
+      { footprint: { core: 2, claimed: [CENTRE, ...RING1.slice(0, 4)] }, population: 200, wealth: 90000 },
+    );
+    stepSeason(town, DAY0); // its people raise their own plots, as they always do
+
+    expect(town.works.some((w) => w.kind === "gardenPlots" && w.region === 0)).toBe(true);
+    expect(depthOf(town, 0)).toBe(0); // ...and nobody CHOSE any of it
+    expect(deepWants(town, derive(town), 99)).toEqual([]);
+  });
+});
+
+describe("the area cap terminates the deepening loop", () => {
+  // [HC-75], and this is the claim the cap exists for. Unbounded rising returns
+  // are an overshoot engine — more works, more yield, more growth, more works —
+  // and capped at area the loop terminates on the FOUNDING ROLL rather than on a
+  // constant.
+  //
+  // [HC-75]'S OWN ACCEPTANCE ALREADY EXISTS and is not restated here: "no place
+  // oscillates with growing amplitude across two centuries" lives in
+  // `overworld/market.test.ts`, measures population, and is the claim the world
+  // layer is held to. Writing a second one beside it would be two sources for
+  // one fact. What is added here is the half that test cannot see — the loop in
+  // WORKS that this story creates, and the ground that stops it.
+  //
+  // IT IS LIVE, AND MEASURED SO. Fattening `premiumPerDepth` from 0.12 to 5.0
+  // fails that acceptance outright (2026-09-20), so the premium is inside its
+  // reach and the cap is what is holding it.
+
+  const capitalWorks = (towns: Town[]): number => {
+    let n = 0;
+    for (const t of towns) {
+      for (const w of t.works) if (w.condition !== "ruin" && CATALOGUE[w.kind].cls === "capital") n++;
+    }
+    return n;
+  };
+
+  it("stops multiplying works — the last half-century adds a fraction of the first", () => {
+    // MEASURED 2026-09-20, three seeds over two hundred years: capital works
+    // added per fifty-year block run 88–151, then 3–17, then 0–5, then 0–9. The
+    // world fills its ground and stops, which is what "terminates" means.
+    const warm = warmStart(7);
+    const marks: number[] = [capitalWorks(warm.towns)];
+    for (let block = 0; block < 4; block++) {
+      for (let s = 0; s < 50 * CALENDAR.seasonsPerYear; s++) {
+        stepWorldSeason(warm.world, warm.towns, warm.markets, warm.wars, warm.routes);
+        warm.world.day += CALENDAR.daysPerSeason;
+      }
+      marks.push(capitalWorks(warm.towns));
+    }
+    const added = [1, 2, 3, 4].map((i) => marks[i] - marks[i - 1]);
+
+    expect(added[0]).toBeGreaterThan(20); // the world really was still building
+    expect(added[3]).toBeLessThan(added[0] / 4); // ...and by the end it has nearly stopped
+
+    // A STABILITY CLAIM NEEDS A LIVENESS GUARD (testing.md): a world of nothing
+    // also stops building. The threshold is written out — a capital work apiece
+    // — rather than read back out of the sim.
+    expect(marks[4]).toBeGreaterThan(warm.towns.length);
+  }, 60000);
+
+  it("never lets a region carry more works than its ground has hexes", () => {
+    // The terminating condition itself, on every region of a world run forward:
+    // the premium runs out of GROUND before it runs out of anything else,
+    // because nothing will give it a hex to stand on. There is no second clamp
+    // anywhere, and §2.12.5 refuses one.
+    const warm = warmStart(7);
+    for (let s = 0; s < 100 * CALENDAR.seasonsPerYear; s++) {
+      stepWorldSeason(warm.world, warm.towns, warm.markets, warm.wars, warm.routes);
+      warm.world.day += CALENDAR.daysPerSeason;
+    }
+    let deepest = 0;
+    for (const t of warm.towns) {
+      for (let i = 0; i < t.regions.length; i++) {
+        const depth = depthOf(t, i);
+        if (depth > deepest) deepest = depth;
+        expect(depth).toBeLessThanOrEqual(t.regions[i].hexes.length);
+      }
+    }
+    expect(deepest).toBeGreaterThan(1); // ...and the claim is not about an empty world
+  }, 60000);
+});
+describe("after a warm start, ground that was given over has been worked", () => {
+  // The story's own acceptance, measured rather than asserted, and across SEEDS
+  // because one world is one sample. Measured 2026-09-20: 83 production-focused
+  // regions carry works across four seeds, 36 of them more than one, and the
+  // deepest reaches nine — which is the catalogue's own per-kind limit rather
+  // than the ground's.
+  const SEEDS = [1, 2, 3];
+
+  it("builds industries somebody decided on, and leaves the rest at a token work", () => {
+    for (const seed of SEEDS) {
+      const warm = warmStart(seed);
+      let industry = 0; // a focused region worked more than once
+      let token = 0; // ...and an unfocused one that was not
+      let overToken = 0; // an unfocused region past its token work: must never happen
+      for (const t of warm.towns) {
+        for (let i = 0; i < t.regions.length; i++) {
+          const depth = depthOf(t, i);
+          if (depth === 0) continue;
+          if (t.regions[i].focus === "production") {
+            if (depth > 1) industry++;
+          } else {
+            token++;
+            if (depth > TOKEN_DEPTH) overToken++;
+          }
+        }
+      }
+      expect(industry, `seed ${seed}`).toBeGreaterThan(0);
+      expect(token, `seed ${seed}`).toBeGreaterThan(0);
+      expect(overToken, `seed ${seed}`).toBe(0);
+    }
+  });
+
+  it("gives the same world the same depths", () => {
+    // [HC-11], across the seam that actually runs all three auctions.
+    const read = (w: ReturnType<typeof warmStart>) =>
+      w.towns.map((t) => t.regions.map((_, i) => depthOf(t, i)).join(","));
+    expect(read(warmStart(SEEDS[0]))).toEqual(read(warmStart(SEEDS[0])));
   });
 });
