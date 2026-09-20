@@ -64,6 +64,12 @@ export type Suit = "ideal" | "fair" | "poor";
 // fact; axial is the truth (spec §2.10).
 export type Bearing = "N" | "NE" | "SE" | "S" | "SW" | "NW";
 
+// What a stretch of ground has been given over to — spec §2.12, `[HC-94]`–`[HC-96]`.
+// `null` is the default and stays the majority: a focus is a decision a governor
+// takes a handful of times in a town's whole life, not a setting every region
+// carries an opinion about.
+export type RegionFocus = "production" | "growth" | null;
+
 export interface Region {
   id: number;
   terrain: TerrainKind;
@@ -74,6 +80,21 @@ export interface Region {
   sweetSpot: Axial | null; // the best of it, one grade better — why the boiling house stands there
   reach: "atHand" | "far"; // `far` if it does not touch the town: costlier to man, first to idle
   bearing: Bearing; // derived from the centroid — for prose and the placement skew
+
+  // WHAT THIS GROUND IS FOR ([HC-95], spec §2.12). The one piece of new state the
+  // region focus needs: everything else it reads is already here — `bears` is the
+  // POTENTIAL and is ground, the works standing on `hexes` are the CLAIM and burn.
+  //
+  // `null` is the default and the majority. There are exactly two focuses because
+  // there are exactly two things a population can do with a piece of ground: work
+  // it, or live on it. Defence is not one — no land use makes a town safer; a
+  // bluff's answer is a battery, which is a work on a hex ([HC-96]).
+  //
+  // A PRODUCTION focus is set once and never changed. A GROWTH focus may be
+  // redirected while the region is still empty and locks the moment ground is
+  // claimed under it — it inherits that permanence from claiming rather than
+  // asserting its own ("there are houses on it now").
+  focus: RegionFocus;
 }
 
 // ---- The works ledger ------------------------------------------------------
@@ -188,10 +209,13 @@ export interface Town {
   regions: Region[];
   works: Work[];
   footprint: Footprint; // the built-up ground — see §2.5
-  // Haven-only, ratified 2026-09-08 (the human overruling the recommendation):
-  // ground the owner has opened for the town to spread into. One grant per hex,
-  // ever; it directs where the town MAY spread, never where a building stands.
-  grantedToTown?: number[]; // region ids
+  // `grantedToTown` stood here and is DELETED (KAN-122). It was a haven-only list
+  // of region ids the owner had opened for the town to spread into — and that is
+  // the same concept as `Region.focus === "growth"`, arrived at from the other
+  // end. Two ways to say one thing is [P-47], so the region keeps the fact and
+  // the town no longer carries a second copy of it. Do not reintroduce it: the
+  // difference between a governor opening ground and an owner doing so is WHO
+  // SETS THE FOCUS, never a separate field (spec §2.12.8).
   governor: string; // who runs the place. KAN-73 gives him competence and temperament.
 
   // WHAT THE WEATHER HAS TAKEN OFF THIS SEASON'S HARVEST, as a share of it —

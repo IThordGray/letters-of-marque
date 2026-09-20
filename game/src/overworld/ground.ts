@@ -416,6 +416,10 @@ function makeRegion(rng: Rng, id: number, terrain: TerrainKind, hexes: Axial[], 
     terrain,
     hexes,
     bears: rollBears(rng, terrain, climate),
+    // Ground arrives unspoken for. A focus is a DECISION a governor takes, never
+    // something the map hands down ([HC-95]) — the generator says what the ground
+    // WILL BEAR, and what it is FOR is the town's to settle.
+    focus: null,
     // The best of it — why the boiling house stands where it does.
     sweetSpot: hexes.length > 2 && !isDeadGround(terrain) ? pick(rng, hexes) : null,
     reach: nearest > LAND.atHandWithin ? "far" : "atHand",

@@ -147,3 +147,42 @@ describe("reproducibility", () => {
     expect(b.footprint).toEqual(a.footprint);
   });
 });
+
+// A region GIVEN OVER TO GROWTH is built on first, whatever the ground is worth
+// (KAN-122, spec §2.12.7). This is the one behaviour story 1 ships, and it had no
+// claim at all before: `grantedToTown` — the haven-only list this replaces — was
+// referenced in exactly two places, both production code, and asserted nowhere.
+// That is why swapping it out moved none of the 645 tests, and why the swap is
+// the right moment to write the claim that was missing.
+describe("ground given over to growth", () => {
+  // Scrub is FIRST in the spread order and cane flats are near LAST — a town eats
+  // what it can afford to lose. So a fixture that offers both is one where the
+  // wrong answer and the right answer are different hexes, which is the only kind
+  // of fixture that can tell them apart.
+  const bothGrounds = (focus: "growth" | null) =>
+    townOf(
+      [
+        reg(0, "scrub", RING1.slice(0, 3)),
+        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { cane: "ideal" }, focus }),
+      ],
+      { population: 300, wealth: 3000 },
+    );
+
+  it("is taken before ground the town would rather lose", () => {
+    const town = bothGrounds("growth");
+    const next = nextHex(town, false)!;
+    expect(next, "found nowhere to grow at all").toBeTruthy();
+
+    const taken = town.regions.find((r) => r.hexes.some((h) => key(h) === key(next)))!;
+    expect(taken.terrain).toBe("caneFlats"); // the cane goes, because the town chose it
+  });
+
+  it("and without the focus the town eats the scrub instead", () => {
+    // The same fixture with the focus lifted. If this picked cane too, the claim
+    // above would be passing on the spread order rather than on the focus.
+    const town = bothGrounds(null);
+    const next = nextHex(town, false)!;
+    const taken = town.regions.find((r) => r.hexes.some((h) => key(h) === key(next)))!;
+    expect(taken.terrain).toBe("scrub");
+  });
+});

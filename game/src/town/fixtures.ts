@@ -9,7 +9,7 @@
 // Generalised: pin behaviour against the struct, never against a producer that is
 // scheduled to move.
 
-import type { Town, Region, TerrainKind, Produce, Suit } from "./types";
+import type { Town, Region, RegionFocus, TerrainKind, Produce, Suit } from "./types";
 import type { Axial } from "./hex";
 import { CENTRE, innerRing, ring } from "./hex";
 import { makeTown } from "./sim";
@@ -18,6 +18,7 @@ export interface RegionOpts {
   bears?: Partial<Record<Produce, Suit>>;
   reach?: "atHand" | "far";
   sweetSpot?: Axial | null;
+  focus?: RegionFocus;
 }
 
 export function reg(id: number, terrain: TerrainKind, hexes: Axial[], opts: RegionOpts = {}): Region {
@@ -29,6 +30,9 @@ export function reg(id: number, terrain: TerrainKind, hexes: Axial[], opts: Regi
     sweetSpot: opts.sweetSpot ?? null,
     reach: opts.reach ?? "atHand",
     bearing: "N",
+    // Unfocused by default, because that is what most ground is and a fixture
+    // should look like the world rather than like the case under test.
+    focus: opts.focus ?? null,
   };
 }
 

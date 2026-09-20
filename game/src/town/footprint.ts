@@ -60,7 +60,6 @@ const regionAt = (town: Town, h: Axial): Region | null =>
 // grow lobes rather than a uniform ring.
 export function nextHex(town: Town, outsideWall: boolean): Axial | null {
   const walled = walledGround(town);
-  const granted = new Set(town.grantedToTown ?? []);
   let best: { h: Axial; rank: number; touching: number } | null = null;
 
   for (const h of town.land) {
@@ -72,9 +71,14 @@ export function nextHex(town: Town, outsideWall: boolean): Axial | null {
     if (!touching) continue;
     // Inside the old wall or outside it — the caller decides which pass this is.
     if (walled.size > 0 && walled.has(key(h)) === outsideWall) continue;
-    // A haven owner may open ground to the town; that ground goes first of all.
-    const rank = granted.has(r.id) ? -1 : SPREAD_ORDER.indexOf(r.terrain);
-    if (rank < 0 && !granted.has(r.id)) continue;
+    // Ground given over to GROWTH goes first of all, ahead of every terrain
+    // preference — that is the whole of what a growth focus does to the footprint
+    // (spec §2.12.7). It replaces `town.grantedToTown`, which said the same thing
+    // from the town's end (KAN-122); the difference between a governor opening
+    // ground and a haven's owner doing it is who set the focus, not a second list.
+    const forGrowth = r.focus === "growth";
+    const rank = forGrowth ? -1 : SPREAD_ORDER.indexOf(r.terrain);
+    if (rank < 0 && !forGrowth) continue;
     if (!best || rank < best.rank || (rank === best.rank && touching > best.touching)) {
       best = { h, rank, touching };
     }
