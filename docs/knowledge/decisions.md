@@ -10,6 +10,71 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-21 — The crops leave the menu, and a decision nobody can act on should not be offered
+
+KAN-125 took `sawpit`, `caneField` and `provisionGround` off the governor's list and taught a
+deepening to *start* a region rather than only extend one. **Focused-but-empty live regions fell from
+54.2% to 19.0%**, and every live land region is now focused on something. What remains is refused by
+coin, hands or materials — never by nobody looking.
+
+**`max` is settled, and the rule generalises: a PER-TOWN limit may not stand in front of a PER-REGION
+rule.** `CATALOGUE[kind].max = 9` was capping the deepest regions instead of the ground doing it.
+`[HC-94]` says the cap is **area**, so a second cap beside it is the second source for one fact that
+`[P-47]` forbids. The dividing line is which question the number answers: *"how many taverns is too
+many"* is about the **town**; *"how many sawpits"* is about the **hills**, and the hills already
+answer it. A focus expression now has no `max`; a menu work keeps its per-town limit. The deepest
+region reaches **13** works where it stopped dead at 9.
+
+**A produce with no work in the catalogue must never be allowed to claim ground.** This was a real
+and invisible bug: **a reef was being given over to its fish, for ever, producing nothing**, because
+fish has no capital work — and the same for cotton, grain and salt ground. Those focuses were a large
+slice of the 260 focused-and-empty regions, and no test could see them because a focus with no
+consequence looks exactly like a focus waiting for coin.
+
+> **The general form, and it is worth carrying: a decision whose only consequence is currently
+> unimplementable should not be OFFERED.** Not offered-and-ignored, not offered-and-logged — not
+> offered. It self-heals the day the consequence exists, and until then the ground goes to houses
+> instead, with a clause that is true of it today: *"nothing else was ever coming off that ground."*
+
+**"The region's best-borne produce" must mean "the best the catalogue can EXPRESS".** Tilled ground
+bears grain best and food second; grain has no work. A purpose gate reading the raw best would pass
+the focus (*"grain isn't forbidden"*) and the deepening would then raise **provision grounds** on it
+— a farm in a place whose purpose forbids one. One function, three readers. It closes over the next
+story by itself: the day `grainFields` exists, tilled ground's first answer becomes its real one.
+
+**A rule that is safe only in PAIRS is worth recording, because simplifying half of it breaks
+nothing visibly.** `[HC-94]`'s sited-work exemption has two readers — the depth count and the room
+reading — and mutating **either alone is a no-op**, because the other still refuses. Only loosening
+both shows the bug. Found by an unpredicted survivor, and now covered by a direct claim.
+
+**Deleting a mechanism costs its sentences, and that is the honest price.** Three ratified clauses
+died with the dependency edge: *"the shipways want planks"*, *"the boiling house wants cane"*, and
+the mend rule that read them. §2.12.13 anticipated the first. All three are recorded here so nobody
+goes looking for them later.
+
+---
+
+**TWO THINGS LEFT FOR THE HUMAN:**
+
+**1. §2.12.4's token cap now has no producer.** *"Unfocused, a region's depth caps at a token work —
+a hamlet takes what timber it needs off the ridge"* was only ever binding on works that stand on what
+the ground bears, and every one of those has just left the menu. **An unfocused region now carries
+none rather than one.** The rule is still enforced and is now unreachable. Either retire the clause
+or give it a producer.
+
+> **This is story 4's own amendment arriving one level down.** *When a story removes the only
+> producer of something, check in the same breath what is left to produce it.* Written yesterday
+> about the crops; true again today about the token work, and nobody spotted it until the code was
+> built. **The lesson is that the check has to be mechanical, not attentive.**
+
+**2. The city band has not moved for three stories running.** Floor up on three seeds of four, middle
+flat: medians 145→157, 207→139, 156→144, 214→211 against a ratified 450–600. Combined with
+2026-09-20's finding — median town wealth 290 against a 260-coin sawpit — **the evidence now points
+firmly at the median town's PURSE rather than at its capacity, its menu or its ground.** If 450–600
+is still wanted, the next lever is earnings or prices, not another way to build.
+
+
+---
 ### 2026-09-19 (second) — Damage has a cause, never a clock; and the town remembers
 
 **Ratified after the human rejected the decay ladder outright.** The town's works no longer degrade
