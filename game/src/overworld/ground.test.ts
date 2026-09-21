@@ -244,8 +244,8 @@ describe("what the map owes every place", () => {
 //
 // `guaranteeVictuals` has undertaken since KAN-98 that every place bears food.
 // Nothing undertook anything about TIMBER, and timber has no substitute: the
-// sawpit is the only work in the catalogue that produces materials, the shipway
-// requires a working sawpit, and nothing quarries stone at all. So a market
+// sawpit is the only work in the catalogue that produces materials, and nothing
+// quarries stone at all. So a market
 // neighbourhood with no timber in it can never build anything ([HC-87c]) — which
 // is why the guarantee exists, and why it is owed to the MARKET and not to the
 // place. `worldgen.test.ts` holds the covering; this file holds the cut.

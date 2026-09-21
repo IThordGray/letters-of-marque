@@ -58,7 +58,8 @@ export function generateWorld(seed: number): World {
 // WHY THE WORLD OWES ANYTHING AT ALL. `guaranteeVictuals` has undertaken since
 // KAN-98 that every place bears food, citing [HC-22] — and nothing undertook
 // anything about timber, which has no substitute: `sawpit` is the only work in
-// the catalogue that produces materials, `shipway` requires a working sawpit,
+// the catalogue that produces materials (a shipway produces nothing and is now
+// gated by planks like anything else),
 // and nothing quarries stone at all. So materials come from one plant, and they
 // come across a market ([HC-83] clears per neighbourhood, and a flow balance
 // holds no stock, so planks never make two hops). Measured on master: 5 to 22 of

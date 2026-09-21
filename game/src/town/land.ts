@@ -94,6 +94,31 @@ export function bestBorne(r: Region): { produce: Produce; suit: Suit } | null {
   return best;
 }
 
+// EVERYTHING THIS GROUND BEARS, best first — `bestBorne` with its tail kept, and
+// deliberately the SAME two orderings so the head of this list is always that
+// function's answer ([P-47]: one rule, and the shorter question is the longer
+// one's first element).
+//
+// It exists because a produce the catalogue cannot express implies no work, and
+// a region whose best answer is `grain` still has a second answer. Four of the
+// world's eight produces have no work at all (§2.12.14), so ignoring the tail
+// would leave a large slice of focused ground unable to be worked at all.
+export function bornePreference(r: Region): { produce: Produce; suit: Suit }[] {
+  const out: { produce: Produce; suit: Suit }[] = [];
+  for (let i = 0; i < PRODUCE_ORDER.length; i++) {
+    const p = PRODUCE_ORDER[i];
+    const s = r.bears[p];
+    if (s) out.push({ produce: p, suit: s });
+  }
+  // [P-10]: an explicit total order — grade first, then PRODUCE_ORDER's own
+  // stated direction, bread then what builds then what sells. The tie-break is
+  // written out rather than left to the sort's stability, because the head of
+  // this list has to BE `bestBorne`'s answer and that is a rule, not a habit.
+  return out.sort(
+    (a, b) => SUIT_RANK[b.suit] - SUIT_RANK[a.suit] || PRODUCE_ORDER.indexOf(a.produce) - PRODUCE_ORDER.indexOf(b.produce),
+  );
+}
+
 export const dominantOf = (town: Town): Region | null =>
   liveRegions(town).reduce<Region | null>((best, r) => (!best || r.hexes.length > best.hexes.length ? r : best), null);
 

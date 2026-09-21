@@ -330,18 +330,28 @@ export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.build
 // out of reach FOR EVER. One such place held 3,398 coin and a tavern.
 //
 // THE EXEMPTION IS READ OFF THE CATALOGUE, NEVER OFF A LIST OF KINDS. The rule
-// is "a work that produces materials is not gated by materials", and
-// `exports: "materials"` is already the catalogue's own answer to which those
-// are. A second list beside it would be [P-47]: one fact with two sources, and
-// the day somebody adds a quarry the list is the half that gets forgotten.
+// is "a work that produces materials is not gated by materials", and the
+// catalogue already answers which those are. A second list beside it would be
+// [P-47]: one fact with two sources, and the day somebody adds a quarry the
+// list is the half that gets forgotten.
 //
-// [HC-87c] IS UNTOUCHED, and this is the part worth being precise about. The
-// gate still fires at "cannot GET them" and still bites on everything else —
-// the shipways still stand idle for want of planks, because a `shipway`
-// REQUIRES a working `sawpit` ([HC-87c]'s texture is carried by the dependency
-// edge, not by the bill). What is exempted is one class of work from the
-// materials BILL, not the gate from the world.
-export const producesMaterials = (kind: WorkKind): boolean => CATALOGUE[kind].exports === "materials";
+// RE-KEYED TO THE PRODUCE 2026-09-21 (§2.12.13, [HC-87c]'s own amendment): it
+// reads `produces ∈ {timber, stone}` rather than `exports === "materials"`.
+// SAME RULE, SAME SINGLE SOURCE, ONE INDIRECTION SHORTER — and it has one live
+// consequence, which is the point of doing it here rather than later. A
+// `shipway` produces nothing; it is a harbour work that takes its cut of the
+// traffic. So it STOPS being exempt and must be supplied to be laid down.
+// YOU DO NEED PLANKS TO LAY DOWN A SHIPWAY, which is the only half of the old
+// `timber -> sawpit -> planks -> shipway` chain worth keeping, and the bill
+// keeps it for nothing.
+//
+// [HC-87c] IS UNTOUCHED: the gate still fires at "cannot GET them" and never at
+// "is a little short". What is exempted is one class of work from the materials
+// BILL, not the gate from the world.
+export const producesMaterials = (kind: WorkKind): boolean => {
+  const p = CATALOGUE[kind].produces;
+  return p === "timber" || p === "stone";
+};
 
 // The gate as a governor actually asks it: about THIS work, in THIS town.
 export const canBuildKind = (c: Commerce, kind: WorkKind): boolean =>

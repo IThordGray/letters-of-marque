@@ -64,9 +64,25 @@ export const WORKS = {
   // CALIBRATED AGAINST THE REAL CUT, not against a table ([P-52], as extended
   // 2026-09-20). Free hexes per region run 0–23 with a median of 6, so a median
   // region's ground is spent at six works and its last is worth 1.6x its first.
-  // The deepest regions on the warm world reach nine — the CATALOGUE's own
-  // per-kind limit rather than the ground's — at 2.08x.
+  //
+  // THE PER-TOWN LIMIT THAT USED TO STAND IN FRONT OF THE GROUND IS GONE
+  // (KAN-125). Measured after KAN-124, every depth-9 region on the warm world
+  // stopped at `CATALOGUE[kind].max` rather than at its own free area — a
+  // per-kind, per-town number binding a per-region rule. `max` is now `Infinity`
+  // on a focus expression, so the ceiling is the founding roll's, exactly as
+  // [HC-94] says, and the deepest ground a world cuts is what decides the
+  // richest premium anyone ever mints.
   premiumPerDepth: 0.12,
+  // THE LABEL LADDER'S THRESHOLD (§2.12.12) — the depth at which a region's
+  // installation is RELABELLED rather than joined by another entry: sawpits
+  // become a mill and its yards, cane fields gain their boiling house.
+  //
+  // A PLACEHOLDER, AND §2.12.15 SAYS SO — the real number waits on the
+  // terrain-kind lockdown pass, with the quarry and salt's trade class. It is 5
+  // rather than an arbitrary figure because §2.12.5 already wrote the sentence
+  // this ladder illustrates: "a second sawpit on the same hills shares a track,
+  // a pond and a crew; A FIFTH IS A WORKS."
+  ladderAt: 5,
   // Population at which each self-raising subsistence work appears. Absent = 0.
   subsistenceAt: {
     dwellings: 0,
@@ -299,7 +315,7 @@ export const PLAN = {
   weights: {
     land: 1.0, // "the hills are timbered"
     need: 1.5, // "the men have nowhere to drink"
-    market: 1.1, // "the shipways want planks"
+    market: 1.1, // "timber fetches well here"
     fear: 1.3, // "since the burning, the town wants guns"
     agenda: 0.9, // "the crown wants this place held"
   },
@@ -339,7 +355,6 @@ export const PLAN = {
   // clamp, and the price reading a median of 0.25 against a ceiling of 1.
   deepenVoice: 12,
   wantSecurity: 45, // the security a town would like to have before it relaxes
-  starvedBonus: 1.0, // a downstream work standing idle for want of this one
   tradeScale: 34, // normalises a work's earnings into roughly 0..1
   // A governor holds out for the better thing. He only settles for a lesser want
   // he can afford today if it scores at least this share of what he really wants —

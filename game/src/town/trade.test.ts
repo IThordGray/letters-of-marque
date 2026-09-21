@@ -9,10 +9,10 @@
 
 import { describe, it, expect } from "vitest";
 import { derive, stepSeason, stepSeasons, stepYears, carryingCapacity, prosperityTarget } from "./sim";
-import { CATALOGUE, CHOOSABLE, raise } from "./works";
+import { CAPITAL, CATALOGUE, raise } from "./works";
 import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, producesMaterials, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE } from "./constants";
-import { governorTurn, scoreWork, wants, type Built, type Decision } from "./governor";
+import { deepWants, focusWants, governorTurn, permitsFocus, scoreWork, wants, type Built, type Decision, type Deepened } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
 import { CALENDAR } from "../overworld/calendar";
@@ -30,6 +30,7 @@ const AFTER_OPENING = DAY0 + SEASON;
 // nothing", and after the focus auction landed beside the work auction those
 // stopped being the same sentence.
 const built = (d: Decision | null): Built | null => (d !== null && d.kind === "work" ? d : null);
+const deepened = (d: Decision | null): Deepened | null => (d !== null && d.kind === "deepening" ? d : null);
 
 // The shipping calling as usual — what an uncleared town faces, and what the
 // world writes when no squadron is holding anything. Spelled out rather than
@@ -117,7 +118,6 @@ describe("access is reach times readiness", () => {
     // from two sides. A town with corn to sell and timber to buy does neither.
     const town = open(mixedTown({ population: 400, wealth: 8000 }));
     raise(town, "caneField", DAY0);
-    raise(town, "boilingHouse", DAY0);
     stepSeason(town, AFTER_OPENING);
     const before = derive(town);
     expect(before.commerce.offer[2] + before.commerce.want[1]).toBeGreaterThan(0);
@@ -529,18 +529,19 @@ describe("materials gate construction", () => {
     return t;
   }
 
-  it("stops a town with full coffers and idle hands raising anything but the pit", () => {
+  it("stops a town with full coffers and idle hands raising anything at all off the menu", () => {
+    // THE MENU HAS NOTHING EXEMPT LEFT ON IT. The pit left the governor's list
+    // with the other two crops (§2.12.12), and a `shipway` produces nothing, so
+    // when the exemption re-keyed to the PRODUCE it stopped covering one —
+    // which is the ticket's own sentence: you do need planks to lay down a
+    // shipway. Every want a stone-poor place publishes is therefore refused.
     const town = stonePoor();
     expect(town.wealth).toBeGreaterThan(100000);
-    // THE ORACLE IS WRITTEN OUT rather than read back off the catalogue, so a
-    // second kind quietly acquiring `exports: "materials"` shows up here as a
-    // failure rather than as agreement with itself.
-    const PRODUCES_MATERIALS = ["sawpit", "shipway"];
-    for (const w of wants(town, AFTER_OPENING, 12)) {
-      expect(w.supplied, `${w.kind} answered the wrong way to a town that can get no planks`)
-        .toBe(PRODUCES_MATERIALS.includes(w.kind));
+    const published = wants(town, AFTER_OPENING, 12);
+    expect(published.length).toBeGreaterThan(0); // it still says what it wants
+    for (const w of published) {
+      expect(w.supplied, `${w.kind} answered the wrong way to a town that can get no planks`).toBe(false);
     }
-    expect(built(governorTurn(town, AFTER_OPENING))?.work.kind).toBe("sawpit");
   });
 
   it("digs the pit with no timber or stone to be had, and still cannot raise a warehouse", () => {
@@ -548,35 +549,68 @@ describe("materials gate construction", () => {
     // plank to be had — and the work that would END the shortage is the one work
     // he may start. The warehouse beside it is the control: same town, same
     // season, same purse, gated.
+    //
+    // THE VERB CHANGED AND THE RULE DID NOT. The pit arrives as a DEEPENING now
+    // — that is the only verb left that raises one — so the exemption is read
+    // off the deepening's own `supplied` flag rather than off a want's. Both
+    // call `canBuildKind`, which is the single source ([P-47]).
     const town = stonePoor();
+    town.regions[0].focus = "production"; // somebody gave the hills over
     const d = derive(town);
     expect(d.commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate); // it can get none
     expect(d.commerce.bought[1]).toBe(0);
     expect(d.hands.available - d.hands.needed).toBeGreaterThan(CATALOGUE.sawpit.hands); // and hands to spare
 
-    const ranked = wants(town, AFTER_OPENING, 12);
-    const pit = ranked.find((w) => w.kind === "sawpit");
-    const store = ranked.find((w) => w.kind === "warehouse");
+    const pit = deepWants(town, d, 12).find((w) => w.kind === "sawpit");
+    const store = wants(town, AFTER_OPENING, 12, d).find((w) => w.kind === "warehouse");
     expect(pit, "the hills bear timber and no pit was published").toBeDefined();
     expect(store, "the roadstead takes a warehouse and none was published").toBeDefined();
     expect(pit!.supplied).toBe(true);
     expect(store!.supplied).toBe(false);
+
+    // ...and he does dig it, though it takes him a season or two to get round to
+    // it: the season's one decision may go on deciding what other ground is for
+    // before it goes on digging.
+    let dug: string | undefined;
+    for (let i = 0; i < 12 && dug === undefined; i++) {
+      dug = deepened(governorTurn(town, AFTER_OPENING + i * SEASON))?.work.kind;
+    }
+    expect(dug).toBe("sawpit");
   });
 
-  it("exempts exactly the works the catalogue says send materials to the quay", () => {
+  it("exempts exactly the works that produce timber or stone, and no others", () => {
     // THE DERIVATION ITSELF, guarded — and it needs guarding because the world
-    // cannot guard it. A `shipway` is exempt too and no measurement will ever
-    // show it: a shipway REQUIRES a working sawpit, so by the time one may be
-    // raised the place is already cutting its own timber and the bill was never
-    // what stopped it. Measured at day 0 across four seeds: not one shipway
-    // stands anywhere. So deriving the exemption from `produces` rather than
-    // `exports` — which drops the shipway — breaks nothing in any world, and
-    // this claim is the only thing that would notice.
-    const PRODUCES_MATERIALS = ["sawpit", "shipway"]; // the oracle, written out
-    for (const kind of CHOOSABLE) {
+    // cannot guard it. RE-KEYED 2026-09-21 (§2.12.13): the rule reads `produces
+    // ∈ {timber, stone}` rather than `exports === "materials"`. Same rule, same
+    // single source, one indirection shorter — and one live consequence, which
+    // is why this claim exists: the shipway used to be exempt and is not any
+    // more.
+    //
+    // IT WALKS EVERY CAPITAL WORK, not the menu, because the one work the rule
+    // is about is no longer ON the menu — a loop over `CHOOSABLE` would have
+    // gone green by asking nothing.
+    const PRODUCES_MATERIALS = ["sawpit"]; // the oracle, written out
+    for (const kind of CAPITAL) {
       expect(producesMaterials(kind), `${kind} answered the wrong way`)
         .toBe(PRODUCES_MATERIALS.includes(kind));
     }
+    expect(producesMaterials("shipway")).toBe(false); // said out loud, because it moved
+  });
+
+  it("you do need planks to lay down a shipway, and that is the change", () => {
+    // THE LIVE CONSEQUENCE of re-keying the exemption to the produce, stated
+    // behaviourally rather than as a property of a function. A shipway used to
+    // be exempt because it exported materials; it produces none, and a harbour
+    // work that takes its cut of the traffic is not a plank mill. It is the only
+    // half of the old `timber -> sawpit -> planks -> shipway` chain worth
+    // keeping, and the materials bill keeps it for nothing.
+    const town = stonePoor();
+    const shut = wants(town, AFTER_OPENING, 12).find((w) => w.kind === "shipway");
+    expect(shut, "the roadstead takes a shipway and none was published").toBeDefined();
+    expect(shut!.supplied).toBe(false);
+
+    town.market.bought[1] = 400; // a shipload of planks
+    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "shipway")!.supplied).toBe(true);
   });
 
   it("still cannot dig a pit where there are no hills to dig it in", () => {
@@ -604,7 +638,11 @@ describe("materials gate construction", () => {
     expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(false);
     town.market.bought[1] = 100; // a shipload of planks
     expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(true);
-    governorTurn(town, AFTER_OPENING);
+    // A SEASON IS ONE DECISION AND THERE ARE THREE KINDS OF IT, so "he builds
+    // again" is a claim about the seasons after the shipload and not about the
+    // very next one — some of them go on deciding what ground is for, which
+    // costs no coin and raises nothing. Give him a few years and he builds.
+    for (let i = 0; i < 12 && town.works.length === before; i++) governorTurn(town, AFTER_OPENING + i * SEASON);
     expect(town.works.length).toBeGreaterThan(before);
   });
 
@@ -638,7 +676,6 @@ describe("luxury is a need with teeth", () => {
     // way a place gets any is to grow it or to buy it.
     const grown = open(mixedTown({ population: 300, wealth: 9000 }));
     raise(grown, "caneField", DAY0);
-    raise(grown, "boilingHouse", DAY0);
     stepSeason(grown, AFTER_OPENING);
     expect(derive(grown).commerce.produced[2]).toBeGreaterThan(0);
 
@@ -801,9 +838,15 @@ describe("what a purpose puts out of reach", () => {
   };
 
   it("still asks for a farm, in the same words, and is heard", () => {
-    const t = outpost();
-    const wish = wants(t, AFTER_OPENING, 12).find((w) => w.kind === "provisionGround");
+    // [HC-81] VERBATIM, and the place the wish is heard MOVED with the work.
+    // Provision grounds left the menu (§2.12.12), so the want that used to carry
+    // this clause is gone; the same clause is now the FOCUS auction's need term
+    // on food ground — one level up, and governing both verbs at once. The
+    // colony is the fixture because the outpost is refused the candidate
+    // outright, which is the next claim and not this one.
+    const t = onThatGround("colony");
     expect(derive(t).dependency).toBeGreaterThan(0.7);
+    const wish = focusWants(t, derive(t), 99).find((w) => w.produce === "food");
     expect(wish).toBeDefined();
     expect(wish!.terms.some((x) => x.clause === DEPENDENCY_CLAUSE)).toBe(true);
   });
@@ -812,9 +855,14 @@ describe("what a purpose puts out of reach", () => {
     // Paired deliberately. "The outpost has no farm" on its own is satisfied by
     // any town that never wanted one; the claim only means something beside a
     // place that WOULD have built it from the identical brief.
+    //
+    // THE GATE RE-KEYED FROM THE WORK TO THE PRODUCE (§5.1.2) and now reads one
+    // level up — "a military purpose never sets a production focus on FOOD
+    // GROUND" — so the outpost cannot reach a farm by the side door either.
     const garrison = outpost();
     const colony = onThatGround("colony");
-    expect(wants(garrison, AFTER_OPENING, 12).find((w) => w.kind === "provisionGround")!.permitted).toBe(false);
+    expect(permitsFocus(garrison, garrison.regions[2], "production")).toBe(false);
+    expect(permitsFocus(colony, colony.regions[2], "production")).toBe(true);
 
     live(garrison, 400);
     live(colony, 400);

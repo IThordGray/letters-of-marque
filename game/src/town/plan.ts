@@ -21,7 +21,7 @@ import type { Town, Work, Region } from "./types";
 import type { Axial } from "./hex";
 import { toPixel, key, centroid, neighbours } from "./hex";
 import { makeRng, nextFloat, type Rng } from "../rng";
-import { CATALOGUE, type Zone } from "./works";
+import { CATALOGUE, installationLabel, type Zone } from "./works";
 import { isWater, isDead, LABEL } from "./land";
 import { walledGround } from "./footprint";
 import { PLAN_SPACE } from "./constants";
@@ -327,8 +327,12 @@ export function planTown(town: Town): Plan {
     const townward = scale(norm(sub(plaza, mid)), H * 0.14);
     const n = Math.max(1, live.length);
     fields.push({
-      // "sawpits" already reads as a plural; the count says how much of it.
-      label: n > 1 ? ws[0].name + " \u00d7" + n : ws[0].name,
+      // THE LABEL LADDER (\u00a72.12.12), and this is its one consumer. Below the
+      // threshold "sawpits" reads as a plural and the count says how much of it;
+      // at the threshold the WORDS say how much \u2014 "a mill and its yards" \u2014 which
+      // is where the boiling house went when it left the menu. It is read off
+      // the count standing here and stored nowhere.
+      label: installationLabel(ws[0].kind, n),
       at: add(add(mid, townward), { x: jitter(rng, H * 0.07), y: jitter(rng, H * 0.07) }),
       // One work is a shed; several are a works. Area grows with the square root,
       // so a big installation reads as bigger without swallowing the map.
