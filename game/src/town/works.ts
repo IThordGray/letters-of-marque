@@ -201,12 +201,20 @@ export function takenHexes(town: Town): Set<string> {
 // over now gets its first work from the focus that named it, which is the only
 // arrangement in which the two halves of this story are safe to ship together.
 //
-// THE TOKEN CAP SURVIVES AS A RULE AND HAS NO PRODUCER LEFT IN THE AUCTION.
-// §2.12.4 ratifies "unfocused, a region's depth caps at a token work", and it is
-// still enforced on the `raise` path below — but nothing on the governor's menu
-// stands on what the ground bears any more, so no governor can reach it. It is
-// kept rather than deleted because `raise` is the one door any caller comes
-// through and the rule is the spec's, not this module's, to retire.
+// THE TOKEN CAP IS WITHDRAWN (human, 2026-09-21, to be revisited).
+// §2.12.4 used to ratify "unfocused, a region's depth caps at a token work" — a
+// hamlet taking what timber it needs off a ridge nobody had declared a timber
+// region. KAN-125 took every work that stands on what the ground bears off the
+// governor's menu, so the only producer the rule ever had was gone and the cap
+// was enforced but unreachable.
+//
+// The ruling: GROUND DOES NOTHING UNTIL SOMEBODY DECIDES ABOUT IT. That is the
+// cleaner story, it sharpens what a focus means, and a town's slow accumulation
+// is now supposed to come from TRADE rather than from odds and ends of
+// undecided land (the 450-600 target was withdrawn the same day).
+//
+// What a town still gets off undecided ground is its subsistence — garden plots,
+// fishing shacks, houses — which were never gated on any of this ([HC-98]).
 //
 // So the focused-to-unfocused ratio is AREA, the founding roll's own variance,
 // and NOTHING ANYWHERE MULTIPLIES A YIELD BECAUSE A FOCUS WAS SET. The second of
@@ -216,11 +224,19 @@ export function takenHexes(town: Town): Set<string> {
 // than no dial.
 export type Verb = "raise" | "deepen";
 
-// The token cap, and it is a RULE rather than a dial — §2.12.4 states the number
-// in words ("ONE capital work") and nothing downstream divides by it.
-// NOT EXPORTED SINCE KAN-125: nothing outside this module reads it any more,
-// because the auction it used to bind no longer offers a work it could bind.
-const TOKEN_DEPTH = 1;
+// The token allowance. KEPT DELIBERATELY after the rule above was withdrawn,
+// and the reason is worth reading before anyone deletes it.
+//
+// The withdrawal changed the SPEC and not the behaviour, because the behaviour
+// already matched: `wants()` walks `CHOOSABLE`, which excludes every focus
+// expression, so no governor has been able to reach this path since KAN-125.
+// What still comes through it is `raise(town, kind, day)` called DIRECTLY —
+// which in this repo means test fixtures putting a first sawpit on the ground
+// to set a scene up.
+//
+// So this constant's only remaining consumer is the suite. That is a smell and
+// it is flagged for the revisit rather than tidied now: making the fixtures go
+// through a focus and a deepening is a test refactor, not this decision.
 
 // [HC-93] A REGION'S DEPTH IS COUNTED, NEVER STORED. There is no development
 // integer, no level, no tier: the filter below over ~20 ledger lines is the
@@ -258,6 +274,8 @@ export function depthAllowed(town: Town, r: Region, verb: Verb, claimed?: Set<st
   if (verb === "raise") return TOKEN_DEPTH;
   return r.focus === "production" ? capacityOf(town, r, claimed) : 0;
 }
+
+const TOKEN_DEPTH = 1;
 
 // WHAT THIS REGION WILL STILL TAKE OF THIS WORK, by this verb. ONE FUNCTION
 // ([P-47]): the score that says "there is room for more", the gate that refuses a

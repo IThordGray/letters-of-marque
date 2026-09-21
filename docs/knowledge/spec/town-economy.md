@@ -527,6 +527,25 @@ map. **Focus is what finally makes them pay in the economy:** a town whose domin
 at nine hexes can become a timber town in a way a town whose best came out at three never can, and
 nobody tuned that.
 
+> **WITHDRAWN 2026-09-21, to be revisited.** The clause below is retired. **Ground does nothing
+> until somebody decides about it**, and deciding is the focus.
+>
+> **Why it went:** §2.12.12 took every work that stands on what the ground bears off the governor's
+> menu, so the only producer this rule ever had was gone — it was enforced and unreachable. The
+> choice was to give it a producer back or to retire it, and retiring it is the cleaner story: it
+> sharpens what a focus *means*, and a town's slow accumulation now comes from **trade** rather than
+> from odds and ends of undecided land (the 450–600 target was withdrawn the same day).
+>
+> **What a town still takes off undecided ground is its subsistence** — garden plots, fishing
+> shacks, houses — which were never gated on any of this (`[HC-98]`). The visible difference is in
+> small places: a hamlet that never declares its hills a timber region now has no timber at all.
+>
+> **The behaviour already matched, and only the spec moved.** Worth recording because it is easy to
+> mistake for a code change and it was: `wants()` walks `CHOOSABLE`, which excludes every focus
+> expression, so no governor could reach the cap anyway. The constant survives in `works.ts` with
+> exactly one consumer — test fixtures calling `raise` directly — which is flagged there as a smell
+> for the revisit rather than tidied now.
+
 **The token cap, for an unfocused region: ONE capital work.** A region nobody has decided anything
 about still gets worked a little — a hamlet takes what timber it needs off the ridge — but it never
 becomes an industry. The clause: *"there is timber over the ridge; they take what they need of it."*
