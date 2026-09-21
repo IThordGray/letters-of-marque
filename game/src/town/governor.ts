@@ -21,10 +21,10 @@
 import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived, Region, Produce } from "./types";
 import { key } from "./hex";
 import {
-  CATALOGUE, CHOOSABLE, buildable, raise, groundFor, starvedFor, mendable, repairCost, worthOf,
-  countOf, depthOf, roomInRegion, takenHexes, TOKEN_DEPTH,
+  CATALOGUE, CHOOSABLE, FOCUS_EXPRESSIONS, buildable, raise, groundFor, mendable, repairCost, worthOf,
+  depthOf, roomInRegion, takenHexes,
 } from "./works";
-import { compass, LABEL, bestBorne, capacityOf, claimedKeys, isBuildable, regionOf } from "./land";
+import { compass, LABEL, bornePreference, capacityOf, claimedKeys, isBuildable, regionOf } from "./land";
 import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf, cargoOf, dearnessOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
@@ -113,11 +113,14 @@ const NEED_CLAUSE: Record<Need, string> = {
   order: "the place wants keeping in order",
 };
 
-// What a supplier is FOR, said from the downstream work's point of view.
-const STARVED_CLAUSE: Partial<Record<WorkKind, string>> = {
-  sawpit: "the shipways want planks",
-  caneField: "the boiling house wants cane",
-};
+// RETIRED WITH ITS MECHANISM, and recorded rather than quietly dropped. There
+// used to be a `STARVED_CLAUSE` here — "the shipways want planks", "the boiling
+// house wants cane" — and a `PLAN.starvedBonus` that sharpened the market term
+// whenever something downstream stood waiting. Both were the DEPENDENCY EDGE
+// talking, and §2.12.13 is explicit: deleting the edge deletes the sentence.
+// What argues in its place is the market term arguing in COIN — "timber fetches
+// well here" (§3.5.4) — and the honest version is to say the sentence is gone
+// rather than to fake a survivor out of a different mechanism.
 
 const AGENDA_CLAUSE: Record<Archetype, string> = {
   colony: "the Company wants a return on this place",
@@ -125,24 +128,29 @@ const AGENDA_CLAUSE: Record<Archetype, string> = {
   pirateHaven: "you want a haven that can keep itself",
 };
 
-// How much each patron cares about each work. This is where a royal outpost
-// becomes hard-and-poor and a colony becomes rich-and-open — the archetypes are
-// agendas, not stat blocks.
+// How much each patron cares about each work ON THE MENU. This is where a royal
+// outpost becomes hard-and-poor and a colony becomes rich-and-open — the
+// archetypes are agendas, not stat blocks.
+//
+// THE THREE FOCUS EXPRESSIONS LEFT THIS TABLE WITH THE MENU (§2.12.12), and
+// their rows are DELETED rather than left standing: this table is only ever read
+// by `scoreWork`, which walks `CHOOSABLE`, so a `sawpit: 0.8` here would be a
+// number nothing reads — dead data that reads as a live opinion. A patron's
+// opinion about what ground is FOR has its own table, `FOCUS_AGENDA`, and a
+// deepening is scored from the region's own ground and from nothing else
+// ([HC-97]) — so the agenda speaks about ground exactly once.
 export const AGENDA: Record<Archetype, Partial<Record<WorkKind, number>>> = {
   colony: {
-    sawpit: 0.8, caneField: 0.8, boilingHouse: 1.0, shipway: 0.7, warehouse: 0.9,
-    customsHouse: 0.5, provisionGround: 0.6, church: 0.5, tavern: 0.4,
+    shipway: 0.7, warehouse: 0.9, customsHouse: 0.5, church: 0.5, tavern: 0.4,
     battery: 0.15, palisade: 0.15, barracks: 0.2, // revenue first, defence last
   },
   royalOutpost: {
     battery: 1.0, barracks: 1.0, palisade: 0.8, customsHouse: 0.9, church: 0.6,
-    provisionGround: 0.5, warehouse: 0.4, tavern: 0.3,
-    sawpit: 0.3, caneField: 0.2, boilingHouse: 0.2, shipway: 0.3, // it need not earn
+    warehouse: 0.4, tavern: 0.3, shipway: 0.3, // it need not earn
   },
   pirateHaven: {
-    tavern: 1.0, shipway: 0.9, battery: 0.8, warehouse: 0.8, boilingHouse: 0.8,
-    sawpit: 0.7, provisionGround: 0.6, palisade: 0.6, caneField: 0.5,
-    barracks: 0.4, church: 0.2, customsHouse: 0.1, // no crown, no customs
+    tavern: 1.0, shipway: 0.9, battery: 0.8, warehouse: 0.8,
+    palisade: 0.6, barracks: 0.4, church: 0.2, customsHouse: 0.1, // no crown, no customs
   },
 };
 
@@ -187,14 +195,16 @@ export const permits = (town: Town, kind: WorkKind): boolean => {
   return p === null || OUT_OF_VOCABULARY[town.archetype][p] !== true;
 };
 
-// ...and as the FOCUS auction asks it. A production focus is FOR the region's
-// best-borne produce (§2.12.12 — "a deepening raises the work the region's
-// best-borne produce implies"), so that is the produce the gate is asked about.
-// A growth focus is never gated: houses are in every place's vocabulary.
+// ...and as the FOCUS auction asks it. A production focus is FOR the work a
+// deepening on that ground would raise (§2.12.12 — "a deepening raises the work
+// the region's best-borne produce implies"), so THAT is the produce the gate is
+// asked about, and it is asked through the same `expressionFor` the deepening
+// itself uses ([P-47]). A growth focus is never gated: houses are in every
+// place's vocabulary.
 export const permitsFocus = (town: Town, r: Region, focus: "production" | "growth"): boolean => {
   if (focus === "growth") return true;
-  const best = bestBorne(r);
-  return best === null || OUT_OF_VOCABULARY[town.archetype][best.produce] !== true;
+  const e = expressionFor(r);
+  return e === null || OUT_OF_VOCABULARY[town.archetype][e.produce] !== true;
 };
 
 // ---- Scoring ---------------------------------------------------------------
@@ -229,22 +239,20 @@ export function scoreWork(town: Town, kind: WorkKind, day: number, derived = der
     });
   }
 
-  // 3. THE MARKET WANTS IT — it earns WHAT IT WOULD ACTUALLY FETCH HERE, and
-  //    more sharply, something downstream is waiting on it.
+  // 3. THE MARKET WANTS IT — it earns WHAT IT WOULD ACTUALLY FETCH HERE.
   //
   //    §3.5.4's second edit to the auction: `trade x priceOf x access` rather
   //    than a flat constant. It is what turns this term from a fact about the
-  //    catalogue into an argument about this place — the same sawpit is worth
-  //    raising where timber is dear and not where it is cheap, and a port whose
-  //    quay has burned has no market argument for anything at all.
+  //    catalogue into an argument about this place — the same warehouse is worth
+  //    raising where the traffic is thick and not where it is thin, and a port
+  //    whose quay has burned has no market argument for anything at all.
+  //
+  //    IT IS THE WHOLE OF THE TERM NOW. The `starved` half — a bonus and a
+  //    sharper clause when something downstream stood idle for want of this —
+  //    was the dependency edge talking, and it retired with the edge.
   const earns = fetchOf(town, kind, d.access) / PLAN.tradeScale;
-  const starved = starvedFor(town, kind) ? PLAN.starvedBonus : 0;
-  if (earns + starved > 0) {
-    terms.push({
-      key: "market",
-      weight: (earns + starved) * PLAN.weights.market,
-      clause: starved ? (STARVED_CLAUSE[kind] ?? "there is money in it") : "there is money in it",
-    });
+  if (earns > 0) {
+    terms.push({ key: "market", weight: earns * PLAN.weights.market, clause: "there is money in it" });
   }
 
   // 4. FEAR — the town is open, and more so if it was lately hurt.
@@ -345,18 +353,47 @@ export const FOCUS_AGENDA: Record<Archetype, Record<FocusKind, number>> = {
 // beside it ([P-47]), because the catalogue already answers "which work grows
 // cane". Built once at module load, never per call ([P-18]).
 //
-// FOUR OF THE WORLD'S EIGHT PRODUCES HAVE NO WORK AT ALL — `grain`, `cotton`,
-// `stone`, `salt` — so ground that bears only those gets no market argument
-// today. That is not a bug in this auction; it is §2.12.14's measured finding
-// seen from inside the code, and closing it is KAN-125's business.
+// IT WALKS THE FOCUS EXPRESSIONS AND NOT THE MENU, and after §2.12.12 those are
+// the same three works it always found: a produce implies the work that stands
+// on ground bearing it, which is exactly what a focus expression is.
+//
+// FOUR OF THE WORLD'S EIGHT PRODUCES STILL HAVE NO WORK AT ALL — `grain`,
+// `cotton`, `stone`, `salt`. That is §2.12.14's measured finding seen from
+// inside the code, and closing it is story 5's business (`grainFields` and
+// `cottonWalk` arrive as focus expressions, so the menu does not lengthen).
 const WORK_FOR_PRODUCE: Partial<Record<Produce, WorkKind>> = (() => {
   const out: Partial<Record<Produce, WorkKind>> = {};
-  for (const k of CHOOSABLE) {
+  for (const k of FOCUS_EXPRESSIONS) {
     const p = CATALOGUE[k].produces;
     if (p && out[p] === undefined) out[p] = k;
   }
   return out;
 })();
+
+// WHAT A DEEPENING ON THIS GROUND WOULD ACTUALLY RAISE, and the reason it is one
+// function ([P-47]): three different readers ask it — the purpose gate, the
+// focus auction's market term and the deepening itself — and if any two of them
+// disagreed the governor could give ground over for one reason and then work it
+// for another. A royal outpost that read `bestBorne` alone would be the live
+// case: tilled ground bears GRAIN best and FOOD second, grain has no work, so
+// the gate would pass the focus ("grain is not on his forbidden list") and the
+// deepening would then raise provision grounds on it — a farm in a place whose
+// whole purpose forbids one.
+//
+// SO IT IS "THE BEST-BORNE PRODUCE THE CATALOGUE CAN EXPRESS", not simply the
+// best-borne. §2.12.12's sentence is "a deepening raises the work the region's
+// best-borne produce implies", and a produce that implies no work implies
+// nothing — the ground's next-best answer is then the ground's answer. It
+// closes over story 5 by itself: the day `grainFields` exists, grain is
+// expressible and tilled ground's first answer becomes its real one.
+export function expressionFor(r: Region): { kind: WorkKind; produce: Produce; suit: Suit } | null {
+  const ranked = bornePreference(r);
+  for (let i = 0; i < ranked.length; i++) {
+    const kind = WORK_FOR_PRODUCE[ranked[i].produce];
+    if (kind !== undefined) return { kind, produce: ranked[i].produce, suit: ranked[i].suit };
+  }
+  return null;
+}
 
 // WHAT A PRODUCE IS CALLED IN A SENTENCE, and one table for both places that
 // need one ([P-47]). `food` is the ledger's COLUMN name and nobody gives ground
@@ -480,7 +517,12 @@ export function scoreFocus(
 ): FocusTerm[] {
   const d = derived;
   const terms: FocusTerm[] = [];
-  const best = bestBorne(r);
+  // WHAT THE TOWN WOULD ACTUALLY TAKE OFF IT, not simply what the ground bears
+  // best. The two differ wherever a region's finest produce has no work — tilled
+  // ground bears grain best and food second — and scoring the focus from one
+  // while the deepening raises the other is the disagreement `expressionFor`
+  // exists to prevent (§2.12.12). It is the same call all three readers make.
+  const best = expressionFor(r);
   // AREA IS THE RATIO ([HC-94]). A focus buys CAPACITY, never a multiplier, so
   // the land's voice is how well the ground bears TIMES how much of it is still
   // free. §2.3's budgeted, skewed region sizes have until now paid off only in
@@ -513,8 +555,7 @@ export function scoreFocus(
     //    it is cheap, and a port whose quay has burned has no market argument for
     //    anything at all.
     if (best) {
-      const kind = WORK_FOR_PRODUCE[best.produce];
-      const earns = kind === undefined ? 0 : fetchOf(town, kind, d.access) / PLAN.tradeScale;
+      const earns = fetchOf(town, best.kind, d.access) / PLAN.tradeScale;
       if (earns > 0) {
         terms.push({ key: "market", weight: earns * PLAN.weights.market, clause: `${PRODUCE_WORD[best.produce]} fetches well here` });
       }
@@ -554,16 +595,22 @@ export function scoreFocus(
 //  * IT MUST BE A CHANGE. `focusLock` has already refused everything permanent;
 //    what is left is unfocused ground (either focus) and an unbuilt growth focus
 //    (production, which is the redirection [HC-95] allows).
-//  * PRODUCTION NEEDS GROUND THAT BEARS SOMETHING. Dead ground gives nothing to
-//    focus on, and "the Company wants a return on this place" is not on its own
-//    a reason to give scrub over to industry.
+//  * PRODUCTION NEEDS GROUND THE TOWN CAN ACTUALLY WORK. Dead ground gives
+//    nothing to focus on, and "the Company wants a return on this place" is not
+//    on its own a reason to give scrub over to industry. IT ASKS
+//    `expressionFor` RATHER THAN `bestBorne`, and the difference is the whole of
+//    KAN-125's acceptance: ground that bears only cotton, grain, stone or salt
+//    has no work in the catalogue yet (§2.12.14), so giving it over to
+//    production would buy a decision nothing could ever act on — a region
+//    focused and permanently empty, which is precisely what this story exists
+//    to end. It re-opens by itself when story 5 gives those produces works.
 //  * HOUSES NEED GROUND THAT WILL TAKE THEM. A growth focus acts entirely
 //    through `nextHex` (§2.12.7), which never claims water or mangrove, so a
 //    growth focus on either would be a decision with no consequence at all.
 const offers = (town: Town, r: Region, index: number, focus: FocusKind): boolean => {
   if (r.focus === focus) return false;
   if (carriesChosenWork(town, index)) return false;
-  return focus === "production" ? bestBorne(r) !== null : isBuildable(r.terrain);
+  return focus === "production" ? expressionFor(r) !== null : isBuildable(r.terrain);
 };
 
 // "the cane flats", but "a high bluff" brought its own article.
@@ -588,7 +635,7 @@ export function focusWants(town: Town, derived = derive(town), limit = 3): Focus
       const terms = scoreFocus(town, r, focus, d, claimed);
       const score = terms.reduce((s, t) => s + t.weight, 0);
       if (score <= 0) continue;
-      const best = focus === "production" ? bestBorne(r) : null;
+      const best = focus === "production" ? expressionFor(r) : null;
       out.push({
         region: r.id,
         focus,
@@ -761,20 +808,40 @@ export function deepWants(town: Town, derived = derive(town), limit = 3): DeepWa
     // work and never becomes an industry, so there is nothing here to offer —
     // and ground marked for HOUSES is being spent, not worked.
     if (r.focus !== "production") continue;
-    // ...AND ONLY GROUND THAT ALREADY CARRIES ONE. A region with nothing on it is
-    // still a kind-like question and belongs to the five-term auction, which
-    // reads its best FREE ground quite legitimately (§5.1). The instance starts
-    // at the first work.
+    // ...AND AT ANY DEPTH, INCLUDING NONE. THIS IS THE LARGER HALF OF KAN-125.
+    //
+    // KAN-124 refused a region with nothing standing on it — "a region with
+    // nothing on it is still a kind-like question and belongs to the five-term
+    // auction, which reads its best FREE ground quite legitimately" — and that
+    // was reasonable in isolation and WRONG IN SEQUENCE. §2.12.12 takes the
+    // three crops off the menu, so the five-term auction has nothing left to
+    // offer that could stand on what the ground bears, and focused ground with
+    // no work on it had no way to get a first one at all. Measured before the
+    // change: 260 of 369 production-focused live regions across four warm worlds
+    // were focused and EMPTY.
+    //
+    // So a deepening now STARTS a region as well as extending one, and the two
+    // changes ship together or not at all. The general lesson, recorded in
+    // §11's story 4: WHEN A STORY REMOVES THE ONLY PRODUCER OF SOMETHING, CHECK
+    // IN THE SAME BREATH WHAT IS LEFT TO PRODUCE IT.
+    //
+    // NOTHING ELSE ABOUT THE CANDIDATE CHANGES. It is still scored from that
+    // region's own ground and never from the catalogue ([HC-97]): at depth 0 the
+    // potential is the ground's suit, the room reading is its whole free area,
+    // and the premium `raise` mints is `depthPremium(0)` — exactly 1, which is
+    // what the first work on any ground has always been worth.
     const depth = depthOf(town, i);
-    if (depth < TOKEN_DEPTH) continue;
-    const best = bestBorne(r);
+    // What this ground would actually bear a work of, which is the same call the
+    // focus auction made when it gave the ground over ([P-47]).
+    const best = expressionFor(r);
     if (!best) continue;
-    // FOUR OF THE WORLD'S EIGHT PRODUCES HAVE NO WORK AT ALL (§2.12.14), so
-    // ground that bears only grain, cotton, stone or salt cannot be deepened
-    // today. That is not a bug here; closing it is KAN-125's business.
-    const kind = WORK_FOR_PRODUCE[best.produce];
-    if (kind === undefined) continue;
-    if (countOf(town, kind) >= CATALOGUE[kind].max) continue; // the catalogue's own limit
+    const kind = best.kind;
+    // NO PER-TOWN LIMIT IS ASKED ABOUT HERE, and its absence is a decision
+    // rather than an omission: `CATALOGUE[kind].max` is `Infinity` on a focus
+    // expression, because the cap on ground given over is the region's own area
+    // ([HC-94]) and a second cap beside it would be [P-47]'s second source. What
+    // refuses a full region is the room reading, below, which is zero — and zero
+    // times anything is zero.
     const room = roomInRegion(town, r, i, kind, "deepen", taken, claimed);
     const terms = scoreDeepening(town, r, i, kind, best.produce, best.suit, taken, claimed);
     const score = deepScore(terms);

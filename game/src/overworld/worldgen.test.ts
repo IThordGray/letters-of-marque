@@ -30,7 +30,7 @@ import { derive, failureWord } from "../town/sim";
 import { canBuild, dependencyWord } from "../town/trade";
 import { CATALOGUE, regionsFor } from "../town/works";
 import { WORKS } from "../town/constants";
-import { wants } from "../town/governor";
+import { deepWants, wants } from "../town/governor";
 
 // THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
 // being a second number laid over the floor the catalogue already raises, so the
@@ -411,7 +411,8 @@ describe("day 0 holds a world with a past", () => {
 // ---- Every market can reach timber, and most places must buy it -------------
 //
 // RATIFIED 2026-09-16. Timber has no substitute: `sawpit` is the only work in
-// the catalogue that produces materials, `shipway` requires a working sawpit,
+// the catalogue that produces materials — a shipway produces nothing and is
+// gated by planks like anything else since §2.12.13 re-keyed the exemption —
 // and NOTHING QUARRIES STONE — so a market neighbourhood with no timbered ground
 // in it can never build anything, ever, which is [HC-87c]'s build gate firing
 // correctly against a world with nowhere to buy from. Measured on master: 5, 8,
@@ -604,18 +605,34 @@ describe("nobody sits on his own timber for want of planks", () => {
     // Measured: 23 · 4 · 17 · 23 places of fifty cannot get planks at day 0, so
     // the sample is a real one rather than a lucky seed.
     let gated = 0;
+    let exempted = 0;
     for (const warm of days) {
       for (const t of warm.towns) {
         const d = derive(t);
         if (canBuild(d.commerce)) continue;
         gated++;
+        // NOTHING ON THE MENU PRODUCES MATERIALS ANY MORE, and that is the
+        // sharper version of the same claim. The pit left the governor's list
+        // with the other two crops (§2.12.12), and `shipway` lost the exemption
+        // when it re-keyed to the PRODUCE (§2.12.13) — a harbour work produces
+        // nothing, so you do need planks to lay one down. Every want a stone-
+        // poor place publishes is therefore refused, without exception.
         for (const w of wants(t, warm.world.day, 12, d)) {
-          const producesMaterials = w.kind === "sawpit" || w.kind === "shipway"; // the oracle, written out
+          expect(w.supplied, `${t.name} answered the wrong way about ${w.kind}`).toBe(false);
+        }
+        // ...and the work that would END the shortage is still the one thing it
+        // may start, which is the exemption itself. It arrives as a DEEPENING
+        // now rather than as a want, because that is the only verb left that
+        // raises a sawpit.
+        for (const w of deepWants(t, d, 12)) {
+          const producesMaterials = w.kind === "sawpit"; // the oracle, written out
           expect(w.supplied, `${t.name} answered the wrong way about ${w.kind}`).toBe(producesMaterials);
+          if (producesMaterials) exempted++;
         }
       }
     }
     expect(gated, "no place in four worlds is short of timber and stone").toBeGreaterThan(10);
+    expect(exempted, "not one stone-poor place was offered its own pit").toBeGreaterThan(0);
   });
 });
 

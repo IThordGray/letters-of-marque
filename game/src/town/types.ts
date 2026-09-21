@@ -118,12 +118,16 @@ export type WorkKind =
   | "well"
   | "chapel"
   | "market"
-  // capital — these are what the governor CHOOSES between
+  // capital, and it is TWO sets now (§2.12.12). These three stand on what the
+  // ground BEARS, so they are not chosen at all: they are what a production
+  // focus on that ground IS, raised by a deepening.
   | "sawpit"
-  | "shipway"
   | "caneField"
-  | "boilingHouse"
   | "provisionGround"
+  // ...and these eight are what the governor CHOOSES between. `boilingHouse`
+  // was deleted and folded into DEPTH — a deepened cane region carries its
+  // luxury, and the label ladder is what says so.
+  | "shipway"
   | "warehouse"
   | "customsHouse"
   | "battery"

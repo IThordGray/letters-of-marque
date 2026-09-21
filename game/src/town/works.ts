@@ -1,9 +1,15 @@
 // The works ledger — the catalogue of what a town can have, and the systems that
-// keep it honest (labour, dependencies, decay).
+// keep it honest (labour, decay).
 //
 // A work is a ledger line with a place attached. Buildings are not simulated;
 // works are. Parcel scarcity is the primary growth cap — cap and flavour are the
 // same mechanism, so there are no arbitrary limits here beyond the land itself.
+//
+// GOODS SURVIVE; CHAINS DO NOT (§2.12, ratified 2026-09-19). Timber is still a
+// real thing that moves on real ships and fetches a local price; what went is
+// `timber -> sawpit -> planks -> shipway`. This is a sandbox age-of-pirates
+// game, not a city manager, and a brittle production chain is the shape of the
+// other thing.
 
 import type { Town, Work, WorkKind, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
 import type { Axial } from "./hex";
@@ -25,7 +31,6 @@ export interface WorkDef {
   // gradient: you cannot half-build a harbour on a hill.
   produces: Produce | null;
   needsGround: TerrainKind | null;
-  requires: WorkKind | null; // the dependency edges — exactly two in this slice
   food: number;
   trade: number;
   // WHICH CLASS A WORK'S `trade` IS CARGO IN — the reframing [HC-83] asks for:
@@ -38,64 +43,115 @@ export interface WorkDef {
   hands: number;
   serves: Need | null;
   servesFor: number; // how many souls it satisfies
-  max: number; // cap for works that need no parcel (parcel works are capped by land)
+  // THE MENU'S OWN PER-TOWN LIMIT — how many of this one a town may ever hold.
+  // It answers a question only a MENU can ask ("how many taverns is too many?"),
+  // and it is `Infinity` on a focus expression, which is not a dodge but the
+  // resolution of KAN-125's tuning question. See `FOCUS_EXPRESSIONS`.
+  max: number;
   zone: Zone;
   autoPer?: number; // subsistence only: raise one of these per N souls
 }
 
 // ---- The catalogue ---------------------------------------------------------
-// Six subsistence/civic works that raise themselves, twelve capital works the
-// governor chooses between. Two dependency edges only: timber -> shipways and
-// sugar -> rum. One level deep, so "the shipways stand idle for want of planks"
-// is a chain the player can feel without us simulating logistics.
+// Six subsistence/civic works that raise themselves and ELEVEN capital works —
+// EIGHT the governor chooses between, and THREE that are what a production
+// focus on a stretch of ground IS (§2.12.12). No dependency edges: `requires`
+// was deleted with the chain it expressed.
 export const CATALOGUE: Record<WorkKind, WorkDef> = {
   // --- subsistence: free, self-raising, and the reason a sacked town survives
-  dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
+  dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
-  gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null, requires: null,
+  gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null,
     food: 30, trade: 0, exports: null, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
-  fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, produces: "fish", needsGround: null, requires: null,
+  fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, produces: "fish", needsGround: null,
     food: 22, trade: 2, exports: null, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
-  well: { label: "a well", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
+  well: { label: "a well", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
-  chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
+  chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
-  market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null, requires: null,
+  market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 3, exports: null, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
 
-  // --- capital: the twelve the governor weighs against each other
-  sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null, requires: null,
-    food: 0, trade: 14, exports: "materials", defence: 0, hands: 10, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  shipway: { label: "shipways", cls: "capital", cost: 900, produces: null, needsGround: "roadstead", requires: "sawpit",
-    food: 0, trade: 34, exports: "materials", defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
-  caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null, requires: null,
-    food: 0, trade: 10, exports: "luxury", defence: 0, hands: 16, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  boilingHouse: { label: "a boiling house", cls: "capital", cost: 700, produces: null, needsGround: null, requires: "caneField",
-    food: 0, trade: 30, exports: "luxury", defence: 0, hands: 14, serves: null, servesFor: 0, max: 9, zone: "beyondThePale" },
-  provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null, requires: null,
-    food: 90, trade: 0, exports: null, defence: 0, hands: 18, serves: "food", servesFor: 90, max: 9, zone: "beyondThePale" },
-  warehouse: { label: "a warehouse", cls: "capital", cost: 320, produces: null, needsGround: "roadstead", requires: null,
+  // --- THE THREE FOCUS EXPRESSIONS: what a production focus on this ground IS.
+  //     `max: Infinity` is KAN-125's tuning answer, and the argument is in
+  //     `FOCUS_EXPRESSIONS` below.
+  sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null,
+    food: 0, trade: 14, exports: "materials", defence: 0, hands: 10, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null,
+    food: 0, trade: 10, exports: "luxury", defence: 0, hands: 16, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null,
+    food: 90, trade: 0, exports: null, defence: 0, hands: 18, serves: "food", servesFor: 90, max: Infinity, zone: "beyondThePale" },
+
+  // --- THE EIGHT THE GOVERNOR WEIGHS AGAINST EACH OTHER. Every one of them
+  //     stands on NAMED ground or on none at all, never on what the ground
+  //     bears — which is why none of them is ever gated on what a region is FOR.
+  //
+  //     `shipway` IS A HARBOUR WORK NOW, in the family of the warehouse and the
+  //     customs house: a town with sheltered water may build ships there, and it
+  //     no longer needs a sawpit standing first, because that was the chain.
+  //     Two live consequences, both deliberate: it has no produce, so it has no
+  //     cargo class and earns its cut of the traffic on `access` alone
+  //     (§2.12.13); and it therefore LOSES the materials exemption, so you do
+  //     need planks to lay down a shipway. That is the better fiction anyway,
+  //     and it is the only half of the old chain worth keeping.
+  shipway: { label: "shipways", cls: "capital", cost: 900, produces: null, needsGround: "roadstead",
+    food: 0, trade: 34, exports: null, defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
+  warehouse: { label: "a warehouse", cls: "capital", cost: 320, produces: null, needsGround: "roadstead",
     food: 0, trade: 12, exports: null, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
-  customsHouse: { label: "a customs house", cls: "capital", cost: 480, produces: null, needsGround: "roadstead", requires: null,
+  customsHouse: { label: "a customs house", cls: "capital", cost: 480, produces: null, needsGround: "roadstead",
     food: 0, trade: 16, exports: null, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
-  battery: { label: "a stone battery", cls: "capital", cost: 620, produces: null, needsGround: "bluff", requires: null,
+  battery: { label: "a stone battery", cls: "capital", cost: 620, produces: null, needsGround: "bluff",
     food: 0, trade: 0, exports: null, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
-  palisade: { label: "a palisade", cls: "capital", cost: 240, produces: null, needsGround: null, requires: null,
+  palisade: { label: "a palisade", cls: "capital", cost: 240, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
-  barracks: { label: "a barracks", cls: "capital", cost: 420, produces: null, needsGround: null, requires: null,
+  barracks: { label: "a barracks", cls: "capital", cost: 420, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
-  tavern: { label: "a tavern", cls: "capital", cost: 200, produces: null, needsGround: null, requires: null,
+  tavern: { label: "a tavern", cls: "capital", cost: 200, produces: null, needsGround: null,
     food: 0, trade: 4, exports: null, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
-  church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null, requires: null,
+  church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null,
     food: 0, trade: 0, exports: null, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
 };
 
-export const CHOOSABLE = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => CATALOGUE[k].cls === "capital");
+// ---- Who is on the menu, and who is the ground itself (§2.12.12) -----------
+//
+// A FOCUS EXPRESSION IS A CAPITAL WORK THAT STANDS ON WHAT THE GROUND BEARS,
+// and that sentence is the whole definition — read off the catalogue's own
+// columns rather than listed beside it ([P-47]), because `produces` already
+// answers it and a second list would be the half that gets forgotten the day
+// somebody adds a quarry.
+//
+// THE WORK SURVIVES; THE MENU CHOICE DIES. Sawpits, cane fields and provision
+// grounds are still raised, still priced, still gated on coin, hands and
+// materials, and still rot. What they are no longer is a thing a governor picks
+// off a list: they are what a production focus on that ground IS, and a
+// DEEPENING raises the work the region's best-borne produce implies.
+export const isFocusExpression = (kind: WorkKind): boolean =>
+  CATALOGUE[kind].cls === "capital" && CATALOGUE[kind].produces !== null;
+
+export const CAPITAL = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => CATALOGUE[k].cls === "capital");
 export const SUBSISTENCE = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => CATALOGUE[k].cls === "subsistence");
+
+// WHAT THE AUCTION MAY OFFER — eight, down from twelve, and the count is the
+// point: the catalogue can now grow without the choice growing with it.
+export const CHOOSABLE = CAPITAL.filter((k) => !isFocusExpression(k));
+
+// ...and the three it may not. Their cap is the region's own area and NOTHING
+// ELSE — `max` is `Infinity` on every one of them, which is KAN-125's answer to
+// a question the ticket asked out loud:
+//
+//   `CATALOGUE[kind].max = 9` is a PER-KIND, PER-TOWN number, and after KAN-124
+//   every depth-9 region on the warm world hit it rather than running out of
+//   hexes. So a per-town limit was standing in front of a per-region rule.
+//   [HC-94] says the cap is AREA — the founding roll's own variance — and a
+//   second cap beside it is a second source for one fact, which [P-47] forbids
+//   and which §2.12.5 already refused in the same words for the depth premium.
+//   A menu item legitimately has a per-town limit, because "how many taverns is
+//   too many" is a question about the TOWN. "How many sawpits" is a question
+//   about the HILLS, and the hills already answer it.
+export const FOCUS_EXPRESSIONS = CAPITAL.filter(isFocusExpression);
 
 // ---- Raising a work --------------------------------------------------------
 
-const working = (t: Town, kind: WorkKind) => t.works.some((w) => w.kind === kind && w.condition === "working");
 export const countOf = (t: Town, kind: WorkKind) => t.works.filter((w) => w.kind === kind && w.condition !== "ruin").length;
 
 // The regions that could carry this work, best ground first. A CROP work is
@@ -136,6 +192,22 @@ export function takenHexes(town: Town): Set<string> {
 //   deepen — ground somebody has GIVEN OVER to production may be worked to its
 //            free area. The cap is not a separate number — it is the ground.
 //
+// AND SINCE KAN-125 THE DEEPENING IS ALSO WHAT STARTS A REGION, which is the
+// half of story 4 that nobody had written down. The three works that stand on
+// what the ground bears left the menu (§2.12.12), so the auction has nothing
+// left to offer that the token cap could bind — measured before the change, 260
+// of 369 production-focused regions on four warm worlds were FOCUSED AND EMPTY,
+// because the auction's ranking and `def.max` never reached them. Ground given
+// over now gets its first work from the focus that named it, which is the only
+// arrangement in which the two halves of this story are safe to ship together.
+//
+// THE TOKEN CAP SURVIVES AS A RULE AND HAS NO PRODUCER LEFT IN THE AUCTION.
+// §2.12.4 ratifies "unfocused, a region's depth caps at a token work", and it is
+// still enforced on the `raise` path below — but nothing on the governor's menu
+// stands on what the ground bears any more, so no governor can reach it. It is
+// kept rather than deleted because `raise` is the one door any caller comes
+// through and the rule is the spec's, not this module's, to retire.
+//
 // So the focused-to-unfocused ratio is AREA, the founding roll's own variance,
 // and NOTHING ANYWHERE MULTIPLIES A YIELD BECAUSE A FOCUS WAS SET. The second of
 // §2.12.4's two objections is the one to hold on to: a work stores its scaled
@@ -146,7 +218,9 @@ export type Verb = "raise" | "deepen";
 
 // The token cap, and it is a RULE rather than a dial — §2.12.4 states the number
 // in words ("ONE capital work") and nothing downstream divides by it.
-export const TOKEN_DEPTH = 1;
+// NOT EXPORTED SINCE KAN-125: nothing outside this module reads it any more,
+// because the auction it used to bind no longer offers a work it could bind.
+const TOKEN_DEPTH = 1;
 
 // [HC-93] A REGION'S DEPTH IS COUNTED, NEVER STORED. There is no development
 // integer, no level, no tier: the filter below over ~20 ledger lines is the
@@ -171,8 +245,7 @@ export function depthOf(town: Town, index: number): number {
   for (let i = 0; i < town.works.length; i++) {
     const w = town.works[i];
     if (w.region !== index || w.condition === "ruin") continue;
-    const def = CATALOGUE[w.kind];
-    if (def.cls === "capital" && def.produces !== null) n++;
+    if (isFocusExpression(w.kind)) n++;
   }
   return n;
 }
@@ -201,10 +274,13 @@ export function roomInRegion(
 ): number {
   let free = 0;
   for (let i = 0; i < r.hexes.length; i++) if (!taken.has(key(r.hexes[i]))) free++;
-  const def = CATALOGUE[kind];
   // Outside the capacity rule entirely: a subsistence work ([HC-98]) and a sited
-  // work (§2.12.12) both stand on ground whose purpose is not in question.
-  if (def.cls !== "capital" || def.produces === null) return verb === "raise" ? free : 0;
+  // work (§2.12.12) both stand on ground whose purpose is not in question. THE
+  // FILTER IS "A CAPITAL WORK STANDING ON WHAT THE GROUND BEARS" AND NOT "ANY
+  // CAPITAL WORK ON THE REGION" — written the loose way, a roadstead would carry
+  // a warehouse OR a customs house OR a shipway, because all three would be
+  // spending one region's token allowance between them.
+  if (!isFocusExpression(kind)) return verb === "raise" ? free : 0;
   const room = depthAllowed(town, r, verb, claimed) - depthOf(town, index);
   return free < room ? free : room < 0 ? 0 : room;
 }
@@ -224,15 +300,10 @@ export function roomFor(town: Town, kind: WorkKind): number {
   return Math.min(free, Math.max(0, def.max - countOf(town, kind)));
 }
 
-// Can it be raised at all? Ground and supplier only — WEALTH IS THE BUDGET GATE
-// and is checked separately by the governor, never mixed into whether a town
-// wants it.
-export function buildable(town: Town, kind: WorkKind): boolean {
-  const def = CATALOGUE[kind];
-  if (roomFor(town, kind) <= 0) return false;
-  if (def.requires && !working(town, def.requires)) return false;
-  return true;
-}
+// Can it be raised at all? GROUND, AND NOTHING ELSE NOW — wealth is the budget
+// gate and is checked separately by the governor, never mixed into whether a
+// town wants it, and the supplier gate went with the chain it expressed.
+export const buildable = (town: Town, kind: WorkKind): boolean => roomFor(town, kind) > 0;
 
 export interface Ground {
   hex: Axial;
@@ -358,8 +429,9 @@ export const depthPremium = (depth: number): number => 1 + depth * WORKS.premium
 // the ledger line — is one path, so the two verbs can never mint differently.
 export function raise(town: Town, kind: WorkKind, day: number, onRegion: Region | null = null): Work | null {
   const def = CATALOGUE[kind];
-  if (countOf(town, kind) >= def.max) return null; // the catalogue's own limit
-  if (def.requires && !working(town, def.requires)) return null;
+  // The MENU's own limit, and it is `Infinity` on a focus expression, whose cap
+  // is the region's area and nothing else ([HC-94]).
+  if (countOf(town, kind) >= def.max) return null;
   const taken = takenHexes(town);
   let ground: Ground | null;
   if (onRegion === null) {
@@ -442,18 +514,22 @@ function raiseSubsistence(town: Town, day: number): void {
 // than two that happen to agree today ([P-47]).
 export const worthOf = (w: Work): number => w.food * 3 + w.defence * 2 + w.trade;
 
-// Everything except hands that stands between a work and working again: its
-// supplier, and the ground under it. ALSO HOISTED OUT OF THE ALLOCATOR'S LOOP
-// CONDITION ([P-48]) — a governor must read exactly this rule before he pays to
-// mend anything, or he buys a shipway that has no sawpit, or a sawpit the town
-// has built over, and buys it again every few years for ever (§5.6).
+// Everything except hands that stands between a work and working again — which
+// is now ONE THING, the ground under it. ALSO HOISTED OUT OF THE ALLOCATOR'S
+// LOOP CONDITION ([P-48]) — a governor must read exactly this rule before he
+// pays to mend anything, or he buys back a sawpit the town has built over, and
+// buys it again every few years for ever (§5.6).
+//
+// THE SUPPLIER TEST IS GONE WITH THE EDGE IT READ. It said "the shipways stand
+// idle for want of planks", and §2.12.13 is explicit that deleting the edge
+// deletes the sentence: it is RETIRED WITH ITS MECHANISM rather than preserved,
+// and what argues in its place is the market term arguing in coin — "timber
+// fetches well here" — which §3.5.4 already ratified. Saying so here is the
+// honest version; a survivor faked out of a different mechanism would not be.
 function workableNow(town: Town, w: Work): boolean {
-  const req = CATALOGUE[w.kind].requires;
-  if (req && !working(town, req)) return false; // "the shipways stand idle for want of planks"
   // Ground the town has built over carries nothing any more, and CLAIMED GROUND
   // IS PERMANENT — so this one is not a setback, it is the end of that work.
-  if (w.hex && town.footprint.claimed.some((c) => key(c) === key(w.hex!))) return false;
-  return true;
+  return !(w.hex && town.footprint.claimed.some((c) => key(c) === key(w.hex!)));
 }
 
 // Hands are finite. A work nobody can man goes idle — the labour ceiling made
@@ -633,16 +709,52 @@ export function unmetNeeds(town: Town, dependency = 0): Record<Need, number> {
   return out;
 }
 
-// Is a downstream work standing idle for want of its supplier? This is the clause
-// "the shipways want planks" — the market term's sharpest input.
-export function starvedFor(town: Town, kind: WorkKind): boolean {
-  return CHOOSABLE.some((k) => CATALOGUE[k].requires === kind && roomFor(town, k) > 0);
-}
-
 // How well the best available ground suits this work — the "land calls for it"
 // term, and the clause that goes with it.
 export const bestSuitFor = (town: Town, kind: WorkKind): Suit | null => groundFor(town, kind)?.suit ?? null;
 
 // What a given region could carry — what an unworked stretch of ground is FOR.
+// It walks EVERY capital work rather than the menu, and that is the question
+// being asked: what this ground could bear does not depend on what a governor
+// is currently allowed to pick off a list.
 export const worksForRegion = (town: Town, r: Region): WorkKind[] =>
-  CHOOSABLE.filter((k) => regionsFor(town, k).some((x) => x.region.id === r.id));
+  CAPITAL.filter((k) => regionsFor(town, k).some((x) => x.region.id === r.id));
+
+// ---- The label ladder (§2.12.12) -------------------------------------------
+//
+// WHAT REPLACED THE BOILING HOUSE. It was deleted as a menu item and folded into
+// DEPTH: past a threshold, a region's installation is RELABELLED rather than
+// joined by a new entry.
+//
+//     "cane fields"  ->  "cane fields and a boiling house"
+//     "sawpits"      ->  "a mill and its yards"
+//
+// §7's contracts 3 and 9 already ratify that works of one kind on one region
+// draw as ONE INSTALLATION SIZED BY COUNT. The ladder is that rule's prose twin
+// — the same fact, said in words instead of drawn — so IT ADDS NO MACHINERY AND
+// NO STORED STATE: it is a pure function of the kind and the number standing,
+// and the number standing is counted at the moment somebody asks ([HC-93]).
+//
+// THE SWEET-SPOT RULE IS UNTOUCHED. A region still carries one flagged best-of-it
+// hex, and it is still why the boiling house STANDS where it does. It is now
+// also why it is NAMED where it does.
+//
+// PROVISION GROUNDS HAVE NO SECOND RUNG, and that is deliberate rather than an
+// omission: §2.12.12 ratifies exactly two, and inventing a third would be
+// designing rather than building. A kind with no rung simply keeps its name at
+// any depth, which is what the ladder does everywhere below the threshold.
+const LADDER: Partial<Record<WorkKind, string>> = {
+  sawpit: "a mill and its yards",
+  caneField: "cane fields and a boiling house",
+};
+
+// HOW THE INSTALLATION READS, in one function ([P-47]) — the name and how much
+// of it there is are one sentence, and the ladder is the top of that sentence.
+// Below the threshold the count says how much ("sawpits x3"); at it, the WORDS
+// say how much, and a count beside them would be the same fact twice.
+export function installationLabel(kind: WorkKind, standing: number): string {
+  const deep = standing >= WORKS.ladderAt ? LADDER[kind] : undefined;
+  if (deep) return deep;
+  const name = CATALOGUE[kind].label;
+  return standing > 1 ? `${name} ×${standing}` : name;
+}

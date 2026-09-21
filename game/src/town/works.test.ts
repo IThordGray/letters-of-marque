@@ -1,5 +1,5 @@
 // The works ledger — the hamlet floor, the devolution ladder, the two gates on
-// what ground will bear, and the one dependency chain the player can feel.
+// what ground will bear, and the collapse of the catalogue to three and eight.
 //
 // Warranted by [HC-70] (the world layer reopens none of it) and [HC-34] (damage
 // moves works down THIS ladder, one grade at a time).
@@ -9,8 +9,9 @@ import type { Town, Work, Suit, RegionFocus } from "./types";
 import type { Axial } from "./hex";
 import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
 import {
-  raise, buildable, roomInRegion, takenHexes, depthOf, unmetNeeds, starvedFor, countOf,
-  damageWorks, mendable, repairCost, CATALOGUE, SUBSISTENCE,
+  raise, buildable, roomInRegion, takenHexes, depthOf, unmetNeeds, countOf,
+  damageWorks, mendable, repairCost, installationLabel, CATALOGUE, SUBSISTENCE,
+  CAPITAL, CHOOSABLE, FOCUS_EXPRESSIONS, isFocusExpression,
 } from "./works";
 import { capacityOf } from "./land";
 import { stepTownSeason, type Decision, type Built } from "./governor";
@@ -597,23 +598,182 @@ describe("the weather coming down the same ladder", () => {
   });
 });
 
-describe("the dependency chain", () => {
-  it("stands the shipways idle for want of planks", () => {
+describe("the chains are cut — goods survive, chains do not", () => {
+  // The four 2026-09-19 decisions, and §2.12's opening line. `timber -> sawpit
+  // -> planks -> shipway` is what went; timber is still a real thing that moves
+  // on real ships and fetches a local price. A `shipway` is now a HARBOUR WORK
+  // on a roadstead, in the family of the warehouse and the customs house.
+  //
+  // THE OLD CLAIM HERE WAS "stands the shipways idle for want of planks", AND IT
+  // IS RETIRED RATHER THAN REWRITTEN. Deleting the edge deletes the sentence: the
+  // mechanism that carried it is gone, what argues in its place is the market
+  // term arguing in coin, and a survivor faked out of a different mechanism
+  // would be worse than an honest deletion. What replaces it below is the
+  // OPPOSITE claim — a shipway needs no sawpit at all.
+
+  it("lays down a shipway with not one sawpit in the town", () => {
+    const town = mixedTown({ population: 600, wealth: 9000 });
+    expect(town.works.some((w) => w.kind === "sawpit")).toBe(false);
+    const ways = raise(town, "shipway", DAY0);
+    expect(ways).not.toBeNull();
+    stepSeason(town, DAY0);
+    expect(ways!.condition).toBe("working");
+  });
+
+  it("keeps the shipways working after every sawpit in the town is a ruin", () => {
+    // The going-down half of the same claim, because the old rule bit HERE — a
+    // work whose supplier died went idle in the allocator, every season, for
+    // ever. Claim a reversible process in both directions, and a deleted one in
+    // both directions too.
     const town = mixedTown({ population: 600, wealth: 9000 });
     const pit = raise(town, "sawpit", DAY0)!;
     const ways = raise(town, "shipway", DAY0)!;
     stepSeason(town, DAY0);
     expect(ways.condition).toBe("working");
 
-    pit.condition = "ruin"; // the planks stop
+    pit.condition = "ruin"; // the planks stop, and it no longer matters
     stepSeason(town, DAY0 + SEASON);
 
-    expect(ways.condition).toBe("idle");
+    expect(ways.condition).toBe("working");
   });
 
-  it("says what the supplier is for, from the downstream work's point of view", () => {
-    const town = mixedTown({ population: 600, wealth: 9000 });
-    expect(starvedFor(town, "sawpit")).toBe(true); // there is room for shipways
+  it("carries no supplier edge anywhere in the catalogue", () => {
+    // The structural half: `requires` is DELETED from the work definition, so
+    // there is no field for a third edge to arrive in. Checkable by the shape of
+    // the struct, which is the cheapest kind of test there is.
+    for (const kind of CAPITAL.concat(SUBSISTENCE)) {
+      expect(Object.keys(CATALOGUE[kind]), `${kind} still carries a supplier`).not.toContain("requires");
+    }
+  });
+});
+
+describe("twelve capital works resolve three and eight", () => {
+  // §2.12.12. THE WORK SURVIVES; THE MENU CHOICE DIES. A focus expression is
+  // still raised, priced, gated and rotted like any other capital work — what it
+  // is not is a thing a governor picks off a list.
+
+  it("offers the governor eight works and no crop among them", () => {
+    // THE ORACLE IS WRITTEN OUT rather than read back off the catalogue, because
+    // a list derived from the code under test would agree with whatever the code
+    // happened to say.
+    expect(CHOOSABLE.slice().sort()).toEqual(
+      ["barracks", "battery", "church", "customsHouse", "palisade", "shipway", "tavern", "warehouse"],
+    );
+    expect(FOCUS_EXPRESSIONS.slice().sort()).toEqual(["caneField", "provisionGround", "sawpit"]);
+    expect(CAPITAL.length).toBe(11); // eleven, because the boiling house is gone
+  });
+
+  it("has no boiling house left to build", () => {
+    // Deleted, folded into DEPTH. Its luxury is carried by the deepened cane
+    // region, and the label ladder is what says so.
+    expect(Object.keys(CATALOGUE)).not.toContain("boilingHouse");
+  });
+
+  it("knows a focus expression by the ground it stands on, never by a list", () => {
+    // [P-47]: the catalogue's own `produces` column already answers "does this
+    // work stand on what the ground bears", and a second list beside it would be
+    // the half that gets forgotten the day somebody adds a quarry.
+    for (const kind of CAPITAL) {
+      expect(isFocusExpression(kind), `${kind} answered the wrong way`).toBe(CATALOGUE[kind].produces !== null);
+    }
+  });
+
+  it("caps a focus expression by the ground and a menu work by the town", () => {
+    // KAN-125'S TUNING ANSWER. `max` is a PER-KIND, PER-TOWN limit, and after
+    // KAN-124 every depth-9 region on the warm world hit it rather than running
+    // out of hexes — a per-town number standing in front of a per-region rule.
+    // [HC-94] says the cap is AREA, so a second cap beside it is [P-47]'s second
+    // source for one fact.
+    for (const kind of FOCUS_EXPRESSIONS) expect(CATALOGUE[kind].max).toBe(Infinity);
+    for (const kind of CHOOSABLE) expect(CATALOGUE[kind].max).toBeLessThan(Infinity);
+  });
+
+  it("lets one roadstead carry a warehouse and a customs house and a shipway", () => {
+    // [HC-94]'S CAPACITY RULE EXEMPTS SITED WORKS, and the loose wording is the
+    // trap: written as "any capital work on the region", a roadstead would carry
+    // a warehouse OR a customs house OR a shipway, because all three would be
+    // spending one region's token allowance between them. The filter is A
+    // CAPITAL WORK STANDING ON WHAT THE GROUND BEARS — and a roadstead bears
+    // nothing at all, so none of the three is ever what that ground is FOR.
+    const town = townOf(
+      [reg(0, "roadstead", RING1.slice(0, 4)), reg(1, "scrub", RING2.slice(0, 6))],
+      { population: 900, wealth: 900000 },
+    );
+    expect(raise(town, "warehouse", DAY0), "the warehouse").not.toBeNull();
+    expect(raise(town, "customsHouse", DAY0), "the customs house").not.toBeNull();
+    expect(raise(town, "shipway", DAY0), "the shipway").not.toBeNull();
+    expect(town.works.filter((w) => w.region === 0).length).toBe(3);
+    expect(depthOf(town, 0)).toBe(0); // ...and the ground's purpose is still an open question
+    expect(town.regions[0].focus).toBeNull(); // nobody had to decide anything to get a quay
+  });
+
+  it("works a region past nine of one kind, which the catalogue used to forbid", () => {
+    // The rule seen from the outside, on ground big enough to show it: the
+    // ground is what stops him rather than the number nine. The oracle is the
+    // region's own free area, written out rather than read back.
+    const town = townOf(
+      [reg(0, "timberedHills", RING1.concat(RING2.slice(0, 6)), { bears: { timber: "ideal" }, focus: "production" })],
+      { population: 4000, wealth: 400000 },
+    );
+    const area = capacityOf(town, town.regions[0]);
+    expect(area).toBeGreaterThan(9);
+    let n = 0;
+    while (raise(town, "sawpit", DAY0, town.regions[0]) !== null) n++;
+    expect(n).toBe(area);
+  });
+});
+
+describe("the label ladder", () => {
+  // §2.12.12, and §7's contracts 3 and 9 said in words instead of drawn: works of
+  // one kind on one region are ONE INSTALLATION SIZED BY COUNT. The ladder is
+  // that rule's prose twin, so it adds no machinery and NO STORED STATE.
+
+  it("names sawpits sawpits until they are a mill and its yards", () => {
+    expect(installationLabel("sawpit", 1)).toBe("sawpits");
+    expect(installationLabel("sawpit", WORKS.ladderAt - 1)).toContain("sawpits");
+    expect(installationLabel("sawpit", WORKS.ladderAt)).toBe("a mill and its yards");
+    expect(installationLabel("sawpit", WORKS.ladderAt + 4)).toBe("a mill and its yards");
+  });
+
+  it("gives the deepened cane its boiling house, which is where the boiling house went", () => {
+    expect(installationLabel("caneField", 1)).toBe("cane fields");
+    expect(installationLabel("caneField", WORKS.ladderAt)).toBe("cane fields and a boiling house");
+  });
+
+  it("says how much of it there is below the threshold, in numbers", () => {
+    // Below the rung the COUNT says how much; at it, the WORDS do, and a count
+    // beside them would be the same fact twice.
+    expect(installationLabel("sawpit", 3)).toBe("sawpits ×3");
+    expect(installationLabel("warehouse", 2)).toBe("a warehouse ×2");
+  });
+
+  it("leaves a kind with no rung counting, rather than inventing it a name", () => {
+    // §2.12.12 ratifies exactly two rungs — the sawpits and the cane. A third
+    // would be designing rather than building, and the threshold itself is
+    // deferred (§2.12.15). A kind with no rung keeps its own name however deep
+    // the ground goes, and goes on saying how much of it there is in numbers.
+    expect(installationLabel("provisionGround", 8)).toBe("provision grounds ×8");
+    expect(installationLabel("battery", 8)).toBe("a stone battery ×8");
+  });
+
+  it("stores nothing — the same ground reads deeper and nothing was written down", () => {
+    // THE CLAIM THAT MATTERS ([HC-93]): the ladder is a reading, taken when
+    // somebody asks. Raise works one at a time and the label climbs; nothing on
+    // the town or on any work ever holds it, and every ledger line keeps the name
+    // it was minted with.
+    const town = townOf(
+      [reg(0, "timberedHills", RING1.concat(RING2.slice(0, 6)), { bears: { timber: "ideal" }, focus: "production" })],
+      { population: 4000, wealth: 400000 },
+    );
+    const seen: string[] = [];
+    for (let i = 0; i < WORKS.ladderAt; i++) {
+      raise(town, "sawpit", DAY0, town.regions[0]);
+      seen.push(installationLabel("sawpit", depthOf(town, 0)));
+    }
+    expect(seen[0]).toBe("sawpits");
+    expect(seen[seen.length - 1]).toBe("a mill and its yards");
+    for (const w of town.works) expect(w.name).toBe(CATALOGUE[w.kind].label);
+    expect(JSON.stringify(town)).not.toContain("mill and its yards");
   });
 });
 
