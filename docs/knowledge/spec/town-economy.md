@@ -2265,7 +2265,7 @@ the cost arrives in stories 3–5 where it can be paid deliberately.
 | **1** | **A region can be given over to the town, and the footprint goes there first** | `Region` gains `focus`; `Town.grantedToTown` deleted; `nextHex` reads the growth focus instead of the grant set | **Zero move.** One added |
 | **2** | **The governor sets a focus, and publishes his reason** | The four-term focus auction beside the five-term work auction; the purpose gate re-keys to the produce | Zero should move — first place one legitimately might |
 | **3** | **A focused region may be deepened** | Capacity becomes focus-aware; the deepening candidate; rising returns minted at raise time | `works.test.ts`, `governor.test.ts` |
-| **4** | **The chains are cut and the boiling house folds into depth** | `requires` deleted; `boilingHouse` deleted; `shipway` becomes a harbour work; the label ladder | `works.test.ts`, `sim.test.ts` |
+| **4** | **The chains are cut and the boiling house folds into depth** | **The three crops leave the menu and a deepening learns to START a region** (amended 2026-09-21); `requires` deleted; `boilingHouse` deleted; `shipway` becomes a harbour work; the label ladder | `works.test.ts`, `sim.test.ts` |
 | **5** | **A cargo's class comes off the ground** | `exports` re-keys to the produce; `grainFields` and `cottonWalk` arrive as focus expressions | `trade.test.ts`, `market.test.ts` |
 | **6** | **Damage is a degree, and rot is deleted** | `standing` replaces the ladder; the decay clock, `devolve` and `idleSinceDay` go | `works.test.ts`, `sim.test.ts` |
 | **7** | **Repair is automatic and comes off the top** | A phase-3 charge in `worthOf` order; the two gates; the mend decision retires | `governor.test.ts` |
@@ -2314,6 +2314,26 @@ carried by the deepened cane region raised in story 3, which is why this story f
 `shipway` becomes a harbour work on a roadstead. The **label ladder** ships with a placeholder
 threshold (§2.12.15). `starvedFor` and the *"the shipways want planks"* clause retire with their
 mechanism (§2.12.13).
+
+> **AMENDED 2026-09-21, after story 3 shipped and the gap became visible — and this is the LARGER
+> half of story 4, which neither this row nor its ticket originally said.**
+>
+> §2.12.12 already requires that `sawpit`, `caneField` and `provisionGround` **leave the menu** and
+> become focus expressions, *"raised by a deepening on the work the region's best-borne produce
+> implies"*. **Story 3 built a deepening that only EXTENDS a region already carrying a work** — the
+> first work still comes off the kind-scored auction. Measured on the shipped world: **488 of 915
+> regions are focused but empty**, because the auction's ranking and `def.max` never reach them.
+>
+> **So taking the three crops off the menu without also letting a deepening START a region from
+> nothing would leave focused ground with no way to get its first work at all. The two changes land
+> together or not at all.** Acceptance: focused-but-empty live regions fall to near zero, and the
+> remainder is explainable by coin, hands or materials rather than by the auction never looking.
+>
+> **The general lesson, and it is the reason this is written here rather than quietly fixed:** a
+> breakdown written before the first story is built will describe the *end state* correctly and
+> still split it in a place that leaves an intermediate step broken. **Story 3's narrower reading of
+> "deepen" was reasonable in isolation and wrong in sequence.** When a story removes the only
+> producer of something, check in the same breath what is left to produce it.
 
 **5 — A cargo's class comes off the ground.**
 `exports` re-keys from the work to the **produce**; `producesMaterials` re-keys with it and stays one
