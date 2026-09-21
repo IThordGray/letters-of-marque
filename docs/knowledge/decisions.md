@@ -10,6 +10,55 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-21 (second) — A town gets by. Growing fast is somebody's decision.
+
+**The 450–600 day-0 city target is withdrawn.** Four stories chased it — capacity, depth, the menu,
+the materials guarantee — and the middle of the band never moved once. The cause was measured, twice,
+and it is not capacity: **the median town holds 290 coin and the cheapest work costs 260.** It was
+never short of room. It was broke.
+
+**What replaces it is a statement about what a town is, in the human's own words:**
+
+> *"In most cases towns really just try to get by. Sometimes they get investments, sometimes they
+> don't. Naturally they grow over time, but it's not a fast process, unless someone WANTS them to
+> grow fast. I'd say balance it that trade generally causes a very small profit, which they can then
+> reinvest."*
+
+**So the ratified shape is:** a town's own trade turns a **very small profit**, reinvested slowly.
+A day-0 spread of roughly **20 to 1,200 souls with a median near 160** is correct, not a shortfall.
+`[HC-87]`'s *"a trade-fed town of 1,500"* survives as the **top** of that spread, which the largest
+port already reaches.
+
+**The design argument, and it is the reason to prefer this to hitting the number:** if every town
+could grow itself to 500, a patron's money would only buy a **faster version of what was coming
+anyway**. If a town gets by and no more, **money is the difference between a port and a great port**
+— which is the whole point of the grant, the steer, and developing a haven rather than merely
+holding one. **The old target was quietly cancelling the player's leverage.**
+
+---
+
+**The lesson about the target itself, and it is the expensive one.**
+
+The 450–600 figure was ratified on 2026-09-16 as an answer to *"how big is a day-0 city?"* — a
+reasonable question with a reasonable answer. It then survived four stories of contrary evidence,
+because each story could explain why *it* had not moved the band, and each explanation was true.
+
+> **A number ratified as a TARGET outranks the measurements that disagree with it, until somebody
+> withdraws it.** Every story reported honestly, nothing was tuned, and the band was still chased
+> three times after the first measurement said the cause was elsewhere. **Report the criterion that
+> fails** (2026-09-10) tells you not to tune — it does not tell you when to stop believing the
+> criterion. That second step needs a person.
+>
+> **The cheap check: when a target has survived three attempts, the next question is whether it is
+> the right target, not what to try next.**
+
+**A second-order cost, worth naming.** The stories were not wasted — capacity, depth and the menu
+collapse are all ratified and all shipped. But they were *sequenced* by a goal that turned out to be
+wrong, and the sequencing is where the waste was: the materials guarantee and the tavern fix were
+both chosen because they looked like the thing blocking 450 souls.
+
+
+---
 ### 2026-09-21 — The crops leave the menu, and a decision nobody can act on should not be offered
 
 KAN-125 took `sawpit`, `caneField` and `provisionGround` off the governor's list and taught a

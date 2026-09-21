@@ -337,7 +337,27 @@ world for twenty years and check nothing falls over.**
 >
 > **The rule is now: a place is founded at a population it can SUSTAIN — from its ground or from its
 > quay** — and `[HC-22]`'s twenty-year test is the arbiter, not the founding arithmetic. A day-0 city
-> is **450–600 souls** and may read as *fed from the sea*.
+> may read as *fed from the sea*.
+
+> **THE 450–600 TARGET IS WITHDRAWN, 2026-09-21.** Four stories chased it — capacity, depth, the
+> menu, the materials guarantee — and the middle of the band never moved. The cause was measured and
+> is not capacity: **the median town holds 290 coin and the cheapest work costs 260.** It was never
+> short of room; it was broke.
+>
+> **What replaces it is a statement about what a town IS.** In the human's words: *"In most cases
+> towns really just try to get by. Sometimes they get investments, sometimes they don't. Naturally
+> they grow over time, but it's not a fast process, unless someone WANTS them to grow fast."*
+>
+> So: **a town's own trade turns a very small profit, which it reinvests slowly. Growth beyond that
+> is somebody's decision — a patron's grant, a crown's money, the player's purse.** A day-0 spread
+> of roughly **20 to 1,200 souls, with a median near 160**, is the correct shape and not a failure to
+> reach a number. `[HC-87]`'s *"a trade-fed town of 1,500"* survives as the description of the **top**
+> of that spread, which the largest port already reaches.
+>
+> **And this makes investment matter, which the old target quietly prevented.** If every town could
+> grow itself to 500, a patron's money would buy a faster version of what was coming anyway. If a
+> town gets by and no more, **money is the difference between a port and a great port** — which is the
+> whole of §7.6, the steer, and the reason to develop a haven rather than merely hold one.
 >
 > **And the twenty-year test itself has to change, because it runs the wrong world.** It steps each
 > town alone — no weather, no trade, no clearing — so the cheapest test of the whole generator has
