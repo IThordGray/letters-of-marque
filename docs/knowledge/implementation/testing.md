@@ -418,6 +418,56 @@ for the same reason in each case: **the comment was the only thing asserting tha
   raise/demolish. **The expensive half is nearly always the return**, which is exactly why it is the
   half that gets written in prose and not in a claim.
 
+### Pin the three you mean, never the exact set
+
+**Found 2026-09-21, KAN-131.** A milestone claim said the chronicle held exactly `["lost"]`, and its
+own comment explained why: three event kinds are **dispatch-driven**, nothing sends a dispatch yet,
+so none of the three may appear. But `toEqual(["lost"])` forbids *everything* else too, including
+`emptied` — a ledger event no dispatch causes and the spec permits. A coin tuning pass made one town
+on one seed spend itself down to nobody in year 78, and the claim went red for a reason it was never
+written about. The same thing already happened on another seed before the dial moved at all: **the
+old wording was true of one world, not of the milestone.**
+
+- **Where the claim means "none of these three", name the three.** It is stricter, not looser — it
+  now fails if any one of them appears on any seed, instead of only when the whole set differs.
+- **An exact-set assertion is a single-seed observation wearing a rule's clothes.** It passes the day
+  it is written because it was *read off* that day's run.
+- Pair it with a liveness guard: "none of these three" is also satisfied by an empty feed.
+
+### Pool a distribution across seeds — it is the stronger claim AND the one that survives tuning
+
+**Same story.** A gate was pinned as "at most one such place **a world**", measured across four
+seeds as `0 · 0 · 1 · 1` after the rule against `4 · 3 · 2 · 2` before it. A coin dial moved one
+seed to 3 without touching the gate — the newcomers held 283 and 309 coin against a sawpit's 260, so
+they were places that could afford one and wanted something else more.
+
+**Pooled, the same data says `11` before against `2` and `4` after, on either side of six — still no
+overlap, and now a claim about two hundred places instead of four claims about fifty.** A per-seed
+bound on a distribution cannot tell ordinary variance from a broken gate; the pooled one can.
+
+- **When a bound describes a distribution over many members, sum across the seeds and bound the sum.**
+- The temptation when it goes red is to widen the per-seed bound. That is tuning. **Pooling is the
+  statistic the claim should always have used**, and it happens to have room.
+
+### A lone-town fixture is not a small world
+
+**Same story.** A hand-built town, stepped without a clearing, faces **par** prices — victuals at
+1.00 where the cleared world prices them at 0.13 — so it earns roughly **seven times** what the same
+place earns among neighbours. Every number about *how much a place makes* that was ever read off a
+lone fixture was wrong by that factor.
+
+- **A fixture is for claiming a relationship. A warm world is for claiming a magnitude.** Any claim of
+  the form "a place earns / spends / accumulates X" has to be asked of the warm world.
+- The tell is a fixture whose inputs include a **price**, a **share** or an **access** the clearing
+  would otherwise have set.
+
+### Three arms of one world want one warm start and two clones
+
+**Same story, `[P-54]` applied to a fixture.** Comparing three variants across four seeds warmed
+**twelve** worlds and cost the suite **1.40×**. Warming four and `structuredClone`-ing each into its
+arms cost nothing measurable — and it is also **stricter**, because the arms then begin from an
+identical day 0 rather than merely the same seed.
+
 ## When a test is required
 
 - **Every story with acceptance criteria** turns those criteria into tests — that is what "done"

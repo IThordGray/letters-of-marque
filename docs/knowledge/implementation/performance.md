@@ -214,6 +214,28 @@ stays at map price.
   settles it: 17 ms once per world against nothing per tick.
 
 
+**`[P-55]` A statistic whose median describes no member of the population is a bug report about the
+statistic.** The median place's trade clears **0.80 coin a season**, which reads as "thin margin,
+needs a nudge". Split by whether the place has a capital waterfront work, the same population reads:
+
+| | places | median trade margin | a 180-coin work off trade alone |
+|---|---|---|---|
+| **with a quay** | 103 | **+20.02 / season** | two and a half years |
+| **without one** | 90 | **−1.28 / season** | never |
+
+**0.80 is the average of a windfall and a deficit, and no place in the world experiences it.** A dial
+set against it necessarily sets the wrong thing: it must either drown the quayed half or leave the
+quayless half still losing. This is `[P-52]`'s family — a number whose arithmetic is perfect and whose
+*meaning* has gone — but the tell is different and worth naming separately:
+
+- **`[P-52]`'s tell is saturation** (the median sits at the clamp). **`[P-55]`'s tell is the gap**: the
+  distribution has two humps and the summary sits in the valley between them.
+- **The check is one line and it goes next to the median: print the median of each half, split by the
+  single most consequential thing a member can have or not have.** Here that was one building.
+- **Any sentence of the form "the median town earns X" must name the split it survived**, or it is a
+  claim about an average town that does not exist.
+
+
 ---
 
 ## §2. Doing less — where the wins actually are

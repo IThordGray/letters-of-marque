@@ -10,6 +10,62 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-21 (third) — The margin was never thin. It is two different worlds.
+
+**KAN-131 set the dial the human asked for — `upkeepPerHead` 0.06 → 0.05 — and the diagnosis
+underneath it is worth more than the number.**
+
+**A soul's keep had never been priced against what a soul earns.** Upkeep is the only subtraction in
+a town's season charged **per soul**, while every income term is earned per unit shipped × access. A
+town fed by its own ground therefore gains the bill for nothing and gains no income with it. Measured
+on four warm worlds over two hundred years: a soul earns a median **0.178** a season and cost
+**0.06**. At 0.05 the median place clears 2.60 a season — a capital work in about nineteen years,
+which is the ratified "decades". At 0.045 it clears 6.14, a work every eight years, which is the
+"grows fast unaided" the human ruled out. **The dial stops where decades does.**
+
+**But the real finding is that the world has two economies, and the median describes neither.**
+
+| | places | trade margin | funds a 180-coin work |
+|---|---|---|---|
+| with a capital waterfront work | 103 | **+20.02 / season** | two and a half years |
+| without one | 90 | **−1.28 / season** | never |
+
+The cause is `quaysideOf`: a customs house pays out its whole trade column × access, **every season,
+whether or not a single bale crossed the quay.** No price, no market, no buyer, and a storm does not
+dent it. It is **58% of all trade income in the world and 93% of a quayed town's.** It cannot simply
+be thinned — measured, halving it collapses the day-0 spread from 11/92/**1,233** souls to
+8/71/**463**, because it is what funds a sea-fed port's grain. It is load-bearing for `[HC-87]`'s
+trade-fed ceiling and it is the largest breach of `[HC-47]` in the model. **Making it a real share of
+real traffic is its own story, not a tuning pass.** → **KAN-132**.
+
+**`[HC-47]` is not implemented for trade, and the number is 10:1.** Over 200 years × 4 seeds the
+world earns 5,107,883 in trade while buyers pay 517,179 — a seller is credited for his whole offer at
+the cleared price while a buyer pays only for his allotment. Upkeep destroys 1,283,719 and storms
+1,066,321. **Closing it needs §8.5's tax-up/grants-down circulation, which is KAN-101**; attempting
+it now would kill every town, because sold-only income is a tenth of upkeep alone. Recorded so nobody
+re-derives it as a bug.
+
+---
+
+**And the lesson that stops the next wrong story, which is the same one the 450–600 target taught.**
+
+> **Median years-per-new-capital-work is 50 under EVERY dial swept** — upkeep 0.06→0.035, victuals
+> 0.15→0.40, growth share 0.5→0.85 — while the median purse triples. 36% of places build nothing in
+> two hundred years. **Whatever gates the middle of the band is not the purse.** A fifth story aimed
+> at coin would repeat the mistake exactly: chasing a target whose cause lies elsewhere.
+
+**A negative yield is forgiven every season, silently.** `settleSeason` clamps at zero, so 82 of 193
+places sat at exactly nothing for two centuries with no chronicle line, no failure word and no test
+able to see it. *"Hovering at its build cost for ever"* was this. **Where a clamp hides a recurring
+loss, the loss needs a claim** — the suite now has one.
+
+**A place can empty without a raid, and it already could.** One town overbuilds, loses its food works,
+cannot buy bread at access 0.08 and drifts to nobody. It is `ruined`, not `abandoned` — works still
+stand — so `[HC-50]` holds, but a comment in `notable.ts` asserts that only a deliberate hand empties
+a place, and that comment is false. → **KAN-133**.
+
+---
+
 ### 2026-09-21 (second) — A town gets by. Growing fast is somebody's decision.
 
 **The 450–600 day-0 city target is withdrawn.** Four stories chased it — capacity, depth, the menu,
