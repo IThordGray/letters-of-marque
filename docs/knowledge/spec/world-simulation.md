@@ -232,6 +232,27 @@ every tuning number are **tables**; the tick order, the auction, the trade clear
 are **code**. This costs nothing at the moment a system is written and is a rewrite afterwards — see
 `decisions.md` (2026-09-10, second) for why the port argument decided it.
 
+> **A COROLLARY, and it cost a false dependency before anyone noticed (2026-09-21).**
+> **Content cannot block a mechanic.** If a table's *contents* can hold up the code that *reads*
+> the table, the separation `[HC-90]` exists to create is not doing its job.
+>
+> The case: story 5 (`exports` re-keys from the work to the produce) was marked **blocked** by the
+> terrain-kind lockdown, on the grounds that salt's trade class and the quarry question were
+> unsettled. The human rejected it: *"salt pans and rocky ground are terrain types as far as I
+> understand? This is just something that lives in a table. A table that can easily be trimmed or
+> expanded. A mechanic shouldn't be blocked by the content."*
+>
+> **Checked rather than conceded, and he was right.** Nothing produces salt, so nothing is ever
+> classified as salt — the missing row is *unreachable*, not a hole. Nothing produces stone either,
+> so that row is inert until a quarry exists. The lockdown adds and trims rows; it changes no code
+> in the story it was blocking.
+>
+> **The test to apply before writing "blocked by":** would the blocking work change *code* in this
+> story, or only *rows*? If only rows, it is a sequencing preference and should be written as one —
+> *"nicer after X"* — never as a dependency. **A false dependency is worse than none**, because it
+> is invisible once written down and nobody re-derives it.
+
+
 **`[HC-91]` A definition table is the source of truth; its TypeScript type is generated from it.**
 Never the reverse. This is what keeps exhaustiveness checking and autocomplete while leaving the
 content portable — a closed hand-written union would weld the content to this language.
