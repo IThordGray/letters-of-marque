@@ -263,8 +263,35 @@ export const POP = {
 };
 
 // ---- Wealth ----------------------------------------------------------------
+//
+// `upkeepPerHead` IS THE TERM THAT DECIDES WHETHER A TOWN'S TRADE IS PROFITABLE
+// AT ALL, and until KAN-131 it had never been priced against what a soul earns.
+//
+// It is the one subtraction in `yield = earned + grant - imports - upkeep` that
+// is charged PER SOUL, while everything on the income side is earned per unit
+// shipped times `access`. So a town whose people are fed by its own ground
+// gains the bill for nothing and gains no income with it, and `settleSeason`'s
+// `Math.max(0, ...)` then forgives the shortfall every season — which is what a
+// town "hovering at its build cost for ever" actually is: a purse pinned at
+// exactly zero by a loss nobody is ever billed for.
+//
+// MEASURED ON THE WARM WORLD, FOUR SEEDS, TWO HUNDRED YEARS. At 0.06 the median
+// place clears 0.80 coin a season on trade after its imports, its keep and its
+// weather — and 82 of 193 places clear LESS THAN NOTHING. At 0.05 the median
+// clears 2.60, which is a 200-coin capital work in nineteen years, and 71 places
+// are still losing. The half of the world with no quay moves from a standing
+// loss of 1.28 a season to roughly break even, which is the ratified sentence
+// exactly: A TOWN GETS BY.
+//
+// WHY NOT LOWER. 0.045 was measured too and it overshoots: the median clears
+// 6.14, a capital work every EIGHT years, which is the "building every few
+// years unaided" the design calls too fat. The dial stops where "decades" does.
+//
+// WHAT IT DOES NOT DO, and the honest half of the number: a town that already
+// has a quay is untouched by it (20.02 -> 21.17 a season), because its margin is
+// not made of upkeep. See `TRADE.basePrice` for where that money comes from.
 export const WEALTH = {
-  upkeepPerHead: 0.06, // what a soul costs the town to keep in civic order
+  upkeepPerHead: 0.05, // what a soul costs the town to keep in civic order
   start: 200,
 };
 

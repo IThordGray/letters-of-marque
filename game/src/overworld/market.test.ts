@@ -5,7 +5,7 @@
 // SHUFFLING THE ITERATION ORDER OF PLACES PRODUCES IDENTICAL RESULTS.
 
 import { describe, it, expect } from "vitest";
-import { generateWorld, foundAll } from "./worldgen";
+import { generateWorld, foundAll, warmStart } from "./worldgen";
 import {
   MARKET, atWar, blockade, clearSeason, declareWar, describeMarkets, describeRoutes, laneIsOpen,
   makeMarkets, noWars, openRoutes, priceFor, reachOf, runYears, shutLane, stepWorldDay,
@@ -1020,5 +1020,204 @@ describe("what a place brings to market", () => {
       // stands in.
       expect(towns[i].market.allotted[0]).toBeLessThanOrEqual(want + 1e-9);
     }
+  });
+});
+
+// ---- A town's ordinary trade turns a very small profit (KAN-131) ------------
+//
+// RATIFIED 2026-09-21: "In most cases towns really just try to get by. Sometimes
+// they get investments, sometimes they don't. Naturally they grow over time, but
+// it's not a fast process, unless someone WANTS them to grow fast. I'd say
+// balance it that trade generally causes a very small profit, which they can
+// then reinvest." The 450-600 day-0 target is withdrawn with it.
+//
+// THESE ARE WORLD-SCALE CLAIMS AND THEY HAVE TO BE. A town stepped on its own is
+// UNCLEARED, so it faces par prices — victuals at 1.00 where the cleared world
+// prices them at 0.13 — and a lone fixture therefore earns about seven times
+// what the same place earns among neighbours. Every claim below about how much a
+// place makes is asked of the warm world, through the real clearing.
+//
+// FOUR SEEDS, POOLED, and the suite's own rule says why: a claim about a
+// distribution over fifty places asked of one sample is a decoration. Where the
+// with-behaviour and without-behaviour ranges might overlap, the pool is what
+// puts the claim outside them.
+describe("a town's own trade turns a very small profit", () => {
+  const SEEDS_4 = [20260910, 1660, 7, 99];
+
+  // THREE ARMS OF THE SAME FOUR WORLDS, built once ([P-18]) because a warm start
+  // is most of a second and these claims all read the same runs:
+  //
+  //   ORDINARY   the world as it is — its crowns' standing grants, its weather.
+  //   TRADE ONLY the same world with every grant set to nothing, which is the
+  //              only honest way to ask what a place's OWN trade clears.
+  //   CALM       the same world with the daily tick's weather never run, so the
+  //              storm's price is a difference rather than an assertion.
+  // ONE WARM START PER SEED, COPIED TWICE ([P-54]: who is forced to pay). The
+  // pre-run is most of a second and the three arms must begin from the SAME day
+  // 0 — not merely from the same seed — so a structured copy is both cheaper
+  // and stricter than warming three worlds. Measured: twelve warm starts cost
+  // the suite about ten seconds; four cost it three.
+  const arms = SEEDS_4.map((seed) => {
+    const warm = warmStart(seed);
+    const copy = () => structuredClone(warm);
+
+    const ordinary = copy();
+    const start = ordinary.towns.map((t) => t.wealth);
+    runYears(ordinary.world, ordinary.towns, ordinary.markets, ordinary.wars, ordinary.routes, 10);
+    const atTen = ordinary.towns.map((t) => t.wealth);
+    // A QUAY IS A CAPITAL WATERFRONT WORK, read at the same instant the purse is
+    // — "select and assert at the same instant", because a strand is not a quay
+    // and a place can acquire one in the forty years that follow.
+    const quayed = ordinary.towns.map((t) =>
+      t.works.some((w) => w.condition === "working" && CATALOGUE[w.kind].cls === "capital" && CATALOGUE[w.kind].zone === "waterfront"));
+    runYears(ordinary.world, ordinary.towns, ordinary.markets, ordinary.wars, ordinary.routes, 40);
+    const atFifty = ordinary.towns.map((t) => t.wealth);
+
+    const alone = copy();
+    for (const t of alone.towns) t.grant = 0;
+    const aloneStart = alone.towns.map((t) => t.wealth);
+    runYears(alone.world, alone.towns, alone.markets, alone.wars, alone.routes, 10);
+
+    const calm = copy();
+    runYearsWithoutWeather(calm.world, calm.towns, calm.markets, calm.wars, calm.routes, 50);
+
+    return {
+      seed, ordinary, calm, quayed, start, atTen, atFifty,
+      // Live places only: a shore still awaiting settlers is not a town getting by.
+      live: ordinary.towns.map((t, i) => (t.population >= 1 ? i : -1)).filter((i) => i >= 0),
+      // What each place put in its purse in its first decade, with the crown's
+      // money and without it.
+      gainedWithCrown: ordinary.towns.map((_, i) => atTen[i] - start[i]),
+      gainedAlone: alone.towns.map((t, i) => t.wealth - aloneStart[i]),
+    };
+  });
+
+  const medianOf = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s.length ? s[Math.floor(s.length / 2)] : 0;
+  };
+  // The cheapest thing coin can buy, read off the catalogue rather than written
+  // down here — a threshold written twice is a threshold free to drift.
+  const cheapestWork = Math.min(
+    ...(Object.keys(CATALOGUE) as (keyof typeof CATALOGUE)[])
+      .filter((k) => CATALOGUE[k].cls === "capital")
+      .map((k) => CATALOGUE[k].cost),
+  );
+
+  it("is asked of four worlds through the real clearing, not of one town on its own", () => {
+    expect(arms.length).toBe(4);
+    for (const a of arms) expect(a.live.length).toBeGreaterThan(40);
+    expect(cheapestWork).toBeGreaterThan(0);
+  });
+
+  it("leaves a place with a working quay measurably richer at fifty years than at ten", () => {
+    // THE RULE, first half: a place that can trade at all ACCUMULATES rather
+    // than hovering at its build cost for ever. Not every one of them — a place
+    // can be flattened by a storm in year 30 — so the claim is about the
+    // distribution, and the measured figure is 15/16 · 21/25 · 30/32 · 18/19,
+    // which is 84 of 92 across the four worlds.
+    let quayed = 0;
+    let richer = 0;
+    for (const a of arms) {
+      for (const i of a.live) {
+        if (!a.quayed[i]) continue;
+        quayed++;
+        if (a.atFifty[i] > a.atTen[i]) richer++;
+      }
+    }
+    expect(quayed).toBeGreaterThan(40); // ...and there were quays to speak of
+    expect(richer).toBeGreaterThan(quayed * 0.8);
+  });
+
+  it("and cannot fund a capital work off its own trade inside a decade", () => {
+    // THE RULE, second half, and it is the one that says "slowly". Every grant
+    // is set to nothing, so what is measured is the place's OWN trade: what it
+    // sold, less its bread, its keep and its weather.
+    //
+    // Measured pooled across the four worlds: the median place puts 38 coin in
+    // its purse in ten years against a cheapest capital work of 180 — a work in
+    // roughly five decades, which is the ratified "decades, not seasons". 117 of
+    // 194 places are under a tavern's 200 over the same decade.
+    for (const a of arms) {
+      const gained = medianOf(a.live.map((i) => a.gainedAlone[i]));
+      expect(gained, `${a.seed}: the median place put ${gained.toFixed(0)} coin by in a decade`)
+        .toBeLessThan(cheapestWork);
+    }
+  });
+
+  it("and a crown's money still outweighs what its own trade clears", () => {
+    // THE LINE THIS STORY MUST NOT CROSS, as a number rather than an assertion:
+    // "a patron's grant, a crown's money and the player's purse must remain the
+    // difference between a port and a great port". If trade alone closed that
+    // gap, the whole haven-development thread would lose its leverage.
+    //
+    // Measured pooled across four worlds, coin put by in the first decade:
+    // 156 with the crown's standing grant against 38 without it — the crown is
+    // worth FOUR TIMES the median place's own trade. Per seed the ratio runs
+    // 1.6x to 14x, so the bound is set on the pool, where the sample is 194
+    // places rather than fifty.
+    const withCrown = medianOf(arms.flatMap((a) => a.live.map((i) => a.gainedWithCrown[i])));
+    const alone = medianOf(arms.flatMap((a) => a.live.map((i) => a.gainedAlone[i])));
+    expect(alone).toBeGreaterThan(0); // ...the liveness half: trade does turn a profit
+    expect(withCrown).toBeGreaterThan(alone * 2);
+  });
+
+  it("and a storm is still worth fearing on it", () => {
+    // The margin must survive the weather WITHOUT making the weather
+    // shruggable. This is the magnitude half of "leaves a ledger a century
+    // without weather does not" — that claim asserts a direction, and a
+    // direction is satisfied by a world one coin poorer.
+    //
+    // Measured over fifty years across the four worlds: the weathered world
+    // holds 30% less coin and 39% fewer souls than the same world with the
+    // daily tick's weather never run.
+    let wetCoin = 0, dryCoin = 0, wetPeople = 0, dryPeople = 0;
+    for (const a of arms) {
+      wetCoin += totalOf(a.ordinary.towns, (t) => t.wealth);
+      dryCoin += totalOf(a.calm.towns, (t) => t.wealth);
+      wetPeople += totalOf(a.ordinary.towns, (t) => t.population);
+      dryPeople += totalOf(a.calm.towns, (t) => t.population);
+    }
+    expect(wetCoin).toBeLessThan(dryCoin * 0.85);
+    expect(wetPeople).toBeLessThan(dryPeople * 0.85);
+  });
+});
+
+// ---- [HC-47] the goods a town lands are goods another town grew -------------
+//
+// "No money is created or destroyed outside this circulation... nothing is
+// emitted from nowhere — the same principle as a town's wealth is EARNED, not
+// emitted." The clearing is where that has to be true of the MAP rather than of
+// one ledger.
+describe("nothing is conjured in the clearing", () => {
+  it("never lands a place bread that nobody grew", () => {
+    // SUMMATION CONSERVES ([HC-83]): a buyer takes `want x fill` where `fill` is
+    // supply over demand, so the allotments in a neighbourhood can never exceed
+    // what its members put up. Asserted over the whole map, class by class, over
+    // several seasons — because one season with nothing on either side of the
+    // scale would pass it for the wrong reason.
+    const { world, towns, markets, wars, routes } = bench();
+    let sawTrade = false;
+    for (let s = 0; s < 12; s++) {
+      for (const t of towns) produceSeason(t, world.day);
+      const offered = [0, 0, 0];
+      for (const t of towns) {
+        const c = derive(t).commerce;
+        for (let k = 0; k < 3; k++) offered[k] += c.offer[k];
+      }
+      clearSeason(markets, world.places, towns, wars, routes);
+      const allotted = [0, 0, 0];
+      for (const t of towns) for (let k = 0; k < 3; k++) allotted[k] += t.market.allotted[k];
+      for (let k = 0; k < 3; k++) {
+        expect(allotted[k], `class ${k}: ${allotted[k].toFixed(3)} landed against ${offered[k].toFixed(3)} grown`)
+          .toBeLessThanOrEqual(offered[k] + 1e-9);
+      }
+      if (allotted[0] > 0) sawTrade = true;
+      for (const t of towns) settleSeason(t);
+      world.day += CALENDAR.daysPerSeason;
+    }
+    // ...and the liveness guard, because a map where nothing moves satisfies
+    // every inequality above.
+    expect(sawTrade).toBe(true);
   });
 });

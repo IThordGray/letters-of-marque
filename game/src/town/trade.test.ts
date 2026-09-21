@@ -8,10 +8,10 @@
 // depends on the clearing, and the clearing is pinned separately.
 
 import { describe, it, expect } from "vitest";
-import { derive, stepSeason, stepSeasons, stepYears, carryingCapacity, prosperityTarget } from "./sim";
+import { derive, settleSeason, stepSeason, stepSeasons, stepYears, takeWeather, carryingCapacity, prosperityTarget } from "./sim";
 import { CAPITAL, CATALOGUE, raise } from "./works";
 import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, producesMaterials, sellTo, DEPENDENCY_CLAUSE } from "./trade";
-import { TRADE } from "./constants";
+import { TRADE, WEALTH, WORKS } from "./constants";
 import { deepWants, focusWants, governorTurn, permitsFocus, scoreWork, wants, type Built, type Decision, type Deepened } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
@@ -901,6 +901,117 @@ describe("reproducibility", () => {
       return derive(t).commerce.earned;
     };
     expect(build(true)).toBeCloseTo(build(false), 9);
+  });
+});
+
+// ---- Wealth is EARNED, not emitted ([HC-47]) -------------------------------
+//
+// The world layer states it of crowns — "no money is created or destroyed
+// outside this circulation... nothing is emitted from nowhere" — and §3.5 states
+// the same principle of a town. These are the town half: what may put a coin in
+// a purse, and what happens when nothing does.
+//
+// The MAP half — that nobody lands bread nobody grew — is claimed in
+// `overworld/market.test.ts`, because it can only be said of a clearing.
+describe("wealth is earned, not emitted", () => {
+  it("gives a place that sells nothing and is sent nothing nothing at all", () => {
+    // NO QUAY AND NO GUNS, so `access` is zero and [HC-85] shuts it out both
+    // ways; no patron, so nothing arrives. There is then no term left that
+    // could raise this purse, and the claim is that there is no OTHER term
+    // either — a margin that appeared here would be emitted by definition.
+    const town = bareTown({ population: 160, wealth: 500, grant: 0 });
+    stepYears(town, 5);
+    expect(derive(town).access).toBe(0);
+    expect(derive(town).commerce.earned).toBe(0);
+
+    const opening = town.wealth;
+    const after5y = 5 * CALENDAR.seasonsPerYear * SEASON;
+    let high = town.wealth;
+    for (let i = 0; i < 400; i++) {
+      stepSeason(town, after5y + i * SEASON);
+      if (town.wealth > high) high = town.wealth;
+    }
+    expect(high).toBeLessThanOrEqual(opening);
+    expect(town.wealth).toBe(0);
+
+    // THE LIVENESS GUARD, and this claim needs one badly: "the purse never rose"
+    // is also true of a town of nobody. The floor is written out from the two
+    // definitions it depends on rather than read back off the sim — a garden
+    // plot's hands against the share of souls who are hands.
+    expect(town.population).toBeGreaterThan(CATALOGUE.gardenPlots.hands / WORKS.labourShare);
+    expect(derive(town).food).toBeGreaterThan(0);
+  });
+
+  it("owes nothing either — a purse stops at nothing rather than going below it", () => {
+    // The other side of the same line. A place whose people cost more than its
+    // trade clears does not run up a debt and die of it; it simply has nothing.
+    // That is what "hovering at its build cost for ever" actually is, and it is
+    // deliberate — but it must never become a negative number, because a
+    // negative purse would be a coin destroyed twice.
+    const town = bareTown({ population: 300, wealth: 40, grant: 0 });
+    for (let i = 0; i < 40; i++) {
+      stepSeason(town, i * SEASON);
+      expect(town.wealth).toBeGreaterThanOrEqual(0);
+    }
+    expect(derive(town).upkeep).toBeGreaterThan(derive(town).commerce.earned);
+    expect(town.wealth).toBe(0);
+  });
+
+  it("adds exactly what it sold and what its patron sent, less its bread and its keep", () => {
+    // THE WHOLE OF WHAT MAY TOUCH A PURSE IN A SEASON, written out by hand
+    // rather than read back off `Derived.yield` — a claim that asked the code
+    // what the answer should be could not catch a term ADDED to it, which is
+    // exactly the mistake this rule exists for. Any new source of coin fails
+    // this line, and that is the point: it is [HC-47]'s guard at town scale.
+    const town = open(mixedTown({ population: 200, wealth: 1000, grant: 5 }));
+    raise(town, "sawpit", DAY0);
+    clearedWith(town, 0, 30, 0.2);
+
+    const purseBefore = town.wealth;
+    const souls = town.population; // ...before the drift at the foot of the season
+    const grant = town.grant;
+    const sold = derive(town).commerce.earned;
+
+    settleSeason(town);
+
+    const expected = Math.max(0, purseBefore + sold + grant - town.market.paid - souls * WEALTH.upkeepPerHead);
+    expect(town.wealth).toBeCloseTo(expected, 6);
+    // ...and the arithmetic was not trivially satisfied by every term being nil.
+    expect(sold).toBeGreaterThan(0);
+    expect(town.market.paid).toBeGreaterThan(0);
+  });
+});
+
+// ---- A storm is still worth fearing (KAN-131) ------------------------------
+describe("what the sea takes is not earned back", () => {
+  it("leaves a battered town poorer for the rest of the century", () => {
+    // The margin this story calibrates must not turn a storm into an
+    // inconvenience. Two identical towns, one of which meets a week of foul
+    // weather: the coin the maintenance bill took is coin the town's own trade
+    // never makes up. Measured: the week costs 192 coin, and forty years later
+    // the battered town is still 125 behind — two thirds of it, with no
+    // recovery at all in the interval.
+    const build = () => open(mixedTown({ population: 160, wealth: 0, grant: 0 }));
+    const calm = build();
+    const hit = build();
+    stepSeasons(calm, 40, SEASON);
+    stepSeasons(hit, 40, SEASON);
+    expect(hit.wealth).toBe(calm.wealth); // ...identical to the coin before the sky opens
+
+    const before = hit.wealth;
+    for (let d = 0; d < 6; d++) {
+      takeWeather(hit, SEASON * 41 + d, { yieldLoss: 0.25, maintenanceShare: 0.1, worksDropped: 1, worksDestroyed: 1 }, 0.5);
+    }
+    const took = before - hit.wealth;
+    expect(took).toBeGreaterThan(0);
+
+    stepSeasons(calm, 160, SEASON * 41);
+    stepSeasons(hit, 160, SEASON * 41);
+    expect(hit.wealth).toBeLessThan(calm.wealth);
+    expect(calm.wealth - hit.wealth).toBeGreaterThan(took * 0.4);
+    // ...and it is still a living town rather than a smoking hole, which is what
+    // makes "poorer" the claim rather than "dead".
+    expect(hit.population).toBeGreaterThan(0);
   });
 });
 

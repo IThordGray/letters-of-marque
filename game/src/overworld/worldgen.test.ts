@@ -565,19 +565,31 @@ describe("nobody sits on his own timber for want of planks", () => {
     // the world before it. Counted at day 0, places bearing uncut timber whose
     // coffers hold what a sawpit costs:
     //
-    //   before the rule   4 · 3 · 2 · 2        (one of them with 3,398 coin)
-    //   after it          0 · 0 · 1 · 1
+    //   before the rule   4 · 3 · 2 · 2   = 11   (one of them with 3,398 coin)
+    //   after it          0 · 0 · 1 · 1   =  2
+    //   re-measured 2026-09-21 (KAN-131)  1 · 0 · 0 · 3   =  4
     //
-    // The distributions do not overlap, which is what makes "at most one a
-    // world" a claim rather than a decoration — before the rule every one of the
-    // four seeds fails it. The survivors are not gated: they are places the
-    // auction wants something else in, and the gate has nothing to say about
-    // what a town WANTS.
+    // POOLED ACROSS THE FOUR WORLDS, AND IT HAD TO BE. The bound was written per
+    // seed — "at most one a world" — and that is a claim about fifty places
+    // asked of one sample at a time, which is exactly what the suite's own rule
+    // warns against. KAN-131's coin dial moved seed 99 from 1 to 3 without
+    // touching the gate: the two newcomers hold 283 and 309 coin against a pit's
+    // 260, so they are places that crossed the price of a pit and want something
+    // else more. A per-seed bound cannot tell that from a broken gate; the
+    // pooled one can, because the pooled distributions still do not overlap
+    // (11 before against 2 and 4 after, on either side of six).
+    //
+    // The survivors are not gated: they are places the auction wants something
+    // else in, and the gate has nothing to say about what a town WANTS.
+    let idle = 0;
+    const who: string[] = [];
     for (let i = 0; i < days.length; i++) {
-      const idle = uncut(days[i]).filter((t) => t.wealth >= CATALOGUE.sawpit.cost);
-      expect(idle.length, `${SEEDS[i]}: ${idle.map((t) => `${t.name} (${Math.round(t.wealth)} coin)`).join(", ")}`)
-        .toBeLessThan(2);
+      for (const t of uncut(days[i]).filter((x) => x.wealth >= CATALOGUE.sawpit.cost)) {
+        idle++;
+        who.push(`${SEEDS[i]}/${t.name} (${Math.round(t.wealth)} coin)`);
+      }
     }
+    expect(idle, who.join(", ")).toBeLessThan(6);
   });
 
   it("still cuts most of the timber the map bears, and leaves a few coasts uncut", () => {

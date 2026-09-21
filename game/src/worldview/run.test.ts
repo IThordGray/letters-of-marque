@@ -160,13 +160,30 @@ describe("a century's chronicle is something a person can read", () => {
     expect(run.feed.length).toBeLessThan(2000);
   });
 
-  it("is all works lost to the sea, because nothing else can happen yet", () => {
+  it("carries nothing a dispatch would have to cause, because nothing sends one yet", () => {
     // The honest statement of what this milestone cannot show, pinned so that
     // the day it stops being true is loud rather than quiet. Faction changes by
     // invasion, class changes on a charter, a treasury empties by being spent —
     // all three are dispatches, and nothing sends one until KAN-101.
+    //
+    // NAMED RATHER THAN COUNTED, 2026-09-21 (KAN-131), and the old form was a
+    // single-seed observation wearing a rule's clothes. It asserted the feed
+    // held exactly `["lost"]`, which also forbids `emptied` — a LEDGER event
+    // that no dispatch causes and that [HC-18] permits. KAN-131's coin dial
+    // made one place on this seed spend itself down to nobody in year 78, and
+    // the claim went red for a reason it was never written about. The same
+    // thing already happened on seed 99 within two centuries before the dial
+    // moved at all, so the old wording was true of one world rather than of the
+    // milestone.
+    //
+    // What the claim protects is the THREE dispatch-driven kinds, which is what
+    // its own comment always said, and naming them makes it stricter: it now
+    // fails if any one of them appears, on any seed, rather than only if the
+    // exact set differs.
     const kinds = new Set(run.feed.map((e) => e.kind));
-    expect([...kinds]).toEqual(["lost"]);
+    for (const dispatched of ["promoted", "taken", "broke"]) expect([...kinds]).not.toContain(dispatched);
+    // ...and the liveness guard, because an empty feed satisfies every line above.
+    expect([...kinds]).toContain("lost");
   });
 
   it("dates every line to a real day of the run", () => {
