@@ -15,7 +15,12 @@ import type { Town, Work, WorkClass, Need, TerrainKind, Produce, Suit, Region } 
 import type { Axial } from "./hex";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
-import { isDead, SUIT_RANK, capacityOf } from "./land";
+import { isDead, SUIT_RANK, capacityOf, takenHexes } from "./land";
+
+// `takenHexes` lived here until KAN-134 and now lives beside `capacityOf`, which
+// has to subtract exactly that set. It is re-exported so every reader that asks
+// the works ledger what ground is spoken for still asks it here.
+export { takenHexes };
 
 // Where a work sits when the ledger is projected onto a raid map (KAN-76).
 export type Zone = "waterfront" | "lowerTown" | "plaza" | "backTown" | "outworks" | "beyondThePale";
@@ -284,13 +289,6 @@ export function regionsFor(town: Town, kind: WorkKind): { region: Region; suit: 
   return out.sort((a, b) => SUIT_RANK[b.suit ?? "fair"] - SUIT_RANK[a.suit ?? "fair"]);
 }
 
-// Ground already spoken for: built over by the town, or carrying a work.
-export function takenHexes(town: Town): Set<string> {
-  const taken = new Set(town.footprint.claimed.map(key));
-  for (const w of town.works) if (w.hex && w.condition !== "ruin") taken.add(key(w.hex));
-  return taken;
-}
-
 // ---- [HC-94] A focus buys CAPACITY, never a multiplier ---------------------
 //
 // TWO VERBS PUT A WORK ON A REGION, AND THE ONLY THING THAT DIFFERS BETWEEN THEM
@@ -378,13 +376,23 @@ export function depthOf(town: Town, index: number): number {
   return n;
 }
 
-// How deep this region's ground may go, by this verb. `claimed` is the set
-// `capacityOf` would build for itself, handed in by a caller asking about
-// several regions ([P-18]) — and it is never consulted by `raise`, which is why
-// the auction's own path allocates nothing new.
-export function depthAllowed(town: Town, r: Region, verb: Verb, claimed?: Set<string>): number {
-  if (verb === "raise") return TOKEN_DEPTH;
-  return r.focus === "production" ? capacityOf(town, r, claimed) : 0;
+// HOW MANY MORE OF THIS WORK THE GROUND WILL TAKE, by this verb. `free` is the
+// region's own capacity, already net of the footprint and of everything standing
+// on it, so it is passed in rather than asked for again ([P-47], [P-18]).
+//
+// IT ANSWERS "HOW MANY MORE" AND NOT "HOW DEEP", and the difference is KAN-134's.
+// It used to return a cap on DEPTH and leave the caller to subtract what already
+// stood there — which was only correct while `capacityOf` was blind to the works.
+// Now that capacity counts them, subtracting the depth as well would charge the
+// same sawpits twice.
+//
+//   raise  — the token allowance, less what already stands: a hamlet takes what
+//            timber it needs off the ridge and it never becomes an industry.
+//   deepen — ground somebody GAVE OVER may be worked to its free capacity. The
+//            cap is not a separate number; it is the ground.
+function moreAllowed(town: Town, r: Region, index: number, verb: Verb, free: number): number {
+  if (verb === "raise") return TOKEN_DEPTH - depthOf(town, index);
+  return r.focus === "production" ? free : 0;
 }
 
 const TOKEN_DEPTH = 1;
@@ -400,10 +408,12 @@ export function roomInRegion(
   kind: WorkKind,
   verb: Verb,
   taken: Set<string>,
-  claimed?: Set<string>,
 ): number {
-  let free = 0;
-  for (let i = 0; i < r.hexes.length; i++) if (!taken.has(key(r.hexes[i]))) free++;
+  // ONE PATH TO THE FREE GROUND ([P-47]). This used to count the free hexes with
+  // a loop of its own while `capacityOf` counted them a different way, and the
+  // two answers differed by exactly the works standing on the region — which is
+  // the whole of KAN-134.
+  const free = capacityOf(town, r, taken);
   // Outside the capacity rule entirely: a subsistence work ([HC-98]) and a sited
   // work (§2.12.12) both stand on ground whose purpose is not in question. THE
   // FILTER IS "A CAPITAL WORK STANDING ON WHAT THE GROUND BEARS" AND NOT "ANY
@@ -411,7 +421,7 @@ export function roomInRegion(
   // a warehouse OR a customs house OR a shipway, because all three would be
   // spending one region's token allowance between them.
   if (!isFocusExpression(kind)) return verb === "raise" ? free : 0;
-  const room = depthAllowed(town, r, verb, claimed) - depthOf(town, index);
+  const room = moreAllowed(town, r, index, verb, free);
   return free < room ? free : room < 0 ? 0 : room;
 }
 

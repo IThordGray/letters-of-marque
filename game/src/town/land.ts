@@ -53,17 +53,56 @@ export const liveRegions = (town: Town) => town.regions.filter((r) => !isDead(r.
 // several regions to ask about builds it ONCE ([P-18]) — the focus auction asks
 // about every region in the town in one breath, and the claimed set cannot
 // change while it does.
+//
+// IT IS NOT THE SAME QUESTION AS `takenHexes` AND MUST NOT BE FOLDED INTO IT.
+// Exactly one rule reads it: a growth focus locks the moment ground is CLAIMED
+// under it, because that hex is the cost becoming real ("there are houses on it
+// now"). A work standing on the ground is not that, and never was.
 export const claimedKeys = (town: Town): Set<string> => new Set(town.footprint.claimed.map(key));
 
-// Ground still available to work: a region's area LESS whatever the town has
-// built over. Growth eats its own cause.
+// Ground already spoken for: built over by the town, or carrying a work.
 //
-// ONE PATH TO THE NUMBER ([P-47]): the optional second argument is the same set
-// this function would have built for itself, handed in by a caller who is asking
-// about more than one region. It is never a different rule, only a cheaper way
-// to ask the same one.
-export function capacityOf(town: Town, r: Region, claimed = claimedKeys(town)): number {
-  return r.hexes.filter((h) => !claimed.has(key(h))).length;
+// IT MOVED HERE FROM `works.ts` UNDER KAN-134, and the move is what makes the
+// next function honest rather than a tidy: `capacityOf` has to subtract exactly
+// this set, `land.ts` is the lower layer, and a work's hex is a fact about the
+// ground it stands on. `works.ts` re-exports it, so every existing reader is
+// unchanged.
+export function takenHexes(town: Town): Set<string> {
+  const taken = new Set(town.footprint.claimed.map(key));
+  for (const w of town.works) if (w.hex && w.condition !== "ruin") taken.add(key(w.hex));
+  return taken;
+}
+
+// Ground still available to work: a region's area LESS EVERYTHING ALREADY
+// SPOKEN FOR — the ground the town has built over, and the ground something is
+// already standing on. Growth eats its own cause, and so does building.
+//
+// IT COUNTED ONLY THE FOOTPRINT UNTIL KAN-134, and the works standing on a
+// region were invisible to it. That is not a rounding error: `[HC-98]` raises
+// subsistence works on any ground the town holds, so the hamlet floor can fill
+// a three-hex region with garden plots before its governor has saved up for a
+// farm — and the region went on reading as three hexes of free ground.
+// Measured across four warm worlds, seventeen regions were given over to
+// production and then had no hex left to put a work on, and NOTHING WAS EVER
+// SAID: the deepening's own room reading was zero, so the candidate scored zero
+// and was dropped before it could write a clause.
+//
+// ONE PATH TO THE NUMBER ([P-47]), and there are now three readers of it that
+// used to disagree: the focus auction's "how much of it is still free", the
+// deepening's room reading, and the map's region summary — which subtracted the
+// works itself, by hand, on the other side of the module.
+//
+// [P-18]: the optional second argument is the same set this function would have
+// built for itself, handed in by a caller asking about more than one region. It
+// is never a different rule, only a cheaper way to ask the same one.
+//
+// [P-32]: an indexed count rather than `filter().length`, which is what it was.
+// Three readers ask this per region per season now instead of one, and there is
+// no reason for the answer to a question about a number to arrive in an array.
+export function capacityOf(town: Town, r: Region, taken = takenHexes(town)): number {
+  let free = 0;
+  for (let i = 0; i < r.hexes.length; i++) if (!taken.has(key(r.hexes[i]))) free++;
+  return free;
 }
 
 // WHAT A STRETCH OF GROUND IS BEST FOR — the question a region focus asks, and

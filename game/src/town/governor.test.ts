@@ -12,14 +12,15 @@ import {
   scoreWork, reasonFrom, wants, governorTurn, stepTownSeason, stepTownYears,
   focusWants, focusLock, describeFocus, permitsFocus, takesTheSeason,
   deepWants, AGENDA, FOCUS_AGENDA, FOCUS_TERMS, DEEP_TERMS, GIVEN_OVER, HOUSES_ON_IT, ROOM_FOR_MORE,
+  NO_GROUND_LEFT,
   type Built, type Decision, type Focused, type Deepened, type TermKey,
 } from "./governor";
 import { CHOOSABLE, CATALOGUE, countOf, isFocusExpression, raise, depthOf } from "./works";
 import { stepWorldSeason } from "../overworld/market";
 import { derive, stepYears, stepSeason, summarise } from "./sim";
 import { canBuild, dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
-import { bestBorne, isWater, liveRegions, regionOf } from "./land";
-import { CENTRE, key as keyOf } from "./hex";
+import { bestBorne, capacityOf, isWater, liveRegions, regionOf } from "./land";
+import { CENTRE } from "./hex";
 import { warmStart } from "../overworld/worldgen";
 import { PLAN, DECAY, TRADE } from "./constants";
 import { CALENDAR, DAYS_PER_YEAR } from "../overworld/calendar";
@@ -1228,19 +1229,67 @@ describe("a deepening is scored from that region's own ground", () => {
     expect(only(dear).terms.find((t) => t.key === "market")!.clause).toBe("timber fetches well here");
   });
 
-  it("reads the room left, and stops arguing when the ground is spent", () => {
+  it("reads the room left, and SAYS SO when the ground is spent rather than falling silent", () => {
     // The readings MULTIPLY (§2.12.10), so a region with no room left is worth
     // NOTHING to deepen rather than merely less — which is what makes the area
-    // cap bite in the scoring as well as in the ground.
+    // cap bite in the scoring as well as in the ground. That half is unchanged.
+    //
+    // WHAT CHANGED IS THE SILENCE (KAN-134). This claim used to end "no candidate
+    // at all, not a quiet one", which was the bug read as a feature: a want that
+    // scored zero was dropped before it could write a clause, so a region given
+    // over to production and then filled — by sawpits here, by the hamlet floor's
+    // garden plots in the shipped world — read as focused and willing and
+    // published nothing whatever. [HC-16] says a decision that comes to nothing
+    // still needs a clause. The score is still zero and nothing is still raised.
     const town = timberTown();
     const roomy = deepWants(town, derive(town), 99).find((w) => w.region === 0)!;
 
     const packed = timberTown();
     for (let i = 0; i < 99; i++) if (!raise(packed, "sawpit", DAY0, packed.regions[0])) break;
 
-    const tighter = deepWants(packed, derive(packed), 99).find((w) => w.region === 0);
+    const spent = deepWants(packed, derive(packed), 99).find((w) => w.region === 0);
     expect(roomy.room).toBeGreaterThan(0);
-    expect(tighter).toBeUndefined(); // no candidate at all, not a quiet one
+    expect(roomy.terms.find((t) => t.key === "room")!.clause).toBe(ROOM_FOR_MORE);
+    expect(spent, "a full region published nothing at all").toBeDefined();
+    expect(spent!.room).toBe(0);
+    expect(spent!.score).toBe(0);
+    expect(spent!.terms.find((t) => t.key === "room")!.clause).toBe(NO_GROUND_LEFT);
+  });
+
+  it("says why a region given over to production has never had a thing raised on it", () => {
+    // KAN-134, AND THE FAILURE IT CLOSES WAS SILENT. [HC-98] raises a
+    // subsistence work on any ground the town holds, focused or not, so the
+    // hamlet floor can cover a small region in garden plots long before its
+    // governor has saved up for a farm. The region then read as focused, willing
+    // and empty: no want was published, no clause was written, and nothing was
+    // ever raised. Measured on four warm worlds, seventeen regions were in
+    // exactly that state.
+    const town = townOf(
+      [reg(0, "tilledGround", RING1.slice(0, 3), { bears: { food: "ideal" }, focus: "production" })],
+      { population: 400, wealth: 9000 },
+    );
+    // The hamlet floor takes the ground first, exactly as it does in the world.
+    for (let i = 0; i < 3; i++) raise(town, "gardenPlots", DAY0);
+    expect(depthOf(town, 0), "nothing anybody CHOSE stands there").toBe(0);
+    expect(capacityOf(town, town.regions[0]), "and no ground is left on it").toBe(0);
+
+    const want = deepWants(town, derive(town), 99).find((w) => w.region === 0);
+    expect(want, "focused ground nobody published a word about").toBeDefined();
+    expect(want!.terms.find((t) => t.key === "room")!.clause).toBe(NO_GROUND_LEFT);
+
+    // ...AND THE REFUSAL COSTS THE TOWN NOTHING, WHICH IS THE PRECONDITION THE
+    // FIX RESTS ON. Publishing a want nobody may act on is only safe because it
+    // scores zero, sorts last, and loses every tie to the work — so no season is
+    // ever handed to it and then given back as null. `deepenTurn` deliberately
+    // adds no gate of its own on the strength of that (measured bit-identical on
+    // four warm worlds), and this is the claim that goes red the day it stops
+    // being true.
+    const seasons = stepTownYears(town, 20, DAY0);
+    expect(depthOf(town, 0), "a region with no ground left was deepened anyway").toBe(0);
+    expect(
+      seasons.filter((s) => s.decided !== null).length,
+      "the refused region ate every season the town had",
+    ).toBeGreaterThan(0);
   });
 
   it("never offers one on ground nobody decided anything about", () => {
@@ -1448,13 +1497,16 @@ describe("after a warm start, ground that was given over has been worked", () =>
     // changes cannot be the criterion — so the criterion below is that every one
     // of those 159 is a published want with a named refusal, and the measurement
     // that follows it is a direction rather than a bound.
-    // Ground already spoken for, written out here rather than borrowed from
-    // `takenHexes`: the hexes the town has built over, plus the hexes anything
-    // still standing occupies.
-    const taken = (t: Town): string[] => [
-      ...t.footprint.claimed.map(keyOf),
-      ...t.works.filter((w) => w.hex && w.condition !== "ruin").map((w) => keyOf(w.hex!)),
-    ];
+    //
+    // AND THE ONE EXEMPTION IT CARRIED IS GONE (KAN-134). This claim used to
+    // excuse a focused region whose every hex was already spoken for, on the
+    // grounds that "there is no hex left on it" is not the auction failing —
+    // FIVE such regions across these three seeds, all of them filled by the
+    // hamlet floor's garden plots. It was true that the auction had not failed
+    // and false that nothing had: the region published no want, so nothing said
+    // why, which is exactly what [HC-16] forbids. `capacityOf` now counts the
+    // works standing on a region and the refusal goes out with the want, so the
+    // claim is the unqualified one: EVERY focused region is looked at.
     let worked = 0;
     let unreachable = 0;
     for (const seed of SEEDS) {
@@ -1471,23 +1523,10 @@ describe("after a warm start, ground that was given over has been worked", () =>
             worked++;
             continue;
           }
-          // Empty. Either the auction is looking at it — and its refusal is one
-          // of the four gates, each of which writes a clause — or there is no
-          // hex left on it to stand a work on, which is not the auction failing.
+          // Empty, and the auction must be LOOKING at it. Its refusal is then
+          // one of the five gates — coin, hands, materials, the patron's leave,
+          // or the ground itself — and every one of them writes a clause.
           if (published.has(r.id)) continue;
-          // THE ORACLE IS WRITTEN OUT rather than asked of `roomInRegion`, which
-          // is half the code under test. Ground is spoken for if the town built
-          // over it OR if something already stands there — and the second half
-          // is the one that matters, because it catches a case nobody had
-          // written down: FIVE FOCUSED REGIONS ACROSS THESE THREE SEEDS ARE FULL
-          // OF GARDEN PLOTS. A subsistence work raises itself on any ground the
-          // town holds, focused or not ([HC-98]), so the hamlet floor can fill a
-          // three-hex region before its governor ever saves up for a farm.
-          // `capacityOf` cannot see it — it subtracts the footprint and nothing
-          // else — so a guard written against capacity would have called this
-          // the auction's fault.
-          const spoken = new Set(taken(t));
-          if (r.hexes.every((h) => spoken.has(keyOf(h)))) continue;
           unreachable++;
         }
       }

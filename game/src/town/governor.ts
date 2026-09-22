@@ -22,9 +22,9 @@ import type { Town, Work, WorkKind, Need, Archetype, Suit, Derived, Region, Prod
 import { key } from "./hex";
 import {
   CATALOGUE, CHOOSABLE, FOCUS_EXPRESSIONS, buildable, raise, groundFor, mendable, repairCost, worthOf,
-  depthOf, roomInRegion, takenHexes,
+  depthOf, roomInRegion,
 } from "./works";
-import { compass, LABEL, bornePreference, capacityOf, claimedKeys, isBuildable, regionOf } from "./land";
+import { compass, LABEL, bornePreference, capacityOf, claimedKeys, takenHexes, isBuildable, regionOf } from "./land";
 import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf, cargoOf, dearnessOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
@@ -513,7 +513,7 @@ export function scoreFocus(
   r: Region,
   focus: FocusKind,
   derived = derive(town),
-  claimed = claimedKeys(town),
+  taken = takenHexes(town),
 ): FocusTerm[] {
   const d = derived;
   const terms: FocusTerm[] = [];
@@ -527,7 +527,12 @@ export function scoreFocus(
   // the land's voice is how well the ground bears TIMES how much of it is still
   // free. §2.3's budgeted, skewed region sizes have until now paid off only in
   // prose; this is where they start paying in the economy.
-  const free = capacityOf(town, r, claimed);
+  //
+  // AND "STILL FREE" NOW MEANS WHAT IT SAYS (KAN-134). It counted the footprint
+  // and not the works, so a governor could be told "there is depth in the cane
+  // flats" about three hexes the hamlet floor had already covered in garden
+  // plots — and then give that ground over to a production it had no room for.
+  const free = capacityOf(town, r, taken);
   const depth = free >= PLAN.focusDeepAt ? 1 : free / PLAN.focusDeepAt;
 
   if (focus === "production") {
@@ -619,10 +624,22 @@ const theGround = (r: Region): string =>
 
 // The focus wants-list, published for the same reason the work one is: the sim
 // is INSPECTABLE WITHOUT BEING CONTROLLABLE.
-export function focusWants(town: Town, derived = derive(town), limit = 3): FocusWant[] {
+export function focusWants(
+  town: Town,
+  derived = derive(town),
+  limit = 3,
+  taken = takenHexes(town),
+): FocusWant[] {
   const d = derived;
-  // [P-18]: the claimed set cannot change while the auction runs, so it is built
-  // once and handed to every region rather than rebuilt per candidate.
+  // [P-18]: neither set can change while the auction runs, so both are built once
+  // and handed to every region rather than rebuilt per candidate. THEY ARE TWO
+  // DIFFERENT QUESTIONS and not a redundancy — `focusLock` asks what the town has
+  // BUILT OVER, because that is the hex a growth focus locks on, and `scoreFocus`
+  // asks what is SPOKEN FOR, because a hex with a garden plot on it is no room for
+  // a sawpit.
+  //
+  // The spoken-for set is hoisted a level further, into `governorTurn`, because
+  // both auctions ask for it in the same season — see the note there.
   const claimed = claimedKeys(town);
   const out: FocusWant[] = [];
   for (let i = 0; i < town.regions.length; i++) {
@@ -632,7 +649,7 @@ export function focusWants(town: Town, derived = derive(town), limit = 3): Focus
       const focus = FOCUS_KINDS[f];
       if (!offers(town, r, i, focus)) continue;
       if (!permitsFocus(town, r, focus)) continue;
-      const terms = scoreFocus(town, r, focus, d, claimed);
+      const terms = scoreFocus(town, r, focus, d, taken);
       const score = terms.reduce((s, t) => s + t.weight, 0);
       if (score <= 0) continue;
       const best = focus === "production" ? expressionFor(r) : null;
@@ -742,6 +759,14 @@ const PROVED_CLAUSE: Record<Suit, (produce: string) => string> = {
 // is, because [HC-16] asks for a sentence and not an audit.
 export const ROOM_FOR_MORE = "there is room for more";
 
+// ...AND WHAT THE SAME TERM SAYS WHEN THERE IS NONE ([HC-16]: a decision that
+// comes to nothing still needs a clause). KAN-134: a region given over to
+// production and then filled by the hamlet floor read as focused and willing and
+// was neither — its room reading was zero, the product refused it, and the
+// candidate was dropped before it could say so. The refusal is the same reading
+// it always was; what is new is that somebody can read it.
+export const NO_GROUND_LEFT = "there is no ground left on it";
+
 // THE THREE READINGS MULTIPLY, AND THAT IS NOT A STYLISTIC CHOICE. §2.12.10
 // writes the score as a PRODUCT, and the product is what makes the area cap bite
 // in the scoring as well as in the ground: a region with no room left is worth
@@ -756,7 +781,6 @@ export function scoreDeepening(
   produce: Produce,
   suit: Suit,
   taken: Set<string>,
-  claimed: Set<string>,
 ): DeepTerm[] {
   // 1. POTENTIAL — what THIS ground bears and how well, plus the one other fact
   //    the region itself holds about what it pays: ground over the ridge yields
@@ -765,7 +789,7 @@ export function scoreDeepening(
 
   // 2. FREE CAPACITY — how much of its own ground is left. This is the term the
   //    cap lives in, and it is not a separate number: it is the hexes.
-  const room = roomInRegion(town, r, index, kind, "deepen", taken, claimed);
+  const room = roomInRegion(town, r, index, kind, "deepen", taken);
   const capacity = room >= PLAN.focusDeepAt ? 1 : room / PLAN.focusDeepAt;
 
   // 3. LOCAL PRICE — what this place would get for it, and nowhere else's price
@@ -777,7 +801,10 @@ export function scoreDeepening(
   const word = PRODUCE_WORD[produce];
   const terms: DeepTerm[] = [
     { key: "ground", weight: potential, clause: PROVED_CLAUSE[suit](word) },
-    { key: "room", weight: capacity, clause: ROOM_FOR_MORE },
+    // THE SAME READING, AND IT SAYS BOTH THINGS ([P-47], [HC-16]). One term, one
+    // number, and the clause is whichever sentence that number makes true — not
+    // a second term for the refusal, which would be the cap living in two places.
+    { key: "room", weight: capacity, clause: room > 0 ? ROOM_FOR_MORE : NO_GROUND_LEFT },
     { key: "market", weight: price, clause: `${word} fetches well here` },
   ];
   // [P-10]: a total order with an explicit tie-break, and its direction is the
@@ -794,12 +821,19 @@ export function deepScore(terms: DeepTerm[]): number {
 
 // The deepening wants-list, published for the same reason the other two are: the
 // sim is INSPECTABLE WITHOUT BEING CONTROLLABLE (§5.3).
-export function deepWants(town: Town, derived = derive(town), limit = 3): DeepWant[] {
+export function deepWants(
+  town: Town,
+  derived = derive(town),
+  limit = 3,
+  taken = takenHexes(town),
+): DeepWant[] {
   const d = derived;
-  // [P-18]: neither set can change while the auction runs, so both are built
-  // once and handed to every region rather than rebuilt per candidate.
-  const taken = takenHexes(town);
-  const claimed = claimedKeys(town);
+  // [P-18]: the set cannot change while the auction runs, so it is built once and
+  // handed to every region rather than rebuilt per candidate — and since KAN-134
+  // once per SEASON rather than once per auction, because `governorTurn` hoists
+  // it above both. It was two sets here until that story, and the second is gone
+  // rather than hoisted: `capacityOf` subtracts this one now, so nothing down
+  // here has a use for the footprint on its own.
   const spare = spareHands(d);
   const out: DeepWant[] = [];
   for (let i = 0; i < town.regions.length; i++) {
@@ -842,15 +876,26 @@ export function deepWants(town: Town, derived = derive(town), limit = 3): DeepWa
     // ([HC-94]) and a second cap beside it would be [P-47]'s second source. What
     // refuses a full region is the room reading, below, which is zero — and zero
     // times anything is zero.
-    const room = roomInRegion(town, r, i, kind, "deepen", taken, claimed);
-    const terms = scoreDeepening(town, r, i, kind, best.produce, best.suit, taken, claimed);
+    const room = roomInRegion(town, r, i, kind, "deepen", taken);
+    const terms = scoreDeepening(town, r, i, kind, best.produce, best.suit, taken);
     const score = deepScore(terms);
-    // THE GROUND BEING SPENT IS NOT A SEPARATE GATE, and deliberately not: a
-    // full region's capacity reading is zero, and zero times anything is zero,
-    // so the product refuses it here. An `if (room <= 0) continue` above this
-    // line said the same thing twice — it survived mutation for exactly that
-    // reason, and a rule stated twice is a rule no test can break ([P-1]).
-    if (score <= 0) continue;
+    // THE GROUND BEING SPENT IS STILL NOT A SEPARATE GATE — the room reading is
+    // zero, and zero times anything is zero, so the product refuses it exactly as
+    // it did. WHAT CHANGED IS THAT THE REFUSAL IS PUBLISHED (KAN-134, [HC-16]).
+    //
+    // A region given over to production and then covered by the hamlet floor's
+    // garden plots reads as focused and willing and is neither: it scores zero,
+    // and until now a zero-scored candidate was dropped here, so there was no
+    // want, no clause, and nothing anyone could read. Measured across four warm
+    // worlds, seventeen regions were in exactly that state. The want now goes out
+    // carrying `room: 0` and the clause that says why, and NOTHING NEW REFUSES
+    // IT: a zero score sorts last and loses every tie to the work, which was
+    // always the refusal — see `deepenTurn` for the measurement.
+    //
+    // Every OTHER way of scoring zero is still dropped, because there is nothing
+    // to say about ground whose price is nothing this season and whose room is
+    // untouched — it will argue again the moment the market moves.
+    if (score <= 0 && room > 0) continue;
     const def = CATALOGUE[kind];
     out.push({
       region: r.id,
@@ -1044,8 +1089,23 @@ function startable<T extends Startable>(ranked: T[]): T | null {
 const workTurn = (town: Town, day: number, d: Derived): Want | null =>
   startable(wants(town, day, CHOOSABLE.length, d));
 
-const deepenTurn = (town: Town, d: Derived): DeepWant | null =>
-  startable(deepWants(town, d, town.regions.length));
+// THERE IS NO FIFTH GATE HERE FOR THE GROUND, AND THAT WAS MEASURED RATHER THAN
+// ASSUMED (KAN-134). Since that story a full region's want is PUBLISHED with its
+// refusal instead of dropped ([HC-16]), so the obvious next move is to filter it
+// out again before the governor sees it — a `.filter(w => w.room > 0)` right
+// here. It was written, and then it was measured: four warm worlds, ~200 places,
+// eighty years each, BIT-IDENTICAL with it and without it. It changed nothing,
+// so it does not get to be there ([P-1]).
+//
+// WHY IT CANNOT BE REACHED, which is the rule this relies on and which is
+// already stated once, in `takesTheSeason`. A refused want scores exactly zero,
+// so it sorts last and is only ever `startable`'s pick when every candidate
+// scores zero — and a tie goes to the WORK, never to the deepening. The one path
+// left is a season with no work and no focus on offer either, where the decision
+// was going to be `null` whatever this function returned. Stating it again here
+// would be a rule stated twice, which is a rule no test can break.
+const deepenTurn = (town: Town, d: Derived, taken: Set<string>): DeepWant | null =>
+  startable(deepWants(town, d, town.regions.length, taken));
 
 // WHICH CANDIDATE TAKES THE SEASON when both auctions have something to say.
 // HOISTED OUT OF `governorTurn`'S CONDITION ([P-48]): it is a rule, not a
@@ -1097,9 +1157,19 @@ export function governorTurn(town: Town, day: number): Decision | null {
   const mended = mendTurn(town, d, day);
   if (mended) return mended;
 
-  const focus = focusWants(town, d, 1)[0] ?? null;
+  // [P-18], A LEVEL HIGHER THAN IT USED TO SIT (KAN-134). Both auctions ask what
+  // ground is already spoken for, and since `capacityOf` counts the works there
+  // is exactly one such set — so it is built ONCE A SEASON here rather than once
+  // per auction. Nothing between this line and the two calls can move it: the
+  // mend above returns early if it spends anything, and mending a work moves it
+  // from `decayed` to `idle`, which is the same side of `ruin` and so the same
+  // hex. Measured on this machine: `takenHexes` over fifty towns is 0.147 ms
+  // against `claimedKeys`' 0.035, so hoisting it is the difference between the
+  // season costing one of each and costing two of one.
+  const taken = takenHexes(town);
+  const focus = focusWants(town, d, 1, taken)[0] ?? null;
   const work = workTurn(town, day, d);
-  const deep = deepenTurn(town, d);
+  const deep = deepenTurn(town, d, taken);
   if (work === null && deep === null && focus === null) return null;
 
   const takes = takesTheSeason(work?.score ?? 0, deep?.score ?? 0, focus?.score ?? 0);

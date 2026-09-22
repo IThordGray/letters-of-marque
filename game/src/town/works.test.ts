@@ -1125,10 +1125,16 @@ describe("a focus buys capacity, and the ratio is area", () => {
     const small = hillsOf(RING1.slice(0, 3), "production");
     const large = hillsOf(RING2.slice(0, 9), "production");
 
+    // THE ORACLE IS READ BEFORE THE GROUND IS WORKED, and since KAN-134 it has
+    // to be: capacity counts the works standing on a region, so asking it after
+    // the sawpits are in gives zero on both towns and the claim asserts 0 === 0.
+    // The area it means is the area a governor had to spend.
+    const room = capacityOf(large, large.regions[0]) - capacityOf(small, small.regions[0]);
+
     const shallow = worked(small);
     const deep = worked(large);
     expect(deep).toBeGreaterThan(shallow);
-    expect(deep - shallow).toBe(capacityOf(large, large.regions[0]) - capacityOf(small, small.regions[0]));
+    expect(deep - shallow).toBe(room);
   });
 
   it("keeps a region's depth OUT of the struct — it is counted, never stored", () => {

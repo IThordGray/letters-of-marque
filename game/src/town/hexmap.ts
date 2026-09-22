@@ -84,7 +84,12 @@ export function regionSummary(town: Town, r: Region): RegionSummary {
     terrain: r.terrain,
     dead: isDead(r.terrain),
     hexes: r.hexes.length,
-    free: capacityOf(town, r) - here.filter((w) => w.condition !== "ruin").length,
+    // ONE PATH TO THE NUMBER ([P-47]). This subtracted the standing works from
+    // `capacityOf` by hand, on the far side of the module from the auctions that
+    // read the same quantity — and it subtracted them by COUNT, so a work on
+    // ground the town had also built over was charged twice and the map could
+    // read a negative. `capacityOf` counts them itself since KAN-134.
+    free: capacityOf(town, r),
     standing: [...counts].map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)),
     couldCarry: worksForRegion(town, r).map((k) => CATALOGUE[k].label),
     bears: Object.entries(r.bears) as [Produce, Suit][],

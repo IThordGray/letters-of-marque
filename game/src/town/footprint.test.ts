@@ -53,6 +53,39 @@ describe("growth eats its own cause", () => {
     expect(capacityOf(town, region)).toBe(capacityBefore - 1);
     expect(room()).toBe(roomBefore - 1);
   });
+
+  it("costs it that capacity for a work standing on it too, and for a hex only once", () => {
+    // KAN-134. Capacity read the FOOTPRINT and nothing else, so a region could
+    // report every hex free while something stood on every one of them — which
+    // is not an edge case: [HC-98] raises subsistence works on any ground the
+    // town holds, and seventeen regions across four warm worlds were given over
+    // to production with no hex left to put a work on.
+    //
+    // THE GARDEN PLOT IS THE SUBJECT AND IT HAS TO BE. The works that filled
+    // those regions in the shipped world are subsistence works — free,
+    // self-raising, never chosen and deliberately absent from `depthOf` — so a
+    // rule that counted only the works somebody decided on would leave the bug
+    // exactly where it was and pass a claim written about a sawpit.
+    const town = townOf(
+      [reg(0, "tilledGround", RING1, { bears: { food: "ideal", timber: "fair" }, focus: "production" })],
+      { population: 500, wealth: 9000 },
+    );
+    const region = town.regions[0];
+    const before = capacityOf(town, region);
+
+    const plot = raise(town, "gardenPlots", DAY0)!;
+    expect(capacityOf(town, region), "a garden plot stands on ground").toBe(before - 1);
+
+    raise(town, "sawpit", DAY0);
+    expect(capacityOf(town, region), "and so does a sawpit").toBe(before - 2);
+
+    // ONE HEX, COUNTED ONCE. The old arithmetic subtracted the footprint and the
+    // works separately — the map summary still did — so a work on ground the
+    // town had also built over was charged twice. Measured on four warm worlds
+    // before the fix: two regions read a hex short for exactly this reason.
+    town.footprint.claimed.push({ ...plot.hex! });
+    expect(capacityOf(town, region), "a built-over work is one hex, not two").toBe(before - 2);
+  });
 });
 
 describe("claimed ground is permanent", () => {
