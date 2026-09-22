@@ -10,6 +10,48 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-22 (third) — A raised work does not claim a hex
+
+**The fact that made KAN-126's report read as self-contradictory, and nobody could derive it from the
+names.** `footprint.claimed` is written **only** by `spread()` and by the founding centre hex. `raise()`
+never touches it. A work holds its ground through `Work.hex` alone.
+
+So both halves of the puzzle were true at once: `capacityOf` **did** subtract the footprint, and it
+**was** blind to the works — because a raised work never entered the set it subtracted. **Nothing
+about "subsistence" was special; a sawpit was equally invisible.** Measured on one seed: **129 of 217
+regions carry a work on ground the town has not built over.**
+
+**And the five stuck regions were not what the ticket said.** They were not *"a want published and
+nothing raised"* — **they published nothing at all.** The room term read zero, the product scored
+zero, and zero-scored candidates were dropped before they could write a clause. **Silence with no
+want, rather than a want with no clause** — which is a worse bug and a different one.
+
+Fixed (KAN-134) by making `capacityOf` *area less footprint less everything standing on it*, as the
+one path to that number, and giving the refusal words: **"there is no ground left on it."** Seventeen
+named refusals across four warm seeds where there had been silence.
+
+**`[HC-16]` gained a shape worth copying:** the refusal is the same reading the score already took,
+wearing its other sentence — one term, one number, two clauses. A second *term* for the refusal would
+have put the cap in two places.
+
+**What moved, isolated:** three of four warm seeds bit-identical. Seed 99 alone — wealth
+42,488 → **39,241** (−7.7%), trade 715 → 701, population 5,371 → 5,349. **The whole of it is one
+focus-expression work fewer standing** (49 → 48); no focus decision changed, one deepening did, and
+eighty years compounded it. Day-0 spread 8 / 89 / 1,518, unchanged. **KAN-132 calibrates against
+these numbers, not the earlier ones.**
+
+**`[P-1]` earned a clean instance worth holding up as the standard.** A five-line defensive gate was
+written, measured **bit-identical** across 200 places × 80 years × 4 seeds, and **deleted — with the
+measurement left in the comment so nobody re-adds it.** That is exactly what *"it needs to fight to
+be there"* asks for: not an argument that it was unnecessary, a measurement.
+
+**One structural limit, recorded so nobody spends the hour on it (KAN-135).** `WORKS.subsistenceAt`
+**cannot** be typed against `WorkKind`, because `works.ts` imports `WORKS` from `constants.ts` and
+typing the table would close a cycle. **So `[HC-91]`'s guarantee stops at the constants file**, and
+the only thing that can hold the line there is a test — which now exists.
+
+---
+
 ### 2026-09-22 (second) — The antfarm test, and the list is closed
 
 **THE MILESTONE NOW HAS A STATED TEST, in the human's own words:**

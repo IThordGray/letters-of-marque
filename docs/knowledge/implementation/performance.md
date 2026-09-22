@@ -120,10 +120,34 @@ value is a bug waiting for a rename. *(Earned on KAN-109: the deploy screen prev
 defenders from a hardcoded constant while the spawner fielded 9 — and because the preview took
 no grade at all, it could not have been right for more than one of three.)*
 
+> **A NEW TELL, and it is the cheapest one yet (2026-09-22, KAN-134): a local loop that reproduces a
+> named function's body.** Not two constants, not two fields — a `for` or a `filter` inline in one
+> file, counting the same thing a function next door already counts. `roomInRegion` walked a region's
+> hexes to count the free ones while `capacityOf` counted them in `land.ts`, **and the two differed
+> by exactly the works standing on the ground.** Three readers disagreed about how much room a region
+> had, and one of them — the map summary — subtracted the works *by count* rather than *by hex*, so
+> a work built over by the footprint was charged twice.
+>
+> **When you write a loop that counts, search for a function that already counts it.** The inline
+> version always looks cheaper than the call, and it is, right up until somebody changes what the
+> word means.
+
 **`[P-48]` If a loop condition encodes a rule, the rule is in the wrong place.** The clamp on
 how many sentry posts a grade could field lived inside the spawner's loop conditions, where no
 other reader could see it — which is *why* `[P-47]` was violated. Hoist the limit to where both
 sides can read it.
+
+> **AND WHERE THE LOOP IS UNBOUNDED, THE SAME MISTAKE IS AN INFINITE LOOP (2026-09-22, KAN-134).**
+> `raiseSubsistence` reads `while (countOf < want && roomFor > 0) raise(...)` — the **guard** asks
+> one function whether there is room, and the **body** asks a different one where to put the hut. The
+> day those two disagree, the guard says yes for ever and the body raises nothing. One mutation
+> during KAN-134 made them disagree and **hung the entire suite.**
+>
+> **Note what that failure looks like, because it is not a red test: a synchronous spin cannot be
+> timed out.** The runner's `testTimeout` is a hang detector for *async* work; a `while` that never
+> yields takes the process with it, so the symptom is a suite that never finishes rather than one
+> that fails. **Where a loop's guard and its body both ask "is there room", they must ask the same
+> function** — and if that is not possible, the loop needs a hard iteration bound.
 
 **`[P-49]` A rate must name its denominator, in the type.** `wealthLoss: number // a share of coin on
 hand` was a wrong model wearing a label, and everything downstream reasoned about it correctly — from
