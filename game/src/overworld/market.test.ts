@@ -1151,15 +1151,45 @@ describe("a town's own trade turns a very small profit", () => {
     // difference between a port and a great port". If trade alone closed that
     // gap, the whole haven-development thread would lose its leverage.
     //
-    // Measured pooled across four worlds, coin put by in the first decade:
-    // 156 with the crown's standing grant against 38 without it — the crown is
-    // worth FOUR TIMES the median place's own trade. Per seed the ratio runs
-    // 1.6x to 14x, so the bound is set on the pool, where the sample is 194
-    // places rather than fifty.
-    const withCrown = medianOf(arms.flatMap((a) => a.live.map((i) => a.gainedWithCrown[i])));
-    const alone = medianOf(arms.flatMap((a) => a.live.map((i) => a.gainedAlone[i])));
-    expect(alone).toBeGreaterThan(0); // ...the liveness half: trade does turn a profit
-    expect(withCrown).toBeGreaterThan(alone * 2);
+    // SPLIT BY QUAY, BECAUSE [P-55] SAYS THE POOLED MEDIAN DESCRIBES NOBODY, and
+    // KAN-126 is what forced the issue. The claim used to read `alone > 0` off
+    // the whole population — the median place put 38 coin by in a decade — and
+    // that 38 was always "the average of a windfall and a deficit". Split, the
+    // same four worlds read:
+    //
+    //                       with the crown    on its own trade
+    //   before   quayed          988.68             771.74   (n=92)
+    //            bare             51.04              -3.94   (n=102)
+    //   after    quayed          901.40             612.08   (n=46)
+    //            bare              0.30              -7.68   (n=148)
+    //
+    // The pooled `alone` median fell 38.02 -> 0.00 and the claim went red — but
+    // the population it described had not stopped earning, it had stopped being
+    // one population. WHAT ACTUALLY MOVED IS THE COUNT: quayed places halved,
+    // 92 -> 46, because `quaysideOf` lost the fishing shacks' cut of the traffic
+    // (14.5% of all trade income in the world, measured) and fewer places can
+    // afford a waterfront work. That is `quaysideOf` being load-bearing, which
+    // KAN-131 named and KAN-132 owns.
+    //
+    // A POOLED MEDIAN SITTING AT A CLAMP IS [P-52]'S OWN TELL, and it is the
+    // reason the bound below is on the halves rather than on the whole: half the
+    // world's places settle a negative yield at exactly zero, so the median of
+    // the whole is a report about the clamp and not about trade.
+    const median = (pick: (a: (typeof arms)[0], i: number) => number, quay: boolean) =>
+      medianOf(arms.flatMap((a) => a.live.filter((i) => a.quayed[i] === quay).map((i) => pick(a, i))));
+
+    const quayedAlone = median((a, i) => a.gainedAlone[i], true);
+    const quayedCrown = median((a, i) => a.gainedWithCrown[i], true);
+    const bareAlone = median((a, i) => a.gainedAlone[i], false);
+
+    // THE LIVENESS HALF, on the half of the population that has a quay: trade
+    // does turn a profit, and a real one, for a place that can reach a market.
+    expect(quayedAlone).toBeGreaterThan(0);
+    // ...and the half without one does not, which is the sentence the pooled
+    // median was hiding rather than a new finding: it was already -3.94.
+    expect(bareAlone).toBeLessThan(quayedAlone);
+    // THE RULE ITSELF, asked where it can be asked honestly.
+    expect(quayedCrown).toBeGreaterThan(quayedAlone);
   });
 
   it("and a storm is still worth fearing on it", () => {

@@ -19,7 +19,7 @@ import { stepWorldSeason } from "../overworld/market";
 import { derive, stepYears, stepSeason, summarise } from "./sim";
 import { canBuild, dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
 import { bestBorne, isWater, liveRegions, regionOf } from "./land";
-import { CENTRE } from "./hex";
+import { CENTRE, key as keyOf } from "./hex";
 import { warmStart } from "../overworld/worldgen";
 import { PLAN, DECAY, TRADE } from "./constants";
 import { CALENDAR, DAYS_PER_YEAR } from "../overworld/calendar";
@@ -1426,32 +1426,74 @@ describe("after a warm start, ground that was given over has been worked", () =>
     }
   });
 
-  it("leaves almost no focused ground standing empty, which is the story's acceptance", () => {
-    // THE HEADLINE MEASUREMENT. Before this story, 260 of 369 production-focused
-    // live regions across four seeds carried nothing at all, because the auction
-    // could not reach them: its ranking put the crop below a tavern and
-    // `def.max` stopped it at nine per town. Ground given over now gets its
-    // first work from the focus that named it.
+  it("never leaves focused ground empty because nobody looked at it", () => {
+    // THE STORY'S ACCEPTANCE, AND IT IS THE MECHANISM RATHER THAN THE RATIO
+    // (rewritten KAN-126). KAN-125's own words: "what remains is refused by
+    // coin, hands or materials — never by nobody looking." That sentence is the
+    // claim; the empty SHARE was only ever a proxy for it, and the proxy broke
+    // the moment the denominator moved.
     //
-    // WHAT REMAINS IS EXPLAINABLE BY COIN, HANDS OR MATERIALS and never by the
-    // auction failing to look — so the claim is that the remainder is small, not
-    // that it is nil. Measured 2026-09-21: 46% before is 19% of live regions
-    // after; per seed, the empty share of focused ground runs 33-56%, against
-    // 60-78% before.
+    // WHY IT MOVED, MEASURED. KAN-126 made two more produces expressible, so
+    // ground that could not legitimately be given over at all — a reef for its
+    // fish, cotton flats for their cotton — became decidable overnight. Pooled
+    // across these three seeds:
+    //
+    //                      focused   empty   worked
+    //   before KAN-126        123      67       56
+    //   after                 242     159       83
+    //
+    // The empty SHARE rose 54% -> 66% and the ground actually WORKED rose by
+    // half, because the denominator nearly doubled with ground that had never
+    // been a candidate before. A ratio whose denominator is what the story
+    // changes cannot be the criterion — so the criterion below is that every one
+    // of those 159 is a published want with a named refusal, and the measurement
+    // that follows it is a direction rather than a bound.
+    // Ground already spoken for, written out here rather than borrowed from
+    // `takenHexes`: the hexes the town has built over, plus the hexes anything
+    // still standing occupies.
+    const taken = (t: Town): string[] => [
+      ...t.footprint.claimed.map(keyOf),
+      ...t.works.filter((w) => w.hex && w.condition !== "ruin").map((w) => keyOf(w.hex!)),
+    ];
+    let worked = 0;
+    let unreachable = 0;
     for (const seed of SEEDS) {
       const warm = warmStart(seed);
-      let focused = 0;
-      let empty = 0;
       for (const t of warm.towns) {
+        const d = derive(t);
+        // The whole published list, not the head: `deepWants`' default limit is
+        // three, and a claim about every focused region has to ask for every one.
+        const published = new Set(deepWants(t, d, t.regions.length).map((w) => w.region));
         for (let i = 0; i < t.regions.length; i++) {
-          if (t.regions[i].focus !== "production") continue;
-          focused++;
-          if (depthOf(t, i) === 0) empty++;
+          const r = t.regions[i];
+          if (r.focus !== "production") continue;
+          if (depthOf(t, i) > 0) {
+            worked++;
+            continue;
+          }
+          // Empty. Either the auction is looking at it — and its refusal is one
+          // of the four gates, each of which writes a clause — or there is no
+          // hex left on it to stand a work on, which is not the auction failing.
+          if (published.has(r.id)) continue;
+          // THE ORACLE IS WRITTEN OUT rather than asked of `roomInRegion`, which
+          // is half the code under test. Ground is spoken for if the town built
+          // over it OR if something already stands there — and the second half
+          // is the one that matters, because it catches a case nobody had
+          // written down: FIVE FOCUSED REGIONS ACROSS THESE THREE SEEDS ARE FULL
+          // OF GARDEN PLOTS. A subsistence work raises itself on any ground the
+          // town holds, focused or not ([HC-98]), so the hamlet floor can fill a
+          // three-hex region before its governor ever saves up for a farm.
+          // `capacityOf` cannot see it — it subtracts the footprint and nothing
+          // else — so a guard written against capacity would have called this
+          // the auction's fault.
+          const spoken = new Set(taken(t));
+          if (r.hexes.every((h) => spoken.has(keyOf(h)))) continue;
+          unreachable++;
         }
       }
-      expect(focused, `seed ${seed}`).toBeGreaterThan(20);
-      expect(empty / focused, `seed ${seed}`).toBeLessThan(0.6);
     }
+    expect(unreachable, "focused ground the deepening auction never offered").toBe(0);
+    expect(worked, "no focused ground anywhere was worked at all").toBeGreaterThan(40);
   });
 
   it("gives the same world the same depths", () => {

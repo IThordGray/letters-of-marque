@@ -14,6 +14,7 @@ import {
   CAPITAL, CHOOSABLE, FOCUS_EXPRESSIONS, isFocusExpression,
 } from "./works";
 import { capacityOf } from "./land";
+import { cargoOf, PRODUCE_CLASS } from "./trade";
 import { stepTownSeason, type Decision, type Built } from "./governor";
 import { DECAY, POP, SUIT_YIELD, WORKS } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
@@ -647,10 +648,16 @@ describe("the chains are cut — goods survive, chains do not", () => {
   });
 });
 
-describe("twelve capital works resolve three and eight", () => {
+describe("the catalogue may grow and the menu may not", () => {
   // §2.12.12. THE WORK SURVIVES; THE MENU CHOICE DIES. A focus expression is
   // still raised, priced, gated and rotted like any other capital work — what it
   // is not is a thing a governor picks off a list.
+  //
+  // RENAMED FROM "twelve capital works resolve three and eight" (KAN-126), and
+  // the rename is the point rather than housekeeping: the old name pinned the
+  // arithmetic of one moment, and the very next story added two works. The claim
+  // that outlives the counts is the one §2.12.14 calls the structural argument
+  // for this whole direction — THE CATALOGUE CAN GROW AND THE CHOICE CANNOT.
 
   it("offers the governor eight works and no crop among them", () => {
     // THE ORACLE IS WRITTEN OUT rather than read back off the catalogue, because
@@ -659,8 +666,89 @@ describe("twelve capital works resolve three and eight", () => {
     expect(CHOOSABLE.slice().sort()).toEqual(
       ["barracks", "battery", "church", "customsHouse", "palisade", "shipway", "tavern", "warehouse"],
     );
-    expect(FOCUS_EXPRESSIONS.slice().sort()).toEqual(["caneField", "provisionGround", "sawpit"]);
-    expect(CAPITAL.length).toBe(11); // eleven, because the boiling house is gone
+    // FIVE NOW, and the two newcomers are KAN-126's: `grainFields` and
+    // `cottonWalk` arrived as focus expressions (§2.12.14) so that the ground
+    // the world paints could finally be worked without the menu lengthening.
+    expect(FOCUS_EXPRESSIONS.slice().sort()).toEqual(
+      ["caneField", "cottonWalk", "grainFields", "provisionGround", "sawpit"],
+    );
+    expect(CAPITAL.length).toBe(13); // eleven before KAN-126; the boiling house is still gone
+  });
+
+  it("let the catalogue grow by two without lengthening the governor's list by one", () => {
+    // THE STRUCTURAL CLAIM, and it should not rest on anybody's reading of the
+    // code. §2.12.14: "that is the structural argument for this direction over
+    // any alternative that adds works — it is the only one where the catalogue
+    // can grow and the choice cannot."
+    //
+    // It holds because `CHOOSABLE` is DERIVED from the catalogue's own columns
+    // rather than listed beside it: a capital work that names a produce is what
+    // a focus on that ground IS, so it can never reach the menu. The claim is
+    // therefore about the mechanism and not about today's arithmetic — the two
+    // works that landed are counted, and the menu is asserted not to have moved.
+    expect(CAPITAL.length - CHOOSABLE.length).toBe(FOCUS_EXPRESSIONS.length);
+    expect(CHOOSABLE.length).toBe(8);
+    for (const kind of CHOOSABLE) {
+      expect(CATALOGUE[kind].produces, `${kind} grows something and is still on the menu`).toBeNull();
+    }
+  });
+
+  it("gives every produce a work can make a cargo class, so nothing is quaysided by accident", () => {
+    // §2.12.13, and the failure it guards is silent rather than loud. A work
+    // whose produce has no row in `PRODUCE_CLASS` reads as having NO CARGO CLASS
+    // — which is the customs house's case, "a cut of the traffic on access
+    // alone" — so a missing row would not throw, it would quietly pay a farm a
+    // harbourmaster's wage. Salt has no row ON PURPOSE (§2.12.15) and this claim
+    // is what keeps that safe: nothing in the catalogue produces salt, so the
+    // missing row is unreachable rather than a hole, and the day a salt works
+    // arrives this goes red instead of the world going strange.
+    for (const kind of CAPITAL.concat(SUBSISTENCE)) {
+      const p = CATALOGUE[kind].produces;
+      if (p === null) continue;
+      expect(cargoOf(kind), `${kind} produces ${p} and has no cargo class`).not.toBeNull();
+    }
+    expect(PRODUCE_CLASS.salt, "salt has a class, and §2.12.15 defers it").toBeUndefined();
+  });
+
+  it("makes every work that grows something put a figure in the column its class names", () => {
+    // §2.12.13, both directions. A work's cargo class decides WHICH COLUMN
+    // carries it — victuals in `food`, materials and luxury in `trade` — so a
+    // work that names a produce and leaves that column at nothing is a farm that
+    // grows nothing, and it would be silent.
+    //
+    // THIS IS THE STORY'S OWN NAMED HAZARD, and it earned a claim by surviving a
+    // mutation. §2.12.12's `expressionFor` stops at the first produce the
+    // catalogue can express, so the day `grainFields` exists TILLED GROUND STOPS
+    // RAISING PROVISION GROUNDS AND STARTS RAISING GRAIN — and if grain fields
+    // fed nobody, every town founded on tilled ground would quietly lose its
+    // food source. Setting `grainFields.food` to zero broke ONE claim in the
+    // whole suite, and an incidental one, because the hamlet floor's garden
+    // plots kept every place standing while it shrank. A place that shrinks
+    // quietly is exactly what a suite cannot see.
+    for (const kind of CAPITAL.concat(SUBSISTENCE)) {
+      const cargo = cargoOf(kind);
+      if (cargo === null) continue;
+      const column = cargo === "victuals" ? CATALOGUE[kind].food : CATALOGUE[kind].trade;
+      expect(column, `${kind} grows ${CATALOGUE[kind].produces} and ships none of it`).toBeGreaterThan(0);
+    }
+  });
+
+  it("counts a victuals work's cargo in its food column and never in its trade one", () => {
+    // §2.12.13's SECOND CONSEQUENCE, as a rule the suite can hold: "the columns
+    // are unchanged — victuals are counted in a work's `food` column, materials
+    // and luxury in its `trade` column."
+    //
+    // WHY IT IS WORTH A CLAIM RATHER THAN A COMMENT, and this is the live bug it
+    // guards. `commerceOf` scales the weather's share into the materials and
+    // luxury columns by hand, because the victuals column arrives already
+    // scaled — so a victuals figure sitting in `trade` is the one number a storm
+    // could not touch. A fishing shack carried `trade: 2` for the old keying's
+    // sake, and after the re-key that two would have been fish no storm could
+    // spoil. The rule makes it unwritable.
+    for (const kind of CAPITAL.concat(SUBSISTENCE)) {
+      if (cargoOf(kind) !== "victuals") continue;
+      expect(CATALOGUE[kind].trade, `${kind} carries victuals in its trade column`).toBe(0);
+    }
   });
 
   it("has no boiling house left to build", () => {

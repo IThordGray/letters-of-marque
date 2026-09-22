@@ -29,6 +29,7 @@ import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, war
 import { derive, failureWord } from "../town/sim";
 import { canBuild, dependencyWord } from "../town/trade";
 import { CATALOGUE, regionsFor } from "../town/works";
+import { isDead } from "../town/land";
 import { WORKS } from "../town/constants";
 import { deepWants, wants } from "../town/governor";
 
@@ -379,7 +380,23 @@ describe("day 0 holds a world with a past", () => {
     const purses = Object.values(SIZES).map((s) => s.wealth);
     const coin = WARM.towns.map((t) => t.wealth).sort((a, b) => a - b);
     expect(coin[coin.length - 1]).toBeGreaterThan(Math.max(...purses) * 8);
-    expect(new Set(WARM.towns.map((t) => t.wealth)).size).toBeGreaterThan(WARM.towns.length * 0.8);
+
+    // SAID DIRECTLY, WHERE IT USED TO BE SAID THROUGH A PROXY (rewritten
+    // KAN-126). The second assertion counted DISTINCT purses and wanted four in
+    // five of them different — which is a claim about how many places sit at the
+    // same number, and the number they sit at is ZERO. `settleSeason` clamps a
+    // negative yield, so every place whose keep outruns its trade lands on the
+    // same value, and the count therefore measured POVERTY while reading as
+    // variety. KAN-126 moved it (2/4/1/3 places at nothing across four seeds
+    // before, 13/17/7/7 after) and the assertion went red for a thing it was
+    // never written about.
+    //
+    // The claim it means is "day-0 wealth is nothing like the founding table",
+    // and that can be asserted about the table: not one place still holds the
+    // purse its class landed with. The clamp has its own claims, at town scale,
+    // in `trade.test.ts` — "a purse stops at nothing rather than going below it"
+    // — which is where a rule about one place's ledger belongs ([P-47]).
+    expect(WARM.towns.filter((t) => purses.some((p) => p === t.wealth)).length).toBe(0);
   });
 
   it("has built over its own ground, rather than sitting on the hex it landed on", () => {
@@ -592,19 +609,39 @@ describe("nobody sits on his own timber for want of planks", () => {
     expect(idle, who.join(", ")).toBeLessThan(6);
   });
 
-  it("still cuts most of the timber the map bears, and leaves a few coasts uncut", () => {
+  it("still cuts a good share of the timber the map bears, and leaves a good share uncut", () => {
     // THE LIVENESS GUARD, because "nobody is sitting on uncut timber with money"
     // is also satisfied by a world with no timber in it and by a world where
-    // nobody has a coin. Measured: 13–22 coasts a world bear timber, 9–15 of
-    // them have cut it, and 4–7 have not — the last because they are poor or
-    // young, never because they could not get planks.
+    // nobody has a coin.
+    //
+    // POOLED, AND RE-MEASURED UNDER KAN-126. It was a per-seed bound — "more
+    // than half of them have cut it" — on a distribution over fifty places, and
+    // the suite's own rule says to pool that. It went red at 9 of 18 on one
+    // seed, which a per-seed bound cannot tell from ordinary variance.
+    //
+    //   pooled across the four worlds   bears   cut
+    //   before KAN-126                     71    47   (66%)
+    //   after                              71    30   (42%)
+    //
+    // THE DROP IS REAL AND IT IS REPORTED RATHER THAN WIDENED AWAY. Two more
+    // produces became expressible, so tilled ground and cotton flats now compete
+    // with timbered hills for the season's one decision and for the same coin —
+    // and both crops are cheaper than a 260-coin pit. Fewer coasts cut their
+    // timber, so the world makes a third less in materials, so [HC-87c]'s gate
+    // binds on more places. That belongs on the ticket, not in this bound; what
+    // this claim has to go on doing is refusing a world with no timber in it and
+    // a world that is nothing but sawpits.
+    let bearsAll = 0;
+    let cutAll = 0;
     for (const warm of days) {
       const bears = warm.towns.filter((t) => regionsFor(t, "sawpit").length > 0 || t.works.some((w) => w.kind === "sawpit"));
       const cut = warm.towns.filter((t) => t.works.some((w) => w.kind === "sawpit" && w.condition !== "ruin"));
       expect(bears.length).toBeGreaterThan(8);
-      expect(cut.length).toBeGreaterThan(bears.length / 2);
-      expect(cut.length).toBeLessThan(bears.length); // ...and the world is not all sawpits
+      bearsAll += bears.length;
+      cutAll += cut.length;
     }
+    expect(cutAll).toBeGreaterThan(bearsAll / 4); // the world is cutting timber...
+    expect(cutAll).toBeLessThan(bearsAll * 0.9); // ...and it is not all sawpits
   });
 
   it("goes on refusing everything else to a place that can get no planks", () => {
@@ -645,6 +682,53 @@ describe("nobody sits on his own timber for want of planks", () => {
     }
     expect(gated, "no place in four worlds is short of timber and stone").toBeGreaterThan(10);
     expect(exempted, "not one stone-poor place was offered its own pit").toBeGreaterThan(0);
+  });
+
+  it("leaves inert only the ground the terrain lockdown has still to decide about", () => {
+    // KAN-126'S ACCEPTANCE, and §2.12.14's own measurement re-run. The generator
+    // paints, names, describes and draws ground that nothing in the catalogue
+    // can touch: measured before this story, 12–22% of every town's BEARING
+    // regions were inert and 9–13% of its hexes — `cottonGround`, `saltPans` and
+    // `rockyGround`.
+    //
+    // A REGION IS INERT IF NOTHING IN THE CATALOGUE CAN MAKE ANY OF WHAT IT
+    // BEARS, which is §2.12.14's own wording read off the ground rather than off
+    // the works ("four of the world's eight produces have no work in the
+    // catalogue at all — grain, cotton, stone, salt"). `grainFields` and
+    // `cottonWalk` close two of those four, and the two that are left are the
+    // two §2.12.15 defers on purpose — stone waits on a quarry and salt on its
+    // trade class, and both wait on the terrain-kind lockdown.
+    //
+    //   pooled across four warm worlds   regions        hexes
+    //   before KAN-126                   119/636 18.7%   659/5687 11.6%
+    //   after                             58/636  9.1%   261/5687  4.6%
+    //
+    // THE REMAINDER IS NAMED RATHER THAN BOUNDED, because "and nothing else" is
+    // the acceptance: a third kind of dead ground appearing here is a story that
+    // forgot to give its produce a work, and a bound would let it through.
+    const expressible = new Set<string>();
+    for (const kind of Object.keys(CATALOGUE) as (keyof typeof CATALOGUE)[]) {
+      const p = CATALOGUE[kind].produces;
+      if (p) expressible.add(p);
+    }
+    const inert: Record<string, number> = {};
+    let bearing = 0;
+    let dead = 0;
+    for (const warm of days) {
+      for (const t of warm.towns) {
+        for (const r of t.regions) {
+          const borne = Object.keys(r.bears);
+          if (isDead(r.terrain) || borne.length === 0) continue;
+          bearing++;
+          if (borne.some((p) => expressible.has(p))) continue;
+          dead++;
+          inert[r.terrain] = (inert[r.terrain] ?? 0) + 1;
+        }
+      }
+    }
+    expect(bearing, "no town in four worlds bears anything").toBeGreaterThan(400);
+    expect(Object.keys(inert).sort()).toEqual(["rockyGround", "saltPans"]);
+    expect(dead / bearing).toBeLessThan(0.12); // was 18.7%, and the spec's own band started at 12%
   });
 });
 

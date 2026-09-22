@@ -22,7 +22,7 @@
 //         nothing moves either direction — which is why raiding and trade are
 //         the same mechanism seen from two sides.
 
-import type { Derived, Town, Work, WorkKind } from "./types";
+import type { Derived, Produce, Town, Work, WorkKind } from "./types";
 import { CATALOGUE, harvestShare } from "./works";
 import { ACCESS, FOOD, TRADE, WEALTH, DEPENDENCY_BANDS } from "./constants";
 
@@ -48,6 +48,54 @@ export const CLASS_ORDER = (Object.keys(CLASSES) as TradeClass[]).sort(
 export const CLASS_COUNT = CLASS_ORDER.length;
 
 export const rankOf = (c: TradeClass): number => CLASSES[c].rank;
+
+// ---- A CARGO'S CLASS COMES OFF THE GROUND (§2.12.13) -----------------------
+//
+// ONE TABLE, AND THE GROUND FILLS IT IN. A cargo's class used to be a
+// hand-written column on the work — `WorkDef.exports` — which meant a town's
+// place in [HC-77]'s pyramid was a property of WHICH BUILDINGS ITS GOVERNOR
+// HAPPENED TO PICK. Keyed to the produce instead, it becomes a property of the
+// coast the place was founded on, and two towns with the same works on
+// different ground are two different towns on the world market. That is the
+// whole of the change, and it makes the pyramid mean MORE rather than less.
+//
+// WHAT IS NOT IN THIS TABLE, AND WHY EACH IS ABSENT:
+//
+//  * `salt` — DEFERRED ON PURPOSE to the terrain-kind lockdown (§2.12.15). It is
+//    unreachable rather than missing: nothing in the catalogue produces salt, so
+//    nothing is ever classified as salt. [HC-90]'s 2026-09-21 corollary is the
+//    reason it is safe to ship without it — CONTENT CANNOT BLOCK A MECHANIC, and
+//    the test to apply is whether the deferred work would change CODE here or
+//    only rows. Only rows.
+//  * `stone` IS here, and is the mirror of the same test: §2.12.13's table says
+//    materials are timber AND stone, so the row is the spec's own. Nothing
+//    quarries stone yet, so it is inert — and it must not LEAD the mechanic
+//    either, which is why it arrives as one entry in a table and not as a work.
+export const PRODUCE_CLASS: Partial<Record<Produce, TradeClass>> = {
+  food: "victuals",
+  fish: "victuals",
+  grain: "victuals",
+  timber: "materials",
+  stone: "materials",
+  cane: "luxury",
+  cotton: "luxury",
+};
+
+// WHICH CARGO A WORK'S OUTPUT IS — the one function everything else asks
+// ([P-47]). Three readers with three different questions come through here:
+// what a work sends to the quay (`producedOf`), whether it fills a hold at all
+// (`quaysideOf`), and what it would fetch (`fetchOf`) — and a work that grows
+// nothing has no cargo class, so it earns its cut of the traffic on `access`.
+//
+// THE `food > 0` FALLBACK IS GONE. It read "a work that feeds the town and ships
+// nothing is carrying victuals", which was the old column's way of saying what
+// the produce now says outright. Measured before deleting it: it changed no
+// answer for any row in the catalogue, because every work with a food column
+// also names a produce.
+export const cargoOf = (kind: WorkKind): TradeClass | null => {
+  const p = CATALOGUE[kind].produces;
+  return p === null ? null : (PRODUCE_CLASS[p] ?? null);
+};
 
 // ---- What the world hands the town ([HC-72]'s "cleared trade" row) ---------
 //
@@ -186,11 +234,21 @@ export interface Commerce {
 // because that column already exists and already means "mouths this feeds";
 // materials and luxury are counted in a work's `trade`, which [HC-83]'s reframing
 // makes literal — "what a work sends to the quay".
+//
+// THE COLUMNS DID NOT MOVE WHEN THE KEYING DID (§2.12.13), and only `cargoOf`
+// changed underneath this loop. But note what this line now MAKES POSSIBLE and
+// what the catalogue therefore must not do: rank 0 can receive a `trade` figure
+// for the first time, because a victuals produce is a thing a work can name.
+// Rank 0's `food` argument arrives from `derive` ALREADY SCALED by the weather,
+// and the two lines in `commerceOf` that scale ranks 1 and 2 cannot scale a
+// contribution made here — so a victuals figure in a `trade` column would be
+// cargo no storm could spoil. `works.test.ts` forbids one outright, which is
+// cheaper than a third scaling line and cannot be forgotten.
 export function producedOf(working: Work[], food: number): number[] {
   const out = [food, 0, 0];
   for (let i = 0; i < working.length; i++) {
     const w = working[i];
-    const cls = CATALOGUE[w.kind].exports;
+    const cls = cargoOf(w.kind);
     if (cls) out[CLASSES[cls].rank] += w.trade;
   }
   return out;
@@ -200,11 +258,15 @@ export function producedOf(working: Work[], food: number): number[] {
 // work with no cargo class earns on `access` and nothing else — which is still
 // EARNED rather than emitted, because access is exactly what a raider burns and
 // a blockade closes.
+//
+// "NO CARGO CLASS" NOW MEANS "GROWS NOTHING", which is the same sentence read
+// off the produce. The arithmetic below is untouched and deliberately so — it is
+// KAN-132's, not this story's.
 export function quaysideOf(working: Work[]): number {
   let out = 0;
   for (let i = 0; i < working.length; i++) {
     const w = working[i];
-    if (CATALOGUE[w.kind].exports === null) out += w.trade;
+    if (cargoOf(w.kind) === null) out += w.trade;
   }
   return out;
 }
@@ -336,7 +398,7 @@ export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.build
 // list is the half that gets forgotten.
 //
 // RE-KEYED TO THE PRODUCE 2026-09-21 (§2.12.13, [HC-87c]'s own amendment): it
-// reads `produces ∈ {timber, stone}` rather than `exports === "materials"`.
+// reads the produce's class rather than `exports === "materials"`.
 // SAME RULE, SAME SINGLE SOURCE, ONE INDIRECTION SHORTER — and it has one live
 // consequence, which is the point of doing it here rather than later. A
 // `shipway` produces nothing; it is a harbour work that takes its cut of the
@@ -348,10 +410,11 @@ export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.build
 // [HC-87c] IS UNTOUCHED: the gate still fires at "cannot GET them" and never at
 // "is a little short". What is exempted is one class of work from the materials
 // BILL, not the gate from the world.
-export const producesMaterials = (kind: WorkKind): boolean => {
-  const p = CATALOGUE[kind].produces;
-  return p === "timber" || p === "stone";
-};
+// ONE INDIRECTION SHORTER STILL (KAN-126). It spelled out `timber` and `stone`
+// while `PRODUCE_CLASS` was also saying so, which is one fact with two sources —
+// exactly what [P-47] forbids, and exactly the shape that leaves a quarry half
+// classified the day one arrives. It asks the table now.
+export const producesMaterials = (kind: WorkKind): boolean => cargoOf(kind) === "materials";
 
 // The gate as a governor actually asks it: about THIS work, in THIS town.
 export const canBuildKind = (c: Commerce, kind: WorkKind): boolean =>
@@ -372,14 +435,6 @@ export const NO_MATERIALS_CLAUSE = "there is no timber or stone to be had";
 // [HC-71] holds: the town reads the block the world handed it and never reaches
 // out to ask a neighbour anything.
 export const priceOf = (town: Town, cls: TradeClass): number => town.market.price[CLASSES[cls].rank];
-
-// WHICH CARGO A WORK'S OUTPUT IS, read off the catalogue's OWN COLUMNS rather
-// than listed beside it ([P-47]). §2.12.13 fixes the reading: materials and
-// luxury are counted in a work's `trade` column and victuals in its `food` one,
-// so a work that feeds the town and ships nothing is carrying victuals. A work
-// that does neither fills no hold at all and has no cargo class.
-export const cargoOf = (kind: WorkKind): TradeClass | null =>
-  CATALOGUE[kind].exports ?? (CATALOGUE[kind].food > 0 ? "victuals" : null);
 
 // HOW DEAR THIS CARGO IS HERE, against the dearest this market may ever make it
 // — 0..1, and it is the "local price" a deepening is scored from ([HC-97]).
@@ -403,9 +458,9 @@ export const dearnessOf = (town: Town, cls: TradeClass): number => {
 // A work with no cargo class fills no hold, so it fetches its own cut of the
 // traffic and rides on `access` alone.
 export function fetchOf(town: Town, kind: WorkKind, access: number): number {
-  const def = CATALOGUE[kind];
-  const price = def.exports ? town.market.price[CLASSES[def.exports].rank] : 1;
-  return def.trade * price * access;
+  const cargo = cargoOf(kind);
+  const price = cargo === null ? 1 : town.market.price[CLASSES[cargo].rank];
+  return CATALOGUE[kind].trade * price * access;
 }
 
 // ---- The port seam (§3.5.7) ------------------------------------------------

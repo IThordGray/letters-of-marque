@@ -13,7 +13,6 @@
 
 import type { Town, Work, WorkKind, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
 import type { Axial } from "./hex";
-import type { TradeClass } from "./trade";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
 import { isDead, SUIT_RANK, capacityOf } from "./land";
@@ -31,14 +30,18 @@ export interface WorkDef {
   // gradient: you cannot half-build a harbour on a hill.
   produces: Produce | null;
   needsGround: TerrainKind | null;
+  // WHAT THE WORK SENDS TO THE QUAY, AND IN WHICH COLUMN. Victuals are counted
+  // in `food` and materials and luxury in `trade` (§2.12.13) — the columns did
+  // not move when the keying did.
+  //
+  // THERE IS NO `exports` COLUMN ANY MORE. It named the class a work's cargo
+  // was, which made a town's place in [HC-77]'s pyramid a property of which
+  // buildings its governor picked. A cargo's class comes off the GROUND now:
+  // `produces` says what comes out of the earth and `trade.ts`'s `PRODUCE_CLASS`
+  // says what class that is, so there is one source for it and the catalogue is
+  // no longer one of them.
   food: number;
   trade: number;
-  // WHICH CLASS A WORK'S `trade` IS CARGO IN — the reframing [HC-83] asks for:
-  // `trade` stopped being coin a work emitted and became "what it sends to the
-  // quay", so it needs a name for what is in the barrel. `null` means the work
-  // takes a cut of the traffic rather than filling a hold — a tavern, a customs
-  // house, a market — and its earnings ride on `access` alone.
-  exports: TradeClass | null;
   defence: number;
   hands: number;
   serves: Need | null;
@@ -53,34 +56,101 @@ export interface WorkDef {
 }
 
 // ---- The catalogue ---------------------------------------------------------
-// Six subsistence/civic works that raise themselves and ELEVEN capital works —
-// EIGHT the governor chooses between, and THREE that are what a production
+// Six subsistence/civic works that raise themselves and THIRTEEN capital works —
+// EIGHT the governor chooses between, and FIVE that are what a production
 // focus on a stretch of ground IS (§2.12.12). No dependency edges: `requires`
 // was deleted with the chain it expressed.
+//
+// THE CATALOGUE GREW BY TWO AND THE MENU DID NOT MOVE (KAN-126, §2.12.14). That
+// is the structural argument for the whole direction and it is worth being able
+// to point at: `CHOOSABLE` reads the catalogue's own columns, so `grainFields`
+// and `cottonWalk` land in `FOCUS_EXPRESSIONS` for free and the governor still
+// weighs eight things against each other.
 export const CATALOGUE: Record<WorkKind, WorkDef> = {
   // --- subsistence: free, self-raising, and the reason a sacked town survives
   dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
+    food: 0, trade: 0, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
   gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null,
-    food: 30, trade: 0, exports: null, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
+    food: 30, trade: 0, defence: 0, hands: 6, serves: "food", servesFor: 30, max: 4, zone: "beyondThePale", autoPer: 40 },
+  // A FISHING SHACK'S CATCH MOVED COLUMNS WITH THE KEYING, and this is the one
+  // row in the catalogue where §2.12.13 forced a number to move (KAN-126).
+  //
+  // It carried `food: 22, trade: 2`. Under the old keying its `exports` was
+  // `null`, so those two were paid as a CUT OF THE TRAFFIC — a customs house's
+  // wage, at no price and to no buyer, for a hut the hamlet floor draws up on
+  // the sand for nothing. Fish is victuals. The two RETIRE WITH THE MECHANISM
+  // THAT PAID THEM, exactly as "the shipways stand idle for want of planks"
+  // retired with the dependency edge (§2.12.13), and they are not folded into
+  // `food` instead: the food column is what the catch FEEDS, `servesFor: 22`
+  // has always agreed with it, and nothing ever said a shack fed twenty-four.
+  //
+  // WHAT IT COST, MEASURED, BECAUSE IT IS NOT NOISE. KAN-131 put `quaysideOf`
+  // at 58% of all trade income in the world and warned that anything crossing
+  // that line moves a lever out of proportion to its size. These two were
+  // 893.92 of the world's 6,169.86 a season across four warm worlds — 14.5% of
+  // ALL trade income, paid to the one work nobody ever decides to have.
+  //
+  // AND LEAVING THE 2 IN `trade` WOULD HAVE BEEN A LIVE BUG rather than a
+  // leftover. `commerceOf` scales the harvest into the materials and luxury
+  // columns by hand because the victuals column arrives already scaled — so a
+  // victuals `trade` figure is the one number a storm could not touch. A storm
+  // would have spoiled a town's bread and left its FISH untouched. The column
+  // rule prevents it by construction, which is why it is a rule and not a note.
   fishingShacks: { label: "fishing shacks", cls: "subsistence", cost: 0, produces: "fish", needsGround: null,
-    food: 22, trade: 2, exports: null, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
+    food: 22, trade: 0, defence: 0, hands: 4, serves: "food", servesFor: 22, max: 3, zone: "waterfront", autoPer: 50 },
   well: { label: "a well", cls: "subsistence", cost: 0, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
+    food: 0, trade: 0, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
   chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
+    food: 0, trade: 0, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
   market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null,
-    food: 0, trade: 3, exports: null, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
+    food: 0, trade: 3, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
 
-  // --- THE THREE FOCUS EXPRESSIONS: what a production focus on this ground IS.
+  // --- THE FIVE FOCUS EXPRESSIONS: what a production focus on this ground IS.
   //     `max: Infinity` is KAN-125's tuning answer, and the argument is in
   //     `FOCUS_EXPRESSIONS` below.
   sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null,
-    food: 0, trade: 14, exports: "materials", defence: 0, hands: 10, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 14, defence: 0, hands: 10, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
   caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null,
-    food: 0, trade: 10, exports: "luxury", defence: 0, hands: 16, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 10, defence: 0, hands: 16, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
   provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null,
-    food: 90, trade: 0, exports: null, defence: 0, hands: 18, serves: "food", servesFor: 90, max: Infinity, zone: "beyondThePale" },
+    food: 90, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 90, max: Infinity, zone: "beyondThePale" },
+  //
+  //     GRAIN FIELDS ARE A `food` WORK AND COTTON WALKS ARE A `trade` ONE,
+  //     because §2.12.13 moved the KEYING and not the columns: victuals are
+  //     counted in `food`, materials and luxury in `trade`.
+  //
+  //     WHY GRAIN FIELDS FEED LESS PER ACRE THAN PROVISION GROUNDS, which is the
+  //     tuning question the spec leaves open and the one number here anybody
+  //     will want an argument for. It is true of the crops and it is what the
+  //     measurement wanted, in that order:
+  //
+  //     * PROVISION GROUNDS OUT-FEED GRAIN ACRE FOR ACRE. Cassava, plantain and
+  //       yam keep far more mouths off the same ground than wheat or maize, and
+  //       that is why the Caribbean grew provisions and imported flour. What
+  //       grain has over them is that it KEEPS and it SHIPS.
+  //     * AND THE GROUND PAYS THE DIFFERENCE BACK, which is the point of the
+  //       whole story. A grain field only ever stands where the ground is MADE
+  //       for grain, so it is minted at `SUIT_YIELD.ideal` (1.3); provision
+  //       grounds stood on tilled ground that merely tolerated food, at `fair`
+  //       (0.7). `50 x 1.3 = 65` against `90 x 0.7 = 63` — the same bread off
+  //       the same acre, arrived at from the other end. THE CATALOGUE NUMBER IS
+  //       THE CROP; THE SUIT IS THE GROUND.
+  //
+  //     Measured on four warm worlds: with grain at the clone's 90 the day-0
+  //     population spread ran 8 / 80 / 2,331 souls, which puts [HC-87]'s
+  //     trade-fed 1,500 in the MIDDLE of a band it is supposed to top. At 50 it
+  //     runs 8 / 89 / 1,518 against a ratified 10 / 90 / 1,200, and the 1,500 is
+  //     reached by the largest port on one seed of four — the top of the band,
+  //     which is where [HC-87] puts it.
+  grainFields: { label: "grain fields", cls: "capital", cost: 180, produces: "grain", needsGround: null,
+    food: 50, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 50, max: Infinity, zone: "beyondThePale" },
+  //     COTTON IS THE LESSER OF THE TWO LUXURIES AND THE HARDER WORK. Sugar was
+  //     king; cotton pays less per acre and wants nearly as many hands to pick
+  //     it, so it costs more per unit shipped than cane does (29 against 22) and
+  //     fetches less. It is still the only thing cotton ground has ever been
+  //     able to become.
+  cottonWalk: { label: "cotton walks", cls: "capital", cost: 200, produces: "cotton", needsGround: null,
+    food: 0, trade: 7, defence: 0, hands: 14, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
 
   // --- THE EIGHT THE GOVERNOR WEIGHS AGAINST EACH OTHER. Every one of them
   //     stands on NAMED ground or on none at all, never on what the ground
@@ -95,21 +165,21 @@ export const CATALOGUE: Record<WorkKind, WorkDef> = {
   //     need planks to lay down a shipway. That is the better fiction anyway,
   //     and it is the only half of the old chain worth keeping.
   shipway: { label: "shipways", cls: "capital", cost: 900, produces: null, needsGround: "roadstead",
-    food: 0, trade: 34, exports: null, defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
+    food: 0, trade: 34, defence: 0, hands: 20, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
   warehouse: { label: "a warehouse", cls: "capital", cost: 320, produces: null, needsGround: "roadstead",
-    food: 0, trade: 12, exports: null, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
+    food: 0, trade: 12, defence: 0, hands: 6, serves: null, servesFor: 0, max: 9, zone: "waterfront" },
   customsHouse: { label: "a customs house", cls: "capital", cost: 480, produces: null, needsGround: "roadstead",
-    food: 0, trade: 16, exports: null, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
+    food: 0, trade: 16, defence: 0, hands: 6, serves: "order", servesFor: 60, max: 1, zone: "waterfront" },
   battery: { label: "a stone battery", cls: "capital", cost: 620, produces: null, needsGround: "bluff",
-    food: 0, trade: 0, exports: null, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
+    food: 0, trade: 0, defence: 9, hands: 12, serves: null, servesFor: 0, max: 9, zone: "outworks" },
   palisade: { label: "a palisade", cls: "capital", cost: 240, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
+    food: 0, trade: 0, defence: 4, hands: 2, serves: null, servesFor: 0, max: 1, zone: "outworks" },
   barracks: { label: "a barracks", cls: "capital", cost: 420, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
+    food: 0, trade: 0, defence: 5, hands: 10, serves: "order", servesFor: 80, max: 1, zone: "backTown" },
   tavern: { label: "a tavern", cls: "capital", cost: 200, produces: null, needsGround: null,
-    food: 0, trade: 4, exports: null, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
+    food: 0, trade: 4, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
   church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null,
-    food: 0, trade: 0, exports: null, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
+    food: 0, trade: 0, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
 };
 
 // ---- Who is on the menu, and who is the ground itself (§2.12.12) -----------

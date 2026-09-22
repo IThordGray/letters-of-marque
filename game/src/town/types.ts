@@ -118,12 +118,20 @@ export type WorkKind =
   | "well"
   | "chapel"
   | "market"
-  // capital, and it is TWO sets now (§2.12.12). These three stand on what the
+  // capital, and it is TWO sets now (§2.12.12). These FIVE stand on what the
   // ground BEARS, so they are not chosen at all: they are what a production
   // focus on that ground IS, raised by a deepening.
+  //
+  // `grainFields` AND `cottonWalk` ARRIVED WITH THE CARGO RE-KEY (KAN-126,
+  // §2.12.14) and the count below did NOT move with them: a focus expression is
+  // not a menu item, so the catalogue grew by two and the governor's list
+  // stayed eight items long. That is the structural argument for the whole
+  // direction, and it is the one thing to check if anyone adds a sixth.
   | "sawpit"
   | "caneField"
   | "provisionGround"
+  | "grainFields"
+  | "cottonWalk"
   // ...and these eight are what the governor CHOOSES between. `boilingHouse`
   // was deleted and folded into DEPTH — a deepened cane region carries its
   // luxury, and the label ladder is what says so.

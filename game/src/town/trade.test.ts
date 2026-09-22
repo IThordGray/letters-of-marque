@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { derive, settleSeason, stepSeason, stepSeasons, stepYears, takeWeather, carryingCapacity, prosperityTarget } from "./sim";
 import { CAPITAL, CATALOGUE, raise } from "./works";
-import { accessOf, buyFrom, dependencyOf, dependencyWord, priceOf, producesMaterials, sellTo, DEPENDENCY_CLAUSE } from "./trade";
+import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, producesMaterials, quaysideOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE, WEALTH, WORKS } from "./constants";
 import { deepWants, focusWants, governorTurn, permitsFocus, scoreWork, wants, type Built, type Decision, type Deepened } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
@@ -446,6 +446,112 @@ describe("the market term scores what a work would FETCH", () => {
     town.market.price[2] = 9;
     const after = scoreWork(town, "customsHouse", AFTER_OPENING).find((t) => t.key === "market")!.weight;
     expect(after).toBe(before);
+  });
+});
+
+describe("a cargo's class comes off the ground", () => {
+  // §2.12.13. The class a cargo lands in used to be a hand-written column on the
+  // WORK — so a town's place in [HC-77]'s pyramid was a property of which
+  // buildings its governor happened to pick. Keyed to the PRODUCE, it becomes a
+  // property of the coast the place was founded on.
+
+  it("puts two towns with the same works on different ground in different markets", () => {
+    // THE CLAIM THE WHOLE STORY EXISTS FOR, said as a sentence about two towns:
+    // "two towns with the same works and different ground are now different
+    // towns on the world market." One work, one kind of ground apiece, and the
+    // cargo comes out in two different columns.
+    //
+    // THE ORACLE IS THE SPEC'S OWN TABLE, written out here rather than read off
+    // `PRODUCE_CLASS`: victuals = food · fish · grain, materials = timber ·
+    // stone, luxury = cane · cotton.
+    const on = (terrain: "caneFlats" | "cottonGround" | "timberedHills", bears: Parameters<typeof reg>[3]) =>
+      townOf([reg(0, terrain, RING1.slice(0, 5), bears)], { population: 200, wealth: 9000 });
+    const canes = on("caneFlats", { bears: { cane: "ideal" } });
+    const cotton = on("cottonGround", { bears: { cotton: "ideal" } });
+    const hills = on("timberedHills", { bears: { timber: "ideal" } });
+
+    expect(cargoOf("caneField")).toBe("luxury");
+    expect(cargoOf("cottonWalk")).toBe("luxury");
+    expect(cargoOf("sawpit")).toBe("materials");
+    expect(cargoOf("grainFields")).toBe("victuals");
+    expect(cargoOf("provisionGround")).toBe("victuals");
+    expect(cargoOf("fishingShacks")).toBe("victuals");
+
+    // ...and the ledger agrees with the table, which is the half a comment
+    // cannot assert. Same catalogue, same population, different coast.
+    raise(canes, "caneField", DAY0);
+    raise(cotton, "cottonWalk", DAY0);
+    raise(hills, "sawpit", DAY0);
+    const luxuryOf = (t: Town) => derive(t).commerce.produced[2];
+    const materialsOf = (t: Town) => derive(t).commerce.produced[1];
+    expect(luxuryOf(canes)).toBeGreaterThan(0);
+    expect(luxuryOf(cotton)).toBeGreaterThan(0);
+    expect(materialsOf(cotton)).toBe(0);
+    expect(materialsOf(hills)).toBeGreaterThan(0);
+    expect(luxuryOf(hills)).toBe(0);
+  });
+
+  it("gives a work that grows nothing no cargo class, and it earns on access alone", () => {
+    // §2.12.13's FIRST CONSEQUENCE, and the list is the spec's: a warehouse, a
+    // customs house, a tavern, a market — and the shipway, which joined them
+    // when it became a harbour work.
+    for (const kind of ["warehouse", "customsHouse", "tavern", "market", "shipway"] as const) {
+      expect(cargoOf(kind), `${kind} fills a hold`).toBeNull();
+    }
+    const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    // No price anywhere moves what it fetches, because there is nothing in the
+    // barrel to price. The oracle is spelled out rather than fetched.
+    expect(fetchOf(town, "customsHouse", 0.5)).toBeCloseTo(CATALOGUE.customsHouse.trade * 0.5, 9);
+  });
+
+  it("keeps a work that fills a hold out of the cut of the traffic altogether", () => {
+    // §2.12.13's first consequence from the other side, and it is the claim that
+    // has teeth where the fishing-shack one below does not: `quaysideOf` sums
+    // the `trade` of works with NO CARGO CLASS, so a sawpit's timber and a cane
+    // field's sugar must be invisible to it however large their columns are.
+    // They are sold at a price, to a buyer, and counting them here would pay for
+    // the same cargo twice.
+    //
+    // WRITTEN WITH WORKS THAT HAVE A NON-ZERO `trade`, deliberately. The shack
+    // claim below cannot catch a `quaysideOf` that counts everything, because a
+    // shack's column is zero and zero is invisible either way — found by
+    // mutation, which is the only way that kind of hole is ever found.
+    const town = open(mixedTown({ population: 300, wealth: 9000 }));
+    const bare = quaysideOf(town.works.filter((w) => w.condition === "working"));
+    raise(town, "sawpit", DAY0);
+    raise(town, "caneField", DAY0);
+    stepSeason(town, AFTER_OPENING);
+    const working = town.works.filter((w) => w.condition === "working");
+    expect(working.some((w) => w.kind === "sawpit" && w.trade > 0)).toBe(true);
+    expect(working.some((w) => w.kind === "caneField" && w.trade > 0)).toBe(true);
+    expect(quaysideOf(working)).toBe(bare);
+  });
+
+  it("sends a fishing shack's catch to market as victuals, not as a cut of the traffic", () => {
+    // THE ONE BEHAVIOUR THE RE-KEY MOVED IN THE SHIPPED CATALOGUE, and it is
+    // written as a claim because KAN-131 measured `quaysideOf` at 58% of all
+    // trade income in the world — so anything crossing that line moves a lever
+    // out of proportion to its size.
+    //
+    // A shack used to carry `trade: 2` with `exports: null`, which paid it a cut
+    // of the traffic: a customs house's wage, to a hut the hamlet floor draws up
+    // on the sand for nothing. Fish is victuals. The two retired with the
+    // mechanism that paid them, exactly as "the shipways want planks" did.
+    const town = mixedTown({ population: 300, wealth: 5000 });
+    stepSeason(town, DAY0);
+    const working = () => town.works.filter((w) => w.condition === "working");
+    const shacks = working().filter((w) => w.kind === "fishingShacks");
+    expect(shacks.length, "the hamlet floor drew no boats up at all").toBeGreaterThan(0);
+
+    // The shack contributes nothing to the cut of the traffic...
+    const withShacks = quaysideOf(working());
+    const withoutShacks = quaysideOf(working().filter((w) => w.kind !== "fishingShacks"));
+    expect(withShacks).toBe(withoutShacks);
+    // ...and the LIVENESS half, or the claim above is also satisfied by a town
+    // where nothing takes a cut of anything: a customs house still does.
+    raise(town, "customsHouse", DAY0);
+    stepSeason(town, DAY0 + SEASON);
+    expect(quaysideOf(working())).toBeGreaterThan(withShacks);
   });
 });
 
