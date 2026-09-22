@@ -360,7 +360,7 @@ still applies before any of it is cited as a saving here.*
 > behaves the same way, which is why these decisions are made continuously and cheaply rather than
 > saved up for an optimisation pass that arrives too late to make them.
 
-**`[P-56]` Remove by swapping the last element into the hole, and batch removals to the end of the
+**`[P-71]` Remove by swapping the last element into the hole, and batch removals to the end of the
 pass.** An ordered remove shuffles every element after the hole, so a pass that kills *k* of *n*
 entities pays O(n·k) to preserve an ordering nobody asked for. Measured: hoisting the deletions out
 of the walking loop into one bulk pass was **3×**, and replacing the ordered list with a swap-back
@@ -702,7 +702,7 @@ back-facing triangles never reach the vertex shader. That is `[P-14]` and `[P-61
 > *which mesh it is*, the three bits that stored the direction per vertex are free — and those three
 > bits bought the second axis of greedy meshing, which had been impossible for want of room: 14,000 →
 > 177,000 fps. **Storing a value out of band does not only delete the field. It frees the space the
-> field occupied for something that could not otherwise fit.** That is the compounding in `[P-56]`'s
+> field occupied for something that could not otherwise fit.** That is the compounding in `[P-71]`'s
 > preamble made concrete: the wins are not a list, they unlock each other.
 
 ---
