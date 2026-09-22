@@ -468,6 +468,43 @@ lone fixture was wrong by that factor.
 arms cost nothing measurable — and it is also **stricter**, because the arms then begin from an
 identical day 0 rather than merely the same seed.
 
+### Assert an exclusion with the LARGEST member of the excluded set
+
+**Found 2026-09-22, KAN-126.** A new claim said fishing shacks are not counted in the quayside cut.
+It passed — and it also passed against a mutated `quaysideOf` that counted **every work in the
+game**, because a shack's column had just been set to zero and **zero is invisible on both sides of
+an exclusion.** The claim asserted nothing at all; only mutation found it.
+
+- **An absence claim needs a subject whose presence would be loud.** Rewritten against a sawpit (14)
+  and a cane field (10), it kills the mutation.
+- The general form: **a test that asserts X is excluded must pick the X whose inclusion would move
+  the number most**, never the most convenient one and never a zero.
+
+### A ratio whose denominator is what the story changes cannot be the criterion
+
+**Same story.** A claim bounded the share of focused-but-empty regions, measured at 54%. KAN-126 made
+cotton and tilled ground buildable, and the share rose to 66% — while the ground **actually worked**
+rose 56 → 83. Both numbers are true. The story did exactly what it was for, and its own success
+pushed the ratio the wrong way, because the denominator nearly doubled with ground that had never
+been a candidate.
+
+- **Before pinning a ratio, ask which half the next story will move.** If it is the denominator, the
+  ratio is a description, not a criterion — **bound the mechanism instead.** Here that was: every
+  focused-and-empty region is a published want with a named refusal, never one nobody looked at.
+- **Pooling does not rescue this case.** Pooling fixes variance; it does nothing about a denominator
+  that is supposed to move.
+
+### A mutation that fails nothing is only evidence once its precondition is measured
+
+**Same story.** Two mutations were predicted to survive and did: deleting the `stone` row from the
+cargo table, and swapping the quayside predicate. Both survivals are **correct** — but only because
+**zero works in the catalogue produce stone or salt**, which was checked rather than argued.
+
+- **A predicted survivor is a claim about the world, and the claim needs measuring too.** "Nothing
+  reaches this branch" is a fact about the data, and data changes.
+- **Then guard the day it stops being true.** Here: every produce a catalogue work can make must have
+  a cargo class. A missing row would not throw — it would quietly pay a farm a harbourmaster's wage.
+
 ## When a test is required
 
 - **Every story with acceptance criteria** turns those criteria into tests — that is what "done"

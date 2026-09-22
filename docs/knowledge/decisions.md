@@ -10,6 +10,70 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-22 — A free hut was drawing a harbourmaster's wage
+
+**KAN-126 re-keyed a cargo's class from the building to the ground, and the dominant effect was not
+the thing the story was for.**
+
+`fishingShacks` — a hut the hamlet floor raises for nothing, on any ground, with no decision behind
+it — carried a `trade` column with no cargo class. That meant it was paid as a work that takes a cut
+of the traffic: **a flat constant × access, at no price and to no buyer.** Two coin a season.
+
+**Measured: 893.92 of the world's 6,169.86 a season across four warm seeds — 14.5% of ALL trade
+income in the world, and 27.8% of the quayside cut.** The re-key with *no new works at all* already
+cost the world 39% of its trade income.
+
+**It could not be folded into `food` instead.** `commerceOf` scales the weather's share into the
+materials and luxury ranks by hand, because victuals arrive pre-scaled — so a victuals figure sitting
+in a `trade` column would have been **fish no storm could spoil.** The 2 retires with the mechanism
+that paid it, exactly as *"the shipways stand idle for want of planks"* did.
+
+**What it cost, measured independently at day 0 across four seeds:**
+
+| | before | after |
+|---|---|---|
+| towns holding no money at all | 11 of 196 | **39 of 196** |
+| median purse | 460.4 | **149.5** |
+| median population | 108.3 | 98.5 |
+| largest port | 1,319 | **1,518** |
+| inert bearing regions | 18.7% (cotton · rocky · salt) | **9.1% (rocky · salt)** |
+
+**The human's call, made on these numbers: merge, and do KAN-132 next.** The reasoning is that the
+income removed was never real, the ratified population shape survives — and the largest port reaches
+`[HC-87]`'s trade-fed 1,500 for the first time — and **KAN-132 is the same disease four times larger**
+(the quayside cut, 58% of world trade income), so it is the story that properly resets what a town
+earns. Holding a correct fix so the numbers look nicer is the mistake the 450–600 target taught.
+
+**So the world is knowingly poorer until KAN-132 lands.** That is a sequencing decision, recorded so
+nobody reads the day-0 purse as a regression.
+
+---
+
+**The rules that came out of it.**
+
+> **`[P-56]` Before you move a free input, measure what share of the TOTAL it is paying for.** A
+> small constant paid to a thing that exists everywhere is not a small constant. Two coin was 14.5%
+> of the world. This is `[P-52]` at the income end: that rule asks what a place gets for nothing and
+> what fraction of the RANGE it buys; this one asks what fraction of the TOTAL.
+>
+> **And isolate it before shipping anything else in the same commit.** Here the re-key and the two
+> new crops were measured separately, and the re-key alone accounted for the whole drop. Shipped as
+> one measurement, the new crops would have taken the blame for a finding that had nothing to do
+> with them.
+
+Three testing rules also landed (`implementation/testing.md`): **assert an exclusion with the largest
+member of the excluded set** — the shack claim passed against a mutation that counted every work in
+the game, because zero is invisible on both sides; **a ratio whose denominator is what the story
+changes cannot be the criterion**; and **a predicted survivor is a claim about the world, so its
+precondition needs measuring too.**
+
+**And `[P-55]` earned itself a second time in one day.** A pooled median decade gain fell 38.02 →
+0.00 and a liveness claim went red. Split by quay it reads **771.74 → 612.08 with a quay** and
+**−3.94 → −7.68 without.** The population had not stopped earning — it never was one population. **A
+median sitting at a clamp is not a measurement; it is a report about the clamp.**
+
+---
+
 ### 2026-09-21 (third) — The margin was never thin. It is two different worlds.
 
 **KAN-131 set the dial the human asked for — `upkeepPerHead` 0.06 → 0.05 — and the diagnosis

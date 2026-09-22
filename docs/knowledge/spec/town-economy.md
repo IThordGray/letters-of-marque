@@ -788,6 +788,41 @@ which this touches. What changes is only **which class a town's offer lands in.*
 > ratified. **The sentence is not preserved; it is retired with its mechanism**, and that is the
 > honest version.
 
+> **BUILT 2026-09-22 (KAN-126), and two things the section did not say.**
+>
+> **1. The column rule had no teeth, and it was hiding a harbourmaster's wage in a fishing hut.**
+> `fishingShacks` carried `trade: 2` with no cargo class, so the hamlet floor's free hut was paid as
+> a work that takes a cut of the traffic — a flat constant × access, at no price and to no buyer.
+> **Measured on the warm world: 893.92 of the world's 6,169.86 a season across four seeds — 14.5% of
+> ALL trade income, and 27.8% of the quayside cut.**
+>
+> It could not simply be folded into `food`: `commerceOf` scales the weather's share into the
+> materials and luxury ranks by hand because victuals arrive pre-scaled, **so a victuals figure
+> sitting in a `trade` column would have become fish no storm could spoil.** The 2 retires with the
+> mechanism that paid it, exactly as *"the shipways stand idle for want of planks"* did.
+>
+> **So the column rule is now enforced by construction rather than by care: a work that names a
+> produce must put its figure in the column its class names**, and the suite holds it. A rule the
+> code cannot express in its own scaling is a rule that will be forgotten.
+>
+> *(A note in the KAN-126 brief said the 2 would "move into the victuals column". That was wrong —
+> victuals ARE the `food` column, so there was nowhere for it to move to.)*
+>
+> **2. What distinguishes grain fields from provision grounds, which this section left open.**
+> **Grain fields feed 50 where provision grounds feed 90**, at the same cost and the same hands.
+>
+> - **Provision grounds out-feed grain acre for acre.** Cassava, plantain and yam keep far more
+>   mouths off the same ground than wheat or maize — which is why the Caribbean grew provisions and
+>   imported flour. What grain has over them is that it **keeps, and it ships.**
+> - **And the ground pays the difference back, which is the point of the whole direction.** A grain
+>   field only ever stands where the ground is *made* for grain, so it is minted at `ideal` (1.3);
+>   provision grounds stood on tilled ground that merely tolerated food, at `fair` (0.7).
+>   `50 × 1.3 = 65` against `90 × 0.7 = 63`.
+>
+> **THE CATALOGUE NUMBER IS THE CROP; THE SUIT IS THE GROUND.** That sentence is the principle, and
+> it should govern every crop added after these two. Measured: at a naive 90 the day-0 spread ran
+> **8 / 80 / 2,331**, which puts `[HC-87]`'s 1,500 in the *middle* of a band it is meant to top.
+
 ### 2.12.14 The measured finding that justifies the whole direction
 
 **Four of the world's eight produces have no work in the catalogue at all** — `grain`, `cotton`,

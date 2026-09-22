@@ -236,6 +236,31 @@ quayless half still losing. This is `[P-52]`'s family — a number whose arithme
   claim about an average town that does not exist.
 
 
+**`[P-56]` Before you move a free input, measure what share of the TOTAL it is paying for.** A
+fishing shack is a hut the hamlet floor raises for nothing, on any ground, with no decision behind
+it. It carried a `trade` column with no cargo class, which meant it was paid as a work that takes a
+cut of the traffic — **a flat constant × access, at no price and to no buyer.** Two coin a season,
+per hut, across every place in the world:
+
+- **893.92 of the world's 6,169.86 a season — 14.5% of ALL trade income, and 27.8% of the quayside
+  cut.** Retiring it cost the world **36% of its wealth and 20% of its population**, because quayside
+  works feed back into what a place can afford to build.
+- It was two. Nobody would have argued about it in review, and nobody did — it sat in the catalogue
+  through every story that touched the catalogue.
+
+This is **`[P-52]` at the income end.** `[P-52]` asks *what does a place get for nothing, and what
+fraction of the RANGE does that buy?* The same question at the other end is *what fraction of the
+TOTAL?* — and the answer is routinely an order of magnitude past the guess, because a small constant
+paid to a thing that exists everywhere is not a small constant.
+
+- **The tell is a per-unit number attached to something free, automatic or self-raising.** Count the
+  units before you judge the number: two coin × every hut in the world is not two coin.
+- **Isolate it before you ship anything else in the same commit.** Here the re-key and the two new
+  works were measured separately, and the re-key *alone* — with no new works at all — accounted for
+  the whole of the drop. Had they shipped as one measurement, the new crops would have taken the
+  blame for a finding that had nothing to do with them.
+
+
 ---
 
 ## §2. Doing less — where the wins actually are
@@ -575,7 +600,7 @@ you cannot control in a JS object is exactly what you control in a buffer, and t
 hunting stops being cache misses and becomes **draw calls and bandwidth**.
 
 **`[P-62]` Do not build an object for the renderer to walk. Write the buffers the GPU actually
-reads.** The voxel devlog's chain was: voxel data → vertices and indices → a `Mesh` object (plus
+reads.** The Planetsmith devlog's chain was: voxel data → vertices and indices → a `Mesh` object (plus
 computed normals and bounds) → a `GameObject` → a draw. Two of those stages exist only because the
 engine expects an object to exist; deleting them deleted the work, the memory, and two whole systems.
 Our form of the same rule: the view owns typed-array columns and uploads them — no per-entity display
@@ -602,6 +627,16 @@ without rebuilding anything. Fewer, larger passes beat many small ones, always.
 > `drawElementsInstanced` and the `WEBGL_multi_draw` extension, both driven from JavaScript.
 > **WebGPU has `drawIndexedIndirect` and compute shaders**, so a draw list written by the GPU itself
 > is possible there and only there.
+>
+> Two more facts of the same kind, from Vercidium's chain. **WebGL2 has no shader storage buffers** —
+> an ES 3.1 feature — so per-draw data too large for a uniform buffer goes in a data texture there,
+> and `gl_DrawID` exists only under `WEBGL_multi_draw`. **What that actually costs is narrower than it
+> looks.** Interior-face culling, greedy meshing, the 32-bit packed vertex, chunk-local coordinates,
+> quad instancing, triangle strips and the six per-direction meshes are all plain WebGL2, and in that
+> video they carried 50 fps to 6,500 before any indirect draw appeared; collapsing every chunk into a
+> single draw call is the step that wants more, and it was measured at 6,500 → 12,000. Nor is the SSBO
+> load-bearing for the *technique* — it was needed only because everything had already become one
+> draw, and a per-direction uniform serves where the draws are still separate.
 >
 > So this is an input to the renderer decision, not an argument for one. **Unpark it when a renderer
 > is on the table**; until then nothing in `game/` should be shaped around either answer.
@@ -633,6 +668,43 @@ range a field actually needs. Four billion positions per axis and four billion t
 unexamined defaults, not decisions. (`HALF_FLOAT` vertex attributes exist in WebGL2; WebGPU has
 `float16x2` / `float16x4`.)
 
+**`[P-67]` The cheapest triangle is the one never generated; the second cheapest is the one merged
+into its neighbour.** Vercidium's chain starts before any rendering technique exists. A face between
+two solid voxels cannot be seen from anywhere, so it is never emitted: **115 million triangles →
+1.2 million**, about 96×, entirely at mesh-build time. Coplanar faces sharing a texture are then
+merged into one stretched quad — greedy meshing — and the final count is **79,000**, four orders of
+magnitude below where it began, with no visual difference at all. Every later trick in that video is
+worth less than this one. `[P-1]`, applied to geometry.
+
+**`[P-68]` Shrink the coordinate space before you shrink the number.** A vertex position fits in six
+bits per axis not through a clever encoding but because the position is **chunk-local** — 0–31 inside
+a 32-wide chunk, with the chunk's world origin supplied once per chunk instead of once per vertex.
+Move to a local frame and the packing follows; try to pack a world coordinate and there is nothing to
+pack. **We already own this move on the CPU side:** `[P-17a]`'s town-local frame is the same idea, and
+it is worth holding as one rule rather than two tricks.
+
+**`[P-69]` Instance the smallest repeating unit, not the biggest.** The Planetsmith devlog ruled
+instancing out — chunks are all unique, so there is nothing to instance. True at that granularity and
+false one level down: **every voxel face is the same quad.** Instancing a four-vertex quad and
+supplying per-face data once, rather than storing it on six vertices, cut memory **6×** and made the
+vertex shader run four times per face instead of six; a length field then lets one instance cover a
+whole merged run. **Uniqueness at one granularity says nothing about uniqueness at another** — ask
+that before concluding instancing does not apply.
+
+**`[P-70]` Partition by the predicate instead of testing it — then collect the field it made
+redundant.** Back-face culling is a per-triangle test the GPU runs every frame, *after* the vertex
+shader has already run on triangles that will be thrown away. Splitting each chunk into six meshes by
+face normal and submitting only those facing the camera turns the test into a **selection**:
+back-facing triangles never reach the vertex shader. That is `[P-14]` and `[P-61]` in a third domain
+— presence in the bucket is the flag, and this is now the third independent arrival at it.
+
+> **And it pays twice, which is the part worth taking away.** Once a mesh's direction is implied by
+> *which mesh it is*, the three bits that stored the direction per vertex are free — and those three
+> bits bought the second axis of greedy meshing, which had been impossible for want of room: 14,000 →
+> 177,000 fps. **Storing a value out of band does not only delete the field. It frees the space the
+> field occupied for something that could not otherwise fit.** That is the compounding in `[P-56]`'s
+> preamble made concrete: the wins are not a list, they unlock each other.
+
 ---
 
 ## Sources
@@ -644,6 +716,6 @@ The research behind this file, worth reading before proposing an exception:
 - **Determinism:** [Bettner & Terrano, "1500 Archers on a 28.8"](https://www.gamedeveloper.com/programming/1500-archers-on-a-28-8-network-programming-in-age-of-empires-and-beyond) · [Fiedler, Floating Point Determinism](https://gafferongames.com/post/floating_point_determinism/) · ECMA-262 §21.3.2 · [V8 `Math.tanh` divergence across OSes](https://scrapfly.dev/posts/browser-math-os-fingerprint/) · [Math keeps changing](https://macwright.com/2020/02/14/math-keeps-changing.html)
 - **V8 reality:** [Elements kinds](https://v8.dev/blog/elements-kinds) · [Fast properties](https://v8.dev/blog/fast-properties) · [Trash talk: Orinoco GC](https://v8.dev/blog/trash-talk) · [Maglev](https://v8.dev/blog/maglev) · [Pointer compression](https://v8.dev/blog/pointer-compression) · [Shapes and Inline Caches](https://mathiasbynens.be/notes/shapes-ics) · [Egorov, What's up with monomorphism?](https://mrale.ph/blog/2015/01/11/whats-up-with-monomorphism.html) · [Microbenchmarks are experiments](https://mrale.ph/blog/2024/11/27/microbenchmarks-are-experiments.html)
 - **Stale advice, cited as stale:** [Bluebird "Optimization killers"](https://github.com/petkaantonov/bluebird/wiki/Optimization-killers) — now self-disclaimed
-- **GPU-driven rendering (§9):** [*I Built a Custom GPU-Driven Rendering Pipeline (10x Faster)*, Planetsmith devlog](https://youtu.be/LzivS_KzffY) — indirect draw, octree culling, buffer paging, 48→16-byte vertex packing
+- **GPU-driven rendering (§9):** [*I Built a Custom GPU-Driven Rendering Pipeline (10x Faster)*, Planetsmith devlog](https://youtu.be/LzivS_KzffY) — indirect draw, octree culling, buffer paging, 48→16-byte vertex packing · [Vercidium, *I Optimised My Game Engine Up To 12000 FPS*](https://youtu.be/40JzyaOYJeY) — interior-face culling, greedy meshing, a 32-bit vertex, quad instancing, per-direction meshes; runnable C#/Silk.NET source at [vercidium-patreon/meshing](https://github.com/vercidium-patreon/meshing) (MIT)
 - **Scheduling:** [Varghese & Lauck, Hashed and Hierarchical Timing Wheels](https://www.cs.columbia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf)
 - **Judgement:** [Abrash, "The Best Optimizer Is between Your Ears"](https://www.phatcode.net/res/224/files/html/ch01/01-01.html) · ["Assume Nothing"](https://www.phatcode.net/res/224/files/html/ch03/03-01.html) · [You (Probably) Shouldn't use a Lookup Table](https://specbranch.com/posts/lookup-tables/)
