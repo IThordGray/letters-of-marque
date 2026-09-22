@@ -10,6 +10,53 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-22 (fifth) — A rich town is a target. The coin is there to be looted.
+
+**Three rulings from the human, and the third overturns a proposal of mine that was aimed at the
+wrong term.**
+
+> *"Coin leaving due to upkeep (taxes) and repair and building is fine. A town struggles to save to
+> expand, but the richer it becomes, the juicier it becomes to get sacked. The coin is there to be
+> looted, which myself or other pirates can do… I don't think 'buying food and materials' should
+> diminish coin."*
+
+**1. UPKEEP STAYS, and it is taxes.** I had proposed deleting it, because a town that feeds itself
+off its own ground was being charged a per-head coin bill for existing and 78% of the map ran at a
+small loss because of it. **Rejected, on a better argument than the one I made.** The drain is not a
+bug to be removed — it is *what makes saving hard*, and a town that had to save is a town worth
+robbing. Repair and building drain it for the same reason. **The struggle is the point.**
+
+**2. A TOWN'S PURSE IS PLUNDER, and that is its second job.** This is the first statement on record
+that the treasury exists for something other than building. It closes a question the economy work
+kept circling — *"what is all this coin FOR?"* — and it changes how accumulation reads: **a purse
+growing is not an inflation bug, it is a target ripening.** Pirates take it, and so do the crowns'
+invasion fleets (the human's reference is *Sid Meier's Pirates*, whose fleets arrive periodically;
+in our model the trigger is §8.2's auction, which is KAN-101's).
+
+> **So `[HC-87]`'s fragile ceiling gains a sibling.** The ceiling makes a town's SIZE worth
+> attacking; the purse makes its WEALTH worth attacking. Both are the same design move — the thing
+> the simulation produces is the thing the player wants — and neither is a separate system.
+
+**3. BUYING MUST NOT DESTROY COIN, and this is the real defect.** When a town buys grain its purse
+falls, and **the seller's income is computed separately from its own offer rather than from what the
+buyer handed over.** The buyer's coin is not routed anywhere. It stops existing, and the seller's
+coin appears from nowhere.
+
+**Measured, the two do not balance by 6.81 : 1** (KAN-132: 3,592,749 earned against 527,196 paid over
+200 years × 4 seeds). This is `[HC-47]`'s breach stated exactly, and it is now a ratified design
+requirement rather than a known compromise.
+
+> **THE CONSEQUENCE THAT DECIDES THE SEQUENCING, and it must not be discovered late.** Making the
+> payment conserve means **a seller earns what buyers actually paid** — about **a seventh** of what
+> it earns today. KAN-131 measured the same thing from the other side: under sold-only accounting,
+> world trade income falls to roughly a tenth of upkeep alone **and every town dies.**
+>
+> **So this cannot ship before the crowns' money.** §8.5's tax-up / grants-down loop is what puts
+> coin back into circulation once trade stops emitting it. **It lands inside KAN-101, or not at
+> all.**
+
+---
+
 ### 2026-09-22 (fourth) — The cut was 1.67× the traffic it was a cut of, and the same for a hamlet as for a city
 
 **KAN-132 landed. The quayside cut is now a share of what actually crossed the quay.**
