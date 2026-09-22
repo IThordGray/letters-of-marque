@@ -230,6 +230,33 @@ a thin market dear.
 
 
 
+**`[P-57]` A term written as a share of a quantity that the term itself buys is a feedback loop.
+Bound it.** The quayside cut funds the grain a port buys; the grain is traffic; the traffic is what
+the cut is a share of. Written as `traffic × rate` it compounds — **measured, it took the quayside
+cut from 39% of world trade income to 85–89% and doubled the largest port.**
+
+- **The test is one question: does this term's INPUT get bought with this term's OUTPUT?** If yes, a
+  straight proportion is an engine, not a price.
+- The shape that holds is **asymptotic, not linear and not clamped**: `column × t / (t + busyAt)` is
+  bounded above by the column, monotone in traffic, and saturates nowhere. A busier port always
+  out-earns a busy one, and neither runs away.
+- This is not specific to quays. **Any income proportional to something that income purchases does
+  it**, and the model has more of that shape coming — a crown's grant funding the trade it taxes is
+  the same loop one layer up.
+
+> **AND `[P-52]` HAS A SELECTION FORM, which is the other thing three built-and-measured shapes
+> taught (2026-09-22, KAN-132).** The middle attempt read `traffic / busyAt`, clamped at 1. Across
+> the **entire usable range** of the denominator — 10 through 24 — **46–61% of the quayed half sat at
+> exactly 1.00.**
+>
+> That is not a badly chosen constant. **A place only KEEPS a harbour work if its quay is busy, so
+> the population holding the thing is selected for the quantity being clamped, and the clamp is its
+> median by construction.** No denominator fixes it.
+>
+> **So when you see saturation, ask first whether the population self-selected for it.** If it did,
+> `[P-52]`'s usual cure — re-derive the divisor against the real distribution — cannot work, and what
+> you need is **a reading with no ceiling at all.**
+
 **`[P-54]` Split a generator at the line where most callers stop needing it.** The warm start costs
 **810 ms** — a real price for running a world eighty years before anyone sees it. Put inside
 `generateWorld` it would have been charged to roughly forty map-only calls across the suite and cost

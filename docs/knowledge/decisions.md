@@ -10,6 +10,68 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-22 (fourth) — The cut was 1.67× the traffic it was a cut of, and the same for a hamlet as for a city
+
+**KAN-132 landed. The quayside cut is now a share of what actually crossed the quay.**
+
+**The diagnosis, and the second half is worse than the first.** A quayed place was paid a median
+**27.00** a season from its quay while **16.16** of goods actually crossed it — the cut was
+**1.67× its own subject.** And it was **the same 27.00 for a hamlet that owned a customs house as for
+a port of fifteen hundred souls**, because nothing in the term could tell them apart: the largest
+`trade` column any place assembles in two centuries is 27. **It was a constant wearing a variable's
+name.**
+
+**What it is now:** a share of `offer + bought`, valued at the price the cargo cleared at, **both
+directions** — a port that lands a thousand bushels is a busy port whether or not it grew a thing,
+and that is exactly the sea-fed port whose quay income funds its own grain (`[HC-87]`'s load-bearing
+property). **`access` came OUT of the term**, because the offer is already multiplied by it once and
+the old cut applied it a second time to a quantity that had never passed a quay.
+
+**Measured independently by the manager, four warm seeds, day 0, split by quay (`[P-55]`):**
+
+| | |
+|---|---|
+| with a quay | **n=43, +16.54 a season, 1 losing** |
+| without one | **n=153, −0.23 a season, 82 losing** |
+| population min / median / max | 8 / 85.6 / **1,464** |
+| purse at nothing | 45 of 196 |
+
+`[HC-47]`'s trade gap narrows **8.12 : 1 → 6.81 : 1** (16%); the rest is §8.5's circulation, which is
+KAN-101's.
+
+**Acceptance 3 and 4 are PARTLY met and the residual is reported rather than absorbed.** The top of
+the spread is 1,464 against 1,500 (2.4% short) and the median is ~86 against "roughly 90". The
+quayed half came out of its windfall exactly as intended — a capital work off its own trade went
+**7.0 → 10.3 years.**
+
+---
+
+**THE FINDING THAT NEEDS A RULING, and it is not a bug.**
+
+> **The half of the world without a quay never earned its keep, and the standing allowance was
+> hiding it.** 153 of 196 places — **78% of the map** — now clear roughly nothing, and 82 of them
+> clear less than nothing. On master before this story they sat at −0.16 a season *including* 1.80 of
+> quayside allowance they had not earned. **Without it they were always at about −2.**
+
+**No shape of this term can fix it**, and that is worth stating so nobody tries: any honest cut takes
+proportionally **more** off the low-traffic half, because their traffic is smaller. Their deficit is
+`upkeepPerHead` against a self-feeding town's income — a constant KAN-131 settled on measured
+grounds, in a world that still contained the emission.
+
+**It is a design question, not a tuning one:** should a plain town, with no harbour work, be able to
+fund a building out of its own trade in any amount of time? The ratified answer *"a town gets by"*
+says the purse is not where growth comes from — and **KAN-101's crown grants are the mechanism that
+is supposed to move these places.** That is the reading this log records; the human's ruling goes
+here when he gives it.
+
+**A rule stated from the near-miss, worth keeping either way:** the `market` row is the fishing
+shack's shape one row along — a free, self-raising work carrying a `trade` column, drawing **19% of
+the old quayside cut**, decided by nobody. The new term defuses it (a market where nothing crosses
+now earns nothing), so it needs no ticket. **But: a free work may hold a CAPACITY; it must never
+hold a WAGE.**
+
+---
+
 ### 2026-09-22 (third) — A raised work does not claim a hex
 
 **The fact that made KAN-126's report read as self-contradictory, and nobody could derive it from the
