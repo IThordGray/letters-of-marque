@@ -11,7 +11,7 @@
 // game, not a city manager, and a brittle production chain is the shape of the
 // other thing.
 
-import type { Town, Work, WorkKind, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
+import type { Town, Work, WorkClass, Need, TerrainKind, Produce, Suit, Region } from "./types";
 import type { Axial } from "./hex";
 import { key } from "./hex";
 import { WORKS, SUIT_YIELD, DECAY } from "./constants";
@@ -65,9 +65,39 @@ export interface WorkDef {
 // is the structural argument for the whole direction and it is worth being able
 // to point at: `CHOOSABLE` reads the catalogue's own columns, so `grainFields`
 // and `cottonWalk` land in `FOCUS_EXPRESSIONS` for free and the governor still
-// weighs eight things against each other.
-export const CATALOGUE: Record<WorkKind, WorkDef> = {
-  // --- subsistence: free, self-raising, and the reason a sacked town survives
+// weighs eight things against each other. IT IS THE ONE THING TO CHECK IF
+// ANYBODY ADDS A SIXTH.
+//
+// ---- [HC-91] THE TABLE IS THE SOURCE OF TRUTH AND THE TYPE COMES OFF IT -----
+//
+// `WorkKind` was a hand-written union in `types.ts` until KAN-135, and this
+// table was typed AGAINST it — which ran the relationship backwards. Adding a
+// work meant editing two files, and the compiler only helped in one of the two
+// directions: a row with no union member was an error, a union member with no
+// row was silent until something read it. The type is now generated from the
+// table's own keys, so there is ONE declaration site and it is the catalogue.
+//
+// THE TWO BINDINGS BELOW ARE ONE OBJECT, NOT TWO TABLES, and each earns its
+// keep:
+//
+//  * `ROWS` is the literal, so `satisfies` checks every value against `WorkDef`
+//    — including the EXCESS-PROPERTY check that catches a misspelt column
+//    (`autoPre: 40`), which an assignment of an already-typed object would let
+//    through. `Record<string, ...>` is what keeps the keys open; narrowing it
+//    would be the hand-written union again, one indirection along.
+//  * `CATALOGUE` is that same object under the type every reader already had.
+//    `Record<WorkKind, WorkDef>` is the mapped type that says EVERY KIND HAS A
+//    ROW — now true by construction rather than by anybody remembering — and
+//    deriving the keys without pinning the values would have quietly dropped
+//    half of what that annotation was buying.
+//
+// It is declared HERE and re-exported from `types.ts`, which is why every
+// existing `import type { WorkKind } from "./types"` still reads the same. It
+// cannot be declared there: this file imports that one, so `keyof typeof
+// CATALOGUE` written in `types.ts` would close a cycle.
+const ROWS = {
+  // --- subsistence / civic: free, self-raising, and the reason a sacked town
+  //     survives. They appear on their own as the town warrants them.
   dwellings: { label: "dwellings", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 0, defence: 0, hands: 0, serves: "shelter", servesFor: 40, max: 99, zone: "lowerTown", autoPer: 40 },
   gardenPlots: { label: "garden plots", cls: "subsistence", cost: 0, produces: "food", needsGround: null,
@@ -156,6 +186,10 @@ export const CATALOGUE: Record<WorkKind, WorkDef> = {
   //     stands on NAMED ground or on none at all, never on what the ground
   //     bears — which is why none of them is ever gated on what a region is FOR.
   //
+  //     THERE IS NO `boilingHouse` HERE. It was deleted and folded into DEPTH —
+  //     a deepened cane region carries its luxury, and the label ladder at the
+  //     foot of this file is what says so.
+  //
   //     `shipway` IS A HARBOUR WORK NOW, in the family of the warehouse and the
   //     customs house: a town with sheltered water may build ships there, and it
   //     no longer needs a sawpit standing first, because that was the chain.
@@ -180,7 +214,15 @@ export const CATALOGUE: Record<WorkKind, WorkDef> = {
     food: 0, trade: 4, defence: 0, hands: 4, serves: "drink", servesFor: 70, max: 2, zone: "lowerTown" },
   church: { label: "a church", cls: "capital", cost: 550, produces: null, needsGround: null,
     food: 0, trade: 0, defence: 0, hands: 3, serves: "worship", servesFor: 200, max: 1, zone: "plaza" },
-};
+} satisfies Record<string, WorkDef>;
+
+// [HC-91], and this line is the whole of KAN-135: the type is GENERATED from the
+// table, never written beside it.
+export type WorkKind = keyof typeof ROWS;
+
+// The same object, under the type it has always had. See the note above the
+// table for why both bindings are here and what each one checks.
+export const CATALOGUE: Record<WorkKind, WorkDef> = ROWS;
 
 // ---- Who is on the menu, and who is the ground itself (§2.12.12) -----------
 //

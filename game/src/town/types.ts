@@ -110,39 +110,28 @@ export type Need = "food" | "drink" | "shelter" | "worship" | "order";
 // town always crawls back. Capital works need money or a patron.
 export type WorkClass = "subsistence" | "capital";
 
-export type WorkKind =
-  // subsistence / civic — these appear on their own as the town warrants
-  | "dwellings"
-  | "gardenPlots"
-  | "fishingShacks"
-  | "well"
-  | "chapel"
-  | "market"
-  // capital, and it is TWO sets now (§2.12.12). These FIVE stand on what the
-  // ground BEARS, so they are not chosen at all: they are what a production
-  // focus on that ground IS, raised by a deepening.
-  //
-  // `grainFields` AND `cottonWalk` ARRIVED WITH THE CARGO RE-KEY (KAN-126,
-  // §2.12.14) and the count below did NOT move with them: a focus expression is
-  // not a menu item, so the catalogue grew by two and the governor's list
-  // stayed eight items long. That is the structural argument for the whole
-  // direction, and it is the one thing to check if anyone adds a sixth.
-  | "sawpit"
-  | "caneField"
-  | "provisionGround"
-  | "grainFields"
-  | "cottonWalk"
-  // ...and these eight are what the governor CHOOSES between. `boilingHouse`
-  // was deleted and folded into DEPTH — a deepened cane region carries its
-  // luxury, and the label ladder is what says so.
-  | "shipway"
-  | "warehouse"
-  | "customsHouse"
-  | "battery"
-  | "palisade"
-  | "barracks"
-  | "tavern"
-  | "church";
+// [HC-91] A DEFINITION TABLE IS THE SOURCE OF TRUTH; ITS TYPESCRIPT TYPE IS
+// GENERATED FROM IT, NEVER THE REVERSE.
+//
+// `WorkKind` was a hand-written union here until KAN-135, and `works.ts` typed
+// its catalogue against it — the relationship the wrong way round. It is now
+// `keyof typeof` the catalogue's own rows, DECLARED BESIDE THE TABLE IT NAMES,
+// and re-exported here so that every `import type { WorkKind } from "./types"`
+// in the module still reads exactly the same.
+//
+// IT CANNOT BE DECLARED HERE, and that is why the arrow points this way:
+// `works.ts` imports this file, so writing `keyof typeof CATALOGUE` in it would
+// close a cycle. A type-only re-export closes nothing — `verbatimModuleSyntax`
+// erases `import type` and `export type` outright, so none of this survives
+// into the bundle. `Commerce` and `MarketState` arrive from `trade.ts` the same
+// way, for the same reason.
+//
+// What the union used to explain in comments lives beside the rows it explains:
+// the six subsistence works that appear as the town warrants them, the five
+// that are what a production focus on a stretch of ground IS (§2.12.12), and
+// the eight the governor weighs against each other.
+import type { WorkKind } from "./works";
+export type { WorkKind };
 
 // The devolution ladder — decay comes in RECOVERABLE grades, never straight to
 // death, and THE GRADES DIFFER IN WHAT COMING BACK COSTS. A work with no hands or

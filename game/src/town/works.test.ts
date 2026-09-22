@@ -757,6 +757,32 @@ describe("the catalogue may grow and the menu may not", () => {
     expect(Object.keys(CATALOGUE)).not.toContain("boilingHouse");
   });
 
+  it("names no work the catalogue has not got a row for", () => {
+    // [HC-91], KAN-135. `WorkKind` is `keyof typeof` the catalogue's own rows
+    // now, so a kind with no row is UNWRITABLE — the compiler makes that claim,
+    // and no runner can see a claim the compiler makes. (What it looks like when
+    // it bites: renaming one row's key puts the old spelling out of the union
+    // and `tsc` names every line that still uses it.)
+    //
+    // WHAT A TEST CAN STILL SEE IS THE ONE TABLE THE TYPE DOES NOT REACH.
+    // `WORKS.subsistenceAt` is keyed `Partial<Record<string, number>>`, because
+    // `constants.ts` deliberately imports nothing from the module it tunes — so
+    // a stale or misspelt kind in it is invisible to the compiler AND silent at
+    // runtime: `raiseSubsistence` reads `?? 0` and draws the hut up in a village
+    // of nobody.
+    for (const kind of Object.keys(WORKS.subsistenceAt)) {
+      expect(Object.keys(CATALOGUE), `${kind} has a threshold and no catalogue row`).toContain(kind);
+    }
+    // ...and the same table read the other way, which is the liveness guard the
+    // loop above needs: an EMPTY table satisfies it. A self-raising work with
+    // neither a threshold nor an `autoPer` appears in a town of nobody, which is
+    // the hamlet floor raising works for souls that are not there.
+    for (const kind of SUBSISTENCE) {
+      if (CATALOGUE[kind].autoPer) continue;
+      expect(WORKS.subsistenceAt[kind], `${kind} raises itself at no named size`).toBeGreaterThan(0);
+    }
+  });
+
   it("knows a focus expression by the ground it stands on, never by a list", () => {
     // [P-47]: the catalogue's own `produces` column already answers "does this
     // work stand on what the ground bears", and a second list beside it would be
