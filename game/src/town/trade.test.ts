@@ -378,7 +378,14 @@ describe("bread before batteries", () => {
   it("buys its bread before its timber when it can afford only one", () => {
     // Tier order is the pyramid again: whatever is left after the corn buys the
     // timber, and whatever is left after that buys the silk.
-    const town = open(mixedTown({ population: 300, wealth: 0 }));
+    //
+    // THE PURSE IS THE TOWN'S OWN COIN, and it has to be, since KAN-132: a place
+    // with nothing crossing its quay earns nothing from it, so a fixture with an
+    // empty purse and no cargo now has nothing to pay with and the claim would
+    // pass for the wrong reason — nothing bought on EITHER tier. It used to be
+    // funded by the standing quayside allowance, which is exactly the coin from
+    // nowhere the story removed.
+    const town = open(mixedTown({ population: 300, wealth: 120 }));
     town.market.allotted[0] = 100;
     town.market.allotted[1] = 100;
     town.market.price[0] = 1;
@@ -416,7 +423,13 @@ describe("the market term scores what a work would FETCH", () => {
   it("still says there is money in it, in the same words", () => {
     // The clause is the term's own, and the rule is that no term arrives without
     // one. Rewriting the arithmetic must not cost the sentence.
+    //
+    // THE PLACE HAS TO HAVE TRADE IN IT NOW (KAN-132): a warehouse argues from a
+    // cut of what crosses the quay, so a town with nothing crossing has no
+    // market argument for one — which is the right answer and not a lost clause.
     const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, AFTER_OPENING);
     const market = scoreWork(town, "warehouse", AFTER_OPENING).find((t) => t.key === "market");
     expect(market!.clause).toBe("there is money in it");
   });
@@ -436,16 +449,29 @@ describe("the market term scores what a work would FETCH", () => {
     expect(farm).toBeGreaterThan(0); // both are heard; neither is switched off
   });
 
-  it("weighs a work with no cargo class on access alone", () => {
-    // A customs house fills no hold, so no price moves it — only whether the
-    // traffic can reach the quay at all.
+  it("weighs a work with no cargo class on how busy the quay is", () => {
+    // A customs house fills no hold, so no cargo's price prices IT — what it is
+    // worth is a cut of whatever crosses, and the governor has to argue from the
+    // same number the ledger will pay him on ([P-47]).
+    //
+    // THIS CLAIM IS THE REVERSE OF THE ONE IT REPLACES, and the reversal is the
+    // story. It used to read "on access alone", and it was true: the term was
+    // `trade x access`, so a hamlet that had raised a customs house and a port
+    // of fifteen hundred bid identically for the next one.
     const town = open(mixedTown({ population: 300, wealth: 5000 }));
-    const before = scoreWork(town, "customsHouse", AFTER_OPENING).find((t) => t.key === "market")!.weight;
-    town.market.price[0] = 9;
-    town.market.price[1] = 9;
-    town.market.price[2] = 9;
-    const after = scoreWork(town, "customsHouse", AFTER_OPENING).find((t) => t.key === "market")!.weight;
-    expect(after).toBe(before);
+    const marketWeight = (t: Town) => scoreWork(t, "customsHouse", AFTER_OPENING).find((x) => x.key === "market")?.weight ?? 0;
+    // Nothing crosses this quay, so there is no argument for another berth.
+    expect(derive(town).commerce.traffic).toBe(0);
+    expect(marketWeight(town)).toBe(0);
+    // Land a cargo on it and there is.
+    town.market.bought[0] = 200;
+    town.market.price[0] = 0.5;
+    const busier = marketWeight(town);
+    expect(busier).toBeGreaterThan(0);
+    // ...and the busier it gets the more it is worth, which a standing allowance
+    // could never say.
+    town.market.bought[0] = 800;
+    expect(marketWeight(town)).toBeGreaterThan(busier);
   });
 });
 
@@ -491,7 +517,7 @@ describe("a cargo's class comes off the ground", () => {
     expect(luxuryOf(hills)).toBe(0);
   });
 
-  it("gives a work that grows nothing no cargo class, and it earns on access alone", () => {
+  it("gives a work that grows nothing no cargo class, and it earns a cut of the traffic", () => {
     // §2.12.13's FIRST CONSEQUENCE, and the list is the spec's: a warehouse, a
     // customs house, a tavern, a market — and the shipway, which joined them
     // when it became a harbour work.
@@ -500,8 +526,17 @@ describe("a cargo's class comes off the ground", () => {
     }
     const town = open(mixedTown({ population: 300, wealth: 5000 }));
     // No price anywhere moves what it fetches, because there is nothing in the
-    // barrel to price. The oracle is spelled out rather than fetched.
-    expect(fetchOf(town, "customsHouse", 0.5)).toBeCloseTo(CATALOGUE.customsHouse.trade * 0.5, 9);
+    // barrel to price — it is priced on how busy the quay is. The oracle is
+    // SPELLED OUT rather than fetched (testing.md: write the oracle out
+    // independently), which is what would catch a term added to `busynessOf`.
+    const traffic = 9;
+    expect(fetchOf(town, "customsHouse", 0.5, traffic)).toBeCloseTo(
+      (CATALOGUE.customsHouse.trade * traffic) / (traffic + TRADE.quayBusyAt),
+      9,
+    );
+    // ...and `access` is NOT in it, which is KAN-132's half of the same line:
+    // the traffic has already been through the quay once ([P-47]).
+    expect(fetchOf(town, "customsHouse", 0.1, traffic)).toBe(fetchOf(town, "customsHouse", 1, traffic));
   });
 
   it("keeps a work that fills a hold out of the cut of the traffic altogether", () => {
@@ -517,14 +552,15 @@ describe("a cargo's class comes off the ground", () => {
     // shack's column is zero and zero is invisible either way — found by
     // mutation, which is the only way that kind of hole is ever found.
     const town = open(mixedTown({ population: 300, wealth: 9000 }));
-    const bare = quaysideOf(town.works.filter((w) => w.condition === "working"));
+    const TRAFFIC = 20; // the same quay, asked the same question, both times
+    const bare = quaysideOf(town.works.filter((w) => w.condition === "working"), TRAFFIC);
     raise(town, "sawpit", DAY0);
     raise(town, "caneField", DAY0);
     stepSeason(town, AFTER_OPENING);
     const working = town.works.filter((w) => w.condition === "working");
     expect(working.some((w) => w.kind === "sawpit" && w.trade > 0)).toBe(true);
     expect(working.some((w) => w.kind === "caneField" && w.trade > 0)).toBe(true);
-    expect(quaysideOf(working)).toBe(bare);
+    expect(quaysideOf(working, TRAFFIC)).toBe(bare);
   });
 
   it("sends a fishing shack's catch to market as victuals, not as a cut of the traffic", () => {
@@ -544,14 +580,122 @@ describe("a cargo's class comes off the ground", () => {
     expect(shacks.length, "the hamlet floor drew no boats up at all").toBeGreaterThan(0);
 
     // The shack contributes nothing to the cut of the traffic...
-    const withShacks = quaysideOf(working());
-    const withoutShacks = quaysideOf(working().filter((w) => w.kind !== "fishingShacks"));
+    const TRAFFIC = 20;
+    const withShacks = quaysideOf(working(), TRAFFIC);
+    const withoutShacks = quaysideOf(working().filter((w) => w.kind !== "fishingShacks"), TRAFFIC);
     expect(withShacks).toBe(withoutShacks);
     // ...and the LIVENESS half, or the claim above is also satisfied by a town
     // where nothing takes a cut of anything: a customs house still does.
     raise(town, "customsHouse", DAY0);
     stepSeason(town, DAY0 + SEASON);
-    expect(quaysideOf(working())).toBeGreaterThan(withShacks);
+    expect(quaysideOf(working(), TRAFFIC)).toBeGreaterThan(withShacks);
+  });
+});
+
+// ---- KAN-132: the cut is a share of what actually crossed -------------------
+//
+// The ratified sentence is [HC-47] — "no money is created or destroyed outside
+// this circulation... nothing is emitted from nowhere" — and this was the largest
+// breach of it in the model. `quaysideOf` paid a work its whole `trade` column
+// times `access` every season, at no price and to no buyer, whether or not a
+// single bale crossed. Measured at day 0 on four warm worlds: a quayed place drew
+// a median 27.00 a season against a median 16.16 of cargo actually crossing its
+// quay, and the SAME 27.00 went to a hamlet and to a port of fifteen hundred.
+//
+// THE MUTATION EVERY CLAIM BELOW IS WRITTEN AGAINST is the restoration of that
+// allowance — `quaysideOf` returning its column and ignoring its traffic.
+describe("the quayside cut is a share of what crossed the quay", () => {
+  // A port with a customs house on it, and timber to put over it.
+  const port = () => {
+    const town = open(seaTown({ population: 200, wealth: 6000 }));
+    raise(town, "customsHouse", DAY0);
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, AFTER_OPENING);
+    return town;
+  };
+  const cut = (town: Town) =>
+    quaysideOf(town.works.filter((w) => w.condition === "working"), derive(town).commerce.traffic);
+
+  it("pays a quay nothing at all in a season when nothing crosses it", () => {
+    // ACCEPTANCE 2, and the sentence the old code's own comment made while its
+    // arithmetic did not: "a cut of what crosses the quay". A cordon is the
+    // cleanest way to make nothing cross — [HC-85] gates both directions — and
+    // the place is otherwise untouched: same customs house, same timber, same
+    // guns. Under the flat allowance it went on drawing its column.
+    const shut = reaching(port(), 0);
+    expect(derive(shut).commerce.traffic).toBe(0);
+    expect(cut(shut)).toBe(0);
+    // LIVENESS, because zero satisfies almost any claim phrased as an absence:
+    // the same place with its lanes open is paid, and paid something real.
+    const calling = reaching(port(), FULL_REACH);
+    expect(derive(calling).commerce.traffic).toBeGreaterThan(0);
+    expect(cut(calling)).toBeGreaterThan(0);
+  });
+
+  it("pays a busy quay more than a quiet one holding the very same works", () => {
+    // THE HEART OF IT, and the thing a standing allowance could not say. Two
+    // ports with an identical waterfront differ only in how much cargo there is
+    // to work — four sawpits on the same hills against one. It paid them
+    // the same coin to the penny, which is why a hamlet with a customs house and
+    // a great port were indistinguishable on this line.
+    const build = (pits: number) => {
+      const hills = reg(0, "timberedHills", RING1, { bears: { timber: "ideal" }, focus: "production" });
+      const t = open(townOf([hills, reg(1, "roadstead", RING2.slice(0, 3))], { population: 300, wealth: 9000 }));
+      raise(t, "customsHouse", DAY0);
+      // Same ground, same hills, different number of pits on them — so the only
+      // thing that differs is how much timber there is to put over the quay.
+      for (let i = 0; i < pits; i++) raise(t, "sawpit", DAY0, hills);
+      stepSeason(t, AFTER_OPENING);
+      return t;
+    };
+    const busy = build(4);
+    const quiet = build(1);
+    // The waterfront is the same on both, which is what makes this a claim about
+    // traffic rather than about buildings.
+    const column = (t: Town) => t.works
+      .filter((w) => w.condition === "working" && cargoOf(w.kind) === null)
+      .reduce((n, w) => n + w.trade, 0);
+    expect(column(busy)).toBe(column(quiet));
+    expect(derive(busy).commerce.access).toBeCloseTo(derive(quiet).commerce.access, 9);
+    // ...and the cut follows the cargo rather than the buildings.
+    expect(derive(busy).commerce.traffic).toBeGreaterThan(derive(quiet).commerce.traffic);
+    expect(cut(busy)).toBeGreaterThan(cut(quiet));
+  });
+
+  it("is dented by the storm that spoiled the cargo it would have taken a cut of", () => {
+    // [HC-6]'s yield modifier reaching the quay, which it never did: the cut was
+    // the one number in the ledger a storm could not touch. It needs no line of
+    // its own — `harvestShare` is already inside the offer, and the offer is the
+    // traffic.
+    const fair = port();
+    const foul = port();
+    takeWeather(foul, DAY0, { yieldLoss: 0.8, maintenanceShare: 0, worksDropped: 0, worksDestroyed: 0 }, 0);
+    expect(cut(foul)).toBeLessThan(cut(fair));
+    expect(cut(foul)).toBeGreaterThan(0); // spoiled, not stopped
+  });
+
+  it("takes its cut at the price the cargo cleared at, not by the bale", () => {
+    // THE OTHER HALF OF ACCEPTANCE 1 — "goods that actually moved, AT THE PRICE
+    // THEY CLEARED AT" — and it needed a claim of its own: a `trafficOf` that
+    // counted bales and ignored prices was caught by nothing else in the suite.
+    // Two ports ship the identical timber; one of them is where timber is dear.
+    const cheap = port();
+    const dear = port();
+    dear.market.price[1] = cheap.market.price[1] * 3;
+    expect(derive(cheap).commerce.offer[1]).toBeCloseTo(derive(dear).commerce.offer[1], 9);
+    expect(cut(dear)).toBeGreaterThan(cut(cheap));
+  });
+
+  it("counts what the place landed as well as what it shipped", () => {
+    // BOTH DIRECTIONS, because [HC-85] gates both and a quay works both: a port
+    // that lands a thousand bushels is a busy port whether or not it grew a
+    // thing. It is also what keeps the cut load-bearing for [HC-87]'s trade-fed
+    // ceiling — the sea-fed port whose own quay funds its grain.
+    const landing = port();
+    const empty = cut(landing);
+    landing.market.bought[0] = 400;
+    landing.market.price[0] = 0.2;
+    expect(cut(landing)).toBeGreaterThan(empty);
   });
 });
 
@@ -763,9 +907,21 @@ describe("materials gate construction", () => {
   it("says nothing about what the town WANTS, only about what it can start", () => {
     // The same shape as the affordable and manned gates: wealth is not a term,
     // and neither is this. The ranking must be identical either way.
+    //
+    // THE PLANKS ARE LANDED AND WORTH NOTHING AT THE QUAY, and that is the whole
+    // of why a price of zero is written here. Since KAN-132 a LANDING IS TRAFFIC
+    // and traffic is what a harbour work's market term argues from, so a
+    // shipload landed at par changes the ranking for an entirely honest reason —
+    // the quay got busier — and the claim would then be measuring that instead
+    // of the gate. At nothing a bale the cargo still counts against the
+    // shortfall, which is quantities, and moves no term.
     const poor = stonePoor();
     const supplied = stonePoor();
+    poor.market.price[1] = 0;
+    supplied.market.price[1] = 0;
     supplied.market.bought[1] = 100;
+    expect(wants(supplied, AFTER_OPENING, 12).some((w) => w.supplied)).toBe(true);
+    expect(wants(poor, AFTER_OPENING, 12).some((w) => w.supplied)).toBe(false);
     expect(wants(supplied, AFTER_OPENING, 12).map((w) => w.kind)).toEqual(wants(poor, AFTER_OPENING, 12).map((w) => w.kind));
   });
 });
@@ -1069,9 +1225,18 @@ describe("wealth is earned, not emitted", () => {
     // what the answer should be could not catch a term ADDED to it, which is
     // exactly the mistake this rule exists for. Any new source of coin fails
     // this line, and that is the point: it is [HC-47]'s guard at town scale.
+    //
+    // THE PLACE LANDS THE SAME CARGO IT LANDED LAST SEASON, which is a steady
+    // port rather than a contrivance — and since KAN-132 it has to be said out
+    // loud, because THE QUAY'S CUT IS STRUCK ON WHAT LANDED. A season that lands
+    // more than the one before it earns more on its quay, so `earned` read
+    // before the corn is paid for is honestly a different number from `earned`
+    // read after, and an oracle taken at the first instant would be measuring
+    // the difference rather than the equation.
     const town = open(mixedTown({ population: 200, wealth: 1000, grant: 5 }));
     raise(town, "sawpit", DAY0);
     clearedWith(town, 0, 30, 0.2);
+    town.market.bought[0] = 30;
 
     const purseBefore = town.wealth;
     const souls = town.population; // ...before the drift at the foot of the season

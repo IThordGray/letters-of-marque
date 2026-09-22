@@ -1171,6 +1171,19 @@ describe("a town's own trade turns a very small profit", () => {
     // afford a waterfront work. That is `quaysideOf` being load-bearing, which
     // KAN-131 named and KAN-132 owns.
     //
+    // KAN-132 THEN LANDED, and the same four worlds read:
+    //
+    //   KAN-132  quayed          422.40             272.09   (n=41)
+    //            bare              4.05             -15.01   (n=153)
+    //
+    // The quayed half's own trade now funds a 180-coin work in a decade and a
+    // half rather than in seven years, which is the ratified "decades" arriving
+    // honestly. AND THE HALF WITHOUT A QUAY WENT FURTHER INTO THE RED, -7.68 ->
+    // -15.01, which is not a regression but a REVELATION: it was the standing
+    // quayside allowance keeping that half at nominal break-even, and with the
+    // allowance gone the loss is visible. Its cause is upkeep against a
+    // self-feeding town's income, which is KAN-131's dial and not this one's.
+    //
     // A POOLED MEDIAN SITTING AT A CLAMP IS [P-52]'S OWN TELL, and it is the
     // reason the bound below is on the halves rather than on the whole: half the
     // world's places settle a negative yield at exactly zero, so the median of

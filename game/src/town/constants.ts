@@ -174,6 +174,30 @@ export const TRADE = {
   // one rung higher ([HC-77]). Not zero, because a place a bushel short of its
   // own corn is not a place in famine.
   secureSlack: 1,
+  // THE VALUE OF CARGO A SEASON AT WHICH A HARBOUR EARNS HALF ITS COLUMN — the
+  // one number KAN-132 added, and the whole of what turns the quayside cut from
+  // a standing allowance into a share of real traffic.
+  //
+  // WHAT THE COLUMN MEANS CHANGED, AND THIS IS WHERE IT SAYS SO. A work that
+  // fills no hold used to be paid its `trade` column as a WAGE — `column x
+  // access`, at no price and to no buyer, whether or not a bale crossed. The
+  // column is now a CAPACITY, and `busynessOf` decides how much of it is
+  // actually earned: `traffic / (traffic + quayBusyAt)`.
+  //
+  // MEASURED, NOT CHOSEN ([P-52]'s extension, [P-39]). Swept on four warm worlds
+  // at day 0 with everything else held. At 1.5 the quayed half still clears
+  // 22.66 a season and funds a 180-coin work in under eight years, which is the
+  // thing the story exists to stop; at 6 the quayless half falls to -0.95 and
+  // the largest port to 1,326. At 3 the quayed half clears 17.39 — a capital
+  // work in ten years and a third — the largest port holds 1,464, and the
+  // reading itself behaves: median 0.78 with a quay, 0.39 without, and nothing
+  // at either end of the scale.
+  //
+  // It is a small number BECAUSE THE WORLD'S REAL TRADE IS SMALL: the median
+  // quayed place clears 16 coin of cargo a season and the median place without a
+  // quay clears 2. Three coin is a couple of boatloads, and a harbour that sees
+  // that much is half employed.
+  quayBusyAt: 3,
 };
 
 // A beach and a longboat move some cargo; a quay and a garrison move all of it.
@@ -357,11 +381,31 @@ export const PLAN = {
   // CALIBRATED BY MEASUREMENT, NOT BY §2.3's TABLE, and the difference matters.
   // It was written as 5 against LAND.dominant's 6-9, and [P-52] caught it: the
   // median came out AT THE CLAMP (55.8% of regions at 1.00), because the world's
-  // cut is not the retired generator those numbers describe — free hexes run
-  // 0-23 with a median of 6. A ceiling half the regions already touch prices
-  // nothing. At 9 the median is 0.67 and 23% sit at the top, so the scale
-  // discriminates across the range it is actually handed.
-  focusDeepAt: 9,
+  // cut is not the retired generator those numbers describe.
+  //
+  // RE-DERIVED 2026-09-22 (KAN-132), BECAUSE THE DISTRIBUTION MOVED UNDER IT.
+  // KAN-131 set 9 against free hexes running 0-23 with a median of 6, quoting
+  // "the median is 0.67 and 23% sit at the top". KAN-134 then stopped counting
+  // ground a work already stands on, and the same quantity now runs 0-22 with a
+  // MEDIAN OF 4 — so 9 no longer reads what it was chosen to read. The two
+  // properties it was calibrated on can no longer both be had: at 6 the median
+  // is 0.667 but 38.0% sit at the clamp, which is [P-52]'s own complaint coming
+  // back; at 9 the clamp share is fine and the median has slid to 0.444.
+  //
+  // 8 IS WHERE BOTH READINGS ARE HONEST: the median sits at 0.500, in the middle
+  // of the scale rather than at either end, and 24.4% touch the top — the same
+  // 23% the number was calibrated to in the first place. Free hexes reading ZERO
+  // are 8.6% and no denominator moves them, so 8 also puts the least of the
+  // distribution at an end (33.0%, against 46.6% at 6 and 29.2% at 9 with a
+  // worse median).
+  //
+  // AND IT BARELY BINDS, WHICH IS WORTH KNOWING BEFORE ANYONE SPENDS A STORY ON
+  // IT. Measured across four warm worlds at day 0, 9 -> 8 moves the day-0 spread
+  // 8/77/1465 -> 8/78/1464, four capital works out of 555, and two production
+  // focuses out of 334. Sweeping it all the way to 6 costs the largest port
+  // 1,465 -> 1,356 and adds fourteen works. The scale is right now; it is not a
+  // lever.
+  focusDeepAt: 8,
   // HOW LOUDLY A DEEPENING ARGUES against the season's other two candidates, and
   // it is ONE number because a deepening's score is ONE PRODUCT rather than a sum
   // of terms. §2.12.10 writes it as `potential x free capacity x local price`:

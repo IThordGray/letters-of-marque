@@ -250,7 +250,13 @@ export function scoreWork(town: Town, kind: WorkKind, day: number, derived = der
   //    IT IS THE WHOLE OF THE TERM NOW. The `starved` half — a bonus and a
   //    sharper clause when something downstream stood idle for want of this —
   //    was the dependency edge talking, and it retired with the edge.
-  const earns = fetchOf(town, kind, d.access) / PLAN.tradeScale;
+  //
+  //    AND "WHERE THE TRAFFIC IS THICK" IS LITERAL SINCE KAN-132. A work that
+  //    fills no hold is paid a cut of what crosses this place's quay, so it has
+  //    to be scored on that and not on a standing allowance — otherwise a hamlet
+  //    goes on bidding four hundred and eighty coin for a customs house nothing
+  //    calls at, which is what [P-47] was earned on.
+  const earns = fetchOf(town, kind, d.access, d.commerce.traffic) / PLAN.tradeScale;
   if (earns > 0) {
     terms.push({ key: "market", weight: earns * PLAN.weights.market, clause: "there is money in it" });
   }
@@ -560,7 +566,7 @@ export function scoreFocus(
     //    it is cheap, and a port whose quay has burned has no market argument for
     //    anything at all.
     if (best) {
-      const earns = fetchOf(town, best.kind, d.access) / PLAN.tradeScale;
+      const earns = fetchOf(town, best.kind, d.access, d.commerce.traffic) / PLAN.tradeScale;
       if (earns > 0) {
         terms.push({ key: "market", weight: earns * PLAN.weights.market, clause: `${PRODUCE_WORD[best.produce]} fetches well here` });
       }

@@ -137,6 +137,15 @@ const ROWS = {
     food: 0, trade: 0, defence: 0, hands: 0, serves: "order", servesFor: 30, max: 1, zone: "plaza" },
   chapel: { label: "a chapel", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 0, defence: 0, hands: 1, serves: "worship", servesFor: 60, max: 1, zone: "lowerTown" },
+  // A MARKET IS THE LAST FREE WORK WITH A `trade` COLUMN, and after KAN-126
+  // retired the fishing shack's it was the largest one left: measured at day 0
+  // across four warm worlds, the stalls a place raises for nothing at sixty
+  // souls drew 274.89 of the world's 1,475.84 quayside cut — 19% of it, paid to
+  // a work nobody decides to have. It is NOT the shack's bug a second time, and
+  // the difference is the whole of KAN-132: since the cut became a share of what
+  // crosses, a market in a hamlet where nothing crosses earns nothing, and the 3
+  // is what it may take of the trade that does pass. A free work may hold a
+  // capacity; what it must never hold is a wage.
   market: { label: "a market", cls: "subsistence", cost: 0, produces: null, needsGround: null,
     food: 0, trade: 3, defence: 0, hands: 2, serves: null, servesFor: 0, max: 1, zone: "lowerTown" },
 

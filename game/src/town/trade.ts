@@ -6,7 +6,13 @@
 // shipping cost it. The other half — who it trades WITH, and at what price — is
 // the world's, and arrives as an input ([HC-71], [HC-72]).
 //
-//   yield = SUM(sold x price x access) + grant - imports paid - upkeep
+//   yield = SUM(sold x price x access) + the quay's cut of that traffic
+//           + grant - imports paid - upkeep
+//
+// THE SECOND TERM USED TO BE A STANDING ALLOWANCE and is now a share of what
+// actually crossed (KAN-132) — see `quaysideOf`. It is the only place in the
+// ledger where coin appeared without a cargo behind it, which made it the
+// largest breach of [HC-47] in the model.
 //
 // [HC-76] ONE UNIVERSAL DRIVE, NO THRESHOLD. Every place produces and consumes
 //         in all three classes and tries to cover its own. What differs between
@@ -85,7 +91,7 @@ export const PRODUCE_CLASS: Partial<Record<Produce, TradeClass>> = {
 // ([P-47]). Three readers with three different questions come through here:
 // what a work sends to the quay (`producedOf`), whether it fills a hold at all
 // (`quaysideOf`), and what it would fetch (`fetchOf`) — and a work that grows
-// nothing has no cargo class, so it earns its cut of the traffic on `access`.
+// nothing has no cargo class, so it takes a cut of the traffic instead.
 //
 // THE `food > 0` FALLBACK IS GONE. It read "a work that feeds the town and ships
 // nothing is carrying victuals", which was the old column's way of saying what
@@ -221,7 +227,12 @@ export interface Commerce {
   bought: number[]; // what the last clearing delivered AND the coffers paid for
   price: number[]; // the local price it faces
   access: number;
-  earned: number; // SUM(sold x price) — the first term of the equation
+  // The VALUE that crossed the quay this season, both ways, at cleared prices.
+  // It is what the harbour takes its cut of, and it is on the block rather than
+  // recomputed by each reader because the governor's estimate has to ask the
+  // same question the ledger answered ([P-47]).
+  traffic: number;
+  earned: number; // SUM(sold x price) + the harbour's cut of the traffic
   dependency: number; // 0..1 — the share of its bread that is not off its own ground
   // 0..1 — how far short of timber and stone it is. A town that cannot get them
   // CANNOT BUILD, however full its coffers (§3.5.3), which is why razing the quay
@@ -254,22 +265,89 @@ export function producedOf(working: Work[], food: number): number[] {
   return out;
 }
 
-// A customs house fills no hold: it takes a cut of what crosses the quay. So a
-// work with no cargo class earns on `access` and nothing else — which is still
-// EARNED rather than emitted, because access is exactly what a raider burns and
-// a blockade closes.
+// ---- What crosses the quay, and the cut the harbour takes of it ------------
 //
-// "NO CARGO CLASS" NOW MEANS "GROWS NOTHING", which is the same sentence read
-// off the produce. The arithmetic below is untouched and deliberately so — it is
-// KAN-132's, not this story's.
-export function quaysideOf(working: Work[]): number {
+// WHAT ACTUALLY MOVED THROUGH THIS PLACE THIS SEASON, at the price it cleared
+// at: the cargo it shipped out and the cargo it landed. A flow, never a stock
+// (§3.5.3) — it is this season's offer and this season's landings, and nothing
+// is carried over.
+//
+// BOTH DIRECTIONS, because [HC-85] gates both and a quay works both: a port that
+// lands a thousand bushels of grain is a busy port whether or not it grew a
+// thing. That is also what keeps the cut load-bearing for [HC-87]'s trade-fed
+// ceiling — the sea-fed port whose income funds its own grain is precisely the
+// place whose quay is busiest.
+//
+// `access` IS NOT HERE, AND ITS ABSENCE IS THE FIX ([P-47]). The offer is
+// already through the quay — `commerceOf` multiplies it by `access` once and
+// only once — and a landing arrived through the same gate. The old cut applied
+// `access` a SECOND time, to a quantity that had never passed a quay at all.
+// A blockade now reaches it the way it reaches everything else: reach falls,
+// access falls, offer and want fall, and there is no traffic to take a cut of.
+export function trafficOf(offer: number[], bought: number[], price: number[]): number {
   let out = 0;
-  for (let i = 0; i < working.length; i++) {
-    const w = working[i];
-    if (cargoOf(w.kind) === null) out += w.trade;
-  }
+  for (let c = 0; c < CLASS_COUNT; c++) out += (offer[c] + bought[c]) * price[c];
   return out;
 }
+
+// A customs house fills no hold: it takes A CUT OF WHAT CROSSES THE QUAY. Until
+// KAN-132 the arithmetic did not say so — it paid the work its whole `trade`
+// column x `access`, every season, whether or not a single bale crossed. No
+// price, no market, no buyer, and `harvestShare` never reached it, so a storm
+// could spoil a town's bread and leave its customs revenue untouched.
+//
+// MEASURED ON FOUR WARM WORLDS AT DAY 0, AND THE TWO FIGURES ARE THE WHOLE
+// DIAGNOSIS. The cut paid a quayed place a median 27.00 a season against a
+// median 16.16 of cargo actually crossing its quay — the cut was 1.67x the
+// traffic it was supposedly a cut OF. And it was the SAME 27.00 for a hamlet
+// that owned a customs house as for a port of fifteen hundred souls, because
+// nothing in it could tell them apart.
+//
+// SO THE COLUMN IS A CAPACITY NOW, NOT A WAGE: what this harbour could take if
+// it were working, earned in proportion to how much is actually passing. Three
+// things follow with no rule of their own:
+//
+//   * A PLACE THAT CLEARS NOTHING EARNS NOTHING from its quay — the acceptance
+//     criterion is the arithmetic rather than a gate ([P-1]).
+//   * A STORM DENTS IT, because `harvestShare` is already inside the offer.
+//   * A GREAT PORT OUT-EARNS A HAMLET holding the same customs house, which is
+//     what a flat allowance could not express and what [P-55]'s two economies
+//     were really a report about.
+//
+// "NO CARGO CLASS" MEANS "GROWS NOTHING", read off the produce (§2.12.13). A
+// work that fills a hold is paid at the price its cargo fetched and must never
+// be counted here as well, or the same bale is paid for twice.
+export function quaysideOf(working: Work[], traffic: number): number {
+  let column = 0;
+  for (let i = 0; i < working.length; i++) {
+    const w = working[i];
+    if (cargoOf(w.kind) === null) column += w.trade;
+  }
+  return column * busynessOf(traffic);
+}
+
+// HOW HARD THE QUAY IS WORKING, 0..1 — one definition, so the ledger and the
+// governor's estimate cannot drift ([P-47]): one asks what a harbour takes and
+// the other what one more berth would take, and both are this line.
+//
+// THERE IS NO CLAMP, AND ITS ABSENCE IS THE DESIGN RATHER THAN AN OMISSION.
+// `traffic / busyAt` with a ceiling at 1 was built and measured first, and it
+// failed [P-52] in the plainest possible way: the quayed half's MEDIAN READING
+// WAS THE CLAMP, 46-61% of them at exactly 1.00 across the whole usable range of
+// `busyAt`, because a place only keeps a harbour work if its quay is busy. A
+// ceiling half the quayed world already touches is the flat allowance again
+// wearing a ratio. `t / (t + busyAt)` approaches one and never reaches it, so
+// there is no ceiling to saturate and a busier port always earns more than a
+// busy one: measured on the shipped world, the quayed median reads 0.78 and the
+// quayless 0.39, with nothing at either end.
+//
+// AND IT IS BOUNDED, WHICH THE OBVIOUS FORM IS NOT. A cut written as a straight
+// SHARE of traffic — `traffic x rate` — is a percentage return, and a percentage
+// return on income that buys the grain that makes the income COMPOUNDS.
+// Measured: it took the quayside cut from 39% of the world's trade income to
+// 85-89% of it and doubled the largest port. A harbour can be busier; it cannot
+// be more than fully employed.
+export const busynessOf = (traffic: number): number => traffic / (traffic + TRADE.quayBusyAt);
 
 // What the town's own take off it before anything is spare. ONE RULE FOR EVERY
 // PLACE ([HC-76]) — a hamlet and a city obey the same three lines and fail at
@@ -323,12 +401,12 @@ export function commerceOf(
   // The cargo classes first, because the victuals line is funded out of them.
   // SUM(sold x price x access): the offer is already through the quay, so
   // `access` appears once and only once — [P-47], one path to the number.
-  let earned = quaysideOf(working) * access;
+  let cargo = 0;
   for (let c = 1; c < CLASS_COUNT; c++) {
     const spare = produced[c] - consumed[c];
     offer[c] = spare > 0 ? spare * access : 0;
     want[c] = spare < 0 ? -spare * access : 0;
-    earned += offer[c] * m.price[c];
+    cargo += offer[c] * m.price[c];
   }
 
   // THE COIN CEILING, and the line that actually lifts the old ~450-soul cap
@@ -342,7 +420,23 @@ export function commerceOf(
   // — which is why "the ceiling is set by the land's QUALITY, not its acreage".
   // It is funded out of cargo and the crown's grant and never out of its own
   // corn, so a farming town cannot bootstrap itself by selling corn to buy corn.
-  const purse = (earned + town.grant) * TRADE.growthShare;
+  //
+  // THE QUAY'S CUT IS IN IT TOO, AND IT IS STRUCK ON WHAT HAS ALREADY CROSSED
+  // (KAN-132). `offer[0]` is still nothing on the line below — THIS line is what
+  // decides how much corn there will be to ship — so what `trafficOf` can see
+  // here is exactly the landings and the cargo, and the corn joins the traffic
+  // further down, once it is real. The same question, asked twice, in the
+  // season's own order ([P-47]: one definition, not one call).
+  //
+  // BOTH HALVES OF THAT ORDERING ARE LOAD-BEARING AND BOTH WERE MEASURED.
+  // Funding the appetite out of cargo alone costs the world's largest port a
+  // fifth of its people (1,465 -> 1,182 across four warm seeds) — the quayside
+  // cut IS what funds a sea-fed port's grain, which is the property the ticket
+  // warned was load-bearing for [HC-87]. And funding it out of the FULL traffic
+  // is a circle: a place buying grain because it is about to buy grain, which
+  // compounds the quayside cut to 85% of the world's trade income.
+  const landed = trafficOf(offer, m.bought, m.price);
+  const purse = (cargo + quaysideOf(working, landed) + town.grant) * TRADE.growthShare;
   const perSoul = m.price[0] * FOOD.perHead + WEALTH.upkeepPerHead;
   const funded = perSoul > 0 ? purse / perSoul : 0;
   // THE GREATER of the two, not the sum — and that is a design choice worth
@@ -356,7 +450,12 @@ export function commerceOf(
   const spare = produced[0] - mouths;
   offer[0] = spare > 0 ? spare * access : 0;
   want[0] = spare < 0 ? -spare * access : 0;
-  earned += offer[0] * m.price[0];
+  cargo += offer[0] * m.price[0];
+
+  // ...and only now is the season's traffic known, so the harbour's cut comes
+  // LAST rather than first. The order is the whole of KAN-132 in one line: a cut
+  // of what crossed cannot be struck before anything has crossed.
+  const traffic = trafficOf(offer, m.bought, m.price);
 
   return {
     produced,
@@ -366,7 +465,8 @@ export function commerceOf(
     bought: m.bought,
     price: m.price,
     access,
-    earned,
+    traffic,
+    earned: cargo + quaysideOf(working, traffic),
     dependency: dependencyOf(produced[0], consumed[0]),
     materialsShort: shortfallOf(produced[1] + m.bought[1], consumed[1]),
     luxuryShort: shortfallOf(produced[2] + m.bought[2], consumed[2]),
@@ -455,12 +555,22 @@ export const dearnessOf = (town: Town, cls: TradeClass): number => {
 // about this place rather than a fact about the catalogue: the same sawpit is
 // worth raising where timber is dear and not where it is cheap.
 //
-// A work with no cargo class fills no hold, so it fetches its own cut of the
-// traffic and rides on `access` alone.
-export function fetchOf(town: Town, kind: WorkKind, access: number): number {
+// A work with no cargo class fills no hold, so it fetches a CUT OF THE TRAFFIC —
+// the same share the ledger pays it, asked of the same traffic ([P-47]). It used
+// to fetch `trade x access`, which was the flat allowance previewed, and the day
+// the ledger stopped paying that (KAN-132) the governor would have gone on
+// bidding four hundred and eighty coin for a wage that no longer existed. That
+// is precisely the shape [P-47] was earned on.
+//
+// SO A HARBOUR WORK NOW ARGUES FROM THE TRADE ALREADY PASSING THE PLACE, and
+// `[HC-16]`'s clause under it — "there is money in it" — becomes true of this
+// port rather than of the catalogue. A hamlet nothing calls at has no argument
+// for a customs house, which is the right answer and was not previously
+// sayable.
+export function fetchOf(town: Town, kind: WorkKind, access: number, traffic: number): number {
   const cargo = cargoOf(kind);
-  const price = cargo === null ? 1 : town.market.price[CLASSES[cargo].rank];
-  return CATALOGUE[kind].trade * price * access;
+  if (cargo === null) return CATALOGUE[kind].trade * busynessOf(traffic);
+  return CATALOGUE[kind].trade * town.market.price[CLASSES[cargo].rank] * access;
 }
 
 // ---- The port seam (§3.5.7) ------------------------------------------------
