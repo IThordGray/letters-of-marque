@@ -10,6 +10,65 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-22 (second) — The antfarm test, and the list is closed
+
+**THE MILESTONE NOW HAS A STATED TEST, in the human's own words:**
+
+> *"I want to be able to watch the world like an antfarm. With the nations acting, I want to see
+> things improving / degrading (due to nations acting on one another). Things don't have to be
+> perfectly balanced, but I want to get to the point where I can just watch it."*
+
+**Three things that sentence decides, and each one settles a question that has been open:**
+
+1. **THE UNIT OF SUCCESS IS A WATCHED HOUR, not a passing suite.** The world is done when a person
+   can sit in front of it and follow what is happening without being told. Every remaining story is
+   judged against that, and a story that makes the numbers better while making the world duller has
+   failed.
+2. **CAUSE MUST BE VISIBLE, not merely present.** "Improving / degrading **due to** nations acting on
+   one another" is a claim about legibility, not about simulation depth. A crown's decision that
+   moves a number nobody can trace is not the feature. `[HC-16]`'s *"a decision that comes to nothing
+   still needs a clause"* generalises here: **a consequence that cannot be traced to its cause has
+   not happened, as far as the milestone is concerned.**
+3. **"NOT PERFECTLY BALANCED" IS PERMISSION TO STOP TUNING.** Explicit, and it is the counterweight
+   to the calibration spiral that produced the 450–600 target. Balance is not the bar. **Watchable
+   is the bar.**
+
+---
+
+**THE LIST IS CLOSED AT SEVEN STORIES**, labelled `antfarm` on the board:
+
+| | |
+|---|---|
+| **KAN-132** | the quayside cut becomes a share of real traffic — fixes the income side |
+| **KAN-133** | a town fails out loud rather than silently |
+| **KAN-124** | a focused region may be deepened — finishes the focus mechanic |
+| **KAN-127 / 128 / 129** | damage is a degree · repair comes off the top · building takes time |
+| **KAN-101** | nations act, and say why |
+
+**Nothing is added to this list.** Anything found from here is **written down and deferred**, not
+slotted in — and that rule is the whole point of writing this entry.
+
+**The problem it solves, stated plainly so the cure is not mistaken for bureaucracy.** Every story in
+this sequence found a real bug in the one beneath it: KAN-125 found the menu broken, which led to
+KAN-131 finding towns losing money, which led to KAN-126 finding a free hut printing 14.5% of the
+world's income, which points at KAN-132. **Not one of those was drift, and all four were worth
+doing** — but a process that is *correct* at every step and *unbounded* in total still never ships.
+The human's read of it was *"it feels like it's always just one more thing"*, and he was right.
+
+> **A finding is not a reason to extend a milestone. It is a reason to write a ticket.** The
+> discipline that made the findings real — measure, do not tune, report the criterion that fails —
+> says nothing about when to stop, and that second step needs a person. He took it here, exactly as
+> the 450–600 withdrawal said someone would have to.
+
+**What is explicitly OUT, and none of it is cancelled — only deferred:** the town menu (KAN-89) and
+every player-facing tie-in, the town card and chronicle depth (KAN-75), the 20-year fast-forward
+(KAN-77), the terrain-kind lockdown (KAN-130), the governor-weight and placement work (KAN-73, 76,
+81, 95), and the two recorded defects that are not in the path (KAN-118, 119, 134, 135 once landed).
+**A world simulation runs without a player**, so the player-facing work is not a prerequisite for
+judging one.
+
+---
+
 ### 2026-09-22 — A free hut was drawing a harbourmaster's wage
 
 **KAN-126 re-keyed a cargo's class from the building to the ground, and the dominant effect was not
