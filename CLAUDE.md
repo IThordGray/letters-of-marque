@@ -89,6 +89,11 @@ deciding.** An agent's report is raw material — never relay it.
 4. **Concrete over vague.** "720 tests, 19% empty" beats "good progress". Numbers,
    filenames, real sentences from the sim.
 5. **No recap, no closers.** Stop when the answer stops.
+6. **Never name a ticket without saying what it does.** Correction, 2026-09-22: *"'towns fail out
+   loud instead of silently' means nothing to me."* A ticket title is my shorthand, not his. When
+   proposing the next piece of work, give **two or three plain sentences: what is wrong now, what
+   changes, and why it matters to him** — then the question. A key number (`KAN-133`) is a label
+   for the board, never an explanation.
 
 **Break these when he asks to *explain* or *walk me through*** — then explain fully, with
 headers he can skim. And when a decision genuinely needs his judgement, give **2–4 ranked
