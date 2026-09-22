@@ -322,6 +322,37 @@ whose cadence is a *rule* rather than an arbitrary convenience.
 harder to get subtly wrong than "flag not set", and a missed invalidation in a deterministic
 simulation is a silent corruption that compounds for two hundred years.
 
+*The two rules below were added 2026-09-22 from three talks (Sources). The numbers quoted are theirs,
+measured in C# and Zig; the rules are restated for this codebase, and marked wherever the reason
+changes or the win disappears under V8. None of it has been measured on our own run yet — `[P-39]`
+still applies before any of it is cited as a saving here.*
+
+> **Why none of this is micro-optimisation.** Each change below is individually dismissible in a pull
+> request. They are not individually additive. The cache is a **contested** resource, so the effects
+> multiply: Barker's worked example takes the same loop through ten small, sensible changes and lands
+> at **~40× faster**, no single step of which would survive review on its own merits. Traffic does not
+> get linearly worse as cars join the road; it is fine, and then it is gridlock. Cache pressure
+> behaves the same way, which is why these decisions are made continuously and cheaply rather than
+> saved up for an optimisation pass that arrives too late to make them.
+
+**`[P-56]` Remove by swapping the last element into the hole, and batch removals to the end of the
+pass.** An ordered remove shuffles every element after the hole, so a pass that kills *k* of *n*
+entities pays O(n·k) to preserve an ordering nobody asked for. Measured: hoisting the deletions out
+of the walking loop into one bulk pass was **3×**, and replacing the ordered list with a swap-back
+array a further **4×** — together the difference between a loop collapsing at 10× the entity count
+and running *faster* than it had at the original count. **Order is a cost.** Pay it only where a rule
+demands it, and where it does, sort a copy at the point of use.
+
+> Safe under `[HC-*]`: a swap-back array's order is a pure function of the removal sequence, so it
+> stays deterministic. But it is *arbitrary* — nothing may read meaning into a position, and no rule
+> may depend on iteration order (`[P-37]`).
+
+**`[P-57]` Write the function that takes many, not the function that takes one.** A per-entity
+`update()` called once per entity per tick is the shape that makes almost every rule in this file
+impossible to apply: you cannot hoist an invariant out of it, cannot keep what the loop touches
+contiguous, cannot remove in bulk. One function over an array can do all three. **A good test when
+adding any method: could this take an array instead?** If it could, it should.
+
 ---
 
 ## §3. Allocation — and the doctrine that reversed
@@ -401,6 +432,45 @@ iteration order from depending on discovery order.
 **`[P-38]` No strings inside the simulation.** Intern to integer ids. String building in a per-tick
 path is an allocation you will pay for 3.6 million times — and see §7, where it is already happening.
 
+> The cautionary tale for `[P-38]`, worth knowing by name: *GTA Online* spent **70% of a seven-minute
+> load** on one core parsing a 10 MB JSON config. It shipped fine — the file was small then, and it
+> grew patch by patch. Strings fail late and all at once. **If a human is not going to read it, it is
+> not a string.**
+
+**`[P-58]` Never call a caller-supplied function from inside a hot loop.** An `onDeath` delegate, an
+event handler, a subscriber list: its cost is bounded by nothing visible at the call site. It can
+allocate, it can do I/O, it can evict L1 wholesale — you have handed away control of the loop's
+performance characteristics. **In this codebase it is worse than that**: a caller-supplied function is
+the easiest way for a forbidden read to arrive inside a deterministic loop, which makes the Observer
+pattern a `[HC-*]` hazard as well as a performance one. Inline the behaviour, or push events into an
+array and drain it after the loop. The strongest form is `[P-17b]` — a loop with no function-valued
+parameter has no channel through which anything can arrive.
+
+**`[P-59]` Prefer one encoded shape to a family of polymorphic ones.** One record layout: a
+small-integer tag, the fields every variant shares, and one or two general-purpose slots whose
+*meaning the tag defines*. Zig's compiler went from 54.0 bytes per IR node under polymorphism to 20.3
+under encodings, and its AST nodes from 120 bytes to 15.6 — worth **39%** and **22%** of wall-clock in
+those two stages. **In TypeScript the byte count is not the reason.** The reason is `[P-29]`: twenty
+entity kinds as twenty classes is a guaranteed-megamorphic call site (0.76 → 5.12 ns on a property
+load); twenty encodings of one shape stays monomorphic. Encodings are how twenty kinds fit inside the
+four-shape budget.
+
+**`[P-60]` Where a field is empty for most records, move it to a side table keyed by handle.** If 90%
+of monsters carry nothing, the inventory field is 90% waste on every record and a load that every
+loop pays for. **What changes for us is when it is worth it**: a `Map.get` costs tens of nanoseconds
+against a property load's sub-nanosecond, so a side table pays only when the field is genuinely rare
+*and* the population is large enough for the field itself to cost something. At 50 towns it never is
+— see `[P-35]`. Key it by integer handle, never by object (`[P-37]`).
+
+**`[P-61]` Encode the states that exist, not the booleans that imply them.** *n* booleans describe 2ⁿ
+states and you almost never mean all of them; `dead && frenzied` is a bug waiting for QA to find it.
+Replace the flags with an enum of the real states. **In TS this buys correctness, not bytes** — a
+`boolean` field and a small-int field are the same single tagged slot — but it is the precondition
+for `[P-59]`, and it composes with `[P-14]` into the strongest version of itself: once the states are
+named, the state *is* which array the entity lives in, and the field disappears entirely. That is
+Kelley's "store booleans out of band", and it is the same rule as `[P-14]` arrived at from the
+opposite direction — three independent sources, one rule.
+
 ---
 
 ## §5. False economies — techniques that sound right and are not
@@ -420,6 +490,9 @@ apply, and several are folklore repeated for a decade after they stopped being t
 | **Threads / Web Workers in sim code** | Banned. Parallelism is the most effective way to destroy bit-identity, and Factorio's own attempt at threading a memory-bound system made throughput *worse*. |
 | **Avoiding `try`/`catch`** | **Stale.** Optimised since V8 5.3 / Node 7; measured 1.03×. The canonical source for this advice — the Bluebird "optimization killers" wiki — now carries its own disclaimer saying it is historical. Also dead from that list: `for…of` deoptimising, generators, compound `let`/`const`, and the 128-case `switch` limit. |
 | **Contorting code to reach one shape** | See `[P-29]` — up to four is free. |
+| **Reordering fields largest-to-smallest to kill padding** | A real and large win in C/C++/Zig — and a **no-op in a plain JS object**, where every field is one tagged slot whatever TypeScript calls it, and there is no padding to reclaim. It becomes real again the instant the data is a `DataView`, an interleaved typed array or a GPU vertex buffer — see `[P-66]`. |
+| **`class` → `struct`** | Measured at **−30%** in C#, because an array of classes is an array of pointers into the heap. No such lever exists in TypeScript. The equivalent move is a typed-array column, and `[P-35]`/`[P-36]` decide it by record count, not by instinct. |
+| **Narrowing an enum to a byte** | Costs nothing and buys nothing on a plain object field. Buys 4× density in a `Uint8Array` column or a vertex attribute. Same advice, different data structure. |
 
 ---
 
@@ -490,14 +563,87 @@ A rule nobody checks is a wish.
 
 ---
 
+## §9. The GPU is a different computer
+
+**Not load-bearing yet.** Nothing in `game/` renders through a GPU today, and until something does,
+this is a briefing rather than a rule set. It is recorded now because the choices that make these
+techniques possible — WebGL2 or WebGPU, and whether the view owns buffers or objects — are made once,
+early, and are expensive to revisit.
+
+Everything above assumes one thread, one CPU and V8. A GPU inverts a good deal of it. The byte layout
+you cannot control in a JS object is exactly what you control in a buffer, and the cost you are
+hunting stops being cache misses and becomes **draw calls and bandwidth**.
+
+**`[P-62]` Do not build an object for the renderer to walk. Write the buffers the GPU actually
+reads.** The voxel devlog's chain was: voxel data → vertices and indices → a `Mesh` object (plus
+computed normals and bounds) → a `GameObject` → a draw. Two of those stages exist only because the
+engine expects an object to exist; deleting them deleted the work, the memory, and two whole systems.
+Our form of the same rule: the view owns typed-array columns and uploads them — no per-entity display
+object, ever. `[P-17c]` is this rule from the other side; the bake belongs to the reader.
+
+**`[P-63]` Reduce the number of tests before you make the test faster.** The most useful finding in
+that video. Moving a per-chunk frustum test onto a compute shader — hundreds of thousands of bounds
+tested in parallel, precisely what a GPU is for — bought **nothing**: 50 fps before, 50 after.
+Grouping the *same* tests into an octree, so one rejection discards 32,768 chunks at once and a node
+fully inside the frustum admits its whole subtree untested, took it to **170**. Same tests, same
+hardware, 3.4×. This is `[P-1]` in graphics clothing, and it is the rule most likely to be forgotten
+the moment a GPU is standing there waiting to be thrown work.
+
+**`[P-64]` One buffer, many draws — and check what the API actually gives you before planning around
+it.** The technique: allocate one large vertex buffer and one index buffer, suballocate each piece of
+geometry into free space, keep a parallel args buffer of draw commands, and issue them all against one
+binding so the GPU processes them as though it were a single mesh. Pieces are added and removed
+without rebuilding anything. Fewer, larger passes beat many small ones, always.
+
+> **PARKED — a question for whoever picks the renderer, not a decision now.** `game/` draws to a 2D
+> canvas and no renderer beyond that has been chosen ([solution-architecture.md](solution-architecture.md),
+> *Deliberate non-choices*). The fact to carry into that choice, and the only reason this paragraph
+> exists: **WebGL2 has neither indirect draw nor compute shaders.** Its nearest equivalents are
+> `drawElementsInstanced` and the `WEBGL_multi_draw` extension, both driven from JavaScript.
+> **WebGPU has `drawIndexedIndirect` and compute shaders**, so a draw list written by the GPU itself
+> is possible there and only there.
+>
+> So this is an input to the renderer decision, not an argument for one. **Unpark it when a renderer
+> is on the table**; until then nothing in `game/` should be shaped around either answer.
+
+**`[P-65]` An allocator's cost scales with its arena.** One mega-buffer removed the draw-call cost and
+created a new one: finding free space among 20,000 suballocations, which was the source of the
+residual frame spikes. Splitting it into fixed-capacity pages removed the spikes *and* the hard
+ceiling, at the price of one extra draw call per page. Bigger is better for the GPU and worse for the
+allocator — page until both are tolerable.
+
+**`[P-66]` The vertex is the struct that has to shrink, and here the byte count is literally the
+cost.** 48 bytes → 16, and the frame rate went from 25–40 fps to over 200 while draw distance went
+from 40 chunks to 120. Every step has an analogue in any GPU buffer of ours:
+
+| From | To | Move |
+|---|---|---|
+| normal, 12 B | 0 B | **derived in the shader** — `[P-17]` applied to vertex data |
+| UV, 8 B | 1 B | index into a 256-entry lookup table |
+| texture index, 4 B | 11 bits | asked what range was actually needed — 4 billion textures → 2,048 |
+| colour, 4 B | 2 B | the same lookup-table trick; 32,768 tints is plenty |
+| four small fields | 3 B | bit-packed together |
+| position, `float32×3`, 12 B | `float16×3`, 6 B | 4 nm resolution → 0.5 mm; nobody can see the difference |
+
+Two things to carry out of that table. **The lookup table wins here, which is the opposite of the §5
+verdict — and both are right:** on the CPU a table competes with real work for cache and usually
+loses; in a vertex buffer it competes with per-vertex *bandwidth*, and wins easily. Scope that rule to
+the memory it lives in. And **nothing in the table is a trick** — every line is someone asking what
+range a field actually needs. Four billion positions per axis and four billion texture indices were
+unexamined defaults, not decisions. (`HALF_FLOAT` vertex attributes exist in WebGL2; WebGPU has
+`float16x2` / `float16x4`.)
+
+---
+
 ## Sources
 
 The research behind this file, worth reading before proposing an exception:
 
-- **Data-oriented design:** [Mike Acton, CppCon 2014](https://www.youtube.com/watch?v=rX0ItVEVjHc) · [Richard Fabian, *Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook.pdf) · [Nystrom, *Game Programming Patterns* — Data Locality](https://gameprogrammingpatterns.com/data-locality.html), [Dirty Flag](https://gameprogrammingpatterns.com/dirty-flag.html)
+- **Data-oriented design:** [Mike Acton, CppCon 2014](https://www.youtube.com/watch?v=rX0ItVEVjHc) · [Andrew Kelley, *A Practical Guide to Applying Data-Oriented Design*](https://youtu.be/IroPQ150F6c) — indexes over pointers, booleans out of band, struct-of-arrays, sparse data in side tables, encodings over polymorphism · [Nick Barker, *Intro to Data Oriented Design for Games*](https://youtu.be/WwkuAqObplU) — the restaurant analogy for the cache hierarchy, and a measured ~40× on one loop · [Richard Fabian, *Data-Oriented Design*](https://www.dataorienteddesign.com/dodbook.pdf) · [Nystrom, *Game Programming Patterns* — Data Locality](https://gameprogrammingpatterns.com/data-locality.html), [Dirty Flag](https://gameprogrammingpatterns.com/dirty-flag.html)
 - **Doing less, at scale:** [Factorio FFF-148 "do less"](https://www.factorio.com/blog/post/fff-148) · [FFF-421 Optimizations 2.0](https://www.factorio.com/blog/post/fff-421) · [FFF-204 prefetching](https://www.factorio.com/blog/post/fff-204) · [Dwarf Fortress optimisation](https://www.gamedeveloper.com/programming/how-tarn-adams-upgraded-and-optimized-dwarf-fortress-for-its-official-steam-release)
 - **Determinism:** [Bettner & Terrano, "1500 Archers on a 28.8"](https://www.gamedeveloper.com/programming/1500-archers-on-a-28-8-network-programming-in-age-of-empires-and-beyond) · [Fiedler, Floating Point Determinism](https://gafferongames.com/post/floating_point_determinism/) · ECMA-262 §21.3.2 · [V8 `Math.tanh` divergence across OSes](https://scrapfly.dev/posts/browser-math-os-fingerprint/) · [Math keeps changing](https://macwright.com/2020/02/14/math-keeps-changing.html)
 - **V8 reality:** [Elements kinds](https://v8.dev/blog/elements-kinds) · [Fast properties](https://v8.dev/blog/fast-properties) · [Trash talk: Orinoco GC](https://v8.dev/blog/trash-talk) · [Maglev](https://v8.dev/blog/maglev) · [Pointer compression](https://v8.dev/blog/pointer-compression) · [Shapes and Inline Caches](https://mathiasbynens.be/notes/shapes-ics) · [Egorov, What's up with monomorphism?](https://mrale.ph/blog/2015/01/11/whats-up-with-monomorphism.html) · [Microbenchmarks are experiments](https://mrale.ph/blog/2024/11/27/microbenchmarks-are-experiments.html)
 - **Stale advice, cited as stale:** [Bluebird "Optimization killers"](https://github.com/petkaantonov/bluebird/wiki/Optimization-killers) — now self-disclaimed
+- **GPU-driven rendering (§9):** [*I Built a Custom GPU-Driven Rendering Pipeline (10x Faster)*, Planetsmith devlog](https://youtu.be/LzivS_KzffY) — indirect draw, octree culling, buffer paging, 48→16-byte vertex packing
 - **Scheduling:** [Varghese & Lauck, Hashed and Hierarchical Timing Wheels](https://www.cs.columbia.edu/~nahum/w6998/papers/sosp87-timing-wheels.pdf)
 - **Judgement:** [Abrash, "The Best Optimizer Is between Your Ears"](https://www.phatcode.net/res/224/files/html/ch01/01-01.html) · ["Assume Nothing"](https://www.phatcode.net/res/224/files/html/ch03/03-01.html) · [You (Probably) Shouldn't use a Lookup Table](https://specbranch.com/posts/lookup-tables/)

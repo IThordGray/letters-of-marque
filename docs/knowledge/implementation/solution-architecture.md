@@ -60,6 +60,13 @@ in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026
 - **No datastore chosen yet.** *What* to persist is a WHAT question for `../spec/`;
   *which* database is a HOW decision, deferred until the spec needs it.
   (See [`../decisions.md`](../decisions.md).)
+- **No renderer chosen beyond the 2D canvas** (parked 2026-09-22). `game/` draws to an HTML
+  canvas and that is all that is settled; WebGL2, WebGPU and staying on canvas are all still open,
+  and nothing in `game/` may be shaped around any of them. **One fact belongs in that decision when
+  it is made:** WebGL2 has no indirect draw and no compute shaders, so a GPU-written draw list — the
+  technique behind the big wins in GPU-driven voxel rendering — is possible on WebGPU only. Written
+  up, with what else changes when the GPU becomes the reader, in
+  [performance.md §9](performance.md#9-the-gpu-is-a-different-computer).
 - **NO MOD SYSTEM — and don't re-propose one** (decided 2026-09-10). Content lives in **data
   tables**; there is deliberately **no loader, no manifest format, no versioning, no load-order
   resolution, no merge semantics, no sandbox and no public API to keep stable.** Those are the price
