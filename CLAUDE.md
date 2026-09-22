@@ -34,6 +34,42 @@ durable is committed. Full detail:
    adapted to pirate flavour) so the build is informed by deeper design knowledge —
    not only the literal request. When a design call is uncertain, verify with the human.
 
+## Do less — and the test is on FEATURES, not just code
+
+Standing instruction (2026-09-22): *"I don't just want code for the sake of engagement.
+Everything we do needs to serve a purpose, and even then we need to be critical about
+whether we REALLY need it. This is more of a guardrail on how we think about what's
+next."*
+
+`[P-1]` **Do less** already binds anyone writing code — Factorio's whole philosophy in two
+words. This is the same rule **one level up**, and it is the **manager's** to apply:
+before a ticket exists, before an agent is briefed, before a spec section is written.
+
+**Three questions, in order. A feature survives all three or it does not get a ticket.**
+
+1. **What can the world or the player do that it cannot do now?** Name it as a sentence
+   about the game, never about the codebase. "Towns react to blockades" passes;
+   "refactor the market seam" does not — that is a means, and it needs an end above it.
+2. **What already built does most of this?** Extending a mechanism beats adding one. Two
+   systems that half-overlap cost more than the sum of their parts for ever.
+3. **If we shipped without it, what is concretely worse?** If the honest answer is
+   *"nothing a person would notice"*, **it does not get a ticket** — it gets a line in
+   `decisions.md` saying it was considered and declined, so nobody re-derives it.
+
+**The default answer to "should we build this?" is NO.** A feature has to argue its way
+in. That is the same standard `[P-1]` sets for a line of code, and the reason to hold it
+harder at this level is that a ticket costs a hundred times what a line does.
+
+**Where this bites hardest, and it is my own failure mode:** an agent ends its report with
+*"Knowledge to capture"* and a list of follow-ups. **That list is raw material, not a
+backlog.** Each item gets the three questions like anything else. Pair this with the rule
+that a finding is a ticket and never a scope extension (`decisions.md`, 2026-09-22) —
+together they mean **fewer things start, and the agreed list stays closed.**
+
+**Say the no out loud.** When I decline something, it goes in the report in one line with
+the reason — not silently dropped, because a silent no is indistinguishable from an
+oversight.
+
 ## How the manager reports — short, actionable, singular
 
 Standing instruction (2026-09-21): *"You are the manager. You need to orchestrate and

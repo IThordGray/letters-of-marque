@@ -21,6 +21,13 @@ to be cited in review.
 work faster.** Factorio's whole optimisation philosophy compresses to those two words, and it is the
 right lens here.
 
+> **AND THE TEST IS ON FEATURES TOO, not only on code (2026-09-22).** This file's scope is `game/`,
+> so `[P-1]` as written binds a line of code. The human extended it upward: *"Everything we do needs
+> to serve a purpose, and even then we need to be critical about whether we REALLY need it."* The
+> feature-level form — three questions a ticket must survive, and the default answer being **no** —
+> lives in `CLAUDE.md` under *Do less*, because it is applied at triage rather than in review. **A
+> ticket costs a hundred times what a line does, so the bar is higher, not lower.**
+
 **`[P-2]` Judge cost as complexity × tick rate, never complexity alone.** An O(N²) pass over 50 towns
 is 2,500 operations — trivial once a season, ruinous once a day. The two beats (`[HC-2]`) are the
 axis every performance decision turns on.
