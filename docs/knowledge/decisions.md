@@ -73,10 +73,27 @@ doesn't impact how big the town gets, just how much grain can be sold."* **KAN-1
    same day — *"forest tiles don't add to the town's timber surplus (just boosts trade)… the hex
    tiles are just for trade boosting, not town running."* Checked: `commerceOf` computes
    `materialsShort` from **`produced + bought`**, so a sawpit on a town's own timbered hills directly
-   offsets that town's materials shortage. **It is the food bug's exact shape one column along** —
-   `carryingCapacity` reads `grown + bought`, this reads `produced + bought`. It becomes `bought`
-   alone: a town buys its building materials like everyone else, and what its own pits cut goes to
-   market.
+   offsets that town's materials shortage.
+
+> **CORRECTED THE SAME HOUR, and the manager had it wrong twice.** My first reading was that a town
+> should *buy* its materials — `materialsShort` from `bought` alone. The human corrected it: *"the
+> assumption is that they are already harvesting said resources. Claiming a forest tile doesn't mean
+> only now do they get wood. It means their yield is bigger."*
+>
+> **A TILE IS A MULTIPLIER ON A BASELINE THE TOWN ALREADY HAS, not a source that grants access to a
+> resource.** So a town is never short of materials for its own building — and **the materials
+> build-gate has nothing left to do.** It is deleted, along with `canBuild`, `canBuildKind`,
+> `TRADE.buildGate`, and **the sawpit exemption**, which existed only to patch a hole in the gate:
+> *"you do not need planks to dig a sawpit"* stops being needed the moment nobody needs planks for
+> anything. The cliff it closed cannot reopen, because its cause is gone.
+>
+> **It also closes KAN-136 by deletion** — the materials refusal clause that had no consumer is
+> removed rather than wired up. **`[HC-87b]` and `[HC-87c]` now describe a mechanism that does not
+> exist** and need striking from the spec.
+>
+> **Materials remain a trade class.** Towns still sell timber and stone and still buy them. Only the
+> *constraint on construction* goes. What gates building afterwards is **coin, the menu's per-town
+> limit, and a region's free area** — three caps, all still real, and the story verifies they bind.
 
 > **THE GENERAL RULE, which is what all five changes are instances of: a work standing on a tile
 > produces CARGO AND NOTHING ELSE.** It does not feed its own town and it does not stock its own
