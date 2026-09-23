@@ -513,6 +513,8 @@ Snap hotkeys for both extremes: one key to the working floor, one to the overvie
 
 Still worth building regardless of zoom: a **minimap** and **off-screen indicators** for ships outside the frame, since the player will spend most of their time near the working floor rather than at the ceiling.
 
+**The sky is never in frame, and that is a budget line.** Half a normal 42° field of view is 21°; at 60–65° of pitch nothing above the horizon is ever on screen (measured 2026-09-23). **No skybox is needed at the working camera** — the haze colour and the sea are the whole background. The same geometry is why vertical effects foreshorten (§5.5).
+
 Per layer:
 
 | Layer | Camera |
@@ -541,17 +543,18 @@ Two useful consequences: the overview is the natural home for group tasking, and
 All code, not assets — which is the point at this budget:
 
 - **Motion sells low-poly harder than geometry does.** A simple ship that heels into the wind, pitches over swell, and luffs her sails coming about reads better than a detailed one sliding flat across the surface. This is the single largest gap between "looks cheap" and "looks good."
-- **One strong directional light, long shadows, no textures.** Long shadows from a low sun read excellently from a high camera and restore the heading and mass cues that flat shading loses.
+- **One strong directional light, long shadows, no textures.** Long shadows from a low sun read excellently from a high camera and restore the heading and mass cues that flat shading loses. **But "low" has a floor, and it is higher than it sounds — measured 2026-09-23.** At 16° a shadow runs 3.5× the caster's height, and a town at street spacing drops every building into its neighbour's shadow and goes black. ~26° (2.05×) was the first elevation where the streets stayed lit. **Sun elevation is a per-scene setting, not one global number:** long shadows are right for ships on open water and wrong for a settlement.
 - **Weather as a palette-and-lighting preset.** Squall: desaturate, raise fog, flatten contrast. Dusk action: warm rim light, cool shadow tint, long shadows. Enormous perceived variety from a handful of presets.
-- **Smoke is the hero effect.** In an age-of-sail game gun smoke *is* the signature image, it's particles rather than assets, and drifting banks double as readable information about who has fired recently. Worth over-investing in.
+- **Smoke is the hero effect — and "drifting banks" is a requirement, not flavour.** In an age-of-sail game gun smoke *is* the signature image, it's particles rather than assets, and drifting banks double as readable information about who has fired recently. Worth over-investing in. **Measured 2026-09-23:** under §5.3's pitch a vertical smoke column foreshortens to a dot on a roof. **Smoke reads only if it drifts sideways faster than it rises.** The same geometry costs every vertical effect — masts and sail plans included.
 - **Damage by mesh swap, never deformation.** Torn sail → jagged-edge variant. Broken mast → hide the top segment. Readable, cheap, no rigging.
 
 ### 5.6 Hard constraints on asset design
 
 - **Ship classes must be identifiable by silhouette across the working zoom range.** Sloop, brig, and frigate need to read instantly, or fleet-scale tasking becomes guesswork. Less restrictive than it was — at the zoom ceiling identification passes to inked tokens (§5.4), so the 3D meshes only have to carry it from the floor to mid-zoom.
-- **Exaggerate class footprint differences past realism.** Toy scale is correct, not a cheat — ships are the subject, so let them be large relative to islands and let the classes differ in size as well as shape.
+- **Exaggerate class footprint differences past realism.** Toy scale is correct, not a cheat — ships are the subject, so let them be large relative to islands and let the classes differ in size as well as shape. **Measured 2026-09-23, and it makes this a hard constraint rather than a preference:** a 56 nm frame is ~104 km, so a real 1 km town is under 1% of it — invisible. Buildings had to be ~650 m a side, and terrain relief needed **~10–12× vertical exaggeration** before an island stopped reading as flat. Any renderer inherits both numbers.
 - **Exaggerate the bow** so heading reads from above, and give every moving ship a wake trail as a directional cue. Flat shading loses the gradient that normally communicates facing, and heading is critical because broadside arcs depend on it.
-- **MVP asset list:** 3 hull meshes + sail plans + damage variants, one chart-sea material, one smoke system, faction colour sets. That is close to the whole of it.
+- **MVP asset list:** 3 hull meshes + sail plans + damage variants, one sea material, **one tree**, one smoke system, faction colour sets.
+- **The tree is not a rounding error — it was the highest-value object in the 2026-09-23 spike.** Nine thousand instanced cones cost one draw call and did more for *"this is a place"* than the buildings did. It was missing from this list and should never have been. That is close to the whole of it.
 
 ---
 

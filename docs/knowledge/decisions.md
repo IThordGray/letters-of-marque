@@ -10,6 +10,68 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-23 (third) — Boxes and good light read as a place. The close view is where the camera floor goes.
+
+**KAN-139, `prototype-look/`, commit `f0fc979`.** A throwaway three.js scene built to answer one
+question and then be deleted: does the v0.18 art direction read with **no artist-made models at
+all**? The human is not a 3D artist, so this gates whether props get bought, generated or stayed
+away from.
+
+**The answer is yes, with a qualifier the spike's own report did not make.** At the wide framing it
+is convincing — turquoise shallows into deep water, a sand band following every cove, dark forest on
+the far headland, warehouse row along the strand and dwellings behind. **At close range it is not.**
+The boxes read as boxes, and the terrain's colour bands read as hard grid stair-steps along the
+beach. **That is a finding about §5.3, not about the props:** the locked floor is the closest the
+camera may ever get, it *"determines the entire art budget"*, and this spike says the floor sits
+above the close framing it was shot at. Nothing needs deciding yet — but when the floor is set, it
+is set from this, not from taste.
+
+**Trees carried the scene.** Nine thousand instanced cones, one draw call, and they did more for
+*"this is a place"* than the forty-two buildings. They were absent from §5.6's MVP asset list and
+have been added.
+
+**Measured on a real GPU** (ANGLE/D3D11, Intel Iris Xe, 1600×900, WebGL2): **9 draw calls · 430k
+triangles per frame including the shadow pass · 0.57–0.81 ms of CPU inside the frame callback.**
+**The 10.0 ms/frame figure is the headless rAF cap, not the cost** — the scene never missed the cap
+at any zoom, and GPU headroom is **unmeasured**. Recorded that way on purpose: `[P-39]` says a number
+that was not taken is not reported, and 9 draw calls for a whole populated island is the number that
+actually matters.
+
+**`[P-62]` held under a real test.** One `InstancedMesh` per mesh type, no per-building `Object3D`.
+Forty boxes never needed it; the spike needed it so the figure above is true of three thousand.
+
+**What the spike proved §5 had wrong, now folded into the doc:**
+- **Sun elevation has a floor around 25° for anything built-up.** At 16° a town shadows itself into
+  one dark mass. Elevation is per-scene — long shadows are right at sea and wrong in a street.
+- **The sky is never in frame.** At §5.3's pitch with a normal field of view nothing above the
+  horizon is on screen. **No skybox budget**; haze and sea are the background.
+- **The same geometry means vertical effects foreshorten.** A smoke column becomes a dot on a roof.
+  §5.5's *"drifting banks"* is a requirement, not flavour — smoke must move sideways faster than it
+  rises, and masts and sail plans inherit the problem.
+- **Toy scale is a hard constraint, not a preference.** A real town is under 1% of a 56 nm frame.
+  Buildings ran ~650 m a side and relief needed ~10–12× vertical exaggeration.
+- **Foam belongs in the terrain's vertex colours** — free, exact, follows every cove, resolution-
+  independent. Cheaper than geometry or a shader and better than both.
+- **The sea needs an emissive term** to stay saturated under a low sun. Physically wrong, visually
+  required, squarely inside §5.1's *"stylised, never simulated"* licence.
+- **Land-only shadows.** Water cannot receive them without spending the shadow map on sea.
+
+**Still open, and the spike is explicit that it proves nothing about it:** §5.2's structural
+concern — whether a saturated sea leaves enough value range for tactical annotation. The scene drew
+no annotation. **This is the amendment's known weak point and it is still untested.**
+
+**DECLINED, said out loud rather than dropped: the elliptical-island finding does not get a ticket.**
+The spike scanned 300 seeds and found that isolated lobes render as smooth ovals with concentric
+height bands, because the crinkle amplitude is small against the lobe lift; interesting coastlines
+only appear where two lobes overlap. True, well evidenced, and **nothing renders an island in 3D
+today** — the renderer for `game/` is still unchosen. It changes nothing a player can see, so it is
+recorded here and not built. `shape.ts`'s crinkle amplitudes are the lever if that ever changes.
+
+**Nothing here chooses a renderer.** The spike lives outside `game/` precisely so that three.js and
+WebGL2 imply no decision. The *"no renderer chosen"* non-choice stands untouched.
+
+---
+
 ### 2026-09-23 (second) — The sea is sunlit. The chart is what it becomes when you pull back.
 
 > *"I think I ultimately want something closer to sid meiers pirates! and rise of piracy."*
