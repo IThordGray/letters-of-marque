@@ -69,6 +69,24 @@ doesn't impact how big the town gets, just how much grain can be sold."* **KAN-1
    both are already read, and it makes *a farming town feeds the cities* literally true.
 4. **So what feeds a town is flat and uniform everywhere:** garden plots and fishing shacks at their
    catalogue numbers, plus bought victuals. That is the base `[HC-87]` always assumed.
+5. **AND THE SAME FOR MATERIALS, which the first brief missed.** The human sharpened the rule the
+   same day — *"forest tiles don't add to the town's timber surplus (just boosts trade)… the hex
+   tiles are just for trade boosting, not town running."* Checked: `commerceOf` computes
+   `materialsShort` from **`produced + bought`**, so a sawpit on a town's own timbered hills directly
+   offsets that town's materials shortage. **It is the food bug's exact shape one column along** —
+   `carryingCapacity` reads `grown + bought`, this reads `produced + bought`. It becomes `bought`
+   alone: a town buys its building materials like everyone else, and what its own pits cut goes to
+   market.
+
+> **THE GENERAL RULE, which is what all five changes are instances of: a work standing on a tile
+> produces CARGO AND NOTHING ELSE.** It does not feed its own town and it does not stock its own
+> town's materials. **Everything a town consumes, it buys.** The tile layer is a trade layer; the
+> town's running is a flat, uniform floor underneath it that the ground never touches.
+
+**What is NOT withdrawn:** the sawpit exemption from the materials build-gate — *"you do not need
+planks to dig a sawpit"* — survives. That is a rule about the **gate**, not about supply, and it
+closes a measured cliff where fifty-two places froze at one capital work, forty-eight of them having
+spent their one free build on a tavern.
 
 **Withdrawn with it:** *"the catalogue number is the crop; the suit is the ground"* (KAN-126, one day
 old) no longer applies to food. Grain fields' 50 against provision grounds' 90 was derived from the
