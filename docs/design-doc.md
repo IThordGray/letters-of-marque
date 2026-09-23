@@ -1,5 +1,5 @@
 # LETTERS OF MARQUE
-### Design Document v0.17 — working title
+### Design Document v0.18 — working title
 
 A spiritual successor to *Cutthroats: Terror on the High Seas* (1999). Age-of-sail privateer campaign in a persistent Caribbean.
 
@@ -10,6 +10,12 @@ A spiritual successor to *Cutthroats: Terror on the High Seas* (1999). Age-of-sa
 > places a player will visit. Read every such name below as flavour illustrating a mechanic. The
 > *Caribbean* remains the register — period, powers, latitudes, weather — rather than the map.
 > See `knowledge/decisions.md` (2026-09-09) for the world layer in full.
+
+**Changes from v0.17** *(art direction — the sea changes, the chart moves up)*
+- **Changed §5.1:** the working-height sea is no longer a chart. The human named *Sid Meier's Pirates!* and *Rise of Piracy* as the targets; both are sunlit, saturated and 3D, which settles the medium as **stylised 3D** and replaces parchment water with a **sunlit Caribbean — stylised, never simulated**.
+- **Kept, and given a better home:** the cartographic look survives at **the zoom ceiling and the strategic map** (§5.4). The blend stops being a chart sharpening into a chart and becomes a place turning into a drawing of itself.
+- **Recorded as a cost, not glossed:** the old direction separated the colour channels *structurally* — a desaturated sea could not compete with the wind arrow, range bands and arcs. A saturated sea gives that up, so §5.2 now buys it back deliberately with a **reserved value band** and a scrim rule. §8.2 risk 4 rises accordingly.
+- **Unchanged:** ships (§5.1), faction-hue identity (§5.2), the camera rig (§5.3), where production value comes from (§5.5), and the MVP asset list (§5.6). **No game rules changed.**
 
 **Changes from v0.16** *(reverted to design-spec + prototypes; a process note, not a design change)*
 - **Withdrawn: the v0.16 "durable build begins" step.** Durable development has been set aside; the project is back to this design spec plus the two throwaway prototypes (naval, land) that validate the fun. **No game rules changed.**
@@ -458,21 +464,23 @@ Because stats are visible, provenance shapes **what's on the market and what it 
 
 ## 5. Presentation
 
-### 5.1 Direction: low-poly ships on a cartographic sea
+### 5.1 Direction: low-poly ships on a sunlit sea that resolves to a chart
 
-**Ships** are stylised low-poly — saturated, colourful, closer to *Sid Meier's Pirates!* in palette than to anything realistic, but with facets left visible. Vertex colours, no textures.
+**Ratified 2026-09-23, amending v0.11's cartographic sea.** The named targets are *Sid Meier's Pirates!* (2004) and *Rise of Piracy* (2026). Both are 3D, both are top-down tactical, and both are **sunlit and saturated rather than cartographic**. That settles the medium — stylised 3D — and changes exactly one thing about the old direction: **the sea at the working camera height.**
 
-**The world is a chart.** Not realistic water: parchment and ink tones, hand-drawn depth contours, stippled shoals, an engraved compass rose, faint rhumb lines. Ships remain 3D objects moving across a living admiral's chart.
+**Ships** are stylised low-poly — saturated, colourful, closer to *Sid Meier's Pirates!* in palette than to anything realistic, but with facets left visible. Vertex colours, no textures. *(Unchanged by the amendment.)*
 
-Three reasons this beats low-poly-everything:
+**The sea at the working height is sunlit Caribbean** — saturated blue-green, one strong sun, foam at shorelines and wakes. **Stylised, never simulated.** Photoreal water — displacement, screen-space reflection, subsurface scattering — is the hard shader problem a small budget never wins, and it is not what either reference does. Two scrolling normal layers, a shoreline foam band and specular glints carry the whole read.
 
-- **It separates the colour channels structurally.** A saturated palette everywhere means the wind arrow, range bands, and arcs of fire compete with the scene. A desaturated chart sea makes saturated ships pop and puts annotation in the same visual language as the world, so the channels separate themselves instead of requiring constant discipline.
-- **It's the cheapest good-looking option.** Water is 70–80% of every frame in a naval game. Realistic water is a hard shader problem that a small budget never wins; chart water is texture and line work, and it's distinctive in a way realistic water can never be.
-- **It differentiates.** Low-poly is a crowded space and the default outcome looks like an asset store. "Low-poly ships on a living chart" is a look nobody owns.
+**The chart is not cut. It is where the world goes when you pull back** — parchment and ink tones, hand-drawn depth contours, stippled shoals, an engraved compass rose, faint rhumb lines. It owns **the zoom ceiling (§5.4) and the strategic map (§5.3)**, and nothing below them. This is a better home for it than "chart everywhere" was: the §5.4 blend used to be a chart sharpening into a chart, and is now a place becoming a drawing of itself, which is the reason to have a blend at all.
+
+**What the amendment costs, recorded rather than glossed.** The old direction's lead argument was **structural channel separation** — a desaturated sea meant the wind arrow, range bands and arcs of fire could never compete with the scene, so the channels separated themselves instead of requiring discipline. **A saturated sea gives that up.** *Pirates!* never hit the problem because it carried almost no tactical annotation; this game carries a great deal. The discipline is now deliberate rather than structural (§5.2), and annotation that has to shout to be seen is a failure of the sea's value range, not of the annotation.
 
 **Diorama framing** supports this: a contained water volume with visible edges, subtle vignette, slight depth-of-field at frame edges. The premise becomes *this is a model*, and models are supposed to be simplified — so low asset quality stops reading as compromise.
 
-**Closest reference: *Bad North*** — low-poly, top-down tactical, islands and water, tiny asset count, looks far more expensive than it is. Almost exactly these constraints.
+**References, and what each one is for:** ***Pirates!*** — palette, sunlight, toy scale, the cheerful register. ***Rise of Piracy*** — camera and framing; it is structurally this game (top-down fleet actions, RTS control, land assaults). ***Bad North*** — the asset economy: low-poly, tiny asset count, looks far more expensive than it is.
+
+**What Rise of Piracy's weight is NOT evidence for.** It ships ~28 GB against a GTX 1650 floor. That is content volume — 1600–1900, 200+ commodities, destructible environments — not the look. The look here costs the §5.6 asset list and nothing more: three hulls, sail plans, damage variants, one sea material, one smoke system.
 
 ### 5.2 Colour rule
 
@@ -480,6 +488,7 @@ Three reasons this beats low-poly-everything:
 
 - **Faction gets hue** — sail and trim colour, plus a flag plane. Spanish red, English blue, French white. No realism constraint forcing everyone's canvas to be off-white, so faction ID at fixed camera distance is nearly free. Realistic naval games struggle badly with this at fleet scale.
 - **Annotation gets contrast, not hue** — high-contrast, low-saturation line work for wind, range bands, arcs, group tethers. It must never compete on hue.
+- **The sea reserves a value band for annotation.** This bullet carried itself while the sea was parchment; on a sunlit sea (§5.1) it has to be paid for. The water's rendered values stay off both ends of the range, leaving a near-white and a near-black that belong to annotation alone. Where a reading still fails — a wind arrow over sun glint — the fix is a thin dark scrim beneath the line work, **never** a hue shift, because hue is spoken for by faction identity.
 - **Per-hull tint and small trim variation** individuates ships at almost no cost, reinforcing the attachment that per-hull stat variance (§4) exists to create. Your ten sloops should look like ten different sloops.
 
 ### 5.3 Camera: RTS rig with a locked floor
@@ -519,11 +528,11 @@ Chart view is not a separate mode. **It's what the world becomes as you pull bac
 
 | As the camera rises | The world |
 |---|---|
-| At the floor | Low-poly ships, chart-styled sea, annotation present but restrained |
-| Mid | Sea desaturates further toward parchment, depth contours strengthen, annotation gains weight |
+| At the floor | Low-poly ships on the sunlit sea, annotation present but restrained |
+| Mid | Sun and saturation drain out of the water toward parchment, depth contours surface, annotation gains weight |
 | At the ceiling | Ships cross-fade to flat inked tokens and silhouettes, sea is fully chart, annotation at full strength, whole engagement visible |
 
-This works because the art direction was already cartographic (§5.1) — so the transition isn't a stylistic break, it's the same chart resolving from a model into a drawing. Mechanically it's a lerp on a handful of shader parameters plus a mesh-to-token cross-fade past a threshold, so it's cheap.
+**This blend is now the whole job of the cartographic look**, and it is a better job than it had. The transition is not a stylistic break; it is a place turning into the drawing an admiral would have made of it — you pull back and the sea you were sailing becomes the chart you plan on. Mechanically it is still a lerp on a handful of shader parameters plus a mesh-to-token cross-fade past a threshold, so it is still cheap.
 
 Two useful consequences: the overview is the natural home for group tasking, and **class identification at maximum zoom is handled by tokens rather than meshes**, which relaxes the silhouette constraint on the 3D assets (§5.6). Available live as well as paused, with auto-frame on tactical pause now possible again.
 
@@ -638,7 +647,7 @@ Everything above is the *middle* of the game; this is its **shape and its ending
 3. **Diminishing returns may feel like nothing happens.** Needs frequent visible small wins: perk unlocks, company names, veteran flavour text.
 ### 8.2 Secondary
 
-4. **Low-poly is a crowded visual space** and the default outcome looks like an asset store. Differentiation comes almost entirely from palette and lighting rather than geometry (§5.1–5.2), so both need deciding deliberately and early rather than discovered in month eight.
+4. **Low-poly is a crowded visual space** and the default outcome looks like an asset store. Differentiation comes almost entirely from palette and lighting rather than geometry (§5.1–5.2), so both need deciding deliberately and early rather than discovered in month eight. **The 2026-09-23 amendment raises this risk rather than leaving it flat:** "low-poly ships on a living chart" was a look nobody owned, and it now applies only at the zoom ceiling. At the working height the game stands in the same crowded space as every other stylised naval game, carrying palette, lighting and motion (§5.5) alone.
 5. **Arena size still needs tuning, though zoom-out has taken the pressure off.** With an overview ceiling the player can always read the whole engagement, so the knife edge from v0.8 is gone. What remains is making sure fleet manoeuvre has somewhere to happen without the working floor feeling claustrophobic. Tune during the step-3 prototype.
 6. **Skill resolution may be invisible to the player.** The category rules are elegant but they run under the hood; if the player can't see *why* their group is slow, the rules do no work. Needs surfacing in the organisation UI — a plain line like *"This group sails at Wanderer's pace"* against the limiting ship.
 

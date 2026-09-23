@@ -10,6 +10,54 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-23 (second) — The sea is sunlit. The chart is what it becomes when you pull back.
+
+> *"I think I ultimately want something closer to sid meiers pirates! and rise of piracy."*
+> *"Needs to remain lightweight and fast, so not heavy tripple a quality."*
+> *"no, keep the cartographic map for now at zoom ceiling"*
+
+**What the two references settle, and it is more than palette: the medium.** *Sid Meier's Pirates!*
+(2004) and *Rise of Piracy* (2026) are both **3D**, both top-down tactical, and both **sunlit and
+saturated rather than cartographic**. Rise of Piracy is structurally this game — top-down fleet
+actions, RTS control, land assaults. So the answer is **stylised 3D**, and the 2D ink-and-chart
+option the manager had recommended one message earlier is dead.
+
+**Exactly one thing in §5 changes: the sea at the working camera height.** Parchment, contours and
+rhumb lines give way to saturated blue-green water under one strong sun. **Stylised, never
+simulated** — displacement, screen-space reflection and subsurface scattering are the hard shader
+problem a small budget never wins, and neither reference does them. Two scrolling normal layers, a
+shoreline foam band and specular glints carry the read.
+
+**The chart is kept, and it lands somewhere better than it was.** It owns the **zoom ceiling and the
+strategic map**, nothing below them. The §5.4 blend used to be a chart sharpening into a chart; it is
+now a place turning into the drawing an admiral would have made of it. That is the first version of
+that transition with a reason to exist.
+
+**"For now" is his word and is recorded as his word.** The chart's tenancy at the ceiling is held,
+not re-argued — but it is held provisionally, and this entry is not authority for treating it as
+permanent.
+
+**The cost, recorded rather than glossed — and it is a real one.** The old direction separated the
+colour channels *structurally*: a desaturated sea could not compete with the wind arrow, range bands
+and arcs of fire, so no discipline was required to keep them apart. **A saturated sea gives that
+up.** *Pirates!* never met the problem because it carried almost no tactical annotation; this game
+carries a great deal. §5.2 now buys the separation back deliberately — the water's values stay off
+both ends of the range, reserving a near-white and a near-black for annotation alone, with a thin
+dark scrim where a reading still fails and **never** a hue shift, since hue is spoken for by faction
+identity. §8.2 risk 4 rises with it: *"low-poly ships on a living chart"* was a look nobody owned,
+and it now applies only at the ceiling.
+
+**What Rise of Piracy's weight is NOT evidence for.** It ships ~28 GB against a GTX 1650 floor
+against his *"lightweight and fast"*. That is **content volume** — 1600–1900, 200+ commodities,
+destructible environments — not the look. The look costs the §5.6 asset list and nothing more: three
+hulls, sail plans, damage variants, one sea material, one smoke system.
+
+**No ticket.** Docs-only, exempt under `process/workflow.md`. Nothing is built from this: the v0.18
+header still holds the project at design spec plus the two throwaway prototypes until they prove the
+fun. **A ratified look is not permission to start making assets.**
+
+---
+
 ### 2026-09-23 — The ground feeds nobody differently. Land is a TRADE fact.
 
 > *"Remember that tiles only boost trade. We assume that towns are self-sufficient regardless what
