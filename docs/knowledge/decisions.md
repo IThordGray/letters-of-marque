@@ -58,6 +58,63 @@ fun. **A ratified look is not permission to start making assets.**
 
 ---
 
+### 2026-09-23 (second) — The 1,500-soul port was never trade-fed. Now it is.
+
+**KAN-137 shipped, and the finding is worth more than the change.**
+
+**`[HC-87]`'s trade-fed town of 1,500 was a town on good dirt.** Terrain suitability multiplied its
+FOOD works by 1.3, and that — not trade — was what made cities. The moment the ground stopped
+feeding it, **the largest port in the world fell to 342 souls.** No cities anywhere; the top five
+were 342 · 300 · 281 · 255 · 221. **The number is withdrawn**, for the same reason the 450–600 target
+was: it was an artefact of a mechanism that no longer exists, and chasing it would have been the
+same mistake a third time.
+
+**Why trade could not replace it, and the chicken-and-egg underneath.** A town grows past its own
+base by *buying* food. The works that put food on the market wanted **18 hands** — and a settled town
+has almost none spare. Nobody could staff one, so no surplus reached the market, so no town grew
+large enough to staff one. The world settled into villages and stayed there.
+
+**The human's ruling: shrink the works so a village can run one.** Crop hands **18/18/16/14 → 9/9/8/7**,
+and the sawpit **10 → 8** to stop the pit being crowded out behind them.
+
+**The result, measured independently at day 0 across four warm seeds:**
+
+| | before KAN-137 | mid-story | **after** |
+|---|---|---|---|
+| victuals offered to market, a season | 2,971 | 10,452 | **9,501** |
+| largest port | 1,464 *(dirt-fed)* | 342 | **458** |
+| median population | 85.6 | 67.3 | **92.7** |
+| timbered coasts actually cutting | 42% | 20% | **34%** |
+| world materials a season | 2,154 | 1,440 | **2,529** |
+| quayless half's own-trade margin | −0.49 | −0.63 | **+0.16** |
+
+**And this is the sentence the project has been trying to earn for a month: the top five ports buy
+50–77% of what they eat.** `458 souls | grew 186 | bought 300`. Every one is at or near the ceiling
+of what it can grow and is fed from the sea for the rest. **`[HC-87]` is finally literal** — burn the
+quay and a port loses well over half of what feeds it.
+
+---
+
+**The method that got there, and it corrected the manager's brief.** I told the agent to size the
+works against a median town's spare hands, estimating 17–25. **Measured, the median town's spare
+hands are 4.60** — a settled town has already spent them, and the residual returns to where it was
+whatever the catalogue says. **Spare capacity is an equilibrium residual, not a budget** (`[P-58]`).
+What can be read off instead is what the world *demonstrably staffs*: 81 sawpits standing against 2
+provision grounds put the ceiling near 10 without a model.
+
+**A gate that exempts something is a steer wearing a constraint's clothes.** Deleting the materials
+build-gate raised capital works **18%** and moved the mix from crops toward civic works — it had been
+quietly pushing the governor toward the one class of work it exempted. Same family as *"a free work
+may hold a capacity, never a wage"* (2026-09-22), one level up.
+
+**Closed by deletion rather than by work:** KAN-119 (a farm that cannot pay its wages on poor ground)
+and KAN-136 (a materials refusal nobody ever read out). **Net −42 lines** before the crop sweep.
+
+**Raised and deferred:** KAN-138 — a food work's margin is verified against the prosperity pull and
+not against the weather. One fact behind four separate bugs, patched three times one row at a time.
+
+---
+
 ### 2026-09-23 — The ground feeds nobody differently. Land is a TRADE fact.
 
 > *"Remember that tiles only boost trade. We assume that towns are self-sufficient regardless what

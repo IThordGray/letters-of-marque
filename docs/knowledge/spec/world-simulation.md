@@ -1479,6 +1479,27 @@ bill exists before any supply does and **the whole map deadlocks on day one.**
 **`[HC-87c]` The materials build-gate fires at "cannot GET them", never at "is a little short".**
 Measured at zero tolerance: the world loses a third of its works and two thirds of its largest town.
 
+> **STRUCK 2026-09-23 (KAN-137). THE MATERIALS BUILD-GATE NO LONGER EXISTS, and neither does its
+> exemption.** The human ruled that a tile is a **multiplier on a baseline the town already has**,
+> not a source that grants access to a resource: *"claiming a forest tile doesn't mean only now do
+> they get wood — it means their yield is bigger."* A town is therefore never short of materials for
+> its own building, so the gate had nothing left to do. Deleted with `canBuild`, `canBuildKind`,
+> `producesMaterials`, `NO_MATERIALS_CLAUSE`, `TRADE.buildGate` and `Commerce.materialsShort`.
+>
+> **The sawpit exemption went with it and cannot be missed** — the cliff it patched cannot reopen,
+> because its cause is gone. It also closed KAN-136 by deletion.
+>
+> **`[HC-87b]` survives only as DEMAND.** Materials are still wanted by buildings and still bought
+> and sold; what is struck is the *constraint on construction*. Building is now gated by **coin, the
+> menu's per-town limit, and a region's free area** — three caps, measured as binding: capital works
+> per place at two hundred years run a median of 5 and a maximum of 21, below the 23 the old gate
+> allowed.
+>
+> **And the deletion was not neutral, which is worth keeping.** Removing it raised capital works
+> **18%** and moved the mix from crops toward civic works — **the gate had been silently steering the
+> governor toward the one class of work it exempted.** A gate that exempts something is a steer
+> wearing a constraint's clothes.
+
 > **AMENDED 2026-09-16, built 2026-09-19: a work that PRODUCES materials is not gated by materials.**
 > You do not need planks to dig a sawpit. The exemption is derived from the catalogue's own
 > `exports: "materials"`, never from a list of kinds.
@@ -1530,6 +1551,25 @@ access · ground for houses · hands.**
 **`[HC-87]` The new ceiling is FRAGILE by design, and ceiling and raid consequence are the same
 mechanism.** A trade-fed town of 1,500 falls back toward 450 when its quay burns. Nothing separate
 implements "raiding hurts" — it is this.
+
+> **THE 1,500 IS WITHDRAWN 2026-09-23 (KAN-137), and the reason matters more than the number.**
+> **It was never trade-fed.** It was a town standing on ideal ground, where terrain suitability
+> multiplied its FOOD works by 1.3. The moment the ground stopped feeding it — the ruling that
+> terrain scales what a town sells and never what it eats — the largest port in the world fell to
+> **342 souls.**
+>
+> **So the figure was an artefact of a mechanism that no longer exists, and must not be chased.**
+> (The 450–600 withdrawal of 2026-09-21 is the same lesson: a ratified number outranks the
+> measurements that disagree with it until somebody withdraws it.)
+>
+> **What replaces it is the MECHANISM, now true for the first time.** With the crop works sized so a
+> village can staff one, the world's victuals offered to market went 2,971 → **9,501 a season**, and
+> the largest ports are **fed from the sea**: measured independently at day 0 over four warm seeds,
+> the top five run **458 · 454 · 394 · 394 · 391 souls, buying 50–77% of what they eat.** Median 93.
+>
+> **`[HC-87]` itself is unchanged and is finally literal:** burn the quay, the bought food stops, and
+> a port loses well over half of what feeds it. **The top of the spread is now whatever the world
+> will sell it** — which is a fact to be measured each time, not a number to ratify again.
 
 > **AMENDED 2026-09-23 — THE BASE IS UNIFORM, and this sentence always assumed it.** *"Falls back
 > toward 450"* names one number. Until now terrain suitability (`0.35 / 0.7 / 1.3`) scaled a work's

@@ -257,6 +257,28 @@ cut from 39% of world trade income to 85–89% and doubled the largest port.**
 > `[P-52]`'s usual cure — re-derive the divisor against the real distribution — cannot work, and what
 > you need is **a reading with no ceiling at all.**
 
+**`[P-58]` Spare capacity is an EQUILIBRIUM RESIDUAL, not a budget — so you cannot size anything
+against it.** Asked to make a crop work *"cheap enough for a median town to staff with room left
+over"*, the obvious arithmetic says: a town of 82 souls has ~45 hands, its huts take ~20, so it has
+~25 spare. **Measured, the median town's spare hands are 4.60.**
+
+```
+p10 0.66 · p25 2.00 · MEDIAN 4.60 · p75 8.16 · p90 10.16 · max 30.31
+```
+
+**A settled town has already spent its hands.** It mans works until it runs out, so the residual is
+small *whatever the catalogue says* — lower the cost of a work and the town buys another one, and the
+residual returns to about where it was. **Sizing against it is chasing a number the act of sizing
+moves.**
+
+- **The answerable question is what the world demonstrably staffs, repeatedly.** Read it off the
+  standing counts: **81 sawpits at 10 hands against 2 provision grounds at 18** says the ceiling is
+  near 10, and says it without a model.
+- This is `[P-52]`'s *"measure the thing you are dividing"* one level up: **measure the thing you are
+  sizing against**, and check first whether it is a free variable or a settled equilibrium.
+- The tell is a quantity defined as *"what is left after everything else"* — spare labour, spare
+  capacity, free ground, headroom, idle time. **None of them is a budget.**
+
 **`[P-54]` Split a generator at the line where most callers stop needing it.** The warm start costs
 **810 ms** — a real price for running a world eighty years before anyone sees it. Put inside
 `generateWorld` it would have been charged to roughly forty map-only calls across the suite and cost
