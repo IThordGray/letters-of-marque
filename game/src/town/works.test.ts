@@ -5,7 +5,7 @@
 // moves works down THIS ladder, one grade at a time).
 
 import { describe, it, expect } from "vitest";
-import type { Town, Work, Suit, RegionFocus } from "./types";
+import type { Town, Work, Suit, RegionFocus, WorkKind } from "./types";
 import type { Axial } from "./hex";
 import { derive, stepYears, stepSeason, stepSeasons } from "./sim";
 import {
@@ -82,45 +82,48 @@ describe("the hamlet floor", () => {
   });
 });
 
-// ---- A work is manned to the size the ground will repay ---------------------
+// ---- A work that feeds the town pays its own wages, wherever it stands -------
 //
-// Ratified 2026-09-15, to close a live breach of [HC-18]: *a subsistence food
-// work must always feed at least the hands that work it, whatever the ground.*
+// KAN-137, ratified 2026-09-23: *"Anything in town that keeps the town running is
+// straight numbers, not good or poor... and it should always be the case that
+// manning it is less than the upkeep. So no case where it takes 11 people to work
+// but only feeds 10."*
 //
-// What was wrong: `raise` scaled the four numbers the ground GIVES — food, trade,
-// defence, servesFor — and left the one number it COSTS flat. A garden plot on
-// `poor` ground fed 10.5 mouths and still wanted six men, which is 10.91 souls at
-// `labourShare`, so a place with nothing but poor food ground could not sustain
-// the hands that worked its own food. Measured, by ordinary decline and with
-// nobody attacking it: 163 souls to nothing in about forty years.
+// THIS CLAIM WALKS THE WHOLE CATALOGUE AND THAT IS THE POINT OF IT. The same bug
+// has been patched twice one row at a time — KAN-116 ("poor food ground cannot
+// sustain the hands that work it") and KAN-119 ("provisionGround cannot pay its
+// own wages on poor ground") — and twice is a design question wearing a bug's
+// clothes. A claim that asks every row of the catalogue, on every grade of ground
+// there is, is what makes the CLASS of bug unrepeatable rather than the instance.
 //
 // One work on one hex of a named grade, so a claim can be made about the WORK
 // rather than about a town. The hex is deliberately off-origin and off-axis
 // (testing.md, "anchor fixtures off-origin, and asymmetrically") — at the centre,
 // "plotted from the seat" and "plotted from nowhere" are the same coordinates.
-const FOOD_WORKS = SUBSISTENCE.filter((k) => CATALOGUE[k].food > 0);
+const FOOD_WORKS = (Object.keys(CATALOGUE) as WorkKind[]).filter((k) => CATALOGUE[k].food > 0);
 
-function onGround(kind: string, suit: Suit, reach: "atHand" | "far", sweet: boolean): Work {
+function onGround(kind: WorkKind, suit: Suit, reach: "atHand" | "far", sweet: boolean): Work {
   const hex = RING1.slice(3, 4);
+  const produce = CATALOGUE[kind].produces!;
   const town = townOf(
     [
-      reg(0, kind === "gardenPlots" ? "tilledGround" : "reef", hex, {
-        bears: kind === "gardenPlots" ? { food: suit } : { fish: suit },
+      reg(0, produce === "fish" ? "reef" : "tilledGround", hex, {
+        bears: { [produce]: suit },
         reach,
         sweetSpot: sweet ? hex[0] : null,
       }),
     ],
-    { population: 500 }, // souls enough that nothing here is about manning
+    { population: 500, wealth: 90000 }, // souls and coin enough that nothing here is about either
   );
-  return raise(town, kind as Parameters<typeof raise>[1], DAY0)!;
+  return raise(town, kind, DAY0)!;
 }
 
 // Every case the ground can be in: three grades, at hand and over the ridge, on
 // ordinary ground and on the region's one sweet spot. ENUMERATE, DO NOT
 // GENERALISE (testing.md) — the claim is about which cases exist, and the case
 // that used to fail is one of twelve rather than the one anybody would pick.
-function everyGround(): { where: string; work: Work; kind: string; reach: "atHand" | "far" }[] {
-  const out: { where: string; work: Work; kind: string; reach: "atHand" | "far" }[] = [];
+function everyGround(): { where: string; work: Work; kind: WorkKind; reach: "atHand" | "far" }[] {
+  const out: { where: string; work: Work; kind: WorkKind; reach: "atHand" | "far" }[] = [];
   for (const kind of FOOD_WORKS) {
     for (const suit of Object.keys(SUIT_YIELD) as Suit[]) {
       for (const reach of ["atHand", "far"] as const) {
@@ -133,8 +136,19 @@ function everyGround(): { where: string; work: Work; kind: string; reach: "atHan
   return out;
 }
 
-describe("a subsistence work is manned to the size the ground will repay", () => {
-  it("feeds more mouths than the hands that work it, on every grade of ground there is", () => {
+describe("every work that feeds the town pays its own wages", () => {
+  it("names the works that feed a town, and they are the free ones", () => {
+    // THE PRECONDITION THE CLAIMS BELOW REST ON, measured rather than argued
+    // (testing.md: a predicted survivor is a claim about the world, and the
+    // claim needs measuring too). KAN-137 moved provision grounds and grain
+    // fields into the `trade` column, so the set the catalogue walk finds is now
+    // exactly the hamlet floor's own two. If a capital work ever grows a `food`
+    // column again this goes red, and so does every claim below it.
+    expect([...FOOD_WORKS].sort()).toEqual(["fishingShacks", "gardenPlots"]);
+    expect(FOOD_WORKS.every((k) => CATALOGUE[k].cls === "subsistence")).toBe(true);
+  });
+
+  it("feeds more souls than it takes to man it, on every grade of ground there is", () => {
     // THE ORACLE IS WRITTEN OUT, never asked of the code (testing.md): the souls
     // a work needs are its hands divided by the share of a population that works,
     // and that division is spelled here rather than read back from the module.
@@ -148,13 +162,13 @@ describe("a subsistence work is manned to the size the ground will repay", () =>
 
   it("feeds enough more of them to hold at the lowest standing a place can sink to", () => {
     // WHY A BARE SURPLUS IS NOT ENOUGH, derived rather than guessed. A place with
-    // one food work settles where its carrying capacity puts it — `food × pull`,
+    // one food work settles where its carrying capacity puts it — `food x pull`,
     // and `pull` is what prosperity does to the ceiling — so it can man that work
     // only while
     //
-    //     food × pull × labourShare  >=  hands
+    //     food x pull x labourShare  >=  hands
     //
-    // i.e. while `food × labourShare / hands >= 1 / pull`. The worst `pull` the
+    // i.e. while `food x labourShare / hands >= 1 / pull`. The worst `pull` the
     // model permits is `POP.prosperityPull.min`, so at 0.5 the margin a work must
     // clear is TWO: it must feed twice the souls its own hands need, and a place
     // may then lose half its people to a shock and still work its ground. Exactly
@@ -168,56 +182,74 @@ describe("a subsistence work is manned to the size the ground will repay", () =>
     expect(thin).toEqual([]);
   });
 
-  it("never asks more men of a work than the catalogue writes it for", () => {
-    // THE SAFETY HALF OF THE RULE, and it is the half that was learned the hard
-    // way. Scaling hands by the ground's quality UNSCALED — letting ideal ground
-    // ask 7.8 men where the catalogue writes 6 — raises the manning threshold on
-    // good ground, which is where nearly every place in the world actually lives.
-    // Measured across five seeds and two centuries: it emptied three places that
-    // stand today while fixing the one that does not. So the scaling only ever
-    // reduces: `min(q, 1)`. Good ground does not take more men — it repays the
-    // same men better, which is what the yield half already says.
-    for (const { where, work, kind, reach } of everyGround()) {
-      const walk = reach === "far" ? WORKS.farHands : 1;
-      expect(work.hands, where).toBeLessThanOrEqual(CATALOGUE[kind as "gardenPlots"].hands * walk);
+  it("feeds the same mouths on ground that grudges the crop as on ground made for it", () => {
+    // THE RULING ITSELF (KAN-137): "we assume that towns are self-sufficient
+    // regardless what their land looks like." The ground decides what a town
+    // SELLS; it has nothing to say about what it eats. A mutation that puts the
+    // suitability multiplier back on the `food` column fails here on the first
+    // row it reaches.
+    //
+    // IT ASSERTS THE CATALOGUE FIGURE, NOT MERELY EQUALITY BETWEEN GRADES, and
+    // the difference matters: a scaling that multiplied every grade by the same
+    // constant would satisfy "poor equals ideal" and still be a ground term.
+    for (const { where, work, kind } of everyGround()) {
+      expect(work.food, where).toBe(CATALOGUE[kind].food);
     }
   });
 
-  it("puts fewer men on ground that grudges the crop, and no more on ground that does not", () => {
-    const poor = onGround("gardenPlots", "poor", "atHand", false);
-    const fair = onGround("gardenPlots", "fair", "atHand", false);
-    const ideal = onGround("gardenPlots", "ideal", "atHand", false);
-
-    expect(poor.hands).toBeLessThan(fair.hands);
-    expect(fair.hands).toBeLessThan(ideal.hands);
-    expect(ideal.hands).toBe(CATALOGUE.gardenPlots.hands); // a plot is still a plot
+  it("asks exactly the men the catalogue writes it for, and only the walk costs more", () => {
+    // THE OTHER HALF OF "STRAIGHT NUMBERS, NOT GOOD OR POOR": if the ground
+    // cannot change what a work returns, it must not change what it costs
+    // either. A subsistence work's hands used to be scaled by `min(q, 1)` to
+    // hold the mouths-per-hand ratio constant while `food` moved with the dirt;
+    // with `food` flat that clamp would make POOR GROUND CHEAPER TO WORK THAN
+    // GOOD, which is the rule upside down. It is deleted, and this says so.
+    for (const { where, work, kind, reach } of everyGround()) {
+      const walk = reach === "far" ? WORKS.farHands : 1;
+      expect(work.hands, where).toBeCloseTo(CATALOGUE[kind].hands * walk, 10);
+    }
   });
 
   it("still costs more men over the ridge than the same plot at hand", () => {
-    // The far cost is a separate design statement — men must walk to it — and the
-    // scaling must not quietly cancel it.
+    // The far cost is a separate design statement — men must walk to it — and
+    // nothing in the ruling touches it. What DID change is the other half of
+    // this claim: the plot over the ridge no longer feeds fewer mouths, because
+    // the far penalty is a ground term and ground terms stop at `food`.
     const near = onGround("gardenPlots", "fair", "atHand", false);
     const far = onGround("gardenPlots", "fair", "far", false);
     expect(far.hands).toBeGreaterThan(near.hands);
-    expect(far.food).toBeLessThan(near.food);
+    expect(far.food).toBe(near.food);
   });
 
-  it("leaves a capital work's hands exactly as the catalogue writes them, on any ground", () => {
-    // DELIBERATELY NOT WIDENED. The hamlet floor is made of subsistence works and
-    // only of them ([HC-67]) — free, self-raising, never rotting, chosen by
-    // nobody — so a subsistence work that cannot pay its own wages is a spiral
-    // with no brake. A capital work is a priced decision, and one that cannot pay
-    // for itself on bad ground is the correct disincentive and the governor's
-    // problem (§5.6). It cannot empty a place either: it rots to `ruin` and the
-    // subsistence floor catches the town.
+  it("still ships more off ground made for the crop, which is the whole of what the dirt decides", () => {
+    // THE LIVE HALF OF THE MULTIPLIER, asserted on the largest cargo column in
+    // the catalogue rather than on a convenient one (testing.md: assert with the
+    // member whose presence would be loudest). Delete the suitability scaling
+    // altogether and this goes red — which is what stops the claim above being
+    // satisfied by a mutation that simply stops scaling anything at all.
+    const hills = (suit: Suit) =>
+      townOf([reg(0, "timberedHills", RING1.slice(2, 3), { bears: { timber: suit } })], { population: 900, wealth: 9000 });
+    const poor = raise(hills("poor"), "sawpit", DAY0)!;
+    const ideal = raise(hills("ideal"), "sawpit", DAY0)!;
+
+    expect(poor.trade).toBeLessThan(ideal.trade);
+    expect(poor.hands).toBe(ideal.hands); // ...and it costs the same men either way
+  });
+
+  it("grows the same bread on any acre and sells more of it off the best", () => {
+    // THE TWO HALVES TOGETHER, on the row the ruling was written about. A
+    // provision ground is a TILE work now: it feeds nobody, its whole output is
+    // cargo, and the cargo is the half the ground scales.
     const ground = (suit: Suit) =>
       townOf([reg(0, "tilledGround", RING1.slice(2, 3), { bears: { food: suit } })], { population: 900, wealth: 9000 });
     const poor = raise(ground("poor"), "provisionGround", DAY0)!;
     const ideal = raise(ground("ideal"), "provisionGround", DAY0)!;
 
+    expect(poor.food).toBe(0); // a farm on a tile is not dinner
+    expect(ideal.food).toBe(0);
+    expect(poor.trade).toBeLessThan(ideal.trade);
     expect(poor.hands).toBe(CATALOGUE.provisionGround.hands);
     expect(ideal.hands).toBe(CATALOGUE.provisionGround.hands);
-    expect(poor.food).toBeLessThan(ideal.food); // the ground still decides what it returns
   });
 });
 
@@ -252,7 +284,7 @@ describe("a town on nothing but poor ground", () => {
     // that killed the place outright sailed straight through. The size it must
     // stand at is written out from the catalogue and the grade — the souls one
     // plot on poor ground needs — and never read back from the module.
-    const needed = (CATALOGUE.gardenPlots.hands * SUIT_YIELD.poor) / WORKS.labourShare;
+    const needed = CATALOGUE.gardenPlots.hands / WORKS.labourShare;
     const town = onlyPoor({ population: 163, wealth: 0 });
     stepYears(town, 100, DAY0);
     const settled = town.population;
@@ -269,14 +301,22 @@ describe("a town on nothing but poor ground", () => {
     expect(derive(town).surplus).toBeGreaterThan(0);
   });
 
-  it("settles measurably smaller than the same town on ground that takes the crop well", () => {
-    // The fix must stop poor ground being fatal WITHOUT flattening what it means.
+  it("settles at exactly the size the same town settles at on ground made for the crop", () => {
+    // THE RULING AS A BEHAVIOUR RATHER THAN AS A COLUMN (KAN-137): "if all the
+    // hexes are grain fields, that doesn't impact how big the town gets." This
+    // claim used to say the opposite — that a poor-ground town settles a quarter
+    // smaller — and that was the ground deciding what a town ate.
+    //
+    // THE LIVENESS HALF IS LOAD-BEARING (testing.md): two towns of nobody also
+    // settle at the same size, so the claim says the size is a living one, and
+    // says it from the catalogue rather than reading it back.
     const poor = onlyPoor({ population: 163, wealth: 0 });
     const fair = onlyFair({ population: 163, wealth: 0 });
     stepYears(poor, 200, DAY0);
     stepYears(fair, 200, DAY0);
 
-    expect(poor.population).toBeLessThan(fair.population * 0.75);
+    expect(poor.population).toBeGreaterThan(CATALOGUE.gardenPlots.hands / WORKS.labourShare);
+    expect(poor.population).toBeCloseTo(fair.population, 6);
   });
 
   it("never comes back once it is razed to nothing, however kind the scaling", () => {
@@ -711,44 +751,72 @@ describe("the catalogue may grow and the menu may not", () => {
   });
 
   it("makes every work that grows something put a figure in the column its class names", () => {
-    // §2.12.13, both directions. A work's cargo class decides WHICH COLUMN
-    // carries it — victuals in `food`, materials and luxury in `trade` — so a
-    // work that names a produce and leaves that column at nothing is a farm that
-    // grows nothing, and it would be silent.
+    // §2.12.13, both directions, AND THE RULE THAT DECIDES THE COLUMN CHANGED
+    // UNDER IT (KAN-137). It used to be the cargo CLASS — victuals in `food`,
+    // materials and luxury in `trade`. It is now the work's CLASS: a free
+    // subsistence work feeds the town and writes `food`; a capital work stands
+    // on a tile, ships everything it makes and writes `trade`, whatever it
+    // grows. A work that names a produce and leaves its column at nothing is a
+    // farm that grows nothing, and it would be silent.
     //
     // THIS IS THE STORY'S OWN NAMED HAZARD, and it earned a claim by surviving a
     // mutation. §2.12.12's `expressionFor` stops at the first produce the
     // catalogue can express, so the day `grainFields` exists TILLED GROUND STOPS
     // RAISING PROVISION GROUNDS AND STARTS RAISING GRAIN — and if grain fields
-    // fed nobody, every town founded on tilled ground would quietly lose its
-    // food source. Setting `grainFields.food` to zero broke ONE claim in the
-    // whole suite, and an incidental one, because the hamlet floor's garden
-    // plots kept every place standing while it shrank. A place that shrinks
-    // quietly is exactly what a suite cannot see.
+    // shipped nothing, every town founded on tilled ground would quietly lose
+    // its crop. Setting `grainFields.food` to zero broke ONE claim in the whole
+    // suite, and an incidental one, because the hamlet floor's garden plots kept
+    // every place standing while it shrank. A place that shrinks quietly is
+    // exactly what a suite cannot see.
     for (const kind of CAPITAL.concat(SUBSISTENCE)) {
-      const cargo = cargoOf(kind);
-      if (cargo === null) continue;
-      const column = cargo === "victuals" ? CATALOGUE[kind].food : CATALOGUE[kind].trade;
-      expect(column, `${kind} grows ${CATALOGUE[kind].produces} and ships none of it`).toBeGreaterThan(0);
+      if (cargoOf(kind) === null) continue;
+      const def = CATALOGUE[kind];
+      const column = def.cls === "subsistence" ? def.food : def.trade;
+      expect(column, `${kind} grows ${def.produces} and ships none of it`).toBeGreaterThan(0);
     }
   });
 
-  it("counts a victuals work's cargo in its food column and never in its trade one", () => {
-    // §2.12.13's SECOND CONSEQUENCE, as a rule the suite can hold: "the columns
-    // are unchanged — victuals are counted in a work's `food` column, materials
-    // and luxury in its `trade` column."
+  it("gives no capital work a food column at all, because a tile feeds nobody", () => {
+    // KAN-137, and the rule stated where it cannot be forgotten: *"The tiles are
+    // separate from the town's running. Fields don't add to their running stores
+    // — just boosts trade."* Everything a town eats comes off the two free huts
+    // the hamlet floor raises, or off a ship.
     //
-    // WHY IT IS WORTH A CLAIM RATHER THAN A COMMENT, and this is the live bug it
-    // guards. `commerceOf` scales the weather's share into the materials and
-    // luxury columns by hand, because the victuals column arrives already
-    // scaled — so a victuals figure sitting in `trade` is the one number a storm
-    // could not touch. A fishing shack carried `trade: 2` for the old keying's
-    // sake, and after the re-key that two would have been fish no storm could
-    // spoil. The rule makes it unwritable.
-    for (const kind of CAPITAL.concat(SUBSISTENCE)) {
-      if (cargoOf(kind) !== "victuals") continue;
-      expect(CATALOGUE[kind].trade, `${kind} carries victuals in its trade column`).toBe(0);
+    // IT IS THE SHARPER SIBLING OF THE CLAIM ABOVE. That one says a work ships
+    // what it grows; this one says WHERE, and between them there is no column
+    // left for a governor's farm to feed its own town out of.
+    for (const kind of CAPITAL) {
+      expect(CATALOGUE[kind].food, `${kind} feeds the town off its own tile`).toBe(0);
     }
+  });
+
+  it("spoils a victuals cargo with the same storm that spoils a timber one", () => {
+    // WHAT REPLACED "a victuals work never carries a trade column" (§2.12.13's
+    // second consequence), and the replacement is arithmetic rather than a rule.
+    // `commerceOf` used to scale ranks 1 and 2 by the harvest AFTER the fact,
+    // because rank 0 arrived pre-scaled off `derive` — so a victuals figure in a
+    // `trade` column would have been cargo no storm could touch, and the
+    // catalogue was forbidden one. KAN-137 puts grain and provisions in exactly
+    // that column, so the scaling moved INTO `producedOf` where every rank gets
+    // it once, and the claim is now that the storm reaches all three.
+    //
+    // ASSERTED WITH THE LOUDEST MEMBER (testing.md): a grain field at 50 on
+    // ideal ground, beside a sawpit, so a mutation that scaled only the old two
+    // ranks fails on the victuals rank and nowhere else.
+    const town = mixedTown({ population: 600, wealth: 30000 });
+    town.regions[0].focus = "production";
+    raise(town, "grainFields", DAY0, town.regions[0]);
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, DAY0);
+
+    const fair = derive(town).commerce.produced;
+    town.harvestLoss = 0.5;
+    const spoiled = derive(town).commerce.produced;
+
+    expect(fair[0]).toBeGreaterThan(0);
+    expect(fair[1]).toBeGreaterThan(0);
+    expect(spoiled[0]).toBeLessThan(fair[0]); // the grain
+    expect(spoiled[1]).toBeLessThan(fair[1]); // ...and the timber beside it
   });
 
   it("has no boiling house left to build", () => {

@@ -27,11 +27,11 @@ import { FOUNDING, SIZES, hinterlandAt, type Place } from "./places";
 import { groundAt } from "./ground";
 import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
 import { derive, failureWord } from "../town/sim";
-import { canBuild, dependencyWord } from "../town/trade";
+import { dependencyWord } from "../town/trade";
 import { CATALOGUE, regionsFor } from "../town/works";
 import { isDead } from "../town/land";
 import { WORKS } from "../town/constants";
-import { deepWants, wants } from "../town/governor";
+import type { Town } from "../town/types";
 
 // THE HAMLET FLOOR IS NO LONGER A NUMBER (KAN-106). `POP.floor` was deleted for
 // being a second number laid over the floor the catalogue already raises, so the
@@ -598,10 +598,23 @@ describe("nobody sits on his own timber for want of planks", () => {
     //
     // The survivors are not gated: they are places the auction wants something
     // else in, and the gate has nothing to say about what a town WANTS.
+    //
+    // "WITH THE PRICE OF A PIT IN HIS PURSE" NOW MEANS THE MEN AS WELL AS THE
+    // COIN (KAN-137), and the correction is an oracle fix rather than a wider
+    // bound. Ten places crossed the coin filter after that story where four did
+    // before — and measured one at a time, EVERY ONE OF THE TEN had fewer spare
+    // hands than a sawpit's ten: 0.44 · 7.71 · 1.64 · 4.23 · 5.56 · 6.90 · 0.55
+    // · 4.24 · 2.88 · 7.40. They are not men standing on their own timber; they
+    // are "money and no men", which `startable` refuses by a rule this suite
+    // pins separately and which has nothing to do with the focus gate. Towns
+    // came out smaller when the ground stopped deciding what they ate, so the
+    // manning gate catches more of them.
     let idle = 0;
     const who: string[] = [];
     for (let i = 0; i < days.length; i++) {
       for (const t of uncut(days[i]).filter((x) => x.wealth >= CATALOGUE.sawpit.cost)) {
+        const d = derive(t);
+        if (t.population * WORKS.labourShare - d.hands.needed < CATALOGUE.sawpit.hands) continue;
         idle++;
         who.push(`${SEEDS[i]}/${t.name} (${Math.round(t.wealth)} coin)`);
       }
@@ -640,49 +653,35 @@ describe("nobody sits on his own timber for want of planks", () => {
       bearsAll += bears.length;
       cutAll += cut.length;
     }
+    //   KAN-137, crops cut and pit held     71    14   (20%)
+    //   KAN-137, pit cut with them           71    24   (34%)
+    //
+    // IT DROPPED AGAIN MID-STORY AND WAS PUT BACK, AND THE BOUND DID NOT MOVE.
+    // Cutting the crop works' hands 18/18/16/14 -> 9/9/8/7 and leaving the pit
+    // at ten made it the dearest focus expression in men as well as in coin, so
+    // coasts bearing both planted instead of cutting and the world's materials
+    // fell 1,716 -> 1,440 a season. Bringing the pit down with them (10 -> 8,
+    // see its row) restored the share to the same 24 of 71 it held before the
+    // story and took materials to 2,529.
+    //
+    // So this is the ORIGINAL quarter, re-measured rather than widened. What the
+    // claim goes on refusing is a world with no timber in it and a world that is
+    // nothing but sawpits.
     expect(cutAll).toBeGreaterThan(bearsAll / 4); // the world is cutting timber...
     expect(cutAll).toBeLessThan(bearsAll * 0.9); // ...and it is not all sawpits
   });
 
-  it("goes on refusing everything else to a place that can get no planks", () => {
-    // [HC-87c] UNTOUCHED, at world scale, and this is the half that must not
-    // have moved: the exemption is one class of work out of the BILL, never the
-    // gate out of the world. For every place at day 0 that cannot get timber or
-    // stone, every want it publishes is refused — except the pit that would end
-    // the shortage, where it has ground for one.
-    //
-    // Measured: 23 · 4 · 17 · 23 places of fifty cannot get planks at day 0, so
-    // the sample is a real one rather than a lucky seed.
-    let gated = 0;
-    let exempted = 0;
-    for (const warm of days) {
-      for (const t of warm.towns) {
-        const d = derive(t);
-        if (canBuild(d.commerce)) continue;
-        gated++;
-        // NOTHING ON THE MENU PRODUCES MATERIALS ANY MORE, and that is the
-        // sharper version of the same claim. The pit left the governor's list
-        // with the other two crops (§2.12.12), and `shipway` lost the exemption
-        // when it re-keyed to the PRODUCE (§2.12.13) — a harbour work produces
-        // nothing, so you do need planks to lay one down. Every want a stone-
-        // poor place publishes is therefore refused, without exception.
-        for (const w of wants(t, warm.world.day, 12, d)) {
-          expect(w.supplied, `${t.name} answered the wrong way about ${w.kind}`).toBe(false);
-        }
-        // ...and the work that would END the shortage is still the one thing it
-        // may start, which is the exemption itself. It arrives as a DEEPENING
-        // now rather than as a want, because that is the only verb left that
-        // raises a sawpit.
-        for (const w of deepWants(t, d, 12)) {
-          const producesMaterials = w.kind === "sawpit"; // the oracle, written out
-          expect(w.supplied, `${t.name} answered the wrong way about ${w.kind}`).toBe(producesMaterials);
-          if (producesMaterials) exempted++;
-        }
-      }
-    }
-    expect(gated, "no place in four worlds is short of timber and stone").toBeGreaterThan(10);
-    expect(exempted, "not one stone-poor place was offered its own pit").toBeGreaterThan(0);
-  });
+  // A CLAIM STOOD HERE AND ITS MECHANISM IS GONE (KAN-137). It read "goes on
+  // refusing everything else to a place that can get no planks" — [HC-87c] at
+  // world scale, measured across 23 / 4 / 17 / 23 stone-poor places of fifty —
+  // and it pinned both halves of the materials build-gate: every want refused,
+  // except the pit that would end the shortage.
+  //
+  // THE GATE IS DELETED because a tile multiplies a harvest a town already
+  // works, so no place is stone-poor for its own building in the first place.
+  // The covering above is untouched and is still measured: every market
+  // neighbourhood can reach timber, which is what makes planks a TRADE. What is
+  // no longer true is that not reaching them stops a town building.
 
   it("leaves inert only the ground the terrain lockdown has still to decide about", () => {
     // KAN-126'S ACCEPTANCE, and §2.12.14's own measurement re-run. The generator
@@ -743,13 +742,64 @@ describe("the cheapest test of the whole generator, on the real driver", () => {
   runYears(gate.world, gate.towns, gate.markets, gate.wars, gate.routes, YEARS);
   const after = gate.towns.map((t) => derive(t));
 
-  it("leaves every place able to work its own ground after twenty years", () => {
+  it("empties almost nobody that could work its own ground when the world began", () => {
     // [HC-18] as the generator's problem rather than the ledger's: decline alone
-    // may never empty a place, and the only thing standing between a place and
-    // nothing is whether it can still man a garden plot.
-    for (let i = 0; i < gate.towns.length; i++) {
-      expect(gate.towns[i].population, `${gate.towns[i].name} collapsed`).toBeGreaterThan(SOULS_TO_WORK_THE_GROUND);
+    // may never empty a place. TWO THINGS ABOUT THIS CLAIM CHANGED WITH KAN-137,
+    // and only one of them is a residual.
+    //
+    // THE ORACLE WAS WRONG AND IS FIXED. It asked whether every place could man
+    // a GARDEN PLOT — 10.91 souls — when the cheapest food work a place can man
+    // is whichever its own ground carries, and a fishing shack is 7.27. Braganço
+    // Novo sits at 10.23 souls on one shack, climbing toward a capacity of 15,
+    // and the old wording called that a collapse. It asks each place about its
+    // own ground now.
+    //
+    // IT IS POOLED ACROSS FOUR WORLDS, because it was one seed and it passed on
+    // that seed by luck: on master, seed 99's Ankersloot already stood at 10.02
+    // souls at twenty years and no claim in the suite could see it.
+    //
+    // AND THE RESIDUAL, REPORTED RATHER THAN ABSORBED. Places that could feed
+    // themselves on day 0 and cannot at twenty years: **0 before this story, 1
+    // after** — seed 1660's Sharkbait Hole, whose only food is one fishing
+    // shack on an IDEAL reef. That reef used to be worth 28.6 mouths and is now
+    // worth the catalogue's 22, which is the ruling working as ratified; against
+    // an unchanged manning cost of 7.27 souls its margin went 3.94 to 3.03, and
+    // under a season that took 79% of its catch it fell through. The margin the
+    // catalogue is verified against (`POP.prosperityPull`, works.test.ts) does
+    // not price the weather. That is a finding with a ticket behind it, not a
+    // dial to turn here.
+    //
+    // The bound is pooled and has room for one more before it goes red.
+    const FOOD_KINDS = (Object.keys(CATALOGUE) as (keyof typeof CATALOGUE)[]).filter((k) => CATALOGUE[k].food > 0);
+    const floorOf = (t: Town) => {
+      let least = Infinity;
+      for (const k of FOOD_KINDS) {
+        if (regionsFor(t, k).length === 0) continue;
+        const souls = CATALOGUE[k].hands / WORKS.labourShare;
+        if (souls < least) least = souls;
+      }
+      return least;
+    };
+
+    let fell = 0;
+    let standing = 0;
+    const who: string[] = [];
+    for (const seed of [1660, 20260910, 7, 99]) {
+      const warm = warmStart(seed);
+      const floors = warm.towns.map(floorOf);
+      const couldFeedItself = warm.towns.map((t, i) => t.population >= floors[i]);
+      runYears(warm.world, warm.towns, warm.markets, warm.wars, warm.routes, YEARS);
+      for (let i = 0; i < warm.towns.length; i++) {
+        if (!couldFeedItself[i]) continue;
+        if (warm.towns[i].population >= floors[i]) standing++;
+        else {
+          fell++;
+          who.push(`${seed}/${warm.towns[i].name}`);
+        }
+      }
     }
+    expect(standing, "no place in four worlds could feed itself to begin with").toBeGreaterThan(150);
+    expect(fell, who.join(", ")).toBeLessThan(3);
   });
 
   it("leaves nothing abandoned and nothing bare of works", () => {

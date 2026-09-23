@@ -234,33 +234,34 @@ export interface Commerce {
   traffic: number;
   earned: number; // SUM(sold x price) + the harbour's cut of the traffic
   dependency: number; // 0..1 — the share of its bread that is not off its own ground
-  // 0..1 — how far short of timber and stone it is. A town that cannot get them
-  // CANNOT BUILD, however full its coffers (§3.5.3), which is why razing the quay
-  // of a stone-poor island stops it rebuilding its wall.
-  materialsShort: number;
+  // THERE IS NO `materialsShort` HERE AND THE DELETION IS THE POINT (KAN-137).
+  // It read "how far short of timber and stone this place is", and the one thing
+  // that ever asked was the build gate — see the note where that gate used to
+  // stand. With the gate gone it had no reader at all, and a derived field
+  // nobody reads is pure liability ([P-1], [P-50]).
   luxuryShort: number; // 0..1 — a need with teeth, and a MILD weight ([HC-79])
 }
 
-// What the ledger sends to the quay, by class. Victuals are counted in FOOD,
-// because that column already exists and already means "mouths this feeds";
-// materials and luxury are counted in a work's `trade`, which [HC-83]'s reframing
-// makes literal — "what a work sends to the quay".
+// What the ledger sends to the quay, by class. A work's `trade` column is what it
+// ships, whatever the cargo is — [HC-83]'s reframing read literally — and its
+// CLASS comes off the produce (§2.12.13). The `food` column is now only ever the
+// town's own subsistence bread, and it arrives already counted by `derive`.
 //
-// THE COLUMNS DID NOT MOVE WHEN THE KEYING DID (§2.12.13), and only `cargoOf`
-// changed underneath this loop. But note what this line now MAKES POSSIBLE and
-// what the catalogue therefore must not do: rank 0 can receive a `trade` figure
-// for the first time, because a victuals produce is a thing a work can name.
-// Rank 0's `food` argument arrives from `derive` ALREADY SCALED by the weather,
-// and the two lines in `commerceOf` that scale ranks 1 and 2 cannot scale a
-// contribution made here — so a victuals figure in a `trade` column would be
-// cargo no storm could spoil. `works.test.ts` forbids one outright, which is
-// cheaper than a third scaling line and cannot be forgotten.
-export function producedOf(working: Work[], food: number): number[] {
+// THE WEATHER BITES HERE, ONCE, ON EVERY COLUMN — and that moved into this loop
+// with KAN-137. `commerceOf` used to scale ranks 1 and 2 by hand afterwards,
+// because rank 0 arrived pre-scaled off `derive` and the other two did not; the
+// standing hazard was that a VICTUALS figure in a `trade` column would then be
+// cargo no storm could spoil, and the catalogue was forbidden one to keep it
+// shut. KAN-137 moves provision grounds and grain fields into exactly that shape,
+// so the rule is replaced by the arithmetic: every work's cargo is scaled here,
+// whichever rank it lands in, and there is nothing left to forbid. One line
+// instead of two, and one fewer thing to remember ([P-1], [P-47]).
+export function producedOf(working: Work[], food: number, harvest: number): number[] {
   const out = [food, 0, 0];
   for (let i = 0; i < working.length; i++) {
     const w = working[i];
     const cls = cargoOf(w.kind);
-    if (cls) out[CLASSES[cls].rank] += w.trade;
+    if (cls) out[CLASSES[cls].rank] += w.trade * harvest;
   }
   return out;
 }
@@ -383,15 +384,13 @@ export function commerceOf(
   security: number,
 ): Commerce {
   const access = accessOf(working, security, town.market.reach);
-  const produced = producedOf(working, food);
-  // [HC-6]'s yield modifier reaching the CARGO. `food` arrives already scaled —
-  // `derive` is the one place that counts it — but materials and luxury are read
-  // straight off the works here, so the same share has to bite here too, or a
-  // storm would spoil a town's bread and leave its cane untouched. One
-  // definition of the share ([P-47]); it is `harvestShare` in both places.
-  const harvest = harvestShare(town);
-  produced[1] *= harvest;
-  produced[2] *= harvest;
+  // [HC-6]'s yield modifier reaching the CARGO, handed to the one loop that
+  // counts cargo. `food` arrives already scaled — `derive` is the one place that
+  // counts the town's own bread — and `producedOf` scales every column it fills
+  // itself, so a storm cannot spoil a town's corn and leave its cane or its grain
+  // untouched. One definition of the share ([P-47]); it is `harvestShare` here
+  // and in `derive`.
+  const produced = producedOf(working, food, harvestShare(town));
   const consumed = consumedOf(town.population, capitalWorksOf(working));
   const m = town.market;
 
@@ -468,61 +467,42 @@ export function commerceOf(
     traffic,
     earned: cargo + quaysideOf(working, traffic),
     dependency: dependencyOf(produced[0], consumed[0]),
-    materialsShort: shortfallOf(produced[1] + m.bought[1], consumed[1]),
     luxuryShort: shortfallOf(produced[2] + m.bought[2], consumed[2]),
   };
 }
 
-// Whether the town can get timber and stone at all. A hard gate, and
-// deliberately: "a town that cannot get timber and stone CANNOT BUILD, however
-// rich it is." Its coffers may be full; it simply cannot get the stone.
-export const canBuild = (c: Commerce): boolean => c.materialsShort < TRADE.buildGate;
-
-// A WORK THAT PRODUCES MATERIALS IS NOT GATED BY MATERIALS (ratified
-// 2026-09-16). You do not need planks to dig a sawpit.
+// THE MATERIALS BUILD-GATE IS GONE, AND THIS NOTE IS WHAT STANDS WHERE IT WAS
+// (KAN-137, ratified 2026-09-23). It was `canBuild`, `canBuildKind`,
+// `producesMaterials`, `NO_MATERIALS_CLAUSE`, `TRADE.buildGate` and
+// `Commerce.materialsShort` — six declarations and a rule in two halves.
 //
-// THE CLIFF IT CLOSES, measured on four seeds at day 0. The standing bill is
-// `capitalWorks x materialsPerWork` ([HC-87b]), so a place with NO capital work
-// consumes nothing, is short of nothing, and its FIRST build is free — and every
-// build after it is gated. Fifty-two places across those seeds sat frozen at
-// exactly one capital work, and forty-eight of them had spent that one free
-// build on a TAVERN: the auction puts "the men have nowhere to drink" above
-// "there is money in it" in a small place, which is reasonable on its own terms,
-// and the consequence was that the sawpit standing on its own timbered hills was
-// out of reach FOR EVER. One such place held 3,398 coin and a tavern.
+// THE HUMAN'S CORRECTION, and it dissolves the whole mechanism rather than
+// re-aiming it: *"If we're saying hex tiles only boost what the town produces,
+// the assumption is that they are already harvesting said resources. Claiming a
+// forest tile doesn't mean only now do they get wood. It means their yield is
+// bigger."*
 //
-// THE EXEMPTION IS READ OFF THE CATALOGUE, NEVER OFF A LIST OF KINDS. The rule
-// is "a work that produces materials is not gated by materials", and the
-// catalogue already answers which those are. A second list beside it would be
-// [P-47]: one fact with two sources, and the day somebody adds a quarry the
-// list is the half that gets forgotten.
+// So a town is never short of the timber and stone its OWN building takes. The
+// tiles are a multiplier on a baseline it always had, and the baseline is not
+// modelled because it never leaves the town — what the tiles add is the surplus,
+// and the surplus is cargo. A gate that asked "can this place get planks at all"
+// was asking about the baseline, and the answer is always yes.
 //
-// RE-KEYED TO THE PRODUCE 2026-09-21 (§2.12.13, [HC-87c]'s own amendment): it
-// reads the produce's class rather than `exports === "materials"`.
-// SAME RULE, SAME SINGLE SOURCE, ONE INDIRECTION SHORTER — and it has one live
-// consequence, which is the point of doing it here rather than later. A
-// `shipway` produces nothing; it is a harbour work that takes its cut of the
-// traffic. So it STOPS being exempt and must be supplied to be laid down.
-// YOU DO NEED PLANKS TO LAY DOWN A SHIPWAY, which is the only half of the old
-// `timber -> sawpit -> planks -> shipway` chain worth keeping, and the bill
-// keeps it for nothing.
+// WHAT WENT WITH IT, and neither is a loss:
 //
-// [HC-87c] IS UNTOUCHED: the gate still fires at "cannot GET them" and never at
-// "is a little short". What is exempted is one class of work from the materials
-// BILL, not the gate from the world.
-// ONE INDIRECTION SHORTER STILL (KAN-126). It spelled out `timber` and `stone`
-// while `PRODUCE_CLASS` was also saying so, which is one fact with two sources —
-// exactly what [P-47] forbids, and exactly the shape that leaves a quarry half
-// classified the day one arrives. It asks the table now.
-export const producesMaterials = (kind: WorkKind): boolean => cargoOf(kind) === "materials";
-
-// The gate as a governor actually asks it: about THIS work, in THIS town.
-export const canBuildKind = (c: Commerce, kind: WorkKind): boolean =>
-  producesMaterials(kind) || canBuild(c);
-
-// The clause that goes with the refusal, so [HC-16] holds even for a decision
-// that comes to nothing.
-export const NO_MATERIALS_CLAUSE = "there is no timber or stone to be had";
+//  * THE SAWPIT EXEMPTION — "you do not need planks to dig a sawpit" — existed
+//    only to patch a cliff in the gate: the bill is `capitalWorks x
+//    materialsPerWork`, so a place with no capital work was short of nothing,
+//    got ONE free build, and fifty-two places across four seeds spent it on a
+//    tavern and froze for two centuries. No gate, no cliff, no patch.
+//  * THE REFUSAL CLAUSE, "there is no timber or stone to be had", which had no
+//    consumer (KAN-136). It is closed by deletion rather than by wiring it up.
+//
+// MATERIALS ARE STILL A TRADE CLASS. A town still ships its timber and still
+// buys timber, `consumedOf` still prices a building's standing bill, and the
+// clearing is untouched. What is gone is the CONSTRAINT ON CONSTRUCTION. Three
+// caps still bind a governor: coin, the menu's per-town `max`, and a region's
+// free area.
 
 // ---- Prices, and what a work would fetch -----------------------------------
 //

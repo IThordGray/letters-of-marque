@@ -18,7 +18,7 @@ import {
 import { CHOOSABLE, CATALOGUE, countOf, isFocusExpression, raise, depthOf } from "./works";
 import { stepWorldSeason } from "../overworld/market";
 import { derive, stepYears, stepSeason, summarise } from "./sim";
-import { canBuild, dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
+import { dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
 import { bestBorne, capacityOf, isWater, liveRegions, regionOf } from "./land";
 import { CENTRE } from "./hex";
 import { warmStart } from "../overworld/worldgen";
@@ -50,16 +50,6 @@ const raisedIn = (d: Decision | null): Work | null =>
 // spills, so the town claims no new ground and no work of its is ever built over:
 // what is under test below is the mend decision and nothing else.
 const presidio = (init: Partial<Town> = {}): Town => mixedTown({ archetype: "royalOutpost", ...init });
-
-// §3.5.3's own island: a roadstead, scrub, and not one timbered hill. It is the
-// only ground on which the materials gate can still be stated since a work that
-// PRODUCES materials stopped being gated by them (2026-09-16) — a place with
-// hills digs its own pit and is never stone-poor for long.
-const stonePoorIsland = (init: Partial<Town> = {}): Town =>
-  townOf([reg(0, "roadstead", RING1.slice(0, 3)), reg(1, "scrub", RING2.slice(0, 6))], {
-    archetype: "royalOutpost",
-    ...init,
-  });
 
 // A presidio with one sawpit, already rotted down to `decayed`. Set directly
 // rather than starved down the ladder, because what these claims are about is the
@@ -267,8 +257,6 @@ describe("he mends what he can still save", () => {
     pit.condition = "ruin"; // the planks stop for good, and it no longer matters
     ways.condition = "decayed";
     ways.idleSinceDay = DAY0;
-    town.market.bought[1] = 200; // planks to be had, because a shipway is gated now
-
     const done = governorTurn(town, AFTER_ROTTING);
     expect(built(done)?.work).toBe(ways);
     expect(ways.condition).toBe("idle"); // one rung up; the hands take the last step
@@ -286,42 +274,24 @@ describe("he mends what he can still save", () => {
     expect(pit.condition).toBe("decayed");
   });
 
-  it("cannot mend what there is no timber or stone to mend it with", () => {
-    // §3.5.3, and the spec's own example of that gate is a REPAIR: "razing the
-    // quay of a stone-poor island stops it rebuilding its wall." A mend is
-    // construction and the same gate holds it.
+  it("mends the pit whatever the market did, because nothing gates a mend but coin and men", () => {
+    // TWO CLAIMS STOOD HERE AND BOTH WERE ABOUT THE MATERIALS GATE (KAN-137
+    // deleted it): "cannot mend what there is no timber or stone to mend it
+    // with" — §3.5.3's own example, razing the quay of a stone-poor island stops
+    // it rebuilding its wall — and its mirror, "mends the pit that would END the
+    // shortage, planks or no planks", which was the exemption wearing the other
+    // face.
     //
-    // THE WORK IS A WALL AND THE GROUND IS STONE-POOR, and both halves changed
-    // for the same reason (2026-09-16): a sawpit is exempt from the materials
-    // bill because it PRODUCES materials, so neither a rotted sawpit nor a town
-    // with timbered hills can state this claim any more. The claim underneath is
-    // the one the spec wrote, word for word.
-    const town = stonePoorIsland({ population: 400, wealth: 9000 });
-    const wall = raise(town, "palisade", DAY0)!;
-    stepSeason(town, DAY0);
-    wall.condition = "decayed";
-    wall.idleSinceDay = DAY0;
-    raise(town, "tavern", AFTER_ROTTING); // something standing, to want timber and stone
-    stepSeason(town, AFTER_ROTTING);
-
-    expect(built(governorTurn(town, AFTER_ROTTING))).toBeNull();
-    expect(wall.condition).toBe("decayed"); // full coffers, hands to spare, no planks
-
-    town.market.bought[1] = 100; // a shipload of them
-    expect(built(governorTurn(town, AFTER_ROTTING))?.work).toBe(wall);
-  });
-
-  it("mends the pit that would END the shortage, planks or no planks", () => {
-    // THE OTHER DIRECTION OF THE SAME RULE, and it has to be written or the rule
-    // would be true of raising and false of mending — which is the cliff again
-    // with the sentence reversed, and worse: a decayed sawpit holds its own hex,
-    // so `roomFor` drops and its kind falls out of the auction entirely (§5.1).
-    // The place could then neither mend the pit nor dig another.
+    // NEITHER SENTENCE IS TRUE ANY MORE. A tile multiplies a harvest the town
+    // already works, so no place is ever short of what its own building takes,
+    // and the two gates a mend still has to pass — the coin and the hands — are
+    // claimed either side of this one. What is left to say is that the market is
+    // not a third: the same fixture mends with an empty quay.
     const { town, pit } = withRottedSawpit();
     raise(town, "tavern", AFTER_ROTTING); // something standing, to want timber and stone
     stepSeason(town, AFTER_ROTTING);
 
-    expect(canBuild(derive(town).commerce), "the fixture can get planks after all").toBe(false);
+    expect(town.market.bought[1]).toBe(0); // not a plank landed
     expect(built(governorTurn(town, AFTER_ROTTING))?.work).toBe(pit);
     expect(pit.condition).toBe("idle"); // one rung up, and the hands take the last step
   });
@@ -1101,17 +1071,23 @@ describe("a governor can no longer choose to build a sawpit", () => {
     // raised would sooner or later stand on ground nobody had decided about.
     // Not one in a whole world does.
     //
-    // ONE SEED IS ENOUGH HERE and that is not the usual answer: this is an
-    // INVARIANT over roughly a thousand standing works, not a statistic about
-    // five places out of fifty, so a second world would only ask the same
-    // question again.
-    const warm = warmStart(1);
+    // POOLED ACROSS FOUR WORLDS, AND IT HAD TO BE (KAN-137). One seed was
+    // enough while a world carried a couple of hundred crops; the liveness
+    // guard asked for fifty and seed 1 alone now stands **eleven**, because
+    // towns came out smaller and a provision ground wants eighteen men. The
+    // invariant is unchanged and so is the guard's number — what changed is the
+    // sample it is asked of, which is testing.md's own answer to a bound whose
+    // denominator the story moved. Measured pooled: 169 crops across the four
+    // warm seeds (31 · 36 · 57 · 45).
     let crops = 0;
-    for (const t of warm.towns) {
-      for (const w of t.works) {
-        if (w.condition === "ruin" || !isFocusExpression(w.kind) || w.region === null) continue;
-        crops++;
-        expect(t.regions[w.region].focus, `${t.name}: ${w.kind}`).toBe("production");
+    for (const seed of [1660, 20260910, 7, 99]) {
+      const warm = warmStart(seed);
+      for (const t of warm.towns) {
+        for (const w of t.works) {
+          if (w.condition === "ruin" || !isFocusExpression(w.kind) || w.region === null) continue;
+          crops++;
+          expect(t.regions[w.region].focus, `${t.name}: ${w.kind}`).toBe("production");
+        }
       }
     }
     expect(crops, "no crop stands anywhere, so the claim is about an empty world").toBeGreaterThan(50);

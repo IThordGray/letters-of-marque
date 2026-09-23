@@ -25,7 +25,7 @@ import {
   depthOf, roomInRegion,
 } from "./works";
 import { compass, LABEL, bornePreference, capacityOf, claimedKeys, takenHexes, isBuildable, regionOf } from "./land";
-import { DEPENDENCY_CLAUSE, canBuildKind, fetchOf, cargoOf, dearnessOf } from "./trade";
+import { DEPENDENCY_CLAUSE, fetchOf, cargoOf, dearnessOf } from "./trade";
 import { derive, stepSeason } from "./sim";
 import { CALENDAR } from "../overworld/calendar";
 import { PLAN, FOOTPRINT, WORKS } from "./constants";
@@ -73,16 +73,10 @@ export interface Want {
   cost: number;
   affordable: boolean; // the coffers can pay for it today
   manned: boolean; // ...and there are spare hands to work it. "Money and no men."
-  // ...and there is timber and stone to raise it with (§3.5.3). A THIRD gate of
-  // the same kind as the other two: it says nothing about what the town wants,
-  // only about what it can start. A stone-poor island with full coffers and idle
-  // hands still cannot rebuild its wall.
-  //
-  // IT IS PER-WORK AND NOT PER-TOWN, because a work that PRODUCES materials is
-  // not gated by materials (ratified 2026-09-16): the same stone-poor island can
-  // still dig a sawpit in its own hills. See `producesMaterials` in trade.ts for
-  // the cliff that rule closes.
-  supplied: boolean;
+  // THERE IS NO `supplied` GATE ANY MORE (KAN-137). A third gate stood here —
+  // "there is timber and stone to raise it with" — and it went with the rule
+  // that a tile grants access to a resource rather than multiplying one the town
+  // already works. See `trade.ts`, where the gate used to be.
   // ...and it is a thing a place of this purpose would ever raise (§11.3). A
   // military settlement wishes for a farm, publishes the wish, and never builds
   // one — which is the whole of what purpose changes.
@@ -323,7 +317,6 @@ export function wants(town: Town, day: number, limit = 3, derived = derive(town)
       cost: def.cost,
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
-      supplied: canBuildKind(d.commerce, kind),
       permitted: permits(town, kind),
     });
   }
@@ -740,7 +733,6 @@ export interface DeepWant {
   cost: number;
   affordable: boolean;
   manned: boolean;
-  supplied: boolean;
   permitted: boolean;
 }
 
@@ -917,7 +909,6 @@ export function deepWants(
       cost: def.cost,
       affordable: town.wealth >= def.cost,
       manned: def.hands <= spare,
-      supplied: canBuildKind(d.commerce, kind),
       permitted: permits(town, kind),
     });
   }
@@ -1017,11 +1008,11 @@ const spareHands = (d: Derived): number => Math.max(0, d.hands.available - d.han
 // future raid that damages a work, to save a property compare on ~20 works once a
 // season. It has not earned that; the loop's first test is a single compare.
 //
-// THE SAME EXEMPTION APPLIES HERE, and it has to, or the rule would be true of
-// one verb and false of the next: a sawpit that has rotted is still a work that
-// produces materials, and a place that could dig a new one but not put the old
-// one back in order would be the cliff again with the sentence reversed. The
-// gate is therefore asked per work rather than once at the door.
+// THE MATERIALS GATE IS NO LONGER ASKED HERE, because there is none (KAN-137).
+// It used to be asked per work rather than once at the door, so that a rotted
+// sawpit could be mended in a place that could not buy a plank — the exemption
+// wearing its other face. Nothing gates a mend now but the same three things
+// that gate a build: the coin, the hands, and whether the work can work at all.
 function mendTurn(town: Town, d: Derived, day: number): Built | null {
   const spare = spareHands(d);
 
@@ -1029,7 +1020,6 @@ function mendTurn(town: Town, d: Derived, day: number): Built | null {
   let bestWorth = 0;
   for (const w of town.works) {
     if (!mendable(town, w)) continue;
-    if (!canBuildKind(d.commerce, w.kind)) continue; // no timber, no stone, no repairs either
     if (w.hands > spare) continue; // "he will not mend what nobody can work"
     if (town.wealth < repairCost(w.kind)) continue; // ...nor what he cannot pay for
     const v = worthOf(w);
@@ -1068,19 +1058,21 @@ function describeMend(town: Town, w: Work): string {
 //
 // He will not raise what nobody can work. A town with money and no men simply
 // waits — building anyway would leave a shed to rot, which is the loop this
-// guard exists to prevent. Nor will he raise what there is nothing to raise it
-// WITH: timber and stone gate construction outright (§3.5.3), which is what
-// makes razing the quay of a stone-poor island a lasting act.
+// guard exists to prevent.
+//
+// THE FOURTH GATE IS GONE (KAN-137): "nor will he raise what there is nothing to
+// raise it with" was the materials gate, and a tile multiplies a harvest the
+// town already has rather than granting it one. What is left is the coin, the
+// hands and what a purpose permits.
 interface Startable {
   score: number;
   affordable: boolean;
   manned: boolean;
-  supplied: boolean;
   permitted: boolean;
 }
 
 function startable<T extends Startable>(ranked: T[]): T | null {
-  const achievable = ranked.filter((w) => w.manned && w.supplied && w.permitted);
+  const achievable = ranked.filter((w) => w.manned && w.permitted);
   if (!achievable.length) return null;
 
   const best = achievable[0]; // what he actually wants

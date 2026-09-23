@@ -9,10 +9,10 @@
 
 import { describe, it, expect } from "vitest";
 import { derive, settleSeason, stepSeason, stepSeasons, stepYears, takeWeather, carryingCapacity, prosperityTarget } from "./sim";
-import { CAPITAL, CATALOGUE, raise } from "./works";
-import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, producesMaterials, quaysideOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
+import { CATALOGUE, raise } from "./works";
+import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, quaysideOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
 import { TRADE, WEALTH, WORKS } from "./constants";
-import { deepWants, focusWants, governorTurn, permitsFocus, scoreWork, wants, type Built, type Decision, type Deepened } from "./governor";
+import { focusWants, governorTurn, permitsFocus, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
 import { CALENDAR } from "../overworld/calendar";
@@ -24,13 +24,6 @@ import { CALENDAR } from "../overworld/calendar";
 const DAY0 = 0;
 const SEASON = CALENDAR.daysPerSeason;
 const AFTER_OPENING = DAY0 + SEASON;
-
-// A season's one decision may be a work or a region focus, and every claim below
-// is about the work half — "he cannot build" is not "the season came to
-// nothing", and after the focus auction landed beside the work auction those
-// stopped being the same sentence.
-const built = (d: Decision | null): Built | null => (d !== null && d.kind === "work" ? d : null);
-const deepened = (d: Decision | null): Deepened | null => (d !== null && d.kind === "deepening" ? d : null);
 
 // The shipping calling as usual — what an uncleared town faces, and what the
 // world writes when no squadron is holding anything. Spelled out rather than
@@ -754,23 +747,26 @@ describe("dependency", () => {
   });
 });
 
-describe("materials gate construction", () => {
-  // §3.5.3, and it is what makes the second class worth having: a town that
-  // cannot get timber and stone CANNOT BUILD, however rich it is. Razing the
-  // quay of a stone-poor island stops it rebuilding its wall. Its coffers may be
-  // full; it simply cannot get the stone.
+describe("a town is never short of its own building materials", () => {
+  // THE GATE THAT STOOD HERE IS DELETED (KAN-137, ratified 2026-09-23), and this
+  // block is what replaced eight claims about it.
   //
-  // WITH ONE EXEMPTION, RATIFIED 2026-09-16: a work that PRODUCES materials is
-  // not gated by materials. You do not need planks to dig a sawpit — and without
-  // that line the gate had a cliff at the FIRST capital work rather than the
-  // second, because a place with none owes no materials bill and its first build
-  // is free. Fifty-two places across four seeds sat frozen at exactly one capital
-  // work and forty-eight had spent that one free build on a tavern; one of them
-  // held 3,398 coin and could never dig the pit on its own timbered hills.
+  // WHAT IT SAID: a town that cannot get timber and stone CANNOT BUILD, however
+  // rich it is — with one exemption, that a work which PRODUCES materials is not
+  // gated by materials, because without it the gate had a cliff at the FIRST
+  // capital work and fifty-two places across four seeds froze at a tavern.
   //
-  // `seaTown` is the fixture for both halves BECAUSE it has timbered hills and a
-  // roadstead and nothing else: the one work it may raise is the one the
-  // exemption is about.
+  // WHAT THE HUMAN SAID INSTEAD: *"If we're saying hex tiles only boost what the
+  // town produces, the assumption is that they are already harvesting said
+  // resources. Claiming a forest tile doesn't mean only now do they get wood. It
+  // means their yield is bigger."* A tile is a MULTIPLIER on a baseline every
+  // town already works, so no town is ever short of the materials its own
+  // building takes, the gate has nothing to ask, and the exemption has no cliff
+  // left to patch.
+  //
+  // `seaTown` is still the fixture, and for the same reason it always was: it
+  // has timbered hills and a roadstead and nothing else, so what it can raise is
+  // exactly what the deleted rule was about.
   function stonePoor(): Town {
     const t = seaTown({ population: 200, wealth: 200000 });
     raise(t, "warehouse", DAY0);
@@ -779,150 +775,64 @@ describe("materials gate construction", () => {
     return t;
   }
 
-  it("stops a town with full coffers and idle hands raising anything at all off the menu", () => {
-    // THE MENU HAS NOTHING EXEMPT LEFT ON IT. The pit left the governor's list
-    // with the other two crops (§2.12.12), and a `shipway` produces nothing, so
-    // when the exemption re-keyed to the PRODUCE it stopped covering one —
-    // which is the ticket's own sentence: you do need planks to lay down a
-    // shipway. Every want a stone-poor place publishes is therefore refused.
-    const town = stonePoor();
-    expect(town.wealth).toBeGreaterThan(100000);
-    const published = wants(town, AFTER_OPENING, 12);
-    expect(published.length).toBeGreaterThan(0); // it still says what it wants
-    for (const w of published) {
-      expect(w.supplied, `${w.kind} answered the wrong way to a town that can get no planks`).toBe(false);
-    }
-  });
-
-  it("digs the pit with no timber or stone to be had, and still cannot raise a warehouse", () => {
-    // THE RULE ITSELF, in one sentence: timbered hills, coin, hands and not a
-    // plank to be had — and the work that would END the shortage is the one work
-    // he may start. The warehouse beside it is the control: same town, same
-    // season, same purse, gated.
-    //
-    // THE VERB CHANGED AND THE RULE DID NOT. The pit arrives as a DEEPENING now
-    // — that is the only verb left that raises one — so the exemption is read
-    // off the deepening's own `supplied` flag rather than off a want's. Both
-    // call `canBuildKind`, which is the single source ([P-47]).
-    const town = stonePoor();
-    town.regions[0].focus = "production"; // somebody gave the hills over
-    const d = derive(town);
-    expect(d.commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate); // it can get none
-    expect(d.commerce.bought[1]).toBe(0);
-    expect(d.hands.available - d.hands.needed).toBeGreaterThan(CATALOGUE.sawpit.hands); // and hands to spare
-
-    const pit = deepWants(town, d, 12).find((w) => w.kind === "sawpit");
-    const store = wants(town, AFTER_OPENING, 12, d).find((w) => w.kind === "warehouse");
-    expect(pit, "the hills bear timber and no pit was published").toBeDefined();
-    expect(store, "the roadstead takes a warehouse and none was published").toBeDefined();
-    expect(pit!.supplied).toBe(true);
-    expect(store!.supplied).toBe(false);
-
-    // ...and he does dig it, though it takes him a season or two to get round to
-    // it: the season's one decision may go on deciding what other ground is for
-    // before it goes on digging.
-    let dug: string | undefined;
-    for (let i = 0; i < 12 && dug === undefined; i++) {
-      dug = deepened(governorTurn(town, AFTER_OPENING + i * SEASON))?.work.kind;
-    }
-    expect(dug).toBe("sawpit");
-  });
-
-  it("exempts exactly the works that produce timber or stone, and no others", () => {
-    // THE DERIVATION ITSELF, guarded — and it needs guarding because the world
-    // cannot guard it. RE-KEYED 2026-09-21 (§2.12.13): the rule reads `produces
-    // ∈ {timber, stone}` rather than `exports === "materials"`. Same rule, same
-    // single source, one indirection shorter — and one live consequence, which
-    // is why this claim exists: the shipway used to be exempt and is not any
-    // more.
-    //
-    // IT WALKS EVERY CAPITAL WORK, not the menu, because the one work the rule
-    // is about is no longer ON the menu — a loop over `CHOOSABLE` would have
-    // gone green by asking nothing.
-    const PRODUCES_MATERIALS = ["sawpit"]; // the oracle, written out
-    for (const kind of CAPITAL) {
-      expect(producesMaterials(kind), `${kind} answered the wrong way`)
-        .toBe(PRODUCES_MATERIALS.includes(kind));
-    }
-    expect(producesMaterials("shipway")).toBe(false); // said out loud, because it moved
-  });
-
-  it("you do need planks to lay down a shipway, and that is the change", () => {
-    // THE LIVE CONSEQUENCE of re-keying the exemption to the produce, stated
-    // behaviourally rather than as a property of a function. A shipway used to
-    // be exempt because it exported materials; it produces none, and a harbour
-    // work that takes its cut of the traffic is not a plank mill. It is the only
-    // half of the old `timber -> sawpit -> planks -> shipway` chain worth
-    // keeping, and the materials bill keeps it for nothing.
-    const town = stonePoor();
-    const shut = wants(town, AFTER_OPENING, 12).find((w) => w.kind === "shipway");
-    expect(shut, "the roadstead takes a shipway and none was published").toBeDefined();
-    expect(shut!.supplied).toBe(false);
-
-    town.market.bought[1] = 400; // a shipload of planks
-    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "shipway")!.supplied).toBe(true);
-  });
-
-  it("still cannot dig a pit where there are no hills to dig it in", () => {
-    // The exemption is about the materials BILL, never about the ground. A place
-    // with no timber is refused by `buildable` before the gate is ever asked, and
-    // it must stay refused — otherwise the rule would have quietly handed every
-    // stone-poor island a sawpit out of nowhere.
-    const town = townOf([reg(0, "roadstead", RING1.slice(0, 3)), reg(1, "scrub", RING2.slice(0, 6))], {
-      population: 200,
-      wealth: 200000,
-    });
-    raise(town, "warehouse", DAY0);
-    stepSeason(town, DAY0);
-    expect(derive(town).commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate);
-    expect(raise(town, "sawpit", AFTER_OPENING)).toBeNull();
-    expect(wants(town, AFTER_OPENING, 12).some((w) => w.kind === "sawpit")).toBe(false);
-    expect(built(governorTurn(town, AFTER_OPENING))).toBeNull();
-  });
-
-  it("lets it build again the season the timber arrives", () => {
-    // The gate lifting, asserted on a work the gate actually HOLDS — a warehouse,
-    // not the exempt pit, or the claim would be true before the shipload landed.
+  it("raises a warehouse with not a plank landed, because its own hills were always working", () => {
+    // THE DELETION MADE OBSERVABLE, on the work the old gate actually held. The
+    // same town, the same season and the same purse used to publish every want
+    // refused; now it builds. A mutation that puts any materials condition back
+    // into `startable` fails here.
     const town = stonePoor();
     const before = town.works.length;
-    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(false);
-    town.market.bought[1] = 100; // a shipload of planks
-    expect(wants(town, AFTER_OPENING, 12).find((w) => w.kind === "warehouse")!.supplied).toBe(true);
-    // A SEASON IS ONE DECISION AND THERE ARE THREE KINDS OF IT, so "he builds
-    // again" is a claim about the seasons after the shipload and not about the
-    // very next one — some of them go on deciding what ground is for, which
-    // costs no coin and raises nothing. Give him a few years and he builds.
+    expect(town.market.bought[1]).toBe(0); // not a plank came in
+    expect(town.wealth).toBeGreaterThan(100000);
+
+    // A SEASON IS ONE DECISION AND THERE ARE THREE KINDS OF IT, so "he builds"
+    // is a claim about the seasons after, not about the very next one — some of
+    // them go on deciding what ground is for, which costs nothing and raises
+    // nothing.
     for (let i = 0; i < 12 && town.works.length === before; i++) governorTurn(town, AFTER_OPENING + i * SEASON);
     expect(town.works.length).toBeGreaterThan(before);
   });
 
+  it("mends a rotted work with no timber to be had either, which is the same rule in reverse", () => {
+    // THE HALF THAT WAS WRITTEN AS AN EXEMPTION, now simply true. The gate was
+    // asked per work at the mend so that a rotted SAWPIT could be put back in a
+    // place that could not buy a plank; with no gate there is no asymmetry left
+    // between raising and mending, and a wall is the right subject because a
+    // wall never qualified for the exemption.
+    const town = stonePoor();
+    const wall = raise(town, "palisade", DAY0)!;
+    stepSeason(town, DAY0);
+    wall.condition = "decayed";
+    wall.idleSinceDay = DAY0;
+    stepSeason(town, AFTER_OPENING);
+
+    expect(town.market.bought[1]).toBe(0);
+    let mended = false;
+    for (let i = 0; i < 12 && !mended; i++) {
+      governorTurn(town, AFTER_OPENING + i * SEASON);
+      mended = wall.condition !== "decayed";
+    }
+    expect(mended).toBe(true);
+  });
+
+  it("goes on wanting timber and stone to BUY, because materials are still a cargo", () => {
+    // WHAT DID NOT GO WITH THE GATE, and it is worth its own claim because the
+    // obvious reading of "a town is never short of materials" is that the class
+    // stops mattering. It does not: a building's standing bill is still what a
+    // town asks the market for, a sawpit still ships its surplus, and the two
+    // are what make timber a trade at all.
+    const town = stonePoor();
+    const d = derive(town);
+    expect(d.commerce.consumed[1]).toBeGreaterThan(0); // it still owes a bill
+    expect(d.commerce.want[1]).toBeGreaterThan(0); // ...and still asks for the planks
+  });
+
   it("never gates the hamlet floor — people roof their own houses", () => {
-    // The floor must survive a total blockade or a sacked town could not crawl
-    // back, which is the one thing the whole ledger is built to guarantee.
+    // [HC-67], kept because it is the one thing the whole ledger is built to
+    // guarantee and it must survive every rule that comes and goes above it.
     const town = seaTown({ population: 200, wealth: 0 });
     stepYears(town, 6);
     expect(town.works.some((w) => w.kind === "dwellings")).toBe(true);
-  });
-
-  it("says nothing about what the town WANTS, only about what it can start", () => {
-    // The same shape as the affordable and manned gates: wealth is not a term,
-    // and neither is this. The ranking must be identical either way.
-    //
-    // THE PLANKS ARE LANDED AND WORTH NOTHING AT THE QUAY, and that is the whole
-    // of why a price of zero is written here. Since KAN-132 a LANDING IS TRAFFIC
-    // and traffic is what a harbour work's market term argues from, so a
-    // shipload landed at par changes the ranking for an entirely honest reason —
-    // the quay got busier — and the claim would then be measuring that instead
-    // of the gate. At nothing a bale the cargo still counts against the
-    // shortfall, which is quantities, and moves no term.
-    const poor = stonePoor();
-    const supplied = stonePoor();
-    poor.market.price[1] = 0;
-    supplied.market.price[1] = 0;
-    supplied.market.bought[1] = 100;
-    expect(wants(supplied, AFTER_OPENING, 12).some((w) => w.supplied)).toBe(true);
-    expect(wants(poor, AFTER_OPENING, 12).some((w) => w.supplied)).toBe(false);
-    expect(wants(supplied, AFTER_OPENING, 12).map((w) => w.kind)).toEqual(wants(poor, AFTER_OPENING, 12).map((w) => w.kind));
   });
 });
 
@@ -1075,7 +985,14 @@ describe("what a purpose puts out of reach", () => {
         reg(2, "tilledGround", RING2.slice(0, 5), { bears: { food: "poor" } }),
         reg(3, "scrub", RING2.slice(5, 11)),
       ],
-      { population: 200, wealth: 100000, archetype, grant: 40 },
+      // SEVEN HUNDRED MOUTHS AGAINST FOUR GARDEN PLOTS, and the number moved
+      // with KAN-137. Two hundred used to read as "fed from the sea" because
+      // the plots stood on POOR food ground and the ground scaled what they
+      // fed — 10.5 mouths apiece. The ground no longer decides what a town
+      // eats, so the same four plots feed 120 and two hundred souls are nearly
+      // self-fed. The fixture wants a place that genuinely cannot feed itself,
+      // which is what the claim is about, so it is given the mouths for it.
+      { population: 700, wealth: 100000, archetype, grant: 40 },
     );
     raise(t, "warehouse", DAY0);
     stepSeason(t, DAY0);

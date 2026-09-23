@@ -141,13 +141,13 @@ export const TRADE = {
   // nothing raised needs no stone to keep it standing. Subsistence works are not
   // counted: people roof their own houses, and the hamlet floor is never gated.
   materialsPerWork: 0.9,
-  // How short of timber and stone a place must be before it CANNOT BUILD at all.
-  // Not zero, and the difference matters: at zero the whole map deadlocks the
-  // moment anyone raises a first capital work, because the standing bill appears
-  // before any supply does and no sawpit can then be raised anywhere (measured:
-  // 48 places, median works 20 -> 14, largest town 1,070 -> 327). §3.5.3's rule
-  // is "cannot GET timber and stone", not "is a little short of them".
-  buildGate: 0.75,
+  // `buildGate: 0.75` STOOD HERE AND IS DELETED (KAN-137, ratified 2026-09-23).
+  // It was how short of timber and stone a place had to be before it could not
+  // build at all — and the ruling that a tile is a MULTIPLIER on a baseline the
+  // town already harvests means no place is ever short of its own building
+  // materials. See `trade.ts`, where the gate used to be, for the whole of it.
+  // `materialsPerWork` above STAYS: a building's standing bill is still what a
+  // town wants to buy, and materials are still a trade class.
   luxuryPerHead: 0.02, // a little comfort at the top of the pyramid, wanted by people
   // Base prices, in coin per unit. Materials and luxury sit at par because the
   // catalogue's `trade` numbers are already value-weighted; victuals are cheap

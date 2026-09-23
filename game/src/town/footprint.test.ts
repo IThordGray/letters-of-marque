@@ -160,9 +160,14 @@ describe("the wall is frozen where it was raised", () => {
   });
 
   it("leaves anything claimed afterwards outside the gate", () => {
+    // THE GOVERNOR MAY HAVE RAISED IT HIMSELF in those ten years, and since
+    // KAN-137 he usually does — the materials gate that used to hold half his
+    // wants is gone. `max` is 1, so `raise` hands back null rather than a second
+    // wall, and the fixture takes whichever one is standing.
     const town = mixedTown({ population: 500, wealth: 20000 });
     stepTownYears(town, 10);
-    const wall = raise(town, "palisade", 10 * DAYS_PER_YEAR)!;
+    const wall = raise(town, "palisade", 10 * DAYS_PER_YEAR) ?? town.works.find((w) => w.kind === "palisade")!;
+    expect(wall, "no wall stands and none could be raised").toBeDefined();
     const walled = walledGround(town);
 
     // Force the town onto ground it had not taken when the wall went up.

@@ -152,49 +152,147 @@ const ROWS = {
   // --- THE FIVE FOCUS EXPRESSIONS: what a production focus on this ground IS.
   //     `max: Infinity` is KAN-125's tuning answer, and the argument is in
   //     `FOCUS_EXPRESSIONS` below.
+  //
+  //     THE CROP WORKS' `hands` WERE CUT 18/18/16/14 -> 9/9/8/7 (KAN-137), and
+  //     the reason is the chicken-and-egg the flat food base exposed. Growth is
+  //     supposed to come from trade; trade in victuals needs somebody growing
+  //     them for sale; and the works that grow them for sale wanted more men
+  //     than any town in the world had spare. Measured at the old numbers, on
+  //     four warm worlds at day 0: **2 provision grounds, 18 grain fields and 4
+  //     cane fields stood in 194 places**, and the world offered 2,971 of
+  //     victuals a season against a demand it could not meet.
+  //
+  //     MEASURED AGAINST THE REAL DISTRIBUTION, NOT AGAINST A GUESS ([P-52], as
+  //     extended 2026-09-20: measure the thing you are dividing). Spare hands
+  //     per place — `population x labourShare` less what is already manned —
+  //     run across 194 places:
+  //
+  //         p10 0.66 · p25 2.00 · MEDIAN 4.60 · p75 8.16 · p90 10.16 · max 30.31
+  //
+  //     and the number of places that could staff one work of a given size:
+  //
+  //         18 hands -> 4 places · 14 -> 8 · 12 -> 12 · 10 -> 23 · 9 -> 31 ·
+  //          8 -> 51 ·  6 -> 79
+  //
+  //     TWO THINGS THAT MEASUREMENT SETTLES. First, spare labour is an
+  //     EQUILIBRIUM RESIDUAL and not a budget: a town mans works until it runs
+  //     out of hands, so the median is small whatever the catalogue says, and
+  //     "a work the median town can staff with room left over" would have to
+  //     cost four men — a fishing shack — which no provision ground is. Second,
+  //     the right ceiling is the one the world DEMONSTRABLY STAFFS: a sawpit
+  //     cost 10 and **81 of them stood** where 2 provision grounds did. So the
+  //     food crops are set one rung under that proven ceiling and the luxuries
+  //     under them, which roughly doubles the places that can start one (23 ->
+  //     31) without making a farm cheaper to work than the huts that feed it.
+  //
+  //     AND THE PIT THEN HAD TO COME DOWN WITH THEM — see its own row. Leaving
+  //     it at the 10 it was measured AT turned the reading into a ratchet: the
+  //     work the derivation used as proof became the dearest thing on the board
+  //     and the coasts that bear both stopped cutting.
+  //
+  //     THE RELATIVE SHAPE IS KAN-126'S AND IS UNTOUCHED: provisions and grain
+  //     cost the same men, cane costs a little less, and cotton "wants nearly as
+  //     many hands to pick it" as cane — 7 against 8 — while paying less per
+  //     acre.
+  //
+  //     WHAT IT DOES, three points swept and all four seeds warm ([P-39]):
+  //
+  //       hands     offered   landed   median   largest   prov/grain/cane/cotton
+  //       18/18/16/14  2,971      784    67.3      364      2 /  18 /  4 /  64
+  //       10/10/9/8    8,010    3,333    80.7      566     18 /  94 / 23 / 215
+  //        9/9/8/7    10,452    3,476    82.6      462     20 / 129 / 28 / 269
+  //        8/8/7/6    12,284    4,509    87.1      473     24 / 155 / 16 / 309
+  //
+  //     At 8 the cheapest crop starts crowding the timber out (sawpits 81 -> 58)
+  //     and the median starts to run. 9 is where the world's five largest places
+  //     are all at or within a whisker of the 186 mouths their own huts can feed
+  //     and buy 245-311 on top of it — **fed from the sea, which is what the
+  //     ceiling was always supposed to mean.**
+  //     THE PIT CAME DOWN 10 -> 8 WITH THE CROPS, AND IT IS THE SAME STORY'S
+  //     OWN REGRESSION BEING FINISHED RATHER THAN A SECOND TUNING PASS. Cutting
+  //     the crops and holding the pit flipped its place in the order: it had
+  //     been the CHEAPEST focus expression in men (10 against 14-18) and the
+  //     dearest in coin, and it became the dearest in both. Coasts bearing
+  //     timber that actually cut it went 42% (after KAN-126) to **20%**, and the
+  //     world's materials 1,716 -> 1,440 a season.
+  //
+  //     WHICH GATE WAS ACTUALLY REFUSING IT, MEASURED RATHER THAN ASSUMED,
+  //     because the coin is just as plausible a culprit at 260 against the
+  //     crops' 180-220. Of the 57 timber-bearing places not cutting: **54 short
+  //     of HANDS** (21 of them hands alone), **3 short of coin alone, and none
+  //     short of neither.** The hands bind; the coin does not, so the coin does
+  //     not move.
+  //
+  //     WHY 8 AND NOT LOWER. Restoring the pit's old RATIO to the crops (it cost
+  //     0.56-0.71x of them) would put it at five or six men and make it the
+  //     cheapest work on the board, which a pit is not — it is heavy work and it
+  //     sat above the crops in coin for that reason. 8 is the floor that keeps
+  //     it off the bottom: level with a cane field, above a cotton walk. The
+  //     measurement agrees that it is also the knee:
+  //
+  //       pit hands   coasts cutting   world materials   sawpits standing
+  //          10          14 / 71            1,440              67
+  //           8          24 / 71            2,529             112
+  //           7          28 / 71            2,481             113
+  //           6          29 / 71            2,586             117
+  //
+  //     At 8 the share is back at the count it held before this story (24 of 71)
+  //     and the materials overshoot what the world made then; 7 and 6 buy four
+  //     and five more coasts for no more timber at all. THE CROPS DO NOT
+  //     COLLAPSE BACK: 19 provision grounds, 124 grain fields, 19 cane fields
+  //     and 270 cotton walks stand against 20 / 129 / 28 / 269 at the pit's 10.
   sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null,
-    food: 0, trade: 14, defence: 0, hands: 10, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 14, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
   caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null,
-    food: 0, trade: 10, defence: 0, hands: 16, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 10, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  //     A FARM ON A TILE GROWS FOOD FOR SALE, NOT DINNER (KAN-137, ratified
+  //     2026-09-23): *"Fields don't add to their running stores — just boosts
+  //     trade. The hex tiles are just for trade boosting, not town running."* So
+  //     the ninety moved from `food` to `trade` and is classed VICTUALS by its
+  //     produce, exactly as a sawpit's timber is classed materials. A COLUMN
+  //     MOVE, NOT A NEW MECHANISM: both columns already existed and both were
+  //     already read, and `producedOf` already adds a victuals `trade` figure to
+  //     the victuals offer. What it buys is the sentence A FARMING TOWN FEEDS
+  //     THE CITIES, literally true for the first time.
   provisionGround: { label: "provision grounds", cls: "capital", cost: 180, produces: "food", needsGround: null,
-    food: 90, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 90, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 90, defence: 0, hands: 9, serves: "food", servesFor: 90, max: Infinity, zone: "beyondThePale" },
   //
-  //     GRAIN FIELDS ARE A `food` WORK AND COTTON WALKS ARE A `trade` ONE,
-  //     because §2.12.13 moved the KEYING and not the columns: victuals are
-  //     counted in `food`, materials and luxury in `trade`.
+  //     GRAIN FIELDS AND PROVISION GROUNDS BOTH SHIP THEIR CROP IN `trade` NOW,
+  //     and they are still victuals: §2.12.13 keys the class to the PRODUCE, so
+  //     `producedOf` puts both figures into the victuals offer. What moved is
+  //     which column they sit in, and it moved because a tile feeds nobody.
   //
-  //     WHY GRAIN FIELDS FEED LESS PER ACRE THAN PROVISION GROUNDS, which is the
-  //     tuning question the spec leaves open and the one number here anybody
-  //     will want an argument for. It is true of the crops and it is what the
-  //     measurement wanted, in that order:
+  //     RE-DERIVED AS CARGO FIGURES, AND THE DERIVATION SURVIVES THE MOVE —
+  //     WHICH IS WHY 90 AND 50 ARE STILL THE NUMBERS. KAN-126 set them by
+  //     `50 x 1.3 = 65` against `90 x 0.7 = 63`: the same bread off the same
+  //     acre, because a grain field only ever stands on ground MADE for grain
+  //     (`ideal`) and provision grounds stand on tilled ground that merely
+  //     tolerates food (`fair`). KAN-137 withdrew "the catalogue number is the
+  //     crop; the suit is the ground" FOR FOOD — and food is precisely the
+  //     column these two just left. Suitability still scales `trade`, so the
+  //     arithmetic that justified the pair is not merely intact, it is now in
+  //     the column it was always describing: a farming town SELLS 65 of grain
+  //     where it would sell 63 of provisions.
   //
-  //     * PROVISION GROUNDS OUT-FEED GRAIN ACRE FOR ACRE. Cassava, plantain and
-  //       yam keep far more mouths off the same ground than wheat or maize, and
-  //       that is why the Caribbean grew provisions and imported flour. What
-  //       grain has over them is that it KEEPS and it SHIPS.
-  //     * AND THE GROUND PAYS THE DIFFERENCE BACK, which is the point of the
-  //       whole story. A grain field only ever stands where the ground is MADE
-  //       for grain, so it is minted at `SUIT_YIELD.ideal` (1.3); provision
-  //       grounds stood on tilled ground that merely tolerated food, at `fair`
-  //       (0.7). `50 x 1.3 = 65` against `90 x 0.7 = 63` — the same bread off
-  //       the same acre, arrived at from the other end. THE CATALOGUE NUMBER IS
-  //       THE CROP; THE SUIT IS THE GROUND.
+  //     WHAT EACH CROP IS, unchanged and still the reason the pair is not one
+  //     row: provision grounds out-feed grain acre for acre — cassava, plantain
+  //     and yam keep more mouths off the same ground than wheat, which is why
+  //     the Caribbean grew provisions and imported flour — and what grain has
+  //     over them is that IT KEEPS AND IT SHIPS.
   //
-  //     Measured on four warm worlds: with grain at the clone's 90 the day-0
-  //     population spread ran 8 / 80 / 2,331 souls, which puts [HC-87]'s
-  //     trade-fed 1,500 in the MIDDLE of a band it is supposed to top. At 50 it
-  //     runs 8 / 89 / 1,518 against a ratified 10 / 90 / 1,200, and the 1,500 is
-  //     reached by the largest port on one seed of four — the top of the band,
-  //     which is where [HC-87] puts it.
+  //     Measured on four warm worlds when grain arrived: with grain at the
+  //     clone's 90 the day-0 population spread ran 8 / 80 / 2,331 souls, which
+  //     puts [HC-87]'s trade-fed 1,500 in the MIDDLE of a band it is meant to
+  //     top. At 50 it ran 8 / 89 / 1,518.
   grainFields: { label: "grain fields", cls: "capital", cost: 180, produces: "grain", needsGround: null,
-    food: 50, trade: 0, defence: 0, hands: 18, serves: "food", servesFor: 50, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 50, defence: 0, hands: 9, serves: "food", servesFor: 50, max: Infinity, zone: "beyondThePale" },
   //     COTTON IS THE LESSER OF THE TWO LUXURIES AND THE HARDER WORK. Sugar was
   //     king; cotton pays less per acre and wants nearly as many hands to pick
   //     it, so it costs more per unit shipped than cane does (29 against 22) and
   //     fetches less. It is still the only thing cotton ground has ever been
   //     able to become.
   cottonWalk: { label: "cotton walks", cls: "capital", cost: 200, produces: "cotton", needsGround: null,
-    food: 0, trade: 7, defence: 0, hands: 14, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+    food: 0, trade: 7, defence: 0, hands: 7, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
 
   // --- THE EIGHT THE GOVERNOR WEIGHS AGAINST EACH OTHER. Every one of them
   //     stands on NAMED ground or on none at all, never on what the ground
@@ -490,65 +588,34 @@ export function groundFor(town: Town, kind: WorkKind): Ground | null {
   return null;
 }
 
-// WHAT THE GROUND COSTS, scaled by the same `q` as what the ground gives.
+// WHAT THE GROUND COSTS IN MEN — AND IT COSTS THE SAME ON EVERY GRADE. The only
+// thing that moves it is the walk over the ridge, because men must still get
+// there.
 //
-// A SUBSISTENCE WORK'S HANDS SCALE WITH ITS YIELD (ratified 2026-09-15), and the
-// bug it closes is stated most simply as an omission: `raise` already scaled the
-// four numbers the ground GIVES — food, trade, defence, servesFor — and left the
-// one number the ground COSTS flat. So a garden plot on `poor` ground fed 10.5
-// mouths and still wanted six men, which is 10.91 souls at `labourShare`. A place
-// with nothing but poor food ground therefore could not sustain the hands that
-// worked its own food: each step down idled another plot and it cascaded, 163
-// souls to nothing in about forty years by ordinary decline — [HC-18] violated,
-// and live in a shipped world once the weather reached the ledger.
+// A SUBSISTENCE WORK'S HANDS USED TO SCALE WITH ITS YIELD (`min(q, 1)`, ratified
+// 2026-09-15) AND THAT SCALING IS DELETED HERE, because the thing it was holding
+// up has gone. It existed for exactly one reason: `raise` scaled a work's `food`
+// by the ground, so a garden plot on `poor` ground fed 10.5 mouths and still
+// wanted six men — 10.91 souls at `labourShare` — and a place with nothing but
+// poor food ground spiralled to nobody. Scaling the hands by the same `q` held
+// the ratio `food · labourShare / hands` constant on every grade.
 //
-// The rule, in one sentence: A SUBSISTENCE WORK IS MANNED TO THE SIZE THE GROUND
-// WILL REPAY, AND NEVER BEYOND ITS OWN SIZE. `min(q, 1)`, and the asymmetry is
-// the whole of it:
+// THE GROUND NO LONGER SCALES FOOD AT ALL (KAN-137), so that ratio is constant by
+// construction and the clamp has nothing left to hold. Worse than redundant, it
+// would INVERT the rule the human ratified: a plot on poor ground would feed the
+// catalogue's thirty mouths and ask a third of the men, which is bad ground
+// paying better than good. [P-1] — it stopped fighting to be there the moment
+// `food` stopped being scaled.
 //
-// * BELOW 1 the ground can make the work not worth doing in full, and nobody digs
-//   a field that eats more than it grows — that is what subsistence MEANS. Six men
-//   on ground that repays a third of six men's bread is three men and a smaller
-//   patch. So the mouths-per-soul-of-labour ratio, `food · labourShare / hands`,
-//   comes out INDEPENDENT of the ground at or below the grade the catalogue is
-//   written for: `food·q·λ / (hands·q) = food·λ / hands`.
-// * ABOVE 1 it does NOT scale, because good ground does not take more men — it
-//   repays the same men better. That is already what the yield half says, and it
-//   is §2.5's ratified line read the right way round: terrain BIASES a crop, it
-//   does not determine how many hands a plot has.
-//
-// THE ASYMMETRY IS ALSO THE SAFETY ARGUMENT, and it is worth stating as one:
-// `min(q, 1) <= 1`, so this change can only ever ask FEWER men of a work than the
-// shipped catalogue did — never more. **No place's manning threshold can rise**,
-// so no place that stands today can be pushed under by this.
-//
-// That safety matters more than it looks, and it was MEASURED rather than
-// reasoned: an unclamped `q` scaled hands UP on ideal ground (six men to 7.8), and
-// three places across five seeds that stand today emptied instead — because a
-// storm-battered place lives near the bottom of its margin, not at the top of it,
-// and the margin on good ground is where almost every place actually lives.
-//
-// TWO THINGS DELIBERATELY NOT DONE HERE:
-//
-// * CAPITAL WORKS KEEP A FLAT HAND COST. The hamlet floor is made of subsistence
-//   works and only of them ([HC-67]): they are free, self-raising, never rot, and
-//   nobody ever DECIDES to have one, so a subsistence work that cannot pay its own
-//   wages is a spiral with no brake. A capital work is a priced decision; one that
-//   cannot pay for itself on bad ground is the correct disincentive and the
-//   governor's problem (§5.6, "he will not raise what nobody can work"), and it
-//   cannot empty a place — it rots to `ruin` and the subsistence floor catches the
-//   town. Scaling it would also flatten the reason a governor prefers good ground
-//   and would silently falsify the auction's `def.hands <= spare` preview, which
-//   reads the CATALOGUE rather than the instance ([P-47]).
-// * THE FAR-GROUND `Math.ceil` IS NOT APPLIED to a scaled cost. Rounding up can
-//   only ever RAISE the cost, which is the one thing this function must not do — a
-//   plot worth 2.41 men charged for 3 loses a quarter of its margin. Hands are
-//   compared against `population · labourShare`, a float in a model whose
-//   population is a float, so nothing wanted a whole number here except habit.
-const handsOn = (def: WorkDef, q: number, far: boolean): number => {
+// WHAT STAYS. The far cost, and the `Math.ceil` on a capital work only. Rounding
+// a subsistence work's cost up can only ever RAISE it, and the margin these works
+// must clear (`POP.prosperityPull`, claimed in `works.test.ts`) is stated against
+// the unrounded figure — a plot worth 8.1 men charged for 9 gives up a tenth of
+// it for nothing but a whole number nobody needs.
+const handsOn = (def: WorkDef, far: boolean): number => {
   const walk = far ? WORKS.farHands : 1; // men must still walk to it
   if (def.cls !== "subsistence") return far ? Math.ceil(def.hands * walk) : def.hands;
-  return def.hands * Math.min(q, 1) * walk;
+  return def.hands * walk;
 };
 
 // RISING RETURNS, AND THEY RISE WITH DEPTH (§2.12.5). The Nth work on a region
@@ -567,9 +634,13 @@ const handsOn = (def: WorkDef, q: number, far: boolean): number => {
 // separate number doing the same job, which §2.12.5 refuses outright.
 export const depthPremium = (depth: number): number => 1 + depth * WORKS.premiumPerDepth;
 
-// Mint a work on a named hex, scaled by how well that ground suits it. Ground
-// that was made for a crop is worth more of it; ground that merely grudges it
-// pays a fraction — which is adaptability with a visible price.
+// Mint a work on a named hex, its CARGO scaled by how well that ground suits it.
+// Ground that was made for a crop ships more of it; ground that merely grudges it
+// ships a fraction — which is adaptability with a visible price.
+//
+// AND `q` REACHES NOTHING THE TOWN EATS ([HC-87], amended 2026-09-23). See the
+// `food` line below: the ground decides what a place SELLS and has nothing to say
+// about what it feeds.
 //
 // `onRegion` IS THE DEEPENING'S OWN DOOR, and it is the only difference between
 // the two verbs at the mint. Without it a work goes where the auction's best
@@ -619,10 +690,17 @@ export function raise(town: Town, kind: WorkKind, day: number, onRegion: Region 
     sinceDay: day,
     condition: "working",
     idleSinceDay: null,
-    food: def.food * q,
+    // THE GROUND FEEDS NOBODY DIFFERENTLY (KAN-137, ratified 2026-09-23): *"we
+    // assume that towns are self-sufficient regardless what their land looks
+    // like."* `q` is the whole of what the dirt is worth — suitability, the sweet
+    // spot, the walk over the ridge, the depth premium — and it scales the cargo
+    // columns and stops at the edge of `food`. Every town feeds the same base off
+    // the same works wherever it was founded, and that base is the one [HC-87]
+    // always assumed when it said a trade-fed town "falls back toward 450".
+    food: def.food,
     trade: def.trade * q,
     defence: def.defence * q,
-    hands: handsOn(def, q, far),
+    hands: handsOn(def, far),
     serves: def.serves,
     servesFor: def.servesFor * q,
   };

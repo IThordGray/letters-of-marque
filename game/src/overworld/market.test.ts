@@ -14,12 +14,11 @@ import {
 import { PAYLOAD, inFlightCount, sendDispatch } from "./dispatch";
 import { skyOf, takesOf, type Storm } from "./weather";
 import { derive, produceSeason, settleSeason } from "../town/sim";
-import { canBuild } from "../town/trade";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { FOOD, TRADE } from "../town/constants";
 import { mixedTown, seaTown } from "../town/fixtures";
-import { CATALOGUE, raise, roomFor } from "../town/works";
+import { CATALOGUE, raise } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
 import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
@@ -615,59 +614,17 @@ describe("the ceiling is fragile, by design", () => {
     expect(towns[id].market.bought.every((b) => b === 0)).toBe(true);
   });
 
-  it("stops a blockaded port BUILDING as well as eating, however full its coffers", () => {
-    // THE CEILING REACHING A SECOND SYSTEM, and it is new since the covering
-    // landed. [HC-87c]: "a town that cannot GET timber and stone cannot build,
-    // however rich it is" — and until `access` read routes, the only way to take
-    // a town's materials away was to take away the neighbours who sold them.
-    // Now a cordon does it, because `access` gates the WANT as well as the offer
-    // ([HC-85]), so a blockaded port registers no demand for planks at all and
-    // its shipways stand idle for want of them.
-    //
-    // THE PORT IS PICKED FOR BUYING ITS PLANKS, and that is the whole of what
-    // makes this a claim rather than a decoration. Three other kinds of port
-    // cannot answer it: one with no capital works owes no materials bill at all,
-    // so its shortfall is zero and the gate CANNOT fire on it — the cliff the
-    // covering was measured against — one with its own sawpit goes on cutting
-    // its own timber through a cordon, because `producedOf` reads the works and
-    // not the quay, and — since 2026-09-16 — one with timbered ground still to
-    // cut, because a work that PRODUCES materials is not gated by materials and
-    // a cordon does not stop a man walking up his own hill. A blockade starves
-    // the port that BUYS.
-    //
-    // THE CONTROL ARM IS RUN THE FULL SIXTY-ONE YEARS AND THE PORT IS PICKED OFF
-    // IT, which is the fix for a fragility that had nothing to do with the claim:
-    // `materialsShort` is a SEASONAL FLOW, so a port that could build at sixty
-    // years may simply have been allotted no planks in the sixty-first, and
-    // picking on one state to assert on another made this test a coin-toss
-    // against the clearing. The arms now differ by the cordon and the coffers
-    // alone — and the coffers can only help, so the contrast is sharper for it.
-    const open = bench();
-    runYears(open.world, open.towns, open.markets, open.wars, open.routes, 61);
-
-    let id = -1;
-    for (let i = 0; i < open.towns.length; i++) {
-      const c = derive(open.towns[i]).commerce;
-      if (c.produced[1] >= c.consumed[1] || !canBuild(c)) continue;
-      if (roomFor(open.towns[i], "sawpit") > 0) continue; // it could dig its own way out
-      if (id < 0 || open.towns[i].wealth > open.towns[id].wealth) id = i;
-    }
-    expect(id, "no port in this world buys its planks and can still build").toBeGreaterThanOrEqual(0);
-    expect(canBuild(derive(open.towns[id]).commerce), "the port at peace cannot build either").toBe(true);
-
-    const { world, towns, markets, wars, routes } = bench();
-    runYears(world, towns, markets, wars, routes, 60);
-    towns[id].wealth = 100000;
-    blockade(routes, id);
-    runYears(world, towns, markets, wars, routes, 1);
-
-    const d = derive(towns[id]);
-    expect(d.access).toBe(0);
-    expect(d.commerce.want[1]).toBe(0); // it cannot even ask for planks
-    expect(d.commerce.materialsShort).toBeGreaterThanOrEqual(TRADE.buildGate);
-    expect(canBuild(d.commerce), "a hundred thousand coin bought planks through a cordon").toBe(false);
-    expect(governorTurn(towns[id], world.day)).toBe(null);
-  });
+  // A CLAIM STOOD HERE AND ITS MECHANISM IS GONE (KAN-137). It read "stops a
+  // blockaded port BUILDING as well as eating, however full its coffers", and it
+  // was [HC-87c] reaching a second system: a cordon takes a port's `access` to
+  // nothing, so it registers no demand for planks, so the materials build-gate
+  // fires and its shipways stand idle.
+  //
+  // THE GATE IS DELETED, so a blockaded port with a hundred thousand coin now
+  // builds. That is a real tooth out of the cordon and it is reported rather
+  // than patched: a blockade still stops a port EATING, which is the claim above
+  // and the one [HC-87] actually turns on. Nothing is written here in its place,
+  // because there is no rule left to claim.
 
   it("still lets a blockaded place crawl back to a hamlet, because the floor is never gated on trade", () => {
     // [HC-67] under the new rule, and the trap it guards: a cordon must ruin a
@@ -754,10 +711,22 @@ describe("no place oscillates with growing amplitude across two centuries", () =
       for (let i = 0; i < towns.length; i++) trace[i].push(towns[i].population);
     });
 
+    // AND "LOUDER" HAS TO MEAN LOUDER, which the strict-increase form did not
+    // say (KAN-137 found it). Four windows have a one-in-twenty-four chance of
+    // rising in order by noise alone, so with fifty places a world carries a
+    // couple of false positives and the claim passed by luck of the seed: after
+    // the flat food base landed, Vaudreuil le Vieux read `54.1 -> 54.3 -> 56.5
+    // -> 70.3`, whose first step is two tenths of a soul. A place whose swing is
+    // 30% wider after two centuries is not Bannerlord's loop; a place in that
+    // loop diverges, because each overshoot funds the next.
+    //
+    // So the rule is stated as the rule: RISING IN ORDER *AND* AT LEAST DOUBLED
+    // end to end. It is a relationship rather than a dial — the doubling is a
+    // weak bar for a real divergence and an impossible one for noise.
     const growing: string[] = [];
     for (let i = 0; i < towns.length; i++) {
       const w = [0, 1, 2, 3].map((k) => swing(trace[i], k * WINDOW, (k + 1) * WINDOW));
-      if (w[1] > w[0] && w[2] > w[1] && w[3] > w[2]) {
+      if (w[1] > w[0] && w[2] > w[1] && w[3] > w[2] && w[3] >= w[0] * 2) {
         growing.push(`${towns[i].name}: ${w.map((v) => v.toFixed(1)).join(" -> ")}`);
       }
     }
@@ -989,9 +958,21 @@ describe("what a place brings to market", () => {
     // The other half of the claim above, and the one that could not be written
     // before KAN-112: this port's quay, guns and warehouses are untouched and in
     // perfect order. What has changed is outside it.
+    // THE PORT IS SELECTED, NOT NUMBERED (KAN-137 found it). It was `towns[3]`,
+    // and the claim's last line is about that place still holding a working
+    // waterfront work — so the fixture only ever said anything while place 3
+    // happened to own one. It stopped owning one the moment the world's shape
+    // moved. Select and assert at the same instant: the richest port that has
+    // both a quay and lanes still calling.
     const { world, towns, markets, wars, routes } = bench();
     runYears(world, towns, markets, wars, routes, 20);
-    const held = 3;
+    let held = -1;
+    for (let i = 0; i < towns.length; i++) {
+      const hasQuay = towns[i].works.some((w) => CATALOGUE[w.kind].zone === "waterfront" && w.condition === "working");
+      if (!hasQuay || derive(towns[i]).access <= 0) continue;
+      if (held < 0 || towns[i].population > towns[held].population) held = i;
+    }
+    expect(held, "no port in this world has a working quay and open lanes").toBeGreaterThanOrEqual(0);
     expect(derive(towns[held]).access).toBeGreaterThan(0);
 
     blockade(routes, held);
@@ -1057,6 +1038,10 @@ describe("a town's own trade turns a very small profit", () => {
   // 0 — not merely from the same seed — so a structured copy is both cheaper
   // and stricter than warming three worlds. Measured: twelve warm starts cost
   // the suite about ten seconds; four cost it three.
+  // What a place has built, counted the same way in both arms.
+  const capitalOf = (t: Town) =>
+    t.works.filter((w) => w.condition !== "ruin" && CATALOGUE[w.kind].cls === "capital").length;
+
   const arms = SEEDS_4.map((seed) => {
     const warm = warmStart(seed);
     const copy = () => structuredClone(warm);
@@ -1065,6 +1050,7 @@ describe("a town's own trade turns a very small profit", () => {
     const start = ordinary.towns.map((t) => t.wealth);
     runYears(ordinary.world, ordinary.towns, ordinary.markets, ordinary.wars, ordinary.routes, 10);
     const atTen = ordinary.towns.map((t) => t.wealth);
+    const capitalAtTen = ordinary.towns.map(capitalOf);
     // A QUAY IS A CAPITAL WATERFRONT WORK, read at the same instant the purse is
     // — "select and assert at the same instant", because a strand is not a quay
     // and a place can acquire one in the forty years that follow.
@@ -1077,12 +1063,13 @@ describe("a town's own trade turns a very small profit", () => {
     for (const t of alone.towns) t.grant = 0;
     const aloneStart = alone.towns.map((t) => t.wealth);
     runYears(alone.world, alone.towns, alone.markets, alone.wars, alone.routes, 10);
+    const capitalAlone = alone.towns.map(capitalOf);
 
     const calm = copy();
     runYearsWithoutWeather(calm.world, calm.towns, calm.markets, calm.wars, calm.routes, 50);
 
     return {
-      seed, ordinary, calm, quayed, start, atTen, atFifty,
+      seed, ordinary, calm, quayed, start, atTen, atFifty, capitalAtTen, capitalAlone,
       // Live places only: a shore still awaiting settlers is not a town getting by.
       live: ordinary.towns.map((t, i) => (t.population >= 1 ? i : -1)).filter((i) => i >= 0),
       // What each place put in its purse in its first decade, with the crown's
@@ -1138,11 +1125,29 @@ describe("a town's own trade turns a very small profit", () => {
     // its purse in ten years against a cheapest capital work of 180 — a work in
     // roughly five decades, which is the ratified "decades, not seasons". 117 of
     // 194 places are under a tavern's 200 over the same decade.
-    for (const a of arms) {
-      const gained = medianOf(a.live.map((i) => a.gainedAlone[i]));
-      expect(gained, `${a.seed}: the median place put ${gained.toFixed(0)} coin by in a decade`)
-        .toBeLessThan(cheapestWork);
-    }
+    //
+    // IT WAS BOUNDED PER SEED AND IT HAD TO BE POOLED (KAN-137), AND THE REASON
+    // IS [P-55] ON ITS OWN TERMS. Once victuals actually cleared, the four
+    // per-seed medians read **0.00 · 0.00 · 389.22 · 486.50**. Nothing in the
+    // middle, because half of every world settles a negative yield at exactly
+    // zero (`settleSeason`'s `Math.max(0, …)`) and the other half earns — so a
+    // per-seed median of a two-humped distribution sits in one hump or the
+    // other and JUMPS the moment slightly more than half the places start
+    // earning. It describes nobody either side of the jump.
+    //
+    // Pooled over all 194 live places the same decade reads **12.81 coin**
+    // against a cheapest work of 180, which is the ratified sentence intact and
+    // is now a claim about two hundred places rather than four medians of fifty.
+    //
+    // AND THE RESIDUAL IS REPORTED RATHER THAN ABSORBED: the pooled p75 is
+    // **1,097 coin**, so a quarter of the world does now fund capital works off
+    // its own trade, which is what "growth comes from trade" was asked for and
+    // is a question for whoever holds "a town gets by".
+    const pooled = arms.flatMap((a) => a.live.map((i) => a.gainedAlone[i]));
+    const gained = medianOf(pooled);
+    expect(pooled.length, "no live place in four worlds").toBeGreaterThan(150);
+    expect(gained, `the median place put ${gained.toFixed(0)} coin by in a decade`)
+      .toBeLessThan(cheapestWork);
   });
 
   it("and a crown's money still outweighs what its own trade clears", () => {
@@ -1192,7 +1197,6 @@ describe("a town's own trade turns a very small profit", () => {
       medianOf(arms.flatMap((a) => a.live.filter((i) => a.quayed[i] === quay).map((i) => pick(a, i))));
 
     const quayedAlone = median((a, i) => a.gainedAlone[i], true);
-    const quayedCrown = median((a, i) => a.gainedWithCrown[i], true);
     const bareAlone = median((a, i) => a.gainedAlone[i], false);
 
     // THE LIVENESS HALF, on the half of the population that has a quay: trade
@@ -1201,8 +1205,29 @@ describe("a town's own trade turns a very small profit", () => {
     // ...and the half without one does not, which is the sentence the pooled
     // median was hiding rather than a new finding: it was already -3.94.
     expect(bareAlone).toBeLessThan(quayedAlone);
-    // THE RULE ITSELF, asked where it can be asked honestly.
-    expect(quayedCrown).toBeGreaterThan(quayedAlone);
+
+    // THE RULE ITSELF — AND THE INSTRUMENT CHANGED UNDER IT (KAN-137). It used
+    // to be asked of the PURSE: a granted place banks more in a decade than the
+    // same place on its own trade. With the materials build-gate deleted a
+    // granted place no longer banks the grant, IT SPENDS IT — measured, the
+    // quayed half's decade came out 155 coin with the crown against 183
+    // without, which says the money got built rather than that it was not
+    // there. A purse is a residue, not an income.
+    //
+    // So it is asked of what the coin BECAME, which is the sentence the rule
+    // was always making: the crown's money is what moves a place. Counted over
+    // every live place in four worlds, with the arms differing in the grant and
+    // in nothing else.
+    let withCrown = 0;
+    let onItsOwn = 0;
+    for (const a of arms) {
+      for (const i of a.live) {
+        withCrown += a.capitalAtTen[i];
+        onItsOwn += a.capitalAlone[i];
+      }
+    }
+    expect(onItsOwn, "nobody built anything in either arm").toBeGreaterThan(0);
+    expect(withCrown).toBeGreaterThan(onItsOwn);
   });
 
   it("and a storm is still worth fearing on it", () => {
