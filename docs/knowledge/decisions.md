@@ -10,6 +10,72 @@ To add an entry: newest at top, keep it short, state the rationale. Human edits 
 
 ---
 
+### 2026-09-23 — The ground feeds nobody differently. Land is a TRADE fact.
+
+> *"Remember that tiles only boost trade. We assume that towns are self-sufficient regardless what
+> their land looks like."*
+
+**RATIFIED: terrain suitability no longer scales FOOD. It continues to scale everything a town
+sells.** Every town feeds the same base off the same works, wherever it was founded; the ground
+decides what it can *trade*, and trade is what lifts it above the base.
+
+**The manager described the failure wrongly and was corrected.** I said towns "overbuild" and starve
+— repeating a subagent's phrasing without checking it. Nothing of the kind happens. **The real
+mechanism is arithmetic:**
+
+- `SUIT_YIELD` is `{ poor: 0.35, fair: 0.7, ideal: 1.3 }`, applied at raise time to **every** work
+  including food works. A garden plot feeds **39** on ideal ground and **10.5** on poor.
+- It needs **6 hands**, and a soul supplies `labourShare` 0.55 — so **10.9 souls to work it.**
+- **On poor ground a farm feeds ten people and takes eleven to run it.** Population falls, hands
+  fall, works idle, food falls further. It bottoms out at nobody.
+
+**This had already been patched twice as a bug** — KAN-116 (*"poor food ground cannot sustain the
+hands that work it"*, closed) and KAN-119 (*"`provisionGround` cannot pay its own wages on poor
+ground"*, open). **Twice is a design question wearing a bug's clothes.** The ruling deletes the class.
+
+---
+
+**AND IT DOES NOT WEAKEN `[HC-87]` — IT COMPLETES IT.**
+
+`[HC-87]` already reads *"a trade-fed town of 1,500 falls back toward 450 when its quay burns."*
+**That sentence assumes a uniform base.** What is built makes it *"falls back to somewhere between
+120 and 450 depending on its dirt, and sometimes through the floor to nothing"* — which is not a
+fragile ceiling, it is an unreliable one.
+
+**The raid keeps every tooth:**
+
+- Burn the **quay** → trade stops → the town falls back to its base. `[HC-87]` exactly.
+- Burn a **farm** → the base itself drops, because the base is the works and not a constant.
+- Take the **purse** → it cannot rebuild either.
+
+**What a raid can no longer do is erase a town by accident**, which was never a design goal — it was
+a consequence of a multiplier nobody had checked against the labour cost.
+
+`[HC-76]` is untouched: a hamlet still feeds itself easily and a city still cannot feed itself at
+all. That difference is **scale against a fixed base**, which is what it always said.
+
+**THE BUILD, extended by a second ruling the same day** — *"if all the hexes are grain fields, that
+doesn't impact how big the town gets, just how much grain can be sold."* **KAN-137:**
+
+1. **Suitability stops touching food.** `SUIT_YIELD`, `sweetSpotBonus` and `farPenalty` keep scaling
+   a work's `trade` column and no longer scale `food` at all.
+2. **A work that feeds the town must always pay its own wages**, and the suite walks the catalogue
+   and says so: *the souls it feeds exceed the souls it takes to man it*, with headroom. **This is
+   the line that makes the class of bug unrepeatable** — KAN-116 and KAN-119 were both instances of
+   it, patched one row at a time.
+3. **Farm works on terrain become cargo, not dinner.** `provisionGround` and `grainFields` move
+   their output from `food` to `trade`, classed victuals. They grow food *for sale* and do not raise
+   their own town's ceiling. **A column move, not a new mechanism** — both columns already exist and
+   both are already read, and it makes *a farming town feeds the cities* literally true.
+4. **So what feeds a town is flat and uniform everywhere:** garden plots and fishing shacks at their
+   catalogue numbers, plus bought victuals. That is the base `[HC-87]` always assumed.
+
+**Withdrawn with it:** *"the catalogue number is the crop; the suit is the ground"* (KAN-126, one day
+old) no longer applies to food. Grain fields' 50 against provision grounds' 90 was derived from the
+`1.3 / 0.7` split it stood on; both are re-derived as cargo figures.
+
+---
+
 ### 2026-09-22 (fifth) — A rich town is a target. The coin is there to be looted.
 
 **Three rulings from the human, and the third overturns a proposal of mine that was aimed at the

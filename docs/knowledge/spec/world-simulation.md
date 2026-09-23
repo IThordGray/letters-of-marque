@@ -1531,6 +1531,21 @@ access · ground for houses · hands.**
 mechanism.** A trade-fed town of 1,500 falls back toward 450 when its quay burns. Nothing separate
 implements "raiding hurts" — it is this.
 
+> **AMENDED 2026-09-23 — THE BASE IS UNIFORM, and this sentence always assumed it.** *"Falls back
+> toward 450"* names one number. Until now terrain suitability (`0.35 / 0.7 / 1.3`) scaled a work's
+> FOOD as well as its cargo, so the real sentence was *"falls back to somewhere between 120 and 450
+> depending on its dirt"* — and on poor ground a farm fed ten people while needing eleven to work
+> it, so a town could fall through the floor to nobody.
+>
+> **Ratified by the human: terrain scales what a town SELLS, never what it EATS.** Every town feeds
+> the same base off the same works, wherever it was founded. The ground decides what it can trade,
+> and trade is what lifts it above the base.
+>
+> **The raid keeps every tooth.** Burn the quay and trade stops, so the town falls back to its base
+> — this constraint, unchanged. Burn a farm and the base itself drops, because the base is the works
+> and not a constant. **What a raid can no longer do is erase a town by accident**, which was never a
+> design goal but a consequence of a multiplier nobody had checked against the labour cost.
+
 > **CLOSED 2026-09-16 by KAN-112 — `[HC-87]` is now statable at world scale, and it is measured.**
 > *(The paragraph below is kept because it records why it took a story to get here.)*
 >
