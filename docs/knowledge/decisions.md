@@ -243,6 +243,33 @@ and they are rewritten when it is built.
   A raid still shrinks a town, by the longer road — it takes coin and breaks the works that supply
   growth.
 
+### Built 2026-09-28 — the market trades named goods
+
+Eleven goods ship: **grain · fish · salt** (victuals) · **timber · stone · gunpowder** (materials) ·
+**sugar · tobacco · cotton · cacao · rum** (luxury). Rum and gunpowder are properties of the town.
+**Spice and ironware wait for the off-map inflow** — see the source rule below.
+
+- **The gate reads the TIER while the clearing reads the GOODS**, and that is a ruling rather than a
+  shortcut. Asked per good, a port whose neighbourhood happens to have no salt would be "short of
+  victuals" for ever and would register **no demand for materials or luxury anywhere**, however much
+  bread it had. A place with corn in its barns is fed.
+- **Ship no good without a source — and a hex bearing it is not a source, a WORK is.** Stone, salt,
+  tobacco and cacao each needed a catalogue row before the ground they sit on meant anything.
+  **A source with no scarcity never trades:** every town over 200 souls makes more gunpowder than its
+  own works want, so none ever changes hands and its price is par everywhere.
+- **A town eats what it grows before it buys anything.** Netting each good against its own appetite
+  was built and measured first: it has a town selling corn while buying fish, put **23% more cargo**
+  across the world's beaches for no new production, and crossed *"a town gets by"* at the median.
+  A tier in surplus ships the residual; a tier in deficit buys the gap.
+- **Splitting a tier's demand across its goods dilutes what any one of them argues for.** A building's
+  bill was wholly timber demand and is now half of it, so sawpits fell 96 → 66 and the timber
+  covering's bound had to move. **General shape: every good added to a tier weakens the ones already
+  in it, and any worldgen guarantee keyed to a single good gets weaker each time.**
+
+**Known and accepted:** a day-0 world trades nothing until governors build — every place is fed by
+the subsistence floor and nobody is short of what anybody has. Fish is capped at 66 a town by the
+three-shack limit, so large ports are permanently short of it.
+
 ## The layering — how the world is meant to stack
 
 Each layer runs without the one above it, and adding a layer never rewrites the one below.
