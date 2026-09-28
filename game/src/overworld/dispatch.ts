@@ -1,7 +1,9 @@
-// The dispatch — how a crown's intent reaches a place.
+// The dispatch — how a crown's intent, and a town's cargo, reach a place.
 //
 // A crown decides at its seat; a place is a thousand miles away; and between the
-// two there is water. This module is that water.
+// two there is water. This module is that water — and since KAN-140 it is also
+// the water between two TOWNS: a fifth payload on the same hull, sent by a
+// place rather than a crown (`sendCargo`), and nothing else different at all.
 //
 // [HC-44] The four war-currencies are ONE object type with four payloads, never
 //         four systems. Treasury, reinforcements, charter and invasion force all
@@ -45,9 +47,10 @@
 // [P-1]  Both of the above are the same two words. Do less.
 
 import type { World } from "./clock";
+import { laneIsOpen, type Routes } from "./market";
 import { daysToSail, distanceNm } from "./shape";
 
-// ---- The four payloads ([HC-90] definitions as data, [HC-91] type from it) ---
+// ---- The payloads ([HC-90] definitions as data, [HC-91] type from it) -------
 //
 // Integers rather than strings ([P-38], and the same shape as `CHANNEL` in
 // chance.ts): the simulation stores the code, and the prose below belongs to
@@ -58,9 +61,18 @@ export const PAYLOAD = {
   reinforcements: 1,
   charter: 2,
   invasion: 3,
+  // A town's own cargo, bound for another town. THE FIRST PAYLOAD NO CROWN
+  // SENDS — see `sendCargo` for why that is not the breach of [HC-13] it looks
+  // like.
+  cargo: 4,
 } as const;
 
 export type PayloadId = (typeof PAYLOAD)[keyof typeof PAYLOAD];
+
+// The four a CROWN sends. `sendDispatch` takes this and not `PayloadId`, so a
+// crown cannot be handed a town's cargo by mistake: an input a system cannot
+// receive beats a guard it must remember ([P-17b]).
+export type WarPayloadId = Exclude<PayloadId, typeof PAYLOAD.cargo>;
 
 interface PayloadSpec {
   readonly name: string;
@@ -94,6 +106,12 @@ export const PAYLOADS: readonly PayloadSpec[] = [
   {
     name: "invasion force", carries: "an attack on a place", fromPatron: false, weighed: true,
     lost: "the town does not change hands",
+  },
+  {
+    name: "cargo", carries: "goods from one town to another", fromPatron: false,
+    // No crown auction ever sees it, so there is nothing here to weigh.
+    weighed: false,
+    lost: "the goods never reach the quay, and the town that sent them is out of them",
   },
 ];
 
@@ -133,11 +151,20 @@ const bucketOf = (day: number): number => ((day % RING_DAYS) + RING_DAYS) % RING
 export interface Dispatch {
   readonly id: number;
   readonly payload: PayloadId;
-  readonly from: number; // nation id — the crown that sent it
+  // WHO SENT IT, IN TWO FIELDS THAT EACH MEAN ONE THING. A crown's dispatch has
+  // `from` and no `fromPlace`; a town's cargo has `fromPlace` and no `from`.
+  // Exactly one of them is ever >= 0, so a reader tells the two apart by looking
+  // rather than by knowing — which one widening `from` to "a nation or a place,
+  // depending" would have cost.
+  readonly from: number; // nation id — the crown that sent it, or -1
+  readonly fromPlace: number; // place id — the town that sent it, or -1
   readonly to: number; // place id — where it is bound
   // What the payload carries: coin, or garrison strength, or the strength of a
   // landing. A charter carries nothing — the promotion IS the payload.
   readonly amount: number;
+  // Which good, for a cargo — a trade class code (`CLASSES` in town/trade.ts).
+  // -1 for the four war-currencies, which carry no goods at all.
+  readonly cargo: number;
 
   // The whole of its movement, as two integers ([P-16]).
   readonly sentDay: number;
@@ -160,7 +187,7 @@ export interface Dispatches {
   // which nothing arrives costs one array-length read and touches no dispatch.
   // No aliasing is possible: everything in flight is due within the next
   // RING_DAYS days, because a passage shorter than the ring is the only kind
-  // `sendDispatch` will accept.
+  // either sender will accept.
   readonly ring: Dispatch[][];
   // How many have ever sailed, which is also the next id — dense, monotonic
   // integer handles ([P-37]).
@@ -190,7 +217,7 @@ export function sendDispatch(
   world: World,
   from: number,
   to: number,
-  payload: PayloadId,
+  payload: WarPayloadId,
   amount: number = 0,
 ): Dispatch | null {
   const crown = world.nations[from];
@@ -214,19 +241,84 @@ export function sendDispatch(
   // arrives, because a wrong arrival day is worse than no dispatch.
   if (days >= RING_DAYS) return null;
 
-  const dispatch: Dispatch = {
+  return file(world, {
     id: world.dispatches.sent,
     payload,
     from,
+    fromPlace: -1,
     to,
     amount,
+    cargo: -1,
     sentDay: world.day,
     dueDay: world.day + days,
     fromX: seat.x,
     fromY: seat.y,
     toX: place.x,
     toY: place.y,
-  };
+  });
+}
+
+// A TOWN SENDS, to another town, carrying goods. The same hull, the same ring
+// and the same arrival — [HC-44]'s "one object, several payloads, never several
+// systems" is why this is a fifth payload and not a second kind of moving thing.
+//
+// WHY THIS IS NOT THE BREACH OF [HC-13] IT LOOKS LIKE, because a future reader
+// will come here holding "ordinary cargo stays a flow" and want an answer. The
+// clearing in market.ts is still the whole truth of who trades with whom: this
+// ship is not consulted by it, adds nothing to it, and on arrival credits
+// nobody. It is the same carve-out §8.4 already states for the four
+// war-currencies — a permanent object that can be taken — extended to the one
+// other thing worth taking. THE DAY THIS SHIP'S CARGO IS CREDITED INTO A MARKET
+// is the day [HC-13] has to be settled rather than quoted.
+//
+// It refuses rather than throwing, like its crown-side twin ([HC-1]).
+export function sendCargo(
+  world: World,
+  routes: Routes,
+  from: number,
+  to: number,
+  cargo: number,
+  amount: number,
+): Dispatch | null {
+  const quay = world.places[from];
+  const place = world.places[to];
+  if (!quay || !place) return null;
+
+  // WHERE THE WORLD SAYS A SHIP CANNOT GO. One definition of a sea lane and it
+  // is the market's ([P-47]) — so a town with no lane to another cannot ship to
+  // it, a blockade that shuts the lane stops the ship too, and a town cannot
+  // ship to itself, none of which is a rule written here.
+  if (!laneIsOpen(routes, from, to)) return null;
+
+  const days = passageDays(distanceNm(quay.x, quay.y, place.x, place.y));
+  // Longer than the schedule can hold. No lane the market draws is anywhere near
+  // this long, so nothing in this world can reach it — but a wrong arrival day
+  // is worse than no ship, and the ring would silently alias one round onto a
+  // day that has already passed.
+  if (days >= RING_DAYS) return null;
+
+  return file(world, {
+    id: world.dispatches.sent,
+    payload: PAYLOAD.cargo,
+    from: -1,
+    fromPlace: from,
+    to,
+    amount,
+    cargo,
+    sentDay: world.day,
+    dueDay: world.day + days,
+    fromX: quay.x,
+    fromY: quay.y,
+    toX: place.x,
+    toY: place.y,
+  });
+}
+
+// File it into the day it is due ([P-15]) and hand it back. Both senders build
+// the literal themselves, in one field order ([P-26]); this is only the part
+// that must not be written twice, because filing and the id counter have to
+// agree with `arriveDispatches` or a ship is posted into a slot nobody opens.
+function file(world: World, dispatch: Dispatch): Dispatch {
   world.dispatches.sent++;
   world.dispatches.ring[bucketOf(dispatch.dueDay)].push(dispatch);
   return dispatch;
