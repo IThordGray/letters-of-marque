@@ -76,14 +76,15 @@ is **refused at generation** rather than quietly producing a broken world.
 | | | why it binds |
 |---|---|---|
 | a day's run | **144 nm** | 6 knots for 24 hours — everything below derives from it |
-| a market reaches | **288 nm** | two days' run |
+| a market reaches | **1,008 nm** | a week's run — far enough to cross a climate band, so partners grow what you do not |
 | ports keep apart | **85 nm** | so a sea of W × H holds at most `W·H / (0.866 · 85²)` ports — 191 for the default, of which real coastline carries 50 |
 | a crossing must fit | **9,216 nm** | the arrival ring is 64 days deep |
 
-> **And there is a floor on usefulness, below the floor on legality. A sea narrower than about 290 nm
-> is entirely inside one market** — every town is everyone's neighbour, no town is far from anything,
-> and nothing can be cut off. **You are then watching a marketplace, not a sea.** A small world for
-> watching wants to sit just above that line.
+> **And there is a floor on usefulness, below the floor on legality. A sea narrower than about
+> 1,000 nm is entirely inside one market** — every town is everyone's neighbour, no town is far from
+> anything, and nothing can be cut off. **You are then watching a marketplace, not a sea.** The
+> default sea is 1,500 × 800, so a third of its port pairs still have no trade between them, which is
+> the point of a week rather than a fortnight.
 
 ---
 
@@ -93,9 +94,8 @@ is **refused at generation** rather than quietly producing a broken world.
   governor. **This is the gap between "a simulation" and "a world".**
 - **Nothing decides to sail.** A town *can* now send a ship to another town carrying cargo — it
   makes the passage the distance implies, is drawn moving, and is credited only on arrival. But
-  nothing sends one, and an arriving cargo changes nothing yet. **A ship may only follow a sea lane,
-  and a lane exists only between market neighbours — so nothing can be shipped further than two
-  days' sail.**
+  nothing sends one, and an arriving cargo changes nothing yet. **A ship sails anywhere the schedule
+  can hold, trading partner or not: the sea is not a trade relationship.**
 - **Damage has no degrees.** A building is whole or gone; nothing mends.
 - **Nobody takes the coin.** No raids, no invasion fleets.
 

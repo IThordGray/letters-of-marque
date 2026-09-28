@@ -748,10 +748,14 @@ making a decision, and the reason it publishes is often the most revealing line 
 > ledger, `[HC-13]` has to be AMENDED rather than quoted** — at that point trade between AI towns is
 > being modelled as moving objects, which is the thing the rule was written to forbid.
 >
-> **And the plumbing has a hard reach: two days.** A ship may only sail a **sea lane**, a lane exists
-> only between market neighbours, and a market reaches two days' run. **No town can ship to a port
-> further off, ever.** If trade over distance is wanted, `MARKET.reachNm` is the dial — not the
-> dispatch.
+> **A SEA LANE IS THE SEA; A TRADE PARTNERSHIP IS A SUBSET OF IT.** Ratified 2026-09-28. Any two
+> ports are connected because a ship can sail between them — a lane is not owned, is not a
+> relationship, and a pirate taking a ship does not stop it working. **Who a town buys and sells with
+> is a different, smaller thing:** a capped set reaching a week's sail, spread near to far.
+>
+> So **a ship sails anywhere the schedule can hold**, trading partner or not — which is how an
+> invasion force reaches a hostile port and how a crown's coin reaches a colony it does not trade
+> with. Only **buying and selling** follows the partnership.
 >
 > A dispatch's sender is **two fields, one meaning each**: `from` (nation, −1 if a town sent it) and
 > `fromPlace` (place, −1 if a crown did). Anything reading a dispatch discriminates on those, never

@@ -197,6 +197,22 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
 - **Below about 290 nm across, trade geography stops existing** — one market holds the whole sea. A
   world for watching sits just above that.
 
+## Trade & the sea (`spec/world-loop.md`, `spec/world-simulation.md` §11)
+
+- **A sea lane is the sea; a trade partnership is a subset of it.** Any two ports are connected
+  because a ship can sail between them — not owned, not closeable by interception. **A ship sails
+  anywhere the schedule can hold; only buying and selling follows the partnership.** This is where
+  every future *"can X reach Y"* question goes: an invasion force, a crown's coin and a player's hull
+  follow the water.
+- **A reach is not a rule about who trades — the PICK is.** Widening reach from two days to a week
+  while still taking the nearest seven moved the mean partner 171 → 183 nm and put **nothing** beyond
+  three days' sail. With a near-to-far spread over the same list: mean 474 nm, 61% of partnerships
+  cross a climate band against 23%, and two ports on the same coast share 20% of their partners
+  rather than 72%. **Any "widen the window" change whose selector is *take the first N* is a no-op.**
+- **Neighbourhood membership is ASYMMETRIC and the clearing is safe under it** — a place puts
+  `1/hoodsOf` of both its offer and its want into each market it belongs to, so its books balance
+  whatever anyone else picked. Measured, not argued. **Do not "fix" the asymmetry.**
+
 ## Deferred (not cancelled)
 
 - Town menu and every player-facing tie-in · town card and chronicle depth · 20-year fast-forward.
@@ -207,6 +223,6 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
 - Elliptical islands (isolated lobes render as smooth ovals) — no 3D island renderer exists.
 - Tile levels / upgrades · grouping in-town works · plan extent keyed on town size.
 - The three-ring ship model and interception (need a player).
-- `dispatch.ts` and `market.ts` import each other. Safe only because neither runs anything at import time; a leaf module for `Routes` is the clean fix.
+- Nothing would catch a leak in the clearing: the conservation claim caps allotment by *want*, not by pooled supply, so a future change to the `1/hoodsOf` share would fail no test.
 - The raid layer (`ai`, `combat`, `morale`, `movement`, `nav`, `patrol`, `raid`, `spawn`) has no test
   suite, and `guardrails.test.ts` does not scan it or `worldview/`.
