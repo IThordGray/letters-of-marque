@@ -68,7 +68,11 @@ Everything a raid or a blockade does, it does through this number.
 
 - **The crowns do nothing.** Step 5 is empty, so nothing in the world has intent except a town's
   governor. **This is the gap between "a simulation" and "a world".**
-- **Nothing sails.** The market settles instantly; cargo does not travel and cannot be intercepted.
+- **Nothing decides to sail.** A town *can* now send a ship to another town carrying cargo — it
+  makes the passage the distance implies, is drawn moving, and is credited only on arrival. But
+  nothing sends one, and an arriving cargo changes nothing yet. **A ship may only follow a sea lane,
+  and a lane exists only between market neighbours — so nothing can be shipped further than two
+  days' sail.**
 - **Damage has no degrees.** A building is whole or gone; nothing mends.
 - **Nobody takes the coin.** No raids, no invasion fleets.
 

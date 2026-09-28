@@ -197,5 +197,6 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
 - Elliptical islands (isolated lobes render as smooth ovals) — no 3D island renderer exists.
 - Tile levels / upgrades · grouping in-town works · plan extent keyed on town size.
 - The three-ring ship model and interception (need a player).
+- `dispatch.ts` and `market.ts` import each other. Safe only because neither runs anything at import time; a leaf module for `Routes` is the clean fix.
 - The raid layer (`ai`, `combat`, `morale`, `movement`, `nav`, `patrol`, `raid`, `spawn`) has no test
   suite, and `guardrails.test.ts` does not scan it or `worldview/`.

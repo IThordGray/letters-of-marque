@@ -739,6 +739,24 @@ making a decision, and the reason it publishes is often the most revealing line 
 
 **`[HC-44]` The four war-currencies are ONE object type with four payloads, never four systems.**
 
+> **A FIFTH PAYLOAD, AND IT READS LIKE A CONTRADICTION UNTIL YOU GET TO THE SECOND SENTENCE.** A town
+> can now send **cargo** to another town. §8.4 says *"ordinary cargo stays a flow; a dispatch is a
+> permanent object"* — and this puts ordinary cargo in a permanent object.
+>
+> **It is not a breach while nothing credits an arriving cargo**, because the clearing is still the
+> sole truth of trade and the ship carries no consequence. **The day a cargo's arrival touches a
+> ledger, `[HC-13]` has to be AMENDED rather than quoted** — at that point trade between AI towns is
+> being modelled as moving objects, which is the thing the rule was written to forbid.
+>
+> **And the plumbing has a hard reach: two days.** A ship may only sail a **sea lane**, a lane exists
+> only between market neighbours, and a market reaches two days' run. **No town can ship to a port
+> further off, ever.** If trade over distance is wanted, `MARKET.reachNm` is the dial — not the
+> dispatch.
+>
+> A dispatch's sender is **two fields, one meaning each**: `from` (nation, −1 if a town sent it) and
+> `fromPlace` (place, −1 if a crown did). Anything reading a dispatch discriminates on those, never
+> on the payload.
+
 | Payload | Carries | If it never arrives |
 |---|---|---|
 | **Treasury** | Coin to a place | The grant is not credited; the place lives on its own trade |
