@@ -64,6 +64,29 @@ Everything a raid or a blockade does, it does through this number.
 
 ---
 
+## How big may a world be
+
+**The sea's size and population are settings** — `generateWorld(seed, { widthNm, heightNm, isles, towns })`.
+The default is the 1,500 × 800 nm sea of 50 ports that every measurement in this project is
+calibrated against; **leave it alone unless you are re-calibrating everything.**
+
+**Four physical facts bound what you may ask for.** They are not knobs, and a request that breaks one
+is **refused at generation** rather than quietly producing a broken world.
+
+| | | why it binds |
+|---|---|---|
+| a day's run | **144 nm** | 6 knots for 24 hours — everything below derives from it |
+| a market reaches | **288 nm** | two days' run |
+| ports keep apart | **85 nm** | so a sea of W × H holds at most `W·H / (0.866 · 85²)` ports — 191 for the default, of which real coastline carries 50 |
+| a crossing must fit | **9,216 nm** | the arrival ring is 64 days deep |
+
+> **And there is a floor on usefulness, below the floor on legality. A sea narrower than about 290 nm
+> is entirely inside one market** — every town is everyone's neighbour, no town is far from anything,
+> and nothing can be cut off. **You are then watching a marketplace, not a sea.** A small world for
+> watching wants to sit just above that line.
+
+---
+
 ## What is not built
 
 - **The crowns do nothing.** Step 5 is empty, so nothing in the world has intent except a town's

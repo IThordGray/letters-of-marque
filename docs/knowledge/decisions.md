@@ -187,6 +187,16 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
 - The camera floor (§5.3): the look spike says close range reads as boxes.
 - Whether a saturated sea leaves enough value range for tactical annotation (§5.2) — untested.
 
+## The world's settings (`spec/world-loop.md`)
+
+- **The sea's size and population are asked for, not baked in.** The default 1,500 x 800 nm sea of
+  50 ports is the calibration reference every measurement in the project stands on — changing it
+  means re-measuring everything.
+- **Four physical facts bound any request** and a world that breaks one is refused at generation: a
+  day's run is 144 nm, a market reaches 288, ports keep 85 apart, a crossing must fit 9,216.
+- **Below about 290 nm across, trade geography stops existing** — one market holds the whole sea. A
+  world for watching sits just above that.
+
 ## Deferred (not cancelled)
 
 - Town menu and every player-facing tie-in · town card and chronicle depth · 20-year fast-forward.
