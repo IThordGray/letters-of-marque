@@ -829,7 +829,7 @@ describe("nobody sits on his own timber for want of planks", () => {
     // see its row) restored the share to the same 24 of 71 it held before the
     // story and took materials to 2,529.
     //
-    //   named goods                        70    16   (23%)
+    //   named goods                        70    15   (21%)
     //
     // AND IT DROPPED ONCE MORE WHEN THE MARKET LEARNED THE GOODS' NAMES, and
     // this time the bound did have to move, because the cause is the mechanic
@@ -837,7 +837,7 @@ describe("nobody sits on his own timber for want of planks", () => {
     // "materials" and every unit of it argued for a sawpit; split across timber,
     // stone and gunpowder it argues for a sawpit with HALF the weight, so the
     // pit's market term halves wherever nothing else moved. Sawpits fall 96 to
-    // 66 and the coasts holding one 23 to 16. It was tried the other ways first
+    // 66 and the coasts holding one 23 to 15. It was tried the other ways first
     // and none of them is the cause: siting the quarry off the hills gives 15,
     // taking stone off the hills gives 16, and pricing the salt pans out of the
     // cheap band gives 16.

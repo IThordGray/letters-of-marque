@@ -859,7 +859,7 @@ describe("the market trades named goods, not three classes", () => {
 
   // WHAT THIS PORT IS KNOWN FOR, in one word: the good its quay ships most COIN
   // of. It is the Cutthroats readout — one main export, in words — and it is
-  // computed here rather than stored, because twelve goods across fifty towns is
+  // computed here rather than stored, because eleven goods across fifty towns is
   // six hundred numbers: fine to compute, fatal to display.
   const mainExport = (t: Town): string => {
     const c = derive(t).commerce;

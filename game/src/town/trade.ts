@@ -183,7 +183,7 @@ export const townMadeOf = (population: number): number =>
 // coast's fitness for provisions and ships as `grain` — cassava and wheat are
 // both bread at the waterside — and the plant `cane` was renamed outright, so
 // what grows and what ships finally agree.
-export const PRODUCE_GOOD: Record<Produce, Good> = {
+const PRODUCE_GOOD: Record<Produce, Good> = {
   food: "grain",
   fish: "fish",
   grain: "grain",
