@@ -21,10 +21,15 @@ import { mixedTown, seaTown } from "../town/fixtures";
 import { CATALOGUE, raise } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
+import { DAY_RUN_NM, distanceNm } from "./shape";
 import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
 import { startsSeason, stepDay, type World } from "./clock";
 
 const SEED = 20260910;
+
+// The house seed set. Every distribution below is pooled across all four rather
+// than asserted per seed, which is what testing.md asks of a statistical claim.
+const SEEDS = [SEED, 1660, 7, 99];
 
 // Hand-built fixtures stand on the world's first day, so the works they are given
 // are dated day 0 — the same integer `world.day` holds ([HC-3]). It is spelled
@@ -101,6 +106,155 @@ function placeAt(id: number, x: number, faction = 0): Place {
   };
 }
 
+// Every port within a market's reach of place `i`, nearest first. This is the
+// list `makeMarkets` picks FROM, written out here rather than asked of it — a
+// claim about the pick must not be measured with the pick's own ruler.
+function within(world: World, i: number): { id: number; d: number }[] {
+  const out: { id: number; d: number }[] = [];
+  for (let j = 0; j < world.places.length; j++) {
+    if (j === i) continue;
+    const d = distanceNm(world.places[i].x, world.places[i].y, world.places[j].x, world.places[j].y);
+    if (d <= MARKET.reachNm) out.push({ id: j, d });
+  }
+  out.sort((a, b) => a.d - b.d || a.id - b.id);
+  return out;
+}
+
+// THE RULE THIS REPLACED — the nearest seven, out of the same week's reach. Kept
+// as the control arm, because "a spread from near to far" says nothing except
+// against the thing it is not. Widening the reach on its own changes almost
+// nothing, and this is what measures that.
+const nearestSeven = (world: World, i: number): number[] =>
+  [i, ...within(world, i).slice(0, MARKET.maxMembers - 1).map((c) => c.id)].sort((a, b) => a - b);
+
+// The climate a port's coast lies under. Two ports under one climate grow the
+// same things off the same palette, which is the whole reason a market that
+// reached only its own band had nothing worth carrying.
+const climateAt = (world: World, i: number): string => world.zones[world.places[i].zone].climate;
+
+// How much two partner sets have in common, 0 to 1.
+function overlap(a: number[], b: number[]): number {
+  const other = new Set(b);
+  let both = 0;
+  for (const x of a) if (other.has(x)) both++;
+  return both / new Set([...a, ...b]).size;
+}
+
+describe("a town's trading partners reach a week's sail, near to far", () => {
+  it("buys off coasts that grow what its own does not, which two days' sail never reached", () => {
+    // THE WHY, AND THE WHOLE POINT OF THE WIDENING. At two days' run a town's
+    // partners share its climate, so they grow what it grows and there is
+    // nothing to trade. The contrast IS the finding, so the rule this replaced
+    // is measured beside it out of the same worlds: pooled over the four house
+    // seeds, 61% of partnerships now cross a climate band against 23% under
+    // nearest-seven. Nothing between the two is asserted.
+    let crossed = 0;
+    let pairs = 0;
+    let crossedNear = 0;
+    let pairsNear = 0;
+    for (const seed of SEEDS) {
+      const { world, markets } = bench(seed);
+      for (let i = 0; i < world.places.length; i++) {
+        const mine = climateAt(world, i);
+        for (const j of markets.hoods[i].members) {
+          if (j === i) continue;
+          pairs++;
+          if (climateAt(world, j) !== mine) crossed++;
+        }
+        for (const j of nearestSeven(world, i)) {
+          if (j === i) continue;
+          pairsNear++;
+          if (climateAt(world, j) !== mine) crossedNear++;
+        }
+      }
+    }
+    expect(pairs).toBeGreaterThan(1000); // zero satisfies absence
+    expect(pairsNear).toBeGreaterThan(1000);
+    expect(crossed / pairs).toBeGreaterThan(0.5);
+    expect(crossedNear / pairsNear).toBeLessThan(0.35);
+  });
+
+  it("takes a spread from the nearest port to one most of a week away, not the handful on its doorstep", () => {
+    // THE HOW, and the substance of the change. Measured pooled over the four
+    // house seeds: the nearest port is a partner of every one of the 194 places
+    // (the near end, by construction — it is slot 0 of the stride); 72% of
+    // partnerships are beyond two days' sail and 19% beyond five; the farthest
+    // is 6.7 days. Under the nearest-seven rule, out of the SAME week's reach,
+    // the farthest partnership in the world was 3.1 days and not one was beyond
+    // three — which is why the reach alone was never going to be enough.
+    const days: number[] = [];
+    const nearDays: number[] = [];
+    let nearestIsPartner = 0;
+    let places = 0;
+    for (const seed of SEEDS) {
+      const { world, markets } = bench(seed);
+      for (let i = 0; i < world.places.length; i++) {
+        places++;
+        const candidates = within(world, i);
+        const partners = markets.hoods[i].members;
+        if (partners.indexOf(candidates[0].id) >= 0) nearestIsPartner++;
+        const near = nearestSeven(world, i);
+        for (const c of candidates) {
+          if (partners.indexOf(c.id) >= 0) days.push(c.d / DAY_RUN_NM);
+          if (near.indexOf(c.id) >= 0) nearDays.push(c.d / DAY_RUN_NM);
+        }
+      }
+    }
+    expect(days.length).toBeGreaterThan(1000); // zero satisfies absence
+    expect(nearestIsPartner).toBe(places);
+    expect(days.filter((d) => d > 2).length / days.length).toBeGreaterThan(0.5);
+    expect(days.filter((d) => d > 5).length / days.length).toBeGreaterThan(0.1);
+    // ...and the control arm, out of the same list, reaches nothing like as far.
+    expect(nearDays.filter((d) => d > 3).length / nearDays.length).toBeLessThan(0.05);
+  });
+
+  it("gives two ports on the same coast different people to trade with", () => {
+    // Each town strides its OWN ranking, so two ports side by side read the same
+    // candidates in a different order and come out with different partners —
+    // which the nearest-N could never do. Measured on the closest pair to every
+    // place: the overlap between their two sets runs 0.00 to 0.46 and averages
+    // 0.20, against 0.72 under nearest-seven, where 35 of the 194 pairs held
+    // sets that were IDENTICAL.
+    const spread: number[] = [];
+    const nearest: number[] = [];
+    for (const seed of SEEDS) {
+      const { world, markets } = bench(seed);
+      for (let i = 0; i < world.places.length; i++) {
+        const next = within(world, i)[0].id;
+        spread.push(overlap(markets.hoods[i].members, markets.hoods[next].members));
+        nearest.push(overlap(nearestSeven(world, i), nearestSeven(world, next)));
+      }
+    }
+    expect(spread.length).toBeGreaterThan(150); // zero satisfies absence
+    expect(Math.max(...spread)).toBeLessThan(0.75);
+    expect(spread.filter((x) => x === 1).length).toBe(0);
+    // ...and the control arm says that was worth claiming.
+    expect(nearest.filter((x) => x === 1).length).toBeGreaterThan(10);
+  });
+
+  it("still leaves ports that never trade with each other, so this is a sea and not one marketplace", () => {
+    // A WEEK AND NOT A FORTNIGHT. world-loop.md names the failure state: when
+    // every port is everyone's neighbour there is no far coast to be far from
+    // and nothing can be cut off, and you are watching a marketplace. Measured
+    // across the four house seeds: 32% of the world's port pairs have no trade
+    // between them at all.
+    let apart = 0;
+    let pairs = 0;
+    for (const seed of SEEDS) {
+      const { world, routes } = bench(seed);
+      const n = world.places.length;
+      for (let a = 0; a < n; a++) {
+        for (let b = a + 1; b < n; b++) {
+          pairs++;
+          if (!laneIsOpen(routes, a, b)) apart++;
+        }
+      }
+    }
+    expect(pairs).toBeGreaterThan(4000); // zero satisfies absence
+    expect(apart / pairs).toBeGreaterThan(0.2);
+  });
+});
+
 describe("a market is a neighbourhood, not a pair", () => {
   it("gives every place a market it belongs to, itself included", () => {
     const { world, markets } = bench();
@@ -113,11 +267,17 @@ describe("a market is a neighbourhood, not a pair", () => {
 
   it("holds a handful of places, never the whole sea", () => {
     // [HC-15]: any design that compares every place to every other is wrong,
-    // however cheap it looks at fifty.
+    // however cheap it looks at fifty. THE CAP IS NOW LOAD-BEARING RATHER THAN
+    // DECORATIVE, and the precondition is measured beside the claim so it cannot
+    // pass by there being nothing to cap: at a week's reach a town has 22 to 49
+    // ports to choose from and seats seven of them.
     const { world, markets } = bench();
     for (const h of markets.hoods) {
       expect(h.members.length).toBeLessThanOrEqual(MARKET.maxMembers);
       expect(h.members.length).toBeLessThan(world.places.length);
+    }
+    for (let i = 0; i < world.places.length; i++) {
+      expect(within(world, i).length).toBeGreaterThan(MARKET.maxMembers * 2);
     }
   });
 
@@ -168,16 +328,17 @@ describe("a route is a sea lane, and a blockade is what closes one", () => {
     }
   });
 
-  it("finds a lane out of every port this world sites, which is the precondition for the rest", () => {
+  it("leaves no port with nobody to trade with, which is the precondition for the rest", () => {
     // THE GUARD ON A CASE NOTHING HERE CAN EXERCISE. A place with no lane at all
     // reads reach 0 and is shut out of trade entirely — the honest answer, since
-    // no shipping calls at a port nobody can reach in two days' run. Measured
-    // across four seeds, this world has NO such place: the thinnest row is six
-    // lanes and the mean is twelve to fifteen. So no mutation of that branch can
-    // fail anything, and this is the claim that says why. If the siting or
+    // nobody buys or sells with a port that has no trading partner. Measured
+    // across the four house seeds, this world has NO such place: at a week's
+    // reach the thinnest row is fourteen lanes and the busiest forty-four (it
+    // was six and twelve-to-fifteen at two days'). So no mutation of that branch
+    // can fail anything, and this is the claim that says why. If the siting or
     // `MARKET.reachNm` ever leaves a port alone on its coast, this fails first
     // and the branch starts mattering.
-    for (const seed of [SEED, 1660, 7, 99]) {
+    for (const seed of SEEDS) {
       const { markets, routes } = bench(seed);
       for (let i = 0; i < markets.hoods.length; i++) {
         expect(routes.at[i + 1] - routes.at[i]).toBeGreaterThan(0);

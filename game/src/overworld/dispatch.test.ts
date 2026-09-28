@@ -10,7 +10,7 @@ import {
 } from "./dispatch";
 import { makeWorld, stepDay, type World } from "./clock";
 import { makeNations } from "./factions";
-import { makeMarkets, openRoutes, type Routes } from "./market";
+import { laneIsOpen, makeMarkets, openRoutes, type Routes } from "./market";
 import type { Place } from "./places";
 import { DAY_RUN_NM, WORLD_BOX, distanceNm } from "./shape";
 import { generateWorld } from "./worldgen";
@@ -352,9 +352,10 @@ describe("a crown dispatches and a neutral does not", () => {
 const QUAY = 1; // the town doing the sending
 const BOUND = 2; // the town it is bound for
 
-// Two towns on one coast and the lane table the world actually reads.
-// `makeMarkets` pairs places within two days' run, so how far apart they are put
-// is the whole of whether there is a lane between them — one fixture, both cases.
+// Two towns on one coast, and the market's own partner table beside them — so a
+// claim can ask whether the two actually TRADE, which is a different question
+// from whether a ship can sail between them. `makeMarkets` partners places
+// within a week's run, so how far apart they are put is the whole of it.
 function coastOf(apartDays: number): { world: World; routes: Routes } {
   const world = seaOf([1, 1 + apartDays]);
   // Off the shared latitude, so a course has to answer both axes.
@@ -362,25 +363,12 @@ function coastOf(apartDays: number): { world: World; routes: Routes } {
   return { world, routes: openRoutes(makeMarkets(world.places)) };
 }
 
-// A lane the market would never draw, wired by hand. It is the only way to ask
-// for a passage longer than the ring, because two towns that share a lane are
-// never more than two days' run apart — so this is built against the `Routes`
-// struct rather than through `makeMarkets`, which cannot produce it.
-function oneLane(places: number, a: number, b: number): Routes {
-  const at = new Int32Array(places + 1);
-  for (let i = 0; i < places; i++) at[i + 1] = at[i] + (i === a || i === b ? 1 : 0);
-  const to = new Int32Array(at[places]);
-  to[at[a]] = b;
-  to[at[b]] = a;
-  return { at, to, shut: new Uint8Array(at[places]) };
-}
-
 describe("a town sends a ship to another town", () => {
   it("carries a named cargo the real distance, and credits it on arrival, never on departure", () => {
-    const { world, routes } = coastOf(1.5);
+    const { world } = coastOf(1.5);
     const quay = world.places[QUAY];
     const bound = world.places[BOUND];
-    const d = sendCargo(world, routes, QUAY, BOUND, VICTUALS, 40)!;
+    const d = sendCargo(world, QUAY, BOUND, VICTUALS, 40)!;
 
     // A TOWN sent it, and a reader can see that without knowing a payload code:
     // `from` is a crown and `fromPlace` is a town, and only ever one of them.
@@ -417,10 +405,10 @@ describe("a town sends a ship to another town", () => {
     // What the chart draws is `inFlight` plus `positionOf` and the four course
     // ends (worldview/draw.ts), so a town's ship is drawn the same way a crown's
     // is exactly as far as it is the same object with the same fields.
-    const { world, routes } = coastOf(1.5);
+    const { world } = coastOf(1.5);
     const quay = world.places[QUAY];
     const bound = world.places[BOUND];
-    const d = sendCargo(world, routes, QUAY, BOUND, VICTUALS, 40)!;
+    const d = sendCargo(world, QUAY, BOUND, VICTUALS, 40)!;
     const crowns = sendDispatch(world, CROWN, BOUND, PAYLOAD.treasury, 100)!;
     expect(Object.keys(d).sort()).toEqual(Object.keys(crowns).sort());
 
@@ -445,33 +433,54 @@ describe("a town sends a ship to another town", () => {
     }
   });
 
-  it("refuses to sail where the world says it cannot, and returns nothing", () => {
-    // Two refusals and one answer to both: null, and nothing filed into the ring.
-    // Neither is vacuous — the same fixture sails when the refusal is lifted.
+  it("sails between two ports whether or not they trade, because the sea is not a trade relationship", () => {
+    // THE CORRECTION OF 2026-09-28. A ship used to be refused unless the market
+    // had partnered the two ports — a rule about TRADE sitting in the wrong
+    // place. Any two ports are connected because a ship can sail between them;
+    // an invasion force or a crown's coin follows the sea to a port it has never
+    // traded with, and `sendDispatch` beside this one always did.
+
+    // A pair the market DID partner: they sail, as they always could.
     const near = coastOf(1.5);
-    expect(sendCargo(near.world, near.routes, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
+    expect(laneIsOpen(near.routes, QUAY, BOUND)).toBe(true);
+    expect(sendCargo(near.world, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
 
-    // 1. No sea lane between those two towns.
-    const far = coastOf(4);
-    expect(sendCargo(far.world, far.routes, QUAY, BOUND, VICTUALS, 40)).toBeNull();
-    expect(inFlightCount(far.world)).toBe(0);
+    // A pair the market did NOT — eight days apart, beyond the week a market
+    // reaches. The lane assertion is what makes this fail the day somebody puts
+    // the check back: without it the claim would pass on a pair that trades.
+    const strangers = coastOf(8);
+    expect(laneIsOpen(strangers.routes, QUAY, BOUND)).toBe(false);
+    const d = sendCargo(strangers.world, QUAY, BOUND, VICTUALS, 40)!;
+    expect(d).not.toBeNull();
+    expect(inFlightCount(strangers.world)).toBe(1);
 
-    // 2. A passage longer than the schedule can hold, which would otherwise
-    //    alias one voyage round the ring onto a day that has already gone.
-    const { world } = coastOf(4);
-    const wired = oneLane(world.places.length, QUAY, BOUND);
+    // ...and it is a real passage rather than a token one: the water between two
+    // strangers is the water the chart shows, written out rather than asked of
+    // `passageDays` so a term added to that fails here.
+    const quay = strangers.world.places[QUAY];
+    const bound = strangers.world.places[BOUND];
+    const water = Math.max(1, Math.ceil(distanceNm(quay.x, quay.y, bound.x, bound.y) / DAY_RUN_NM));
+    expect(water).toBe(9);
+    expect(d.dueDay).toBe(d.sentDay + water);
+  });
+
+  it("refuses only a passage longer than the schedule can hold, and returns nothing", () => {
+    // THE ONE REFUSAL LEFT, and it is about the water and not about trade: the
+    // ring would silently alias a voyage of more than 64 days onto a day that
+    // has already gone, and a wrong arrival day is worse than no ship.
+    const { world } = coastOf(8);
     world.places[BOUND].x = world.places[QUAY].x + (RING_DAYS + 1) * DAY_RUN_NM;
     const quay = world.places[QUAY];
     const bound = world.places[BOUND];
     expect(passageDays(distanceNm(quay.x, quay.y, bound.x, bound.y)))
       .toBeGreaterThanOrEqual(RING_DAYS);
-    expect(sendCargo(world, wired, QUAY, BOUND, VICTUALS, 40)).toBeNull();
+    expect(sendCargo(world, QUAY, BOUND, VICTUALS, 40)).toBeNull();
     expect(inFlightCount(world)).toBe(0);
 
-    // ...and it was the length that refused it, not the hand-built lane: bring
-    // the same town inside the horizon and the same ship sails.
+    // ...and it was the length that refused it: bring the same town inside the
+    // horizon and the same ship sails.
     bound.x = quay.x + 3 * DAY_RUN_NM;
-    expect(sendCargo(world, wired, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
+    expect(sendCargo(world, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
     expect(inFlightCount(world)).toBe(1);
   });
 });

@@ -47,7 +47,6 @@
 // [P-1]  Both of the above are the same two words. Do less.
 
 import type { World } from "./clock";
-import { laneIsOpen, type Routes } from "./market";
 import { daysToSail, distanceNm } from "./shape";
 
 // ---- The payloads ([HC-90] definitions as data, [HC-91] type from it) -------
@@ -271,10 +270,25 @@ export function sendDispatch(
 // other thing worth taking. THE DAY THIS SHIP'S CARGO IS CREDITED INTO A MARKET
 // is the day [HC-13] has to be settled rather than quoted.
 //
+// THE SEA IS NOT A TRADE RELATIONSHIP, which is the whole of what this asks and
+// does not ask (2026-09-28). It used to require an open TRADE LANE between the
+// two ports — the market's own table — and that was a rule about trade sitting
+// in the wrong place: any two ports are connected because a ship can sail
+// between them, a lane is not owned, and taking a ship does not stop the water
+// working. An invasion force or a crown's coin follows the sea to a port it has
+// never traded with, and `sendDispatch` beside this one always did. So the only
+// question left is the one the water actually asks: does the passage fit the
+// schedule.
+//
+// WHAT THIS IS NOT. A blockade is untouched and still bites — it shuts a port's
+// TRADE lanes, which is what `access` reads and what starves a place ([HC-85]).
+// What it no longer does is forbid a hull from crossing open water, because
+// stopping a hull is interception's job and interception is a phase in the daily
+// tick, not a line in a constructor.
+//
 // It refuses rather than throwing, like its crown-side twin ([HC-1]).
 export function sendCargo(
   world: World,
-  routes: Routes,
   from: number,
   to: number,
   cargo: number,
@@ -284,17 +298,11 @@ export function sendCargo(
   const place = world.places[to];
   if (!quay || !place) return null;
 
-  // WHERE THE WORLD SAYS A SHIP CANNOT GO. One definition of a sea lane and it
-  // is the market's ([P-47]) — so a town with no lane to another cannot ship to
-  // it, a blockade that shuts the lane stops the ship too, and a town cannot
-  // ship to itself, none of which is a rule written here.
-  if (!laneIsOpen(routes, from, to)) return null;
-
   const days = passageDays(distanceNm(quay.x, quay.y, place.x, place.y));
-  // Longer than the schedule can hold. No lane the market draws is anywhere near
-  // this long, so nothing in this world can reach it — but a wrong arrival day
-  // is worse than no ship, and the ring would silently alias one round onto a
-  // day that has already passed.
+  // Longer than the schedule can hold, and now the ONLY refusal: a wrong arrival
+  // day is worse than no ship, and the ring would silently alias one round onto
+  // a day that has already passed. The 64-day horizon is five times this sea's
+  // corner-to-corner passage, so nothing in this world meets it.
   if (days >= RING_DAYS) return null;
 
   return file(world, {

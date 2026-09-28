@@ -133,7 +133,7 @@ describe("one seed, one map", () => {
 // without a rewrite. A smaller world now costs an argument.
 //
 // AND THE SECOND HALF IS THE MORE IMPORTANT ONE. A day's run is 144 nm, a market
-// reaches two days of it, a port keeps 85 nm of coast to itself, and a passage
+// reaches a week of it, a port keeps 85 nm of coast to itself, and a passage
 // has to arrive inside the dispatch ring. Those are facts about a sea and a
 // ship, not knobs — so a request that breaks one is refused WITH THE REASON,
 // before a lobe is drawn. A world that cannot be sailed is worse than no world.
@@ -224,7 +224,7 @@ describe("a sea you can ask for a different size of", () => {
 
   it("makes every port on a small sea everybody else's trading neighbour", () => {
     // THE STATED CONSEQUENCE OF A TINY WORLD, and it is not a bug: a market
-    // reaches two days' run, so a sea small enough to cross in two days has no
+    // reaches a week's run, so a sea small enough to cross in a week has no
     // trade GEOGRAPHY left in it — everyone is everyone's neighbour and there is
     // no far coast to be far from. Expected here, and the reason a world this
     // small is a thing to watch rather than a thing to play.

@@ -85,7 +85,7 @@ const SCATTER = { count: [8, 14], r: [13, 42], lift: [0.95, 1.3] } as const;
 // this project was taken on, and `generateWorld(seed, {...})` makes another one.
 //
 // WHAT IS NOT HERE IS THE POINT. A day's run is 144 nm (`DAY_RUN_NM`), a market
-// reaches two days of it, a port keeps 85 nm of coast to itself and a passage
+// reaches a week of it, a port keeps 85 nm of coast to itself and a passage
 // must fit the dispatch ring. Those are physical facts about a sea and a ship,
 // not knobs — they are the CONSTRAINTS a setting has to respect, and
 // `generateWorld` refuses a world that breaks them rather than building a broken

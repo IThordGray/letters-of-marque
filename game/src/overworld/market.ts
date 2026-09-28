@@ -41,14 +41,25 @@ import type { Place } from "./places";
 // ---- The neighbourhoods ----------------------------------------------------
 
 export const MARKET = {
-  // How far a market reaches. §6 puts an ordinary trade leg at one to four days;
-  // two days' run is the middle of it, and at this world's port spacing it gives
-  // a handful of neighbours rather than half the map.
-  reachNm: DAY_RUN_NM * 2,
+  // HOW FAR A TOWN LOOKS FOR SOMEBODY TO TRADE WITH: A WEEK'S SAIL. It was two
+  // days' run, and two days is inside a town's own climate — its neighbours grow
+  // what it grows, so there was almost nothing to trade. A week crosses the
+  // climate bands, which is the whole point: measured over the four house seeds,
+  // the share of a town's partners in a different climate from its own goes from
+  // 27% to 69%.
+  //
+  // A WEEK AND NOT A FORTNIGHT, deliberately. 1,008 nm against this sea's ~1,700
+  // nm diagonal still rules pairs out, so there is a far coast to be far from and
+  // distance is still the game's currency of cost. Widen it much further and
+  // every port is everyone's neighbour, which world-loop.md names as the point
+  // where you are watching a marketplace rather than a sea.
+  reachNm: DAY_RUN_NM * 7,
   // ...and a hard cap on the handful, which is what keeps the clearing LINEAR
   // rather than merely linear-at-fifty. Doubling the places on the same coasts
   // doubles the density; without this cap it would double the work per place too,
-  // and the square law [HC-15] bans would come back through the side door.
+  // and the square law [HC-15] bans would come back through the side door. It is
+  // doing far more work than it was: a week's reach offers a town thirty-odd
+  // candidates where two days offered it seven.
   maxMembers: 8,
 } as const;
 
@@ -68,11 +79,39 @@ export interface Markets {
   hoodsOf: number[];
 }
 
-// One neighbourhood centred on each place: everything within reach, nearest
-// first, capped. Membership is symmetric at the reach test and then trimmed by
-// the cap, so a very crowded coast gives overlapping markets rather than one
-// enormous one — which is [HC-82]'s "a small, fixed set of OVERLAPPING market
-// neighbourhoods" exactly.
+// One neighbourhood centred on each place: a CAPPED SPREAD OF THE PORTS WITHIN
+// REACH, FROM THE NEAREST TO THE FARTHEST — which is [HC-82]'s "a small, fixed
+// set of OVERLAPPING market neighbourhoods" exactly.
+//
+// WHY NOT THE NEAREST SEVEN, WHICH IS WHAT THIS WAS. Widening the reach on its
+// own changes nothing at all: nearest-seven re-picks the same near coast out of
+// the wider list, and the measurement says so — at a week's reach it left the
+// mean partner 183 nm away against 171 nm at two days', and not one partner in
+// the world beyond three days' sail. The reach is only the size of the list; the
+// PICK is what decides whether a town trades with a different climate.
+//
+// A STRIDE AND NOT A ROLL, and that is the load-bearing choice. Slot k takes the
+// port ranked `k/7` of the way down the town's own distance list, so one partner
+// comes from each seventh of the range BY CONSTRUCTION — the nearest port is
+// always in (slot 0) and so is one from the far seventh. A roll would have to be
+// argued and re-measured every time the map moved; this cannot come out near by
+// luck. It also keeps this function a pure function of positions with no seed in
+// it, which the paragraph below depends on.
+//
+// AND IT TELLS NEIGHBOURING PORTS APART, which the nearest-N never could: each
+// town strides its OWN ranking, so two ports on the same coast read the same
+// candidates in different orders and end up with different partners. Measured on
+// the closest pair to every port over four seeds, the overlap between their two
+// partner sets (Jaccard) falls from 0.69 to 0.20.
+//
+// MEMBERSHIP IS NOT SYMMETRIC, and it never quite was — the cap already trimmed
+// a crowded coast unevenly. The spread makes it ordinary rather than rare, so it
+// is worth being explicit that NOTHING IN THE CLEARING NEEDS IT TO BE. A place
+// does not offer INTO a neighbourhood and wait for one back: it is a member of
+// `hoodsOf[i]` neighbourhoods and puts `1/hoodsOf[i]` of both its offer AND its
+// want into each of them, so its books balance across the set it belongs to
+// whatever anyone else picked. Every place is in its own neighbourhood, so
+// `hoodsOf` is never zero and no place can be left with nobody to trade with.
 //
 // IT READS POSITIONS AND NOTHING ELSE, which is why the parameter is a list of
 // points rather than a list of places. The generator needs the neighbourhoods
@@ -105,7 +144,17 @@ export function makeMarkets(places: readonly { x: number; y: number }[]): Market
     // explicit direction ([P-10]).
     near.sort((a, b) => a.d - b.d || a.id - b.id);
     const members = [i];
-    for (let k = 0; k < near.length && members.length < MARKET.maxMembers; k++) members.push(near[k].id);
+    const slots = MARKET.maxMembers - 1;
+    if (near.length <= slots) {
+      // Fewer candidates than seats: a thin coast trades with everyone it can
+      // reach, and there is no spread to take.
+      for (let k = 0; k < near.length; k++) members.push(near[k].id);
+    } else {
+      // One from each seventh of the ranking. `near.length >= slots` makes the
+      // step at least one, so the indices are strictly increasing and no port is
+      // taken twice.
+      for (let k = 0; k < slots; k++) members.push(near[Math.floor((k * near.length) / slots)].id);
+    }
     members.sort((a, b) => a - b);
     for (let k = 0; k < members.length; k++) hoodsOf[members[k]]++;
     hoods.push({ id: i, members });
@@ -129,20 +178,24 @@ export function describeMarkets(m: Markets): string {
   );
 }
 
-// ---- The sea lanes, and what a squadron does to them ------------------------
+// ---- The trade lanes, and what a squadron does to them ----------------------
 //
 // [HC-86] "`access` reads real routes and blockades." This is the routes half,
 //         and §11.6 is explicit that it is not an upgrade: it is the thing that
 //         makes [HC-87] true of the WORLD rather than of one town.
 //
-// A ROUTE IS A SEA LANE BETWEEN TWO PLACES THAT SHARE A MARKET NEIGHBOURHOOD,
-// and that is not a new fact about the world — it is [HC-82] read the other way
+// A LANE IS A TRADE PARTNERSHIP — two places that share a market neighbourhood —
+// and that is not a new fact about the world, it is [HC-82] read the other way
 // round. The neighbourhoods are already built once at generation out of real
 // distances, and positions never move ([P-2]: the O(N^2) pass runs once and the
-// seasonal one is O(N x k)). If two places are near enough to clear a market
-// together then there is water between them that ships actually use; if they
-// are not, there is no lane to cut. Inventing a second notion of "who is
-// reachable" would be [P-47] wearing a map: one definition, read twice.
+// seasonal one is O(N x k)).
+//
+// WHAT A LANE IS NOT, AND THIS IS THE CORRECTION OF 2026-09-28: it is not the
+// sea. The sea connects any two ports a ship can sail between, it is not owned,
+// and nothing here decides where a hull may go — `sendCargo` asks the water and
+// the schedule and never asks this table. What a lane says is only that these
+// two BUY AND SELL with each other, which is the handful of ports out of the
+// fifty that a blockade is worth mounting against.
 //
 // [HC-15] IS NOT BREACHED BY A LANE BEING A PAIR. What [HC-15] bans is a
 // SEASONAL pass that compares every place to every other. `MARKET.maxMembers`
@@ -233,9 +286,11 @@ export const laneIsOpen = (r: Routes, a: number, b: number): boolean => {
 // ceiling is fragile rather than low.
 //
 // A place with no lane at all comes out at 0, and that is the honest reading
-// rather than an edge case: no shipping calls at a port nobody can reach in two
-// days' run, so its customs house takes a cut of nothing. `describeMarkets`
-// already counts such ports; this world has none, and a thinner one might.
+// rather than an edge case: nobody buys or sells with a port that has no trading
+// partner, so its customs house takes a cut of nothing. Every place is in its own
+// neighbourhood and takes a spread of whoever is within a week's sail, so this
+// needs a port alone on an empty sea; `describeMarkets` counts them and this
+// world has none.
 export function reachOf(r: Routes, place: number): number {
   const from = r.at[place];
   const span = r.at[place + 1] - from;
