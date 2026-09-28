@@ -6,20 +6,18 @@
 serves lives under [`../spec/`](../spec/README.md) and stays stable when tools change.*
 
 ## What exists today
-**Design spec + two throwaway prototypes**, plus the **durable build now beginning**
-in `game/` (land module first — see [`../decisions.md`](../decisions.md), 2026-08-17).
+**Design spec + one throwaway prototype**, plus the **durable build** in `game/`.
 
 - `docs/design-doc.md` — canonical game design (the WHAT; see [`../spec/`](../spec/README.md)).
-- `docs/PROTOTYPE.md` / `docs/PROTOTYPE-LAND.md` — prototype briefs (scope).
+- `docs/PROTOTYPE.md` — the naval prototype's brief (scope).
 - `prototype/` — **naval** prototype. TS / Vite / canvas. Run: `cd prototype && npm run dev`.
-- `prototype-land/` — **land** prototype. TS / Vite / canvas. Run: `cd prototype-land && npm run dev`.
 - `game/` — **durable build** (land module first). TS / Vite / canvas, data-oriented. Run: `cd game && npm run dev`.
 - `docs/knowledge/` — this knowledge base.
 
 ## Tech & conventions
-- Both prototypes: **TypeScript on an HTML canvas**, each self-contained (own
+- The prototype: **TypeScript on an HTML canvas**, self-contained (own
   `package.json`), **programmer-art only**, deliberately **disposable**.
-- One constants file per prototype (every tunable number in one place).
+- One constants file (every tunable number in one place).
 - Sim logic is verified **headless** under Node (esbuild bundle); the DOM/canvas
   layer only runs in a browser. See [coding-rules.md](coding-rules.md).
 
