@@ -213,6 +213,47 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
   `1/hoodsOf` of both its offer and its want into each market it belongs to, so its books balance
   whatever anyone else picked. Measured, not argued. **Do not "fix" the asymmetry.**
 
+## The economy's next shape — ratified 2026-09-28, NOT YET BUILT
+
+The direction below supersedes parts of `world-simulation.md` §11 and `town-economy.md`. Those files
+still describe the three-class engine; **where they disagree with this section, this section wins**
+and they are rewritten when it is built.
+
+- **Goods all the way down.** Named goods with a price and a demand each, not three abstract classes.
+  The classes survive only as the **tier** a good belongs to, which keeps the pyramid gate and
+  *bread before batteries* working. Cutthroats' list is the starting point.
+- **No production chains, and a goods list is where they creep back.** A good comes **off the ground**
+  or **arrives by sea**. Nothing converts one good into another.
+- **Three source kinds:** a hex the town holds · a property of the town (gunpowder in larger cities,
+  needing no land) · only ever by sea. **Not every good has a hex.** Which is which is a table.
+- **Towns are self-sufficient and can never starve.** A town holds a **target level** of each good,
+  scaled to size; **demand is simply the gap.** Nothing is consumed for survival, and **falling short
+  costs nothing** — rob a town of all its grain and it just wants grain again.
+- **A small seasonal drain is load-bearing, not polish.** Production adds and nothing removes, so
+  without it every warehouse fills, demand goes to zero and trade stops.
+- **A building may serve two unrelated purposes.** A farm makes **grain** (a commodity) *and* supplies
+  **growth** (what sets population); those never touch. A coffee plantation makes only a commodity.
+  **Burn the farm and the town slowly shrinks; burn the coffee and it merely has nothing to sell.**
+- **Population comes from an abstract growth input, never from food stock.** This retires
+  `[HC-87]`'s trade-fed ceiling: a great port is no longer great because it is fed from the sea.
+  A raid still shrinks a town, by the longer road — it takes coin and breaks the works that supply
+  growth.
+
+## The layering — how the world is meant to stack
+
+Each layer runs without the one above it, and adding a layer never rewrites the one below.
+
+1. **The world.** A sea of a chosen size, coastlines, climate, weather. Watchable as nature alone.
+2. **Towns, unaffiliated.** People settle where the ground suits them and sustain themselves.
+3. **Town intelligence.** The governor decides: what to build, what to trade, whom with.
+4. **Nations.** An identity over towns that **adds weight to the town's existing decision**, rather
+   than deciding separately. **Same hook the player later uses to bribe or install a governor** — one
+   decision mechanism, more terms in it. Crowns push coin, troops, governors and invasions along the
+   sea, which reaches any port whether or not the two trade.
+
+**Worldgen settings:** size and population exist; **year, season and number of crowns (0–5) do not
+yet.**
+
 ## Deferred (not cancelled)
 
 - Town menu and every player-facing tie-in · town card and chronicle depth · 20-year fast-forward.
