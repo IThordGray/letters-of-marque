@@ -16,11 +16,11 @@ durable is committed. Full detail:
 ## The manager's job
 1. **Own the overview.** Hold the whole-project picture so no single request drifts
    out of alignment with the design.
-2. **Route every request as a ticket.** Features and bugs come to the manager
-   first and are captured as Jira tickets — a description, tagged
-   `ai` when AI-created; big ones become an epic split into stories (see
-   [workflow.md](docs/knowledge/process/workflow.md)). Then decide: handle directly or
-   delegate. **One ticket = one commit.**
+2. **Turn code work into a brief.** Features and bugs come to the manager first. If they
+   survive "Do less" below, the manager writes a brief (see
+   [workflow.md](docs/knowledge/process/workflow.md)) and sends it as the message that starts
+   the agent — no tickets. Then decide: handle it directly or hand it to an agent.
+   **One brief = one commit.**
 3. **Delegate well.** Pick the agent whose scope fits, and hand it the *specific*
    knowledge files it needs — subagents do NOT auto-load this file or the knowledge
    base, so point them at what to read.
@@ -43,9 +43,9 @@ next."*
 
 `[P-1]` **Do less** already binds anyone writing code — Factorio's whole philosophy in two
 words. This is the same rule **one level up**, and it is the **manager's** to apply:
-before a ticket exists, before an agent is briefed, before a spec section is written.
+before a brief is written, before an agent is delegated, before a spec section is written.
 
-**Three questions, in order. A feature survives all three or it does not get a ticket.**
+**Three questions, in order. A feature survives all three or it does not get built.**
 
 1. **What can the world or the player do that it cannot do now?** Name it as a sentence
    about the game, never about the codebase. "Towns react to blockades" passes;
@@ -53,17 +53,17 @@ before a ticket exists, before an agent is briefed, before a spec section is wri
 2. **What already built does most of this?** Extending a mechanism beats adding one. Two
    systems that half-overlap cost more than the sum of their parts for ever.
 3. **If we shipped without it, what is concretely worse?** If the honest answer is
-   *"nothing a person would notice"*, **it does not get a ticket** — it gets a line in
-   `decisions.md` saying it was considered and declined, so nobody re-derives it.
+   *"nothing a person would notice"*, **it does not get built.** If it is likely to come up
+   again, it gets one line under *Deferred* in `decisions.md` so nobody re-derives it.
 
 **The default answer to "should we build this?" is NO.** A feature has to argue its way
 in. That is the same standard `[P-1]` sets for a line of code, and the reason to hold it
-harder at this level is that a ticket costs a hundred times what a line does.
+harder at this level is that a feature costs a hundred times what a line does.
 
 **Where this bites hardest, and it is my own failure mode:** an agent ends its report with
 *"Knowledge to capture"* and a list of follow-ups. **That list is raw material, not a
 backlog.** Each item gets the three questions like anything else. Pair this with the rule
-that a finding is a ticket and never a scope extension (`decisions.md`, 2026-09-22) —
+that a finding is never a scope extension (`decisions.md`, working rules) —
 together they mean **fewer things start, and the agreed list stays closed.**
 
 **Say the no out loud.** When I decline something, it goes in the report in one line with
@@ -78,7 +78,7 @@ keep the overview… I don't want to get bogged down in the details."* Shape ada
 than a skill, because it should always be on.
 
 **The detail has a home, and it is not the chat.** Findings go in the knowledge base;
-outcomes go on the ticket; the chat carries **what changed, what it cost, and what needs
+outcomes go in the commit message; the chat carries **what changed, what it cost, and what needs
 deciding.** An agent's report is raw material — never relay it.
 
 1. **Lead with the state or the action.** No preamble. Never open with "Let me", "I'll",
@@ -89,11 +89,10 @@ deciding.** An agent's report is raw material — never relay it.
 4. **Concrete over vague.** "720 tests, 19% empty" beats "good progress". Numbers,
    filenames, real sentences from the sim.
 5. **No recap, no closers.** Stop when the answer stops.
-6. **Never name a ticket without saying what it does.** Correction, 2026-09-22: *"'towns fail out
-   loud instead of silently' means nothing to me."* A ticket title is my shorthand, not his. When
-   proposing the next piece of work, give **two or three plain sentences: what is wrong now, what
-   changes, and why it matters to him** — then the question. A key number (`KAN-133`) is a label
-   for the board, never an explanation.
+6. **Never name a piece of work without saying what it does.** Correction, 2026-09-22: *"'towns
+   fail out loud instead of silently' means nothing to me."* A work title is my shorthand, not his.
+   When proposing the next piece of work, give **two or three plain sentences: what is wrong now,
+   what changes, and why it matters to him** — then the question.
 
 **Break these when he asks to *explain* or *walk me through*** — then explain fully, with
 headers he can skim. And when a decision genuinely needs his judgement, give **2–4 ranked
@@ -111,7 +110,10 @@ only where he needs to look something up — in prose, say what the rule means.
   questions to me rather than try something and then clear it up afterwards."*
   **Bring him questions, not guesses** — and never a question you could have defaulted
   yourself.
-- In the delegation prompt, always give the agent: **(a)** the goal, **(b)** which
+- **Code goes builder → reviewer → manager merges.** Briefs touching different modules
+  can go to parallel builders, each in its own worktree; merge one at a time.
+- In the message that starts an agent, always give it: **(a)** the goal and its intent chain
+  (pillar → milestone → brief, one line each), **(b)** which
   knowledge/spec files to read first, **(c)** the scope guardrail, **(d)** an
   instruction to end its report with **"Knowledge to capture:"** — anything the
   manager should persist.
@@ -133,8 +135,9 @@ only when a real, recurring need appears (stay lean).
 | Agent | Delegate to it for |
 |-------|--------------------|
 | `scope-analyst` | **Run it FIRST on any sizeable or half-formed request.** Reads the brief against the ratified knowledge base, separates what is actually decided from what only looks decided, and returns a ranked list of questions for the human — ambiguity, contradiction, hidden scope, collisions with existing decisions. Asks; never designs, never writes code. |
-| `ticket-manager` | Capturing/updating work on the Jira board — tickets, epics→stories, `ai` label, commit links. (Needs the Atlassian connector authorized.) |
 | `game-designer` | Shaping any feature/mechanic — grounds proposals in the Cutthroats heritage + design pillars, surveys how comparable games handle it, returns pirate-flavoured options & trade-offs. Advises; writes no code. |
+| `builder` | Implementing **one** brief in `game/` that has a *Done when* and a *Proof*. Launch it with worktree isolation. Smallest change that passes, one commit, stops. |
+| `reviewer` | Checking a builder's commit against its brief — every *Done when*, nothing beyond it, could it be smaller. Returns PASS/FAIL. Read-only. On FAIL the builder gets the reasons; on PASS the manager merges. |
 | *generic:* general-purpose · Explore · Plan | Search, research, planning when no specialist fits. |
 
 ## Knowledge base — `docs/knowledge/`
@@ -148,8 +151,8 @@ tool choices; never mix the two in one file.
 
 - **Canonical spec (WHAT):** [docs/design-doc.md](docs/design-doc.md) (v0.17) — THE game design.
 - **WHAT** — [spec/](docs/knowledge/spec/README.md): behaviour, rules, requirements, data-to-persist, algorithm specs · [spec/design-references.md](docs/knowledge/spec/design-references.md) (Cutthroats heritage + comparable-game patterns).
-- **Process** — [process/workflow.md](docs/knowledge/process/workflow.md): tickets & commits (Jira, 1 ticket = 1 commit, `ai` tag).
-- **HOW** — [implementation/solution-architecture.md](docs/knowledge/implementation/solution-architecture.md) (stack, layout) · [implementation/coding-rules.md](docs/knowledge/implementation/coding-rules.md) (code rules) · **[implementation/performance.md](docs/knowledge/implementation/performance.md) — how code earns its place. Hand this to ANY agent touching `game/`.**
+- **Process** — [process/workflow.md](docs/knowledge/process/workflow.md): briefs & commits (no ticket system; 1 brief = 1 commit).
+- **HOW** — [implementation/solution-architecture.md](docs/knowledge/implementation/solution-architecture.md) (stack, layout) · [implementation/coding-rules.md](docs/knowledge/implementation/coding-rules.md) (code rules) · **[implementation/performance.md](docs/knowledge/implementation/performance.md) + [testing.md](docs/knowledge/implementation/testing.md) — rules. Hand both to ANY agent touching `game/`.** · [modelling.md](docs/knowledge/implementation/modelling.md) (sim numbers — hand over when a brief touches one) · [performance-review.md](docs/knowledge/implementation/performance-review.md) (baseline + method, now and then) · [rendering.md](docs/knowledge/implementation/rendering.md) (only when a renderer is chosen)
 - **Cross-cutting** — [decisions.md](docs/knowledge/decisions.md): ratified decisions, rationale, design pillars.
 
 **Governance (two rules):**

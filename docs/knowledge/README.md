@@ -8,7 +8,7 @@ Knowledge about **what the game should do** is kept separate from **how it's bui
 
 - **WHAT** — [`spec/`](spec/README.md): tool-agnostic and durable. Rules, behaviour,
   what data must persist, what an algorithm must achieve. Barely changes when tooling does.
-- **How we work** — [`process/`](process/workflow.md): testing, ticketing. Also
+- **How we work** — [`process/`](process/workflow.md): testing, briefs & commits. Also
   tool-agnostic; kept apart from both spec and implementation.
 - **HOW** — [`implementation/`](implementation/solution-architecture.md): swappable.
   Language, DB, frameworks, coding rules, concrete code.
@@ -31,12 +31,15 @@ Knowledge about **what the game should do** is kept separate from **how it's bui
 | [spec/design-references.md](spec/design-references.md) | WHAT | Cutthroats heritage, comparable-game mechanic patterns, pirate-flavour fit. |
 | [spec/world-simulation.md](spec/world-simulation.md) | WHAT | **The core simulation** — tick order, how the seven world systems drive each other, and the cross-cutting hard constraints. Start here for anything world-scale. |
 | [spec/town-economy.md](spec/town-economy.md) | WHAT | Living towns — the works ledger, parcels, the governor's plan, archetypes, map projection. |
-| [process/workflow.md](process/workflow.md) | process | Tickets & commits (Jira, 1 ticket = 1 commit, `ai` label). |
+| [process/workflow.md](process/workflow.md) | process | Briefs & commits (no ticket system; 1 brief = 1 commit). |
 | [implementation/solution-architecture.md](implementation/solution-architecture.md) | HOW | Stack, repo layout, run commands, non-choices. |
-| [implementation/performance.md](implementation/performance.md) | HOW | **How code earns its place** — determinism rules, doing-less technique, the measured budget, and the false economies. Read before writing anything in `game/`. |
+| [implementation/performance.md](implementation/performance.md) | HOW | **Performance & determinism rules.** Every agent in `game/`. |
+| [implementation/testing.md](implementation/testing.md) | HOW | **Testing rules** for `game/`. Every agent that writes or reviews a test. |
+| [implementation/modelling.md](implementation/modelling.md) | HOW | Rules for sim numbers — scales, rates, statistics. When a brief touches one. |
+| [implementation/performance-review.md](implementation/performance-review.md) | HOW | Measured baseline, known candidates, benchmark method. Now and then. |
+| [implementation/rendering.md](implementation/rendering.md) | HOW | GPU rules and renderer-choice facts. Not binding until a renderer is chosen. |
 | [implementation/coding-rules.md](implementation/coding-rules.md) | HOW | How **prototype** code is written & verified. |
-| [implementation/testing.md](implementation/testing.md) | HOW | How the **durable build** (`game/`) is tested — Vitest, and the two house rules. |
-| [decisions.md](decisions.md) | cross-cutting | Ratified decisions & rationale (note each entry's layer). |
+| [decisions.md](decisions.md) | cross-cutting | The current ratified decisions, one line each — no history. |
 
 ## Relationship to memory
 The user-level `memory/` (outside the repo) is the manager's private cross-session

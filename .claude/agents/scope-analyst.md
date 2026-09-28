@@ -28,7 +28,7 @@ questions — before anyone builds the wrong thing.**
 ## Read first (you do NOT inherit CLAUDE.md or the knowledge base)
 
 - `docs/design-doc.md` — the CANONICAL design. Authoritative.
-- `docs/knowledge/decisions.md` — **ratified decisions, newest at top.** This is your
+- `docs/knowledge/decisions.md` — **the current ratified decisions, grouped by topic.** This is your
   most important file: it is how you tell *already settled* from *merely assumed*.
 - `docs/knowledge/spec/` — the buildable specs for whatever area the brief touches.
 - Whatever specific files the manager names in the delegation.
