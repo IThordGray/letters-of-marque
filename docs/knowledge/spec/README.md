@@ -18,6 +18,20 @@ derived specs live here as `spec/*.md` and must not contradict it.
   "pathfinding must avoid land and prefer wind-favourable headings"), **not** the code.
 - **Acceptance criteria:** how we'd know a behaviour is correct.
 
+## Start here
+
+Two **one-page designs** carry the overview. Read whichever loop you are about to touch before
+opening the detail spec beside it.
+
+| | |
+|---|---|
+| [world-loop.md](world-loop.md) | The two clocks, the season's five phases, what drives what, and what is not built yet. |
+| [town-loop.md](town-loop.md) | Four moving parts and one loop — the whole town engine on a page. |
+
+The detail lives in [world-simulation.md](world-simulation.md) and
+[town-economy.md](town-economy.md); each one-page design names which of their sections to open for
+anything it deliberately leaves out.
+
 ## What does NOT belong here
 - Languages, frameworks, databases, file formats, concrete code → [`../implementation/`](../implementation/solution-architecture.md).
 - How we test or track work (tooling-agnostic process) → [`../process/`](../process/workflow.md).
