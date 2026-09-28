@@ -25,7 +25,7 @@
 import type { Produce, TerrainKind } from "../town/types";
 import type { Season } from "./calendar";
 import { CHANNEL, rollOf } from "./chance";
-import { WORLD_BOX } from "./shape";
+import { DEFAULT_WORLD, type WorldSettings } from "./shape";
 
 // ---- The four parts, as a table --------------------------------------------
 //
@@ -246,7 +246,7 @@ export interface Zone {
 const ZONES = { count: [5, 8] } as const;
 const SLOT = { zone: 3000 } as const;
 
-export function makeZones(seed: number): Zone[] {
+export function makeZones(seed: number, settings: WorldSettings = DEFAULT_WORLD): Zone[] {
   const roll = (id: number, attr: number) => rollOf(seed, CHANNEL.worldgen, id, attr);
   const count = ZONES.count[0] + Math.floor(roll(SLOT.zone, 0) * (ZONES.count[1] - ZONES.count[0] + 1));
   // A jittered two-row grid, so no zone is a sliver and none is the whole sea.
@@ -258,8 +258,8 @@ export function makeZones(seed: number): Zone[] {
     const id = SLOT.zone + 1 + i;
     const fx = (c + 0.5) / cols + (roll(id, 1) - 0.5) * 0.6 / cols;
     const fy = (r + 0.5) / 2 + (roll(id, 2) - 0.5) * 0.3;
-    const x = fx * WORLD_BOX.widthNm;
-    const y = fy * WORLD_BOX.heightNm;
+    const x = fx * settings.widthNm;
+    const y = fy * settings.heightNm;
     zones.push({ id: i, climate: climateFor(fx, fy, (c) => roll(id, 10 + c)), x, y });
   }
   return zones;

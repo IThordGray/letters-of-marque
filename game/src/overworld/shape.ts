@@ -29,6 +29,12 @@ import { fbm, fieldSeed } from "./noise";
 // 1,500 x 800 nm, and at an average made-good of 4-8 knots a typical inter-port
 // leg is one to four days. That is the whole reason distance is the game's main
 // currency of cost, so the numbers that say what a day is worth live here.
+//
+// THIS IS THE DEFAULT SEA AND NO LONGER THE ONLY ONE. Everything the project has
+// measured is measured on it, so it stays exactly as it was and `DEFAULT_WORLD`
+// below names it — but a caller who wants a smaller sea asks for one rather than
+// editing this table ([HC-90] still holds: the numbers are data, and asking for
+// other numbers is not the same as having two tables).
 export const WORLD_BOX = {
   widthNm: 1500,
   heightNm: 800,
@@ -47,8 +53,12 @@ export const DAY_RUN_NM = PASSAGE.madeGoodKn * PASSAGE.hoursPerDay;
 
 // ---- The composition -------------------------------------------------------
 
-// Fractions of the box, so the composition survives a change of scale. Each
-// entry is a CHAIN of lobes marching along (dx, dy) from its landfall.
+// Landfalls are fractions of the box; every LENGTH below is nautical miles ON
+// THE DEFAULT SEA, and comes down with the sea when a smaller one is asked for
+// (`scaleOf`). A shore 260 nm across is a coast in a 1,500 nm sea and a
+// continent in a 500 nm one, so the two have to move together or the
+// composition does not survive the change of scale. Each entry is a CHAIN of
+// lobes marching along (dx, dy) from its landfall.
 const MAINLANDS = [
   // The Main: a continental shore running the length of the southern edge.
   { fx: 0.30, fy: 0.96, dx: 1.0, dy: -0.05, lobes: [4, 6], rx: [200, 330], ry: [120, 210], lift: [1.2, 1.5], always: true },
@@ -67,6 +77,66 @@ const ARC = {
 
 // ...and cays and lone islands anywhere at all.
 const SCATTER = { count: [8, 14], r: [13, 42], lift: [0.95, 1.3] } as const;
+
+// ---- What a world is asked for ---------------------------------------------
+//
+// THE WHOLE OF IT IS AN ARGUMENT WITH A DEFAULT. There is no settings file, no
+// preset and no loader: `generateWorld(seed)` makes the sea every measurement in
+// this project was taken on, and `generateWorld(seed, {...})` makes another one.
+//
+// WHAT IS NOT HERE IS THE POINT. A day's run is 144 nm (`DAY_RUN_NM`), a market
+// reaches two days of it, a port keeps 85 nm of coast to itself and a passage
+// must fit the dispatch ring. Those are physical facts about a sea and a ship,
+// not knobs — they are the CONSTRAINTS a setting has to respect, and
+// `generateWorld` refuses a world that breaks them rather than building a broken
+// one.
+// EVERY FIELD READONLY, because `DEFAULT_WORLD` below is a shared object: one
+// caller assigning to `DEFAULT_WORLD.towns` would silently move every default
+// world in the project, and a request is a thing you make rather than a thing
+// you edit. Ask for another world by writing another one.
+export interface WorldSettings {
+  // The sea, corner to corner, in nautical miles.
+  readonly widthNm: number;
+  readonly heightNm: number;
+  // How many islands to draw on it, counting each chain of lobes as one. The
+  // tables above are the composition at `DEFAULT_WORLD.isles`; asking for fewer
+  // thins all three in the same proportion, so a small sea is the same world
+  // smaller rather than a different one.
+  readonly isles: number;
+  // How many ports to try to site. A number worth honouring rather than
+  // exceeding: the coastline decides how many it can actually carry.
+  readonly towns: number;
+}
+
+// How many islands the tables above draw at full scale — every chain, plus the
+// middle of the arc's range and of the scatter's. Read off the tables rather
+// than written down beside them, so adding a chain moves it ([P-47]).
+const midOf = (r: readonly number[]): number => (r[0] + r[1]) * 0.5;
+const FULL_ISLES = MAINLANDS.length + midOf(ARC.count) + midOf(SCATTER.count);
+
+// Today's world, named. Every claim the suite makes is measured against this and
+// `generateWorld` produces it when nobody asks for anything else.
+export const DEFAULT_WORLD: WorldSettings = {
+  widthNm: WORLD_BOX.widthNm,
+  heightNm: WORLD_BOX.heightNm,
+  isles: FULL_ISLES,
+  towns: 50,
+};
+
+// How this sea compares with the one the composition was drawn for — by area,
+// so a sea that is shrunk in one direction only is not scaled as if it had been
+// shrunk in both. Exactly 1 for the default world, which is what makes every
+// length below bit-identical to what it was before there were settings.
+const scaleOf = (w: WorldSettings): number =>
+  Math.sqrt((w.widthNm * w.heightNm) / (WORLD_BOX.widthNm * WORLD_BOX.heightNm));
+
+// A count range at this world's share of the composition. Whole islands, and
+// never fewer than one: a chain of no lobes is not a thinner coast, it is a
+// missing one.
+function fewer(range: readonly number[], share: number): [number, number] {
+  const lo = Math.max(1, Math.round(range[0] * share));
+  return [lo, Math.max(lo, Math.round(range[1] * share))];
+}
 
 // How the coast is crinkled, and it is crinkled TWICE.
 //
@@ -133,11 +203,11 @@ export interface WorldShape {
 
 // One factory, every field present, same order, same types ([P-26]) — including
 // the empty shape the bare clock carries before a world is generated onto it.
-function shapeOf(lobes: Lobe[], coastField: number, fineField: number): WorldShape {
+function shapeOf(w: WorldSettings, marginNm: number, lobes: Lobe[], coastField: number, fineField: number): WorldShape {
   return {
-    widthNm: WORLD_BOX.widthNm,
-    heightNm: WORLD_BOX.heightNm,
-    marginNm: WORLD_BOX.marginNm,
+    widthNm: w.widthNm,
+    heightNm: w.heightNm,
+    marginNm,
     lobes,
     coastField,
     crinkle: CRINKLE.amount,
@@ -151,7 +221,7 @@ function shapeOf(lobes: Lobe[], coastField: number, fineField: number): WorldSha
   };
 }
 
-export const emptyShape = (): WorldShape => shapeOf([], 0, 0);
+export const emptyShape = (): WorldShape => shapeOf(DEFAULT_WORLD, WORLD_BOX.marginNm, [], 0, 0);
 
 // ---- Drawing the world -----------------------------------------------------
 // Slot bases, so every roll's coordinates are its own. A lobe's numbers come
@@ -162,11 +232,17 @@ const SLOT = { mainland: 1000, arc: 1400, scatter: 1800 } as const;
 const span = (r: number, lo: number, hi: number) => lo + r * (hi - lo);
 const step = (r: number, lo: number, hi: number) => lo + Math.floor(r * (hi - lo + 1));
 
-export function makeShape(seed: number): WorldShape {
+export function makeShape(seed: number, settings: WorldSettings = DEFAULT_WORLD): WorldShape {
   const lobes: Lobe[] = [];
   const roll = (slot: number, attr: number) => rollOf(seed, CHANNEL.worldgen, slot, attr);
-  const W = WORLD_BOX.widthNm;
-  const H = WORLD_BOX.heightNm;
+  const W = settings.widthNm;
+  const H = settings.heightNm;
+  // All three computed once per world rather than once per lobe ([P-18]). The
+  // taper at the edge of the world is a length like any other, so a smaller sea
+  // ends in a proportionally shorter run of ocean.
+  const k = scaleOf(settings);
+  const share = settings.isles / FULL_ISLES;
+  const margin = WORLD_BOX.marginNm * k;
 
   // The chains. Each marches from its landfall along its own run, each lobe
   // jittered off the line so the coast is not a row of beads.
@@ -174,13 +250,14 @@ export function makeShape(seed: number): WorldShape {
     const spec = MAINLANDS[m];
     const base = SLOT.mainland + m * 100;
     if (!spec.always && roll(base, 0) < 0.4) continue;
-    const count = step(roll(base, 1), spec.lobes[0], spec.lobes[1]);
+    const many = fewer(spec.lobes, share);
+    const count = step(roll(base, 1), many[0], many[1]);
     let x = spec.fx * W;
     let y = spec.fy * H;
     for (let j = 0; j < count; j++) {
       const s = base + 1 + j;
-      const rx = span(roll(s, 2), spec.rx[0], spec.rx[1]);
-      const ry = span(roll(s, 3), spec.ry[0], spec.ry[1]);
+      const rx = span(roll(s, 2), spec.rx[0] * k, spec.rx[1] * k);
+      const ry = span(roll(s, 3), spec.ry[0] * k, spec.ry[1] * k);
       lobes.push({
         x: x + (roll(s, 4) - 0.5) * rx * 0.5,
         y: y + (roll(s, 5) - 0.5) * ry * 0.7,
@@ -197,14 +274,15 @@ export function makeShape(seed: number): WorldShape {
   }
 
   // The windward arc — strung between two ends of the box, wandering as it goes.
-  const arcCount = step(roll(SLOT.arc, 0), ARC.count[0], ARC.count[1]);
+  const arcMany = fewer(ARC.count, share);
+  const arcCount = step(roll(SLOT.arc, 0), arcMany[0], arcMany[1]);
   for (let i = 0; i < arcCount; i++) {
     const s = SLOT.arc + 1 + i;
     const t = arcCount > 1 ? i / (arcCount - 1) : 0.5;
-    const r = span(roll(s, 1), ARC.r[0], ARC.r[1]);
+    const r = span(roll(s, 1), ARC.r[0] * k, ARC.r[1] * k);
     lobes.push({
-      x: span(t, ARC.fromX * W, ARC.toX * W) + (roll(s, 2) - 0.5) * ARC.wanderNm,
-      y: span(t, ARC.fromY * H, ARC.toY * H) + (roll(s, 3) - 0.5) * ARC.wanderNm,
+      x: span(t, ARC.fromX * W, ARC.toX * W) + (roll(s, 2) - 0.5) * ARC.wanderNm * k,
+      y: span(t, ARC.fromY * H, ARC.toY * H) + (roll(s, 3) - 0.5) * ARC.wanderNm * k,
       rx: r,
       ry: r * span(roll(s, 4), 0.65, 1.35),
       lift: span(roll(s, 5), ARC.lift[0], ARC.lift[1]),
@@ -213,20 +291,21 @@ export function makeShape(seed: number): WorldShape {
 
   // Cays and lone islands. Some will fetch up against a mainland and become a
   // headland; that is the point of a union rather than a list.
-  const scatterCount = step(roll(SLOT.scatter, 0), SCATTER.count[0], SCATTER.count[1]);
+  const scatterMany = fewer(SCATTER.count, share);
+  const scatterCount = step(roll(SLOT.scatter, 0), scatterMany[0], scatterMany[1]);
   for (let i = 0; i < scatterCount; i++) {
     const s = SLOT.scatter + 1 + i;
-    const r = span(roll(s, 1), SCATTER.r[0], SCATTER.r[1]);
+    const r = span(roll(s, 1), SCATTER.r[0] * k, SCATTER.r[1] * k);
     lobes.push({
-      x: span(roll(s, 2), WORLD_BOX.marginNm, W - WORLD_BOX.marginNm),
-      y: span(roll(s, 3), WORLD_BOX.marginNm, H - WORLD_BOX.marginNm),
+      x: span(roll(s, 2), margin, W - margin),
+      y: span(roll(s, 3), margin, H - margin),
       rx: r,
       ry: r * span(roll(s, 4), 0.6, 1.4),
       lift: span(roll(s, 5), SCATTER.lift[0], SCATTER.lift[1]),
     });
   }
 
-  return shapeOf(lobes, fieldSeed(seed, CRINKLE.field), fieldSeed(seed, CRINKLE.fineField));
+  return shapeOf(settings, margin, lobes, fieldSeed(seed, CRINKLE.field), fieldSeed(seed, CRINKLE.fineField));
 }
 
 // ---- Asking the world where the water is -----------------------------------

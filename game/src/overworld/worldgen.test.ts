@@ -22,9 +22,11 @@ import { CALENDAR, DAYS_PER_YEAR, dayInSeason, startsSeasonOn, yearOfDay } from 
 import { yearOf } from "./clock";
 import { inFlightCount } from "./dispatch";
 import { FACTIONS } from "./factions";
-import { makeMarkets, runYears } from "./market";
-import { FOUNDING, SIZES, hinterlandAt, type Place } from "./places";
+import { laneIsOpen, makeMarkets, openRoutes, runYears } from "./market";
+import { FOUNDING, SIZES, hinterlandAt, legBetween, type Place } from "./places";
 import { groundAt } from "./ground";
+import { DAY_RUN_NM, DEFAULT_WORLD, type WorldSettings } from "./shape";
+import { stepWeather } from "./weather";
 import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
 import { derive, failureWord } from "../town/sim";
 import { dependencyWord } from "../town/trade";
@@ -119,6 +121,168 @@ describe("one seed, one map", () => {
     expect(said).toContain(String(WORLD.zones.length));
     expect(said).toContain(String(CALENDAR.epochYear));
     expect(said).toMatch(/eldest was founded in \d{4} and the youngest in \d{4}/);
+  });
+});
+
+// ---- A sea you can ask for a different size of ------------------------------
+//
+// The sea's measure and its population are SETTINGS with today's values as the
+// default. What that buys is not configurability for its own sake: it is that
+// the one world this project could make was baked into five tables, and every
+// number the suite has measured was measured on a sea nobody could change
+// without a rewrite. A smaller world now costs an argument.
+//
+// AND THE SECOND HALF IS THE MORE IMPORTANT ONE. A day's run is 144 nm, a market
+// reaches two days of it, a port keeps 85 nm of coast to itself, and a passage
+// has to arrive inside the dispatch ring. Those are facts about a sea and a
+// ship, not knobs — so a request that breaks one is refused WITH THE REASON,
+// before a lobe is drawn. A world that cannot be sailed is worse than no world.
+describe("a sea you can ask for a different size of", () => {
+  // A sea a day and a half across with a handful of islands on it. MEASURED on
+  // the eight seeds below: thirty-six ports between them, none over the five
+  // asked for, no two closer than 85 nm, and every port inside every other's
+  // market.
+  //
+  // THE COUNT IS POOLED AND NOT PER SEED, because one sea's count is not a
+  // property of the settings — the coast decides how many it carries, exactly
+  // as it decides 41 to 50 of the full sea's fifty. Measured across 200 seeds
+  // of these settings: 2 ports once, 3 seventeen times, 4 eighty-three times,
+  // 5 ninety-nine times. A per-seed floor of four would therefore be a tuned
+  // constant that happens to hold for eight worlds; the pooled total is the
+  // statistic that fails when the siting actually gets worse.
+  const SMALL: WorldSettings = { widthNm: 340, heightNm: 220, isles: 6, towns: 5 };
+  const SEEDS = [1660, 20260910, 7, 99, 1, 2, 42, 777];
+  const smalls = SEEDS.map((s) => generateWorld(s, SMALL));
+
+  it("makes the sea it always made when nobody asks for another one", () => {
+    // [HC-11] plus the whole of this change's first promise: the default is
+    // today's world and not a world like it. The other 700-odd claims in this
+    // suite are the rest of the proof — every one of them is measured on the
+    // sea this line names.
+    expect(generateWorld(SEED, DEFAULT_WORLD)).toEqual(WORLD);
+    expect(DEFAULT_WORLD.widthNm).toBe(1500);
+    expect(DEFAULT_WORLD.heightNm).toBe(800);
+    expect(WORLD.places.length).toBeLessThanOrEqual(DEFAULT_WORLD.towns);
+  });
+
+  it("puts a handful of ports on a small sea, and never more than were asked for", () => {
+    expect(smalls.length).toBe(8);
+    let ports = 0;
+    for (let i = 0; i < smalls.length; i++) {
+      const n = smalls[i].places.length;
+      expect(n, `seed ${SEEDS[i]}`).toBeLessThanOrEqual(SMALL.towns);
+      expect(smalls[i].shape.widthNm, `seed ${SEEDS[i]}`).toBe(SMALL.widthNm);
+      ports += n;
+    }
+    // Thirty-six were measured; thirty is the bar. Below it the eight seas
+    // between them are not carrying the handful of ports they were asked for.
+    expect(ports).toBeGreaterThanOrEqual(30);
+  });
+
+  it("puts ports across the whole of a sea bigger than the one we have", () => {
+    // THE OTHER DIRECTION, and it is the one that catches a siting pass rolling
+    // its candidates into the default box instead of the sea it was handed: on
+    // a 2,400 nm sea, 16 to 28 of the fifty ports stand beyond x = 1,500, and
+    // with the box hardcoded exactly none of them do. A wider sea than today's
+    // is a request the generator accepts — it is refused only past the 64-day
+    // ring — so this is reachable, not hypothetical.
+    const WIDE: WorldSettings = { ...DEFAULT_WORLD, widthNm: 2400, heightNm: 1300 };
+    for (const seed of SEEDS) {
+      const beyond = generateWorld(seed, WIDE).places.filter((p) => p.x > DEFAULT_WORLD.widthNm);
+      expect(beyond.length, `seed ${seed}`).toBeGreaterThan(8);
+    }
+  });
+
+  it("draws fewer and smaller islands on a smaller sea, rather than the same ones in a box", () => {
+    // Both halves of "the composition survives a change of scale", and each is a
+    // relationship rather than a number: ask for fewer islands and fewer are
+    // drawn; ask for a smaller sea and the islands come down with it. Without
+    // the second half a 340 nm sea would be one continent with no coast on it.
+    const few = generateWorld(SEED, SMALL);
+    const many = generateWorld(SEED, { ...SMALL, isles: DEFAULT_WORLD.isles });
+    expect(few.shape.lobes.length).toBeLessThan(many.shape.lobes.length);
+    const widest = (w: typeof few) => Math.max(...w.shape.lobes.map((l) => l.rx));
+    expect(widest(few)).toBeLessThan(widest(WORLD));
+    expect(widest(many)).toBeLessThan(widest(WORLD));
+  });
+
+  it("still leaves every port a good half-day's sail clear of the next", () => {
+    // The spacing is physical and is NOT a setting: a smaller sea holds fewer
+    // ports, it does not pack them closer. Half a day's run is well below the
+    // 85 nm the siting keeps, so this fails on a crowded sea rather than on a
+    // tuning pass.
+    for (let i = 0; i < smalls.length; i++) {
+      const places = smalls[i].places;
+      for (let a = 0; a < places.length; a++) {
+        for (let b = a + 1; b < places.length; b++) {
+          expect(legBetween(places[a], places[b]), `${places[a].name} / ${places[b].name}`)
+            .toBeGreaterThan(DAY_RUN_NM * 0.5);
+        }
+      }
+    }
+  });
+
+  it("makes every port on a small sea everybody else's trading neighbour", () => {
+    // THE STATED CONSEQUENCE OF A TINY WORLD, and it is not a bug: a market
+    // reaches two days' run, so a sea small enough to cross in two days has no
+    // trade GEOGRAPHY left in it — everyone is everyone's neighbour and there is
+    // no far coast to be far from. Expected here, and the reason a world this
+    // small is a thing to watch rather than a thing to play.
+    for (let i = 0; i < smalls.length; i++) {
+      const w = smalls[i];
+      const n = w.places.length;
+      const routes = openRoutes(makeMarkets(w.places));
+      let pairs = 0;
+      for (let a = 0; a < n; a++) {
+        for (let b = a + 1; b < n; b++) {
+          expect(laneIsOpen(routes, a, b), `seed ${SEEDS[i]}: ${w.places[a].name} cannot reach ${w.places[b].name}`)
+            .toBe(true);
+          pairs++;
+        }
+      }
+      // Zero satisfies absence: a world with no pairs would pass the loop above
+      // without a single lane in it.
+      expect(pairs, `seed ${SEEDS[i]}`).toBeGreaterThanOrEqual(6);
+      expect(makeMarkets(w.places).hoods.some((h) => h.members.length === n), `seed ${SEEDS[i]}`).toBe(true);
+    }
+  });
+
+  it("refuses to crowd more ports onto a sea than its spacing can hold", () => {
+    // The packing bound, and it is arithmetic rather than a sampler giving up:
+    // ports keep 85 nm between them, so a sea of a given area has a maximum
+    // population and asking past it can never be honoured. The default sea is
+    // refused too, at a big enough number — there is nothing special about a
+    // small one.
+    expect(() => generateWorld(SEED, { ...SMALL, towns: 60 })).toThrow(/at most \d+ ports 85 nm apart/);
+    expect(() => generateWorld(SEED, { ...DEFAULT_WORLD, towns: 400 })).toThrow(/at most \d+ ports/);
+    // ...and the sea it does hold is built rather than refused.
+    expect(generateWorld(SEED, SMALL).places.length).toBeGreaterThan(0);
+  });
+
+  it("refuses a sea too wide for a dispatch to be scheduled across it", () => {
+    // The other end of the same rule. Every passage is filed in a ring of 64
+    // days' buckets, so a crossing longer than the ring is a dispatch posted
+    // into a slot nobody opens. Today's sea is twelve days corner to corner, so
+    // this refuses a sea five times over rather than the one we have.
+    expect(() => generateWorld(SEED, { ...DEFAULT_WORLD, widthNm: 9000, heightNm: 4000 }))
+      .toThrow(/days corner to corner, and a passage must arrive within 64/);
+    expect(() => generateWorld(SEED, DEFAULT_WORLD)).not.toThrow();
+  });
+
+  it("lets a small sea's weather know the sea is small", () => {
+    // Nothing outside the generator may read a world-size constant, and the
+    // storm was the last thing that did: it ran off "the edge of the world" at
+    // 1,500 nm whatever world it was in. Same storm, same day, two seas — and
+    // the small one is the one that loses it.
+    const blow = () => ({ id: 77, zone: 0, bornDay: 0, x: 1200, y: 100, dx: -1, dy: 0, severity: 0.9, trend: 0.04 });
+    const small = generateWorld(SEED, SMALL);
+    const big = generateWorld(SEED);
+    small.storms.push(blow());
+    big.storms.push(blow());
+    stepWeather(small);
+    stepWeather(big);
+    expect(small.storms.some((s) => s.id === 77)).toBe(false);
+    expect(big.storms.some((s) => s.id === 77)).toBe(true);
   });
 });
 

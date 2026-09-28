@@ -25,29 +25,76 @@ import { stepWorks } from "../town/works";
 import { makeWorld, yearOf, type World } from "./clock";
 import { yearOfDay } from "./calendar";
 import { makeZones, CLIMATES } from "./climate";
+import { RING_DAYS, passageDays } from "./dispatch";
 import { FACTIONS, makeNations } from "./factions";
 import { groundAt } from "./ground";
 import { makeMarkets, noWars, openRoutes, runDays, type Markets, type Routes, type Wars } from "./market";
-import { makePlaces, SIZES, type Place } from "./places";
+import { makePlaces, SITING, SIZES, type Place } from "./places";
 import type { Land } from "../town/land";
-import { makeShape } from "./shape";
+import { DEFAULT_WORLD, distanceNm, makeShape, type WorldSettings } from "./shape";
 import { skyOf, type Sky } from "./weather";
 
 // ---- Generating -----------------------------------------------------------
+//
+// THE SETTINGS ARE AN ARGUMENT WITH A DEFAULT AND NOTHING ELSE. `generateWorld(seed)`
+// is the sea every number in this project was measured on; `generateWorld(seed, {...})`
+// is another one. There is no settings file and no preset — see `WorldSettings`.
 
-export function generateWorld(seed: number): World {
+export function generateWorld(seed: number, settings: WorldSettings = DEFAULT_WORLD): World {
+  refuseTheImpossible(settings);
   const world = makeWorld(seed);
-  world.shape = makeShape(world.seed);
-  world.zones = makeZones(world.seed);
+  world.shape = makeShape(world.seed, settings);
+  world.zones = makeZones(world.seed, settings);
   world.nations = makeNations();
   // The places take the nations because seating a crown is part of deciding who
   // holds what: the five great harbours ARE the five seats ([HC-39]).
-  const sited = makePlaces(world.seed, world.shape, world.zones, world.nations);
+  const sited = makePlaces(world.seed, world.shape, world.zones, world.nations, settings.towns);
   world.places = sited.places;
   // ...and then the one decision no single coast can make for itself, read off
   // the same cut the classing was decided on.
   grantTimber(world, sited.land);
   return world;
+}
+
+// ---- A world the physics will not build ------------------------------------
+//
+// A SETTING IS A REQUEST, AND TWO REQUESTS CANNOT BE HONOURED AT ALL. Both are
+// arithmetic against a physical fact, both are answered before a single lobe is
+// drawn, and both say what is wrong in the sentence rather than leaving a broken
+// world for a test forty files away to trip over. THIS IS THE ONE THING IN THE
+// PROJECT THAT THROWS, and it does not cross [HC-1], which is about the PLAYER:
+// no engine may ever need his attention to proceed. Nobody is playing yet —
+// there is no world, only a request for one that no sea could satisfy, and the
+// caller is the programmer who wrote the numbers.
+//
+// The most ports a sea can hold, if the coast ran wherever it was needed: ports
+// keep `minSpacingNm` between them, so each one owns a hexagon of that width and
+// the densest possible packing is the sea's area divided by it. A REAL coastline
+// carries far fewer — this sea's own carries a quarter of its 191 — so passing
+// this is not a promise that the siting will fill the order, only that it is not
+// arithmetically hopeless.
+const mostPorts = (w: WorldSettings): number =>
+  Math.floor((w.widthNm * w.heightNm) / (SITING.minSpacingNm * SITING.minSpacingNm * Math.sqrt(3) * 0.5));
+
+function refuseTheImpossible(w: WorldSettings): void {
+  const most = mostPorts(w);
+  if (w.towns > most) {
+    throw new Error(
+      `a sea of ${w.widthNm} by ${w.heightNm} nm holds at most ${most} ports ` +
+        `${SITING.minSpacingNm} nm apart, and ${w.towns} were asked for`,
+    );
+  }
+  // ...and the other end: every passage in the world is filed in a ring of
+  // `RING_DAYS` buckets, so a crossing that takes longer than the ring is a
+  // dispatch posted into a slot nobody opens. The longest any sea can ask for is
+  // its own diagonal.
+  const days = passageDays(distanceNm(0, 0, w.widthNm, w.heightNm));
+  if (days >= RING_DAYS) {
+    throw new Error(
+      `a sea of ${w.widthNm} by ${w.heightNm} nm is ${days} days corner to corner, ` +
+        `and a passage must arrive within ${RING_DAYS}`,
+    );
+  }
 }
 
 // ---- Every market can reach timber -----------------------------------------

@@ -42,7 +42,7 @@ import {
   type FactionId, type Nation, type PoolId,
 } from "./factions";
 import {
-  WORLD_BOX, DAY_RUN_NM, RAYS, coastAlong, distanceNm, isLandAt, seawardAt, shelterAt,
+  DAY_RUN_NM, DEFAULT_WORLD, RAYS, coastAlong, distanceNm, isLandAt, seawardAt, shelterAt,
   type WorldShape,
 } from "./shape";
 
@@ -146,7 +146,11 @@ export type PurposeId = keyof typeof PURPOSES;
 export const CLASSING = { townShare: 0.3 } as const;
 
 export const SITING = {
-  target: 50, // "a number worth honouring rather than exceeding"
+  // HOW MANY PORTS IS NOT HERE ANY MORE — it is `WorldSettings.towns`, because a
+  // sea's population is something a caller asks for. What is left in this table
+  // is physical: how much coast a port keeps to itself, how far it looks, and
+  // what it needs to see. None of it is a knob.
+  //
   // No two ports share a beach. MEASURED against this world's own coastlines,
   // which is the only way to set it: at 70 nm every seed fills its fifty and the
   // nearest neighbour is half a day off; at 130 nm the coast only carries
@@ -271,13 +275,15 @@ function standsOnACoast(s: WorldShape, x: number, y: number): boolean {
 // [P-14] is not violated by the rejected attempts: there is no list to remove
 // them from — they do not exist until they are rolled — and this runs once per
 // world, never once per tick ([P-2]).
-export function sitePlaces(seed: number, s: WorldShape, target: number = SITING.target): { x: number; y: number }[] {
+export function sitePlaces(seed: number, s: WorldShape, target: number): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = [];
   const minSq = SITING.minSpacingNm * SITING.minSpacingNm;
   for (let a = 0; a < SITING.attempts && out.length < target; a++) {
     const roll = (attr: number) => rollOf(seed, CHANNEL.worldgen, SLOT.site + a, attr);
-    const fromX = roll(0) * WORLD_BOX.widthNm;
-    const fromY = roll(1) * WORLD_BOX.heightNm;
+    // The sea to roll a candidate into is the shape's own, not a constant: the
+    // shape IS the box ([P-47]), so a smaller world cannot be rolled at.
+    const fromX = roll(0) * s.widthNm;
+    const fromY = roll(1) * s.heightNm;
     const ray = RAYS[Math.floor(roll(2) * RAYS.length)];
     const hit = coastAlong(s, fromX, fromY, ray.dx, ray.dy, SITING.marchNm);
     if (!hit) continue;
@@ -392,8 +398,10 @@ export interface Sited {
   land: Land[]; // parallel to `places`, cut before any stand of timber was granted
 }
 
-export function makePlaces(seed: number, s: WorldShape, zones: Zone[], nations: Nation[]): Sited {
-  const sites = sitePlaces(seed, s);
+export function makePlaces(
+  seed: number, s: WorldShape, zones: Zone[], nations: Nation[], towns: number = DEFAULT_WORLD.towns,
+): Sited {
+  const sites = sitePlaces(seed, s, towns);
 
   // 3. What the map gives each of them. All four are pure readings of the
   //    field at the position, so nothing here is a decision yet.

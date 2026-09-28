@@ -51,7 +51,7 @@ import { CHANNEL, rollOf, seedFor } from "./chance";
 import { baselineOf, climateOf, exposureOf, stormTrack, windOf, zoneAt, type Climate } from "./climate";
 import { fbm } from "./noise";
 import type { Place } from "./places";
-import { PASSAGE, WORLD_BOX, distanceNm, isLandAt } from "./shape";
+import { PASSAGE, distanceNm, isLandAt } from "./shape";
 
 // ---- Small exact helpers ---------------------------------------------------
 // Every one of these is `+ - * /` and `Math.floor`/`Math.sqrt`, all exactly
@@ -382,8 +382,8 @@ function alive(w: World, s: Storm): boolean {
   if (
     s.x < -STORM.strayNm ||
     s.y < -STORM.strayNm ||
-    s.x > WORLD_BOX.widthNm + STORM.strayNm ||
-    s.y > WORLD_BOX.heightNm + STORM.strayNm
+    s.x > w.shape.widthNm + STORM.strayNm ||
+    s.y > w.shape.heightNm + STORM.strayNm
   ) {
     return false;
   }
