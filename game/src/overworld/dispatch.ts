@@ -161,7 +161,7 @@ export interface Dispatch {
   // What the payload carries: coin, or garrison strength, or the strength of a
   // landing. A charter carries nothing — the promotion IS the payload.
   readonly amount: number;
-  // Which good, for a cargo — a trade class code (`CLASSES` in town/trade.ts).
+  // Which good, for a cargo — an index into `GOOD_ORDER` (town/trade.ts).
   // -1 for the four war-currencies, which carry no goods at all.
   readonly cargo: number;
 

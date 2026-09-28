@@ -243,8 +243,40 @@ const ROWS = {
   //     and 270 cotton walks stand against 20 / 129 / 28 / 269 at the pit's 10.
   sawpit: { label: "sawpits", cls: "capital", cost: 260, produces: "timber", needsGround: null,
     food: 0, trade: 14, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
-  caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "cane", needsGround: null,
+  caneField: { label: "cane fields", cls: "capital", cost: 220, produces: "sugar", needsGround: null,
     food: 0, trade: 10, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  //     FOUR WORKS ARRIVED WITH THE NAMED GOODS, AND EVERY ONE OF THEM EXISTS
+  //     TO GIVE A GOOD A SOURCE. A good nothing on the map produces has
+  //     unsatisfiable demand for ever, so the rule the goods table states —
+  //     ship no good without a source — is enforced here, where the source is.
+  //     Stone and salt had a hex and a terrain kind and no way to work them
+  //     (rocky ground and the salt pans were inert); tobacco and cacao have
+  //     affinities on ground the generator already paints.
+  //
+  //     THEY LENGTHEN THE CATALOGUE AND NOT THE MENU, which is the property
+  //     §2.12.14 says this direction is for: each names a produce, so
+  //     `CHOOSABLE` never sees it and the governor still weighs eight things.
+  //
+  //     THE NUMBERS ARE SET BY ANALOGY AND NOT BY MEASUREMENT, and they are
+  //     the first thing to move if the world reads wrong. A quarry is a
+  //     heavier, duller sawpit; salt pans are cheap to raise and want few men,
+  //     and their crop is priced as victuals, so the figure is a bulk one like
+  //     grain's; tobacco sits between cane and cotton; cacao is a slow tree
+  //     crop, dearest of the luxuries to establish.
+  //     THE QUARRY STANDS ON WHAT THE GROUND BEARS, like every other focus
+  //     expression — rocky ground, which was inert, and the timbered hills,
+  //     which have always borne stone as well as timber. Naming `rockyGround`
+  //     on the row was tried and is worse: a hill that rolls stone-ideal is
+  //     then focused on a produce no work can express, and forty-nine of them
+  //     stood focused and empty.
+  quarry: { label: "quarries", cls: "capital", cost: 240, produces: "stone", needsGround: null,
+    food: 0, trade: 8, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  saltWorks: { label: "salt pans", cls: "capital", cost: 180, produces: "salt", needsGround: null,
+    food: 0, trade: 18, defence: 0, hands: 7, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  tobaccoFields: { label: "tobacco fields", cls: "capital", cost: 210, produces: "tobacco", needsGround: null,
+    food: 0, trade: 7, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
+  cacaoGrove: { label: "cacao groves", cls: "capital", cost: 230, produces: "cacao", needsGround: null,
+    food: 0, trade: 6, defence: 0, hands: 8, serves: null, servesFor: 0, max: Infinity, zone: "beyondThePale" },
   //     A FARM ON A TILE GROWS FOOD FOR SALE, NOT DINNER (KAN-137, ratified
   //     2026-09-23): *"Fields don't add to their running stores — just boosts
   //     trade. The hex tiles are just for trade boosting, not town running."* So

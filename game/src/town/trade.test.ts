@@ -10,7 +10,7 @@
 import { describe, it, expect } from "vitest";
 import { derive, settleSeason, stepSeason, stepSeasons, stepYears, takeWeather, carryingCapacity, prosperityTarget } from "./sim";
 import { CATALOGUE, raise } from "./works";
-import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, quaysideOf, sellTo, DEPENDENCY_CLAUSE } from "./trade";
+import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, quaysideOf, sellTo, tierTotal, GOOD_AT, TIER_AT, rankOf, DEPENDENCY_CLAUSE, type TradeClass } from "./trade";
 import { TRADE, WEALTH, WORKS } from "./constants";
 import { focusWants, governorTurn, permitsFocus, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
@@ -40,9 +40,20 @@ function open(town: Town): Town {
 
 // The world's half of the season, done by hand: the clearing found this much for
 // the place to buy, at this price.
-function clearedWith(town: Town, cls: number, allotted: number, price = 1): Town {
-  town.market.allotted[cls] = allotted;
-  town.market.price[cls] = price;
+//
+// IT TAKES A TIER AND LANDS THE TIER'S FIRST GOOD. Every claim below that uses
+// it is a claim about bread or about planks, never about wheat in particular,
+// and the market prices GOODS now — so the price is written on the whole tier,
+// which is what "the victuals price is 0.15" meant when it traded classes.
+function clearedWith(town: Town, cls: TradeClass, allotted: number, price = 1): Town {
+  town.market.allotted[TIER_AT[rankOf(cls)]] = allotted;
+  return priced(town, cls, price);
+}
+
+// A whole tier at one price — see above.
+function priced(town: Town, cls: TradeClass, price: number): Town {
+  const r = rankOf(cls);
+  for (let g = TIER_AT[r]; g < TIER_AT[r + 1]; g++) town.market.price[g] = price;
   return town;
 }
 
@@ -78,8 +89,8 @@ describe("access is reach times readiness", () => {
     reaching(town, 0);
     const after = derive(town);
     expect(after.access).toBe(0);
-    expect(after.commerce.offer[1]).toBe(0);
-    expect(after.commerce.want[0]).toBe(0);
+    expect(tierTotal(after.commerce.offer, "materials")).toBe(0);
+    expect(tierTotal(after.commerce.want, "victuals")).toBe(0);
     expect(after.commerce.earned).toBe(0);
   });
 
@@ -113,7 +124,7 @@ describe("access is reach times readiness", () => {
     raise(town, "caneField", DAY0);
     stepSeason(town, AFTER_OPENING);
     const before = derive(town);
-    expect(before.commerce.offer[2] + before.commerce.want[1]).toBeGreaterThan(0);
+    expect(tierTotal(before.commerce.offer, "luxury") + tierTotal(before.commerce.want, "materials")).toBeGreaterThan(0);
 
     reaching(town, 0);
     const after = derive(town);
@@ -216,8 +227,8 @@ describe("wealth is earned, not emitted", () => {
     stepSeason(rich, AFTER_OPENING);
     stepSeason(poor, AFTER_OPENING);
 
-    rich.market.price[1] = 2;
-    poor.market.price[1] = 0.1;
+    rich.market.price[GOOD_AT.timber] = 2;
+    poor.market.price[GOOD_AT.timber] = 0.1;
 
     expect(derive(rich).commerce.earned).toBeGreaterThan(derive(poor).commerce.earned);
   });
@@ -229,8 +240,8 @@ describe("wealth is earned, not emitted", () => {
     stepYears(town, 5);
     const d = derive(town);
     expect(d.access).toBe(0);
-    expect(d.commerce.offer[0]).toBe(0);
-    expect(d.commerce.want[0]).toBe(0);
+    expect(tierTotal(d.commerce.offer, "victuals")).toBe(0);
+    expect(tierTotal(d.commerce.want, "victuals")).toBe(0);
     expect(d.commerce.earned).toBe(0);
   });
 
@@ -246,7 +257,7 @@ describe("wealth is earned, not emitted", () => {
     const after = derive(town);
 
     expect(after.access).toBeLessThan(before.access);
-    expect(after.commerce.offer[1]).toBeLessThan(before.commerce.offer[1]);
+    expect(tierTotal(after.commerce.offer, "materials")).toBeLessThan(tierTotal(before.commerce.offer, "materials"));
     expect(after.commerce.earned).toBeLessThan(before.commerce.earned);
   });
 
@@ -265,7 +276,7 @@ describe("the coin ceiling", () => {
     // coin, access, ground for houses and hands.
     const fed = open(mixedTown({ population: 200, wealth: 2000 }));
     const own = carryingCapacity(fed);
-    fed.market.bought[0] = own * 0.5;
+    fed.market.bought[GOOD_AT.grain] = own * 0.5;
     expect(carryingCapacity(fed)).toBeGreaterThan(own);
   });
 
@@ -283,8 +294,8 @@ describe("the coin ceiling", () => {
         raise(t, "sawpit", DAY0);
         raise(t, "sawpit", DAY0);
       }
-      t.market.price[0] = TRADE.basePrice[0];
-      return derive(t).commerce.want[0];
+      priced(t, "victuals", TRADE.basePrice[0]);
+      return derive(t).commerce.want[GOOD_AT.grain];
     };
     expect(build(true)).toBeGreaterThan(build(false));
   });
@@ -296,7 +307,10 @@ describe("the coin ceiling", () => {
     raise(town, "provisionGround", DAY0);
     stepSeason(town, AFTER_OPENING);
     const d = derive(town);
-    expect(d.commerce.want[0]).toBe(0);
+    // ITS GRAIN WANT, and the good is the point: a farming town still buys the
+    // fish and the salt it has no ground for, which is what named goods changed.
+    // What it will never do is ask for corn to pay for with corn.
+    expect(d.commerce.want[GOOD_AT.grain]).toBe(0);
   });
 });
 
@@ -321,7 +335,7 @@ describe("the ceiling is fragile, and the raid consequence IS the ceiling", () =
   // caller that keeps running the town does not silently restart its clock.
   const fedFor = (town: Town, seasons: number, from = AFTER_OPENING): number => {
     for (let i = 0; i < seasons; i++) {
-      clearedWith(town, 0, 1600, TRADE.basePrice[0]);
+      clearedWith(town, "victuals", 1600, TRADE.basePrice[0]);
       stepSeason(town, from + i * SEASON);
     }
     return from + seasons * SEASON;
@@ -330,7 +344,7 @@ describe("the ceiling is fragile, and the raid consequence IS the ceiling", () =
   it("carries far more souls on bought bread than its own ground could feed", () => {
     const town = seaFed();
     fedFor(town, 200);
-    expect(derive(town).commerce.produced[0]).toBe(0); // not one acre of its own
+    expect(tierTotal(derive(town).commerce.produced, "victuals")).toBe(0); // not one acre of its own
     expect(town.population).toBeGreaterThan(450); // and far past the old cap
   });
 
@@ -343,7 +357,7 @@ describe("the ceiling is fragile, and the raid consequence IS the ceiling", () =
     stepSeasons(town, 200, quayStops); // nothing comes over the beach
 
     expect(derive(town).access).toBe(0);
-    expect(derive(town).commerce.want[0]).toBe(0); // it cannot even ask
+    expect(tierTotal(derive(town).commerce.want, "victuals")).toBe(0); // it cannot even ask
     expect(town.population).toBeLessThan(before * 0.2);
   });
 });
@@ -353,7 +367,7 @@ describe("bread before batteries", () => {
     // [HC-78]. The import is inside the flow, not beside it, so a town that
     // spends all it makes on corn never reaches its wall.
     const town = open(mixedTown({ population: 300, wealth: 1000 }));
-    clearedWith(town, 0, 400, 1);
+    clearedWith(town, "victuals", 400, 1);
     const wealthBefore = town.wealth;
     stepSeason(town, AFTER_OPENING);
     expect(town.market.paid).toBeGreaterThan(0);
@@ -362,10 +376,10 @@ describe("bread before batteries", () => {
 
   it("goes without rather than into debt when the corn costs more than it has", () => {
     const town = open(mixedTown({ population: 300, wealth: 40 }));
-    clearedWith(town, 0, 5000, 1);
+    clearedWith(town, "victuals", 5000, 1);
     stepSeason(town, AFTER_OPENING);
     expect(town.wealth).toBeGreaterThanOrEqual(0);
-    expect(town.market.bought[0]).toBeLessThan(5000);
+    expect(town.market.bought[GOOD_AT.grain]).toBeLessThan(5000);
   });
 
   it("buys its bread before its timber when it can afford only one", () => {
@@ -379,12 +393,12 @@ describe("bread before batteries", () => {
     // funded by the standing quayside allowance, which is exactly the coin from
     // nowhere the story removed.
     const town = open(mixedTown({ population: 300, wealth: 120 }));
-    town.market.allotted[0] = 100;
-    town.market.allotted[1] = 100;
-    town.market.price[0] = 1;
-    town.market.price[1] = 1;
+    town.market.allotted[GOOD_AT.grain] = 100;
+    town.market.allotted[GOOD_AT.timber] = 100;
+    priced(town, "victuals", 1);
+    priced(town, "materials", 1);
     stepSeason(town, AFTER_OPENING);
-    expect(town.market.bought[0]).toBeGreaterThan(town.market.bought[1]);
+    expect(town.market.bought[GOOD_AT.grain]).toBeGreaterThan(town.market.bought[GOOD_AT.timber]);
   });
 });
 
@@ -395,7 +409,7 @@ describe("the market term scores what a work would FETCH", () => {
     // into an argument about this place.
     const build = (price: number) => {
       const t = open(mixedTown({ population: 300, wealth: 5000 }));
-      t.market.price[1] = price;
+      t.market.price[GOOD_AT.timber] = price;
       return scoreWork(t, "sawpit", AFTER_OPENING).find((x) => x.key === "market")!.weight;
     };
     expect(build(2)).toBeGreaterThan(build(0.3));
@@ -435,7 +449,7 @@ describe("the market term scores what a work would FETCH", () => {
     for (const w of town.works) if (w.kind === "gardenPlots") w.condition = "ruin";
     stepSeason(town, AFTER_OPENING);
 
-    town.market.price[2] = 4; // sugar is dear
+    town.market.price[GOOD_AT.sugar] = 4; // sugar is dear
     const cane = scoreWork(town, "caneField", AFTER_OPENING).find((t) => t.key === "market")!.weight;
     const farm = scoreWork(town, "provisionGround", AFTER_OPENING).find((t) => t.key === "need")!.weight;
     expect(cane).toBeGreaterThan(0);
@@ -451,24 +465,28 @@ describe("the market term scores what a work would FETCH", () => {
     // story. It used to read "on access alone", and it was true: the term was
     // `trade x access`, so a hamlet that had raised a customs house and a port
     // of fifteen hundred bid identically for the next one.
-    const town = open(mixedTown({ population: 300, wealth: 5000 }));
+    // A HAMLET, AND THE SIZE IS LOAD-BEARING SINCE GUNPOWDER AND RUM ARRIVED:
+    // a town makes both out of being a town, so any place past `townMadeFrom`
+    // always has SOMETHING on its quay and "nothing crosses" is no longer a
+    // thing a great port can be.
+    const town = open(mixedTown({ population: 150, wealth: 5000 }));
     const marketWeight = (t: Town) => scoreWork(t, "customsHouse", AFTER_OPENING).find((x) => x.key === "market")?.weight ?? 0;
     // Nothing crosses this quay, so there is no argument for another berth.
     expect(derive(town).commerce.traffic).toBe(0);
     expect(marketWeight(town)).toBe(0);
     // Land a cargo on it and there is.
-    town.market.bought[0] = 200;
-    town.market.price[0] = 0.5;
+    town.market.bought[GOOD_AT.grain] = 200;
+    priced(town, "victuals", 0.5);
     const busier = marketWeight(town);
     expect(busier).toBeGreaterThan(0);
     // ...and the busier it gets the more it is worth, which a standing allowance
     // could never say.
-    town.market.bought[0] = 800;
+    town.market.bought[GOOD_AT.grain] = 800;
     expect(marketWeight(town)).toBeGreaterThan(busier);
   });
 });
 
-describe("a cargo's class comes off the ground", () => {
+describe("a cargo's good comes off the ground", () => {
   // §2.12.13. The class a cargo lands in used to be a hand-written column on the
   // WORK — so a town's place in [HC-77]'s pyramid was a property of which
   // buildings its governor happened to pick. Keyed to the PRODUCE, it becomes a
@@ -481,33 +499,37 @@ describe("a cargo's class comes off the ground", () => {
     // cargo comes out in two different columns.
     //
     // THE ORACLE IS THE SPEC'S OWN TABLE, written out here rather than read off
-    // `PRODUCE_CLASS`: victuals = food · fish · grain, materials = timber ·
-    // stone, luxury = cane · cotton.
+    // `PRODUCE_GOOD`. Since the market started trading named goods the claim is
+    // sharper than it was: it is not that the two towns land in different
+    // COLUMNS, it is that one ships sugar and the other ships timber.
     const on = (terrain: "caneFlats" | "cottonGround" | "timberedHills", bears: Parameters<typeof reg>[3]) =>
       townOf([reg(0, terrain, RING1.slice(0, 5), bears)], { population: 200, wealth: 9000 });
-    const canes = on("caneFlats", { bears: { cane: "ideal" } });
+    const canes = on("caneFlats", { bears: { sugar: "ideal" } });
     const cotton = on("cottonGround", { bears: { cotton: "ideal" } });
     const hills = on("timberedHills", { bears: { timber: "ideal" } });
 
-    expect(cargoOf("caneField")).toBe("luxury");
-    expect(cargoOf("cottonWalk")).toBe("luxury");
-    expect(cargoOf("sawpit")).toBe("materials");
-    expect(cargoOf("grainFields")).toBe("victuals");
-    expect(cargoOf("provisionGround")).toBe("victuals");
-    expect(cargoOf("fishingShacks")).toBe("victuals");
+    expect(cargoOf("caneField")).toBe("sugar");
+    expect(cargoOf("cottonWalk")).toBe("cotton");
+    expect(cargoOf("sawpit")).toBe("timber");
+    expect(cargoOf("grainFields")).toBe("grain");
+    expect(cargoOf("provisionGround")).toBe("grain"); // provisions are bread at the quay
+    expect(cargoOf("fishingShacks")).toBe("fish");
 
     // ...and the ledger agrees with the table, which is the half a comment
     // cannot assert. Same catalogue, same population, different coast.
     raise(canes, "caneField", DAY0);
     raise(cotton, "cottonWalk", DAY0);
     raise(hills, "sawpit", DAY0);
-    const luxuryOf = (t: Town) => derive(t).commerce.produced[2];
-    const materialsOf = (t: Town) => derive(t).commerce.produced[1];
-    expect(luxuryOf(canes)).toBeGreaterThan(0);
-    expect(luxuryOf(cotton)).toBeGreaterThan(0);
-    expect(materialsOf(cotton)).toBe(0);
-    expect(materialsOf(hills)).toBeGreaterThan(0);
-    expect(luxuryOf(hills)).toBe(0);
+    const made = (t: Town, g: keyof typeof GOOD_AT) => derive(t).commerce.produced[GOOD_AT[g]];
+    expect(made(canes, "sugar")).toBeGreaterThan(0);
+    expect(made(cotton, "cotton")).toBeGreaterThan(0);
+    expect(made(hills, "timber")).toBeGreaterThan(0);
+    // ...and NOT each other's, which is the half that fails the day the name is
+    // thrown away at the quay again. Two luxury towns are two different towns.
+    expect(made(cotton, "sugar")).toBe(0);
+    expect(made(canes, "cotton")).toBe(0);
+    expect(made(hills, "sugar")).toBe(0);
+    expect(made(canes, "timber")).toBe(0);
   });
 
   it("gives a work that grows nothing no cargo class, and it earns a cut of the traffic", () => {
@@ -674,8 +696,8 @@ describe("the quayside cut is a share of what crossed the quay", () => {
     // Two ports ship the identical timber; one of them is where timber is dear.
     const cheap = port();
     const dear = port();
-    dear.market.price[1] = cheap.market.price[1] * 3;
-    expect(derive(cheap).commerce.offer[1]).toBeCloseTo(derive(dear).commerce.offer[1], 9);
+    dear.market.price[GOOD_AT.timber] = cheap.market.price[GOOD_AT.timber] * 3;
+    expect(derive(cheap).commerce.offer[GOOD_AT.timber]).toBeCloseTo(derive(dear).commerce.offer[GOOD_AT.timber], 9);
     expect(cut(dear)).toBeGreaterThan(cut(cheap));
   });
 
@@ -686,8 +708,8 @@ describe("the quayside cut is a share of what crossed the quay", () => {
     // ceiling — the sea-fed port whose own quay funds its grain.
     const landing = port();
     const empty = cut(landing);
-    landing.market.bought[0] = 400;
-    landing.market.price[0] = 0.2;
+    landing.market.bought[GOOD_AT.grain] = 400;
+    priced(landing, "victuals", 0.2);
     expect(cut(landing)).toBeGreaterThan(empty);
   });
 });
@@ -782,7 +804,7 @@ describe("a town is never short of its own building materials", () => {
     // into `startable` fails here.
     const town = stonePoor();
     const before = town.works.length;
-    expect(town.market.bought[1]).toBe(0); // not a plank came in
+    expect(tierTotal(town.market.bought, "materials")).toBe(0); // not a plank came in
     expect(town.wealth).toBeGreaterThan(100000);
 
     // A SEASON IS ONE DECISION AND THERE ARE THREE KINDS OF IT, so "he builds"
@@ -806,7 +828,7 @@ describe("a town is never short of its own building materials", () => {
     wall.idleSinceDay = DAY0;
     stepSeason(town, AFTER_OPENING);
 
-    expect(town.market.bought[1]).toBe(0);
+    expect(tierTotal(town.market.bought, "materials")).toBe(0);
     let mended = false;
     for (let i = 0; i < 12 && !mended; i++) {
       governorTurn(town, AFTER_OPENING + i * SEASON);
@@ -823,8 +845,8 @@ describe("a town is never short of its own building materials", () => {
     // are what make timber a trade at all.
     const town = stonePoor();
     const d = derive(town);
-    expect(d.commerce.consumed[1]).toBeGreaterThan(0); // it still owes a bill
-    expect(d.commerce.want[1]).toBeGreaterThan(0); // ...and still asks for the planks
+    expect(tierTotal(d.commerce.consumed, "materials")).toBeGreaterThan(0); // it still owes a bill
+    expect(d.commerce.want[GOOD_AT.timber]).toBeGreaterThan(0); // ...and still asks for the planks
   });
 
   it("never gates the hamlet floor — people roof their own houses", () => {
@@ -838,7 +860,10 @@ describe("a town is never short of its own building materials", () => {
 
 describe("luxury is a need with teeth", () => {
   it("goes short without it, and says so as a number rather than a shrug", () => {
-    const town = open(mixedTown({ population: 300, wealth: 3000 }));
+    // A HAMLET, because a town of any size distils its own rum ("a property of
+    // the town", not a thing made out of sugar) and so is never wholly without
+    // comfort. Below `townMadeFrom` it has no still and nothing to buy with.
+    const town = open(mixedTown({ population: 150, wealth: 3000 }));
     stepSeason(town, AFTER_OPENING);
     expect(derive(town).commerce.luxuryShort).toBe(1); // no cane, no sugar, no silk
   });
@@ -849,11 +874,11 @@ describe("luxury is a need with teeth", () => {
     const grown = open(mixedTown({ population: 300, wealth: 9000 }));
     raise(grown, "caneField", DAY0);
     stepSeason(grown, AFTER_OPENING);
-    expect(derive(grown).commerce.produced[2]).toBeGreaterThan(0);
+    expect(tierTotal(derive(grown).commerce.produced, "luxury")).toBeGreaterThan(0);
 
     const bought = open(mixedTown({ population: 300, wealth: 9000 }));
     stepSeason(bought, AFTER_OPENING);
-    bought.market.bought[2] = 100;
+    bought.market.bought[GOOD_AT.sugar] = 100;
     expect(derive(bought).commerce.luxuryShort).toBe(0);
   });
 
@@ -864,7 +889,7 @@ describe("luxury is a need with teeth", () => {
     const with_ = open(mixedTown({ population: 300, wealth: 3000 }));
     stepSeason(without, AFTER_OPENING);
     stepSeason(with_, AFTER_OPENING);
-    with_.market.bought[2] = 100;
+    with_.market.bought[GOOD_AT.sugar] = 100;
 
     const dw = derive(without);
     const dh = derive(with_);
@@ -889,8 +914,8 @@ describe("a town fed from the sea is not a town on its knees", () => {
     // The fed town's fields are taken away and the shipping makes up the whole
     // difference: same souls, same coin, bread off a ship.
     for (const w of fed.works) if (w.kind === "gardenPlots") w.condition = "ruin";
-    clearedWith(fed, 0, 400, 0.25);
-    fed.market.bought[0] = 400;
+    clearedWith(fed, "victuals", 400, 0.25);
+    fed.market.bought[GOOD_AT.grain] = 400;
 
     const df = derive(fed);
     const dm = derive(own);
@@ -898,6 +923,50 @@ describe("a town fed from the sea is not a town on its knees", () => {
     const gap = prosperityTarget(own, dm) - prosperityTarget(fed, df);
     expect(gap).toBeGreaterThan(0); // it costs it something...
     expect(gap).toBeLessThan(20); // ...but nothing like a collapse. MILD ([HC-79]).
+  });
+});
+
+
+describe("a town names what it ships and what it lacks", () => {
+  // Ratified 2026-09-28: the market trades named goods and the three classes
+  // survive only as their tier. These are the two sentences the classes could
+  // not say at all.
+
+  it("has timber to spare and wants grain in the same season", () => {
+    // A timber coast with not one acre that will bear corn. Its quay shows both
+    // halves at once and names each of them — and it asks for NO timber, which
+    // is the half a class could never express: a town with a surplus of its own
+    // materials still owed a materials bill, and the two cancelled.
+    const town = open(seaTown({ population: 200, wealth: 9000 }));
+    raise(town, "sawpit", DAY0);
+    stepSeason(town, AFTER_OPENING);
+    const c = derive(town).commerce;
+
+    expect(c.offer[GOOD_AT.timber]).toBeGreaterThan(0); // timber to spare...
+    expect(c.want[GOOD_AT.grain]).toBeGreaterThan(0); // ...and corn to find
+    expect(c.want[GOOD_AT.timber]).toBe(0); // it never asks for what it cuts
+  });
+
+  it("is short of grain and not short of the fish it catches itself", () => {
+    // "A town is short of GRAIN, not short of victuals." The same place asks for
+    // one victual by name and not the other, which is only a sentence at all
+    // once the goods have names.
+    //
+    // ITS FIELDS ARE TAKEN AND ITS REEF IS LEFT, which is the input that tells
+    // the right answer from the plausible one: a town short of everything would
+    // satisfy "wants grain" without saying anything about names.
+    const town = open(mixedTown({ population: 200, wealth: 9000 }));
+    stepSeason(town, AFTER_OPENING);
+    for (const w of town.works) if (w.kind === "gardenPlots") w.condition = "ruin";
+    const c = derive(town).commerce;
+
+    expect(c.produced[GOOD_AT.fish]).toBeGreaterThan(0); // the reef is still worked
+    expect(c.produced[GOOD_AT.grain]).toBe(0); // the fields are gone
+    expect(c.want[GOOD_AT.grain]).toBeGreaterThan(0);
+    expect(c.want[GOOD_AT.fish]).toBe(0);
+    // ...and the tier it is short of is still victuals, which is what the gate
+    // and the population both go on reading ([HC-77], `carryingCapacity`).
+    expect(tierTotal(c.want, "victuals")).toBeGreaterThan(0);
   });
 });
 
@@ -911,30 +980,33 @@ describe("the port seam", () => {
     return t;
   };
 
-  it("answers what a good costs here, and only here", () => {
+  it("answers what a NAMED good costs here, and only here", () => {
     const town = opened();
-    town.market.price[0] = 0.4;
-    expect(priceOf(town, "victuals")).toBe(0.4);
-    expect(priceOf(town, "materials")).not.toBe(0.4);
+    town.market.price[GOOD_AT.grain] = 0.4;
+    expect(priceOf(town, "grain")).toBe(0.4);
+    // Not its neighbour in its own tier, and not a good in another tier: the
+    // quay prices grain, never "victuals".
+    expect(priceOf(town, "fish")).not.toBe(0.4);
+    expect(priceOf(town, "timber")).not.toBe(0.4);
   });
 
   it("softens a price when cargo is landed and hardens it when cargo is lifted", () => {
     const landed = opened();
     const lifted = opened();
-    const before = landed.market.price[1];
-    sellTo(landed, "materials", 20, derive(landed));
-    buyFrom(lifted, "materials", 20, derive(lifted));
-    expect(landed.market.price[1]).toBeLessThan(before);
-    expect(lifted.market.price[1]).toBeGreaterThan(before);
+    const before = landed.market.price[GOOD_AT.timber];
+    sellTo(landed, "timber", 20, derive(landed));
+    buyFrom(lifted, "timber", 20, derive(lifted));
+    expect(landed.market.price[GOOD_AT.timber]).toBeLessThan(before);
+    expect(lifted.market.price[GOOD_AT.timber]).toBeGreaterThan(before);
   });
 
   it("will not let one man buy out a town, however much he lands", () => {
     // [HC-88]. He is a small fish, and the cap is what keeps him one — otherwise
     // the first thing anyone discovers is the exploit.
     const town = opened();
-    const before = town.market.price[1];
-    buyFrom(town, "materials", 1e9, derive(town));
-    expect(town.market.price[1]).toBeLessThanOrEqual(before * (1 + TRADE.nudgeCap));
+    const before = town.market.price[GOOD_AT.timber];
+    buyFrom(town, "timber", 1e9, derive(town));
+    expect(town.market.price[GOOD_AT.timber]).toBeLessThanOrEqual(before * (1 + TRADE.nudgeCap));
   });
 
   it("moves a hamlet's price further than a great port's for the same cargo", () => {
@@ -945,27 +1017,27 @@ describe("the port seam", () => {
     raise(great, "sawpit", DAY0);
     raise(great, "sawpit", DAY0);
     stepSeason(great, AFTER_OPENING);
-    const a = small.market.price[1];
-    const b = great.market.price[1];
-    buyFrom(small, "materials", 1, derive(small));
-    buyFrom(great, "materials", 1, derive(great));
-    expect(small.market.price[1] / a).toBeGreaterThan(great.market.price[1] / b);
+    const a = small.market.price[GOOD_AT.timber];
+    const b = great.market.price[GOOD_AT.timber];
+    buyFrom(small, "timber", 1, derive(small));
+    buyFrom(great, "timber", 1, derive(great));
+    expect(small.market.price[GOOD_AT.timber] / a).toBeGreaterThan(great.market.price[GOOD_AT.timber] / b);
   });
 
   it("pays the town for what it lifts, and takes its coin for what it lands", () => {
     const town = opened();
     const before = town.wealth;
-    buyFrom(town, "materials", 10, derive(town));
+    buyFrom(town, "timber", 10, derive(town));
     expect(town.wealth).toBeGreaterThan(before);
     const mid = town.wealth;
-    sellTo(town, "materials", 10, derive(town));
+    sellTo(town, "timber", 10, derive(town));
     expect(town.wealth).toBeLessThan(mid);
   });
 
   it("never spends coin the town has not got", () => {
     const town = open(mixedTown({ population: 300, wealth: 0 }));
     town.wealth = 0; // bare coffers at the moment the boat comes alongside
-    const deal = sellTo(town, "materials", 1e6, derive(town));
+    const deal = sellTo(town, "timber", 1e6, derive(town));
     expect(town.wealth).toBe(0);
     expect(deal.coin).toBe(0);
   });
@@ -996,8 +1068,8 @@ describe("what a purpose puts out of reach", () => {
     );
     raise(t, "warehouse", DAY0);
     stepSeason(t, DAY0);
-    t.market.bought[0] = 400; // the crown's grant buys its bread
-    t.market.bought[1] = 400;
+    t.market.bought[GOOD_AT.grain] = 400; // the crown's grant buys its bread
+    t.market.bought[GOOD_AT.timber] = 400;
     return t;
   };
 
@@ -1006,10 +1078,10 @@ describe("what a purpose puts out of reach", () => {
   // A century of seasons, fed the same way throughout.
   const live = (t: Town, seasons: number) => {
     for (let i = 0; i < seasons; i++) {
-      t.market.allotted[0] = 400;
-      t.market.allotted[1] = 400;
-      t.market.price[0] = TRADE.basePrice[0];
-      t.market.price[1] = TRADE.basePrice[1];
+      t.market.allotted[GOOD_AT.grain] = 400;
+      t.market.allotted[GOOD_AT.timber] = 400;
+      priced(t, "victuals", TRADE.basePrice[0]);
+      priced(t, "materials", TRADE.basePrice[1]);
       const day = AFTER_OPENING + i * SEASON;
       stepSeason(t, day);
       governorTurn(t, day);
@@ -1062,8 +1134,8 @@ describe("reproducibility", () => {
     const a = open(mixedTown({ population: 250, wealth: 4000 }));
     const b = open(mixedTown({ population: 250, wealth: 4000 }));
     for (let i = 0; i < 200; i++) {
-      clearedWith(a, 0, 20, 0.3);
-      clearedWith(b, 0, 20, 0.3);
+      clearedWith(a, "victuals", 20, 0.3);
+      clearedWith(b, "victuals", 20, 0.3);
       stepSeason(a, AFTER_OPENING + i * SEASON);
       stepSeason(b, AFTER_OPENING + i * SEASON);
     }
@@ -1152,8 +1224,8 @@ describe("wealth is earned, not emitted", () => {
     // the difference rather than the equation.
     const town = open(mixedTown({ population: 200, wealth: 1000, grant: 5 }));
     raise(town, "sawpit", DAY0);
-    clearedWith(town, 0, 30, 0.2);
-    town.market.bought[0] = 30;
+    clearedWith(town, "victuals", 30, 0.2);
+    town.market.bought[GOOD_AT.grain] = 30;
 
     const purseBefore = town.wealth;
     const souls = town.population; // ...before the drift at the foot of the season

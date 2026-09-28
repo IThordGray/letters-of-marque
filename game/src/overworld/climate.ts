@@ -119,7 +119,7 @@ export const CLIMATES = {
       materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "rockyGround", "bluff", "marsh", "scrub"],
       wetBias: 0.1,
-      favours: ["cane", "timber"],
+      favours: ["sugar", "timber"],
       prefers: { fx: 0.9, fy: 0.35 },
     },
   },
@@ -134,7 +134,7 @@ export const CLIMATES = {
       materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "cottonGround", "rockyGround", "bluff", "scrub"],
       wetBias: 0.0,
-      favours: ["cane", "grain"],
+      favours: ["sugar", "grain"],
       prefers: { fx: 0.45, fy: 0.42 },
     },
   },
@@ -171,7 +171,7 @@ export const CLIMATES = {
       materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "rockyGround", "bluff", "marsh", "scrub"],
       wetBias: 0.15,
-      favours: ["timber", "cane"],
+      favours: ["timber", "sugar"],
       prefers: { fx: 0.78, fy: 0.15 },
     },
   },
@@ -186,7 +186,7 @@ export const CLIMATES = {
       materials: "timberedHills",
       palette: ["timberedHills", "caneFlats", "tilledGround", "cottonGround", "bluff", "marsh", "scrub"],
       wetBias: 0.2,
-      favours: ["cane", "timber", "grain"],
+      favours: ["sugar", "timber", "grain"],
       prefers: { fx: 0.4, fy: 0.9 },
     },
   },
@@ -217,10 +217,17 @@ export const CLIMATE_IDS = Object.keys(CLIMATES) as ClimateId[];
 // The zone's palette decides which of these terrains can occur at all; the
 // terrain decides what comes off it; the position decides which terrain it is.
 export const TERRAIN_BEARS: Record<TerrainKind, readonly Produce[]> = {
+  // TOBACCO AND CACAO NEEDED NO NEW GROUND, which is the whole of what they
+  // cost: cacao is a shade crop of the wet flats and tobacco is planted on
+  // ground already cleared for something else, so each is an entry on terrain
+  // the generator has always painted. Both sit behind what the ground is FOR, so
+  // neither displaces a staple: cacao is the second thing a cane flat bears and
+  // tobacco the second thing cotton ground bears, and on tilled ground — the
+  // world's bread — it comes last of all.
   timberedHills: ["timber", "stone"],
-  caneFlats: ["cane", "cotton", "grain"],
-  tilledGround: ["grain", "food", "cotton"],
-  cottonGround: ["cotton", "grain"],
+  caneFlats: ["sugar", "cacao", "cotton", "grain"],
+  tilledGround: ["grain", "food", "cotton", "tobacco"],
+  cottonGround: ["cotton", "tobacco", "grain"],
   rockyGround: ["stone"],
   saltPans: ["salt"],
   bluff: [], // a defensive gift, not a living

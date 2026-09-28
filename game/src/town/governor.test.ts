@@ -18,7 +18,7 @@ import {
 import { CHOOSABLE, CATALOGUE, countOf, isFocusExpression, raise, depthOf } from "./works";
 import { stepWorldSeason } from "../overworld/market";
 import { derive, stepYears, stepSeason, summarise } from "./sim";
-import { dependencyWord, DEPENDENCY_CLAUSE } from "./trade";
+import { dependencyWord, tierTotal, GOOD_AT, DEPENDENCY_CLAUSE } from "./trade";
 import { bestBorne, capacityOf, isWater, liveRegions, regionOf } from "./land";
 import { CENTRE } from "./hex";
 import { warmStart } from "../overworld/worldgen";
@@ -291,7 +291,7 @@ describe("he mends what he can still save", () => {
     raise(town, "tavern", AFTER_ROTTING); // something standing, to want timber and stone
     stepSeason(town, AFTER_ROTTING);
 
-    expect(town.market.bought[1]).toBe(0); // not a plank landed
+    expect(tierTotal(town.market.bought, "materials")).toBe(0); // not a plank landed
     expect(built(governorTurn(town, AFTER_ROTTING))?.work).toBe(pit);
     expect(pit.condition).toBe("idle"); // one rung up, and the hands take the last step
   });
@@ -449,7 +449,7 @@ const twoGrounds = (init: Partial<Town> = {}): Town =>
   townOf(
     [
       reg(0, "timberedHills", RING2.slice(0, 6), { bears: { timber: "ideal" } }),
-      reg(1, "caneFlats", RING1.slice(0, 2), { bears: { cane: "poor" } }),
+      reg(1, "caneFlats", RING1.slice(0, 2), { bears: { sugar: "poor" } }),
     ],
     { footprint: { core: 2, claimed: [CENTRE, ...RING1.slice(2, 6)] }, population: 300, wealth: 0, ...init },
   );
@@ -537,12 +537,12 @@ describe("a governor decides what his ground is for", () => {
     // could not tell the two apart — found by mutation, which is the only thing
     // that would have told us.
     const town = townOf(
-      [reg(0, "caneFlats", RING2.slice(0, 6), { bears: { cane: "ideal", food: "ideal" } })],
+      [reg(0, "caneFlats", RING2.slice(0, 6), { bears: { sugar: "ideal", food: "ideal" } })],
       { footprint: { core: 2, claimed: [CENTRE, ...RING1.slice(0, 4)] }, population: 300, wealth: 0 },
     );
     stepSeason(town, DAY0);
 
-    expect(Object.keys(town.regions[0].bears)[0]).toBe("cane"); // the fixture can tell them apart
+    expect(Object.keys(town.regions[0].bears)[0]).toBe("sugar"); // the fixture can tell them apart
     expect(bestBorne(town.regions[0])!.produce).toBe("food");
 
     const top = focusWants(town, derive(town), 99).find((w) => w.focus === "production")!;
@@ -611,8 +611,8 @@ describe("a governor decides what his ground is for", () => {
 
     const dear = timberPort();
     const cheap = timberPort();
-    dear.market.price[1] = TRADE.basePrice[1] * TRADE.priceCeiling;
-    cheap.market.price[1] = TRADE.basePrice[1] * TRADE.priceFloor;
+    dear.market.price[GOOD_AT.timber] = TRADE.basePrice[1] * TRADE.priceCeiling;
+    cheap.market.price[GOOD_AT.timber] = TRADE.basePrice[1] * TRADE.priceFloor;
     expect(derive(dear).access).toBeGreaterThan(0);
 
     const hillsOf = (t: Town) =>
@@ -1195,8 +1195,8 @@ describe("a deepening is scored from that region's own ground", () => {
     // figure is the same number in both towns.
     const dear = timberTown();
     const cheap = timberTown();
-    dear.market.price[1] = TRADE.basePrice[1] * TRADE.priceCeiling;
-    cheap.market.price[1] = TRADE.basePrice[1] * TRADE.priceFloor;
+    dear.market.price[GOOD_AT.timber] = TRADE.basePrice[1] * TRADE.priceCeiling;
+    cheap.market.price[GOOD_AT.timber] = TRADE.basePrice[1] * TRADE.priceFloor;
 
     const only = (t: Town) => deepWants(t, derive(t), 99).find((w) => w.region === 0)!;
     expect(only(dear).terms.find((t) => t.key === "market")!.weight)

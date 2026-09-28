@@ -61,7 +61,7 @@ export function mixedTown(init: Partial<Town> = {}): Town {
     [
       reg(0, "tilledGround", RING1.slice(0, 2), { bears: { food: "ideal", grain: "fair" } }),
       reg(1, "timberedHills", RING1.slice(2, 4), { bears: { timber: "ideal" } }),
-      reg(2, "caneFlats", RING1.slice(4, 6), { bears: { cane: "ideal" } }),
+      reg(2, "caneFlats", RING1.slice(4, 6), { bears: { sugar: "ideal" } }),
       reg(3, "scrub", RING2.slice(0, 4)),
       reg(4, "roadstead", RING2.slice(4, 7), { bears: { fish: "fair" } }),
       reg(5, "bluff", RING2.slice(7, 9)),

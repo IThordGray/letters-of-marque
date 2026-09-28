@@ -18,7 +18,7 @@ import type { Land } from "./land";
 import { describeLand } from "./land";
 import { damageWorks, harvestShare, stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
-import { commerceOf, makeMarket, payImports, dependencyWord } from "./trade";
+import { commerceOf, makeMarket, payImports, dependencyWord, tierTotal } from "./trade";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -53,7 +53,7 @@ export function derive(town: Town): Derived {
   // [HC-78] puts `imports paid` inside the flow rather than beside it — bread
   // before batteries — so a town that spends all it makes on corn never reaches
   // the governor with anything to spend.
-  const commerce = commerceOf(town, working, food, security);
+  const commerce = commerceOf(town, working, security);
 
   return {
     food,
@@ -116,7 +116,11 @@ export function carryingCapacity(town: Town): number {
   // feeds fewer people, and it would be a quiet bug for the food a town sells to
   // fall while the mouths it can keep did not.
   const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food) * harvestShare(town);
-  const foodCap = (grown + town.market.bought[0]) / FOOD.perHead;
+  // THE VICTUALS-TIER GOODS IT BOUGHT, and that is the whole of what named goods
+  // change here: bread is bread whether it came ashore as grain, as fish or as
+  // salt, so the tier is the question and `tierTotal` is the one place it is
+  // asked ([P-47]). Nothing else about population moves.
+  const foodCap = (grown + tierTotal(town.market.bought, "victuals")) / FOOD.perHead;
   const { min, fullAt } = POP.prosperityPull;
   const pull = min + (1 - min) * clamp(town.prosperity / fullAt, 0, 1);
   return foodCap * pull;

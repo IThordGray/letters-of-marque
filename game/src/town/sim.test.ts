@@ -10,6 +10,7 @@ import { stepTownYears } from "./governor";
 import { raise, CATALOGUE } from "./works";
 import { mixedTown, bareTown } from "./fixtures";
 import { WORKS } from "./constants";
+import { GOOD_AT, TIER_AT } from "./trade";
 import type { Town, WorkKind } from "./types";
 import { CALENDAR, DAYS_PER_YEAR, yearOfDay } from "../overworld/calendar";
 
@@ -170,15 +171,15 @@ describe("only a deliberate hand empties a town", () => {
     for (const t of [fed, never]) raise(t, "warehouse", DAY0); // somewhere to land it
 
     for (let i = 0; i < 200; i++) {
-      fed.market.allotted[0] = 900;
-      fed.market.price[0] = 0.15;
+      fed.market.allotted[GOOD_AT.grain] = 900;
+      for (let g = TIER_AT[0]; g < TIER_AT[1]; g++) fed.market.price[g] = 0.15;
       stepSeason(fed, DAY0 + i * SEASON);
       stepSeason(never, DAY0 + i * SEASON);
     }
     const peak = fed.population;
     expect(peak).toBeGreaterThan(never.population); // the sea carried souls its ground could not
 
-    fed.market.allotted[0] = 0; // ...and then it stopped
+    fed.market.allotted[GOOD_AT.grain] = 0; // ...and then it stopped
     stepSeasons(fed, 200, DAY0 + 200 * SEASON);
     const fallen = fed.population;
     stepSeasons(fed, 200, DAY0 + 400 * SEASON);
@@ -377,7 +378,7 @@ describe("the weather has two output paths, and they must not be mixed", () => {
     // come off the same share.
     expect(derive(wet).food).toBeCloseTo(derive(dry).food * (1 - spoiled), 9);
     expect(carryingCapacity(wet)).toBeCloseTo(carryingCapacity(dry) * (1 - spoiled), 9);
-    expect(derive(wet).commerce.produced[1]).toBeCloseTo(derive(dry).commerce.produced[1] * (1 - spoiled), 9);
+    expect(derive(wet).commerce.produced[GOOD_AT.timber]).toBeCloseTo(derive(dry).commerce.produced[GOOD_AT.timber] * (1 - spoiled), 9);
 
     stepSeason(wet, DAY0 + SEASON);
     stepSeason(dry, DAY0 + SEASON);

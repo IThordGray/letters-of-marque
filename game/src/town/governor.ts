@@ -405,9 +405,14 @@ const PRODUCE_WORD: Record<Produce, string> = {
   grain: "grain",
   timber: "timber",
   stone: "stone",
-  cane: "cane",
+  // GROUND BEARS CANE; A QUAY SHIPS SUGAR. The produce was renamed for the
+  // market's sake and this is the one place the plant still has to be named,
+  // because nobody gives an acre over to "sugar".
+  sugar: "cane",
   cotton: "cotton",
   salt: "salt",
+  tobacco: "tobacco",
+  cacao: "cacao",
 };
 
 // The land's argument for HOUSES: §2.12.7's own words. Dead ground now pays a

@@ -111,11 +111,15 @@ export function capacityOf(town: Town, r: Region, taken = takenHexes(town)): num
 // [P-10] THE TIE-BREAK NEEDS A STATED DIRECTION, and this one is the module's
 // own: BREAD FIRST, THEN WHAT BUILDS, THEN WHAT SELLS. It is the same order
 // `worthOf` ranks works by and the same order [HC-78] pays in — so ground that
-// bears food as well as it bears cane is food ground, and a town whose best
+// bears food as well as it bears sugar is food ground, and a town whose best
 // acre could go either way feeds itself with it. Reading `Object.keys(r.bears)`
 // instead would have ordered it by however the world's cut happened to fill the
 // record in, which is a producer's order and not a rule.
-export const PRODUCE_ORDER: Produce[] = ["food", "fish", "grain", "timber", "stone", "cane", "cotton", "salt"];
+//
+// IT IS THE GOODS' TIER ORDER NOW, which is the same rule stated once instead of
+// twice: salt is victuals, so it ranks with the bread, and tobacco and cacao rank
+// with what sells.
+export const PRODUCE_ORDER: Produce[] = ["food", "fish", "grain", "salt", "timber", "stone", "sugar", "cotton", "tobacco", "cacao"];
 
 // How good a grade is, as a number. ONE TABLE ([P-47]) — `regionsFor` ranks the
 // ground a work may stand on by it, and `bestBorne` ranks what a region bears by

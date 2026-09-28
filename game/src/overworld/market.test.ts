@@ -17,7 +17,8 @@ import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { FOOD, TRADE } from "../town/constants";
-import { mixedTown, seaTown } from "../town/fixtures";
+import { GOOD_AT, GOOD_COUNT, GOOD_ORDER, tierTotal } from "../town/trade";
+import { mixedTown, seaTown, townOf, reg, RING1, RING2 } from "../town/fixtures";
 import { CATALOGUE, raise } from "../town/works";
 import type { Town } from "../town/types";
 import type { Place } from "./places";
@@ -481,8 +482,9 @@ describe("clearing is order-independent", () => {
     const towns = [port(), farm, port()];
     clearSeason(markets, places, towns, noWars(3), openRoutes(markets));
 
-    expect(towns[0].market.allotted[0]).toBeGreaterThan(0);
-    expect(towns[2].market.allotted[0]).toBeCloseTo(towns[0].market.allotted[0], 9);
+    expect(tierTotal(towns[0].market.allotted, "victuals")).toBeGreaterThan(0);
+    expect(tierTotal(towns[2].market.allotted, "victuals"))
+      .toBeCloseTo(tierTotal(towns[0].market.allotted, "victuals"), 9);
   });
 
   it("gives the same two hundred years from the same seed, twice over", () => {
@@ -546,8 +548,23 @@ describe("the pyramid, and its gate", () => {
   // sell it corn, one with a farming neighbour. Nothing about the port changes.
   // A port with a quay, a fat treasury, no acre that will bear corn and no
   // timber of its own. It wants both, and its bread is the lower rung.
+  //
+  // IT HAS A REEF, AND THE REEF IS WHAT KEEPS THE CLAIM ABOUT THE PYRAMID. Since
+  // the market started trading named goods, "cannot get bread" has to be said of
+  // GOODS: a coast with nothing at all is short of grain, of fish and of salt at
+  // once, and a fixture that cannot be fed for want of any one of them would
+  // test the fish supply rather than the gate. Its own shacks cover its fish; it
+  // is short of corn and salt, and that is what it has to buy to climb.
   function hungryPort(): Town {
-    const t = seaTown({ population: 60, wealth: 200000 });
+    const t = townOf(
+      [
+        reg(0, "timberedHills", RING1.slice(0, 3), { bears: { timber: "ideal" } }),
+        reg(1, "roadstead", RING1.slice(3, 6)),
+        reg(2, "reef", RING2.slice(0, 4), { bears: { fish: "ideal" } }),
+        reg(3, "scrub", RING2.slice(4, 10)),
+      ],
+      { population: 60, wealth: 200000 },
+    );
     raise(t, "warehouse", DAY0);
     raise(t, "customsHouse", DAY0);
     return t;
@@ -563,11 +580,23 @@ describe("the pyramid, and its gate", () => {
     return t;
   }
 
-  // ...and a neighbour with corn and timber to spare.
+  // ...and a neighbour with corn, salt and timber to spare — every part of the
+  // diet the port lacks, because a tier is covered only when the whole of it is.
   function farmingNeighbour(): Town {
-    const t = mixedTown({ population: 120, wealth: 500 });
+    const t = townOf(
+      [
+        reg(0, "tilledGround", RING1.slice(0, 2), { bears: { food: "ideal" } }),
+        reg(1, "saltPans", RING1.slice(2, 4), { bears: { salt: "ideal" } }),
+        reg(2, "timberedHills", RING1.slice(4, 6), { bears: { timber: "ideal" } }),
+        reg(3, "roadstead", RING2.slice(0, 3)),
+        reg(4, "reef", RING2.slice(3, 6), { bears: { fish: "ideal" } }),
+        reg(5, "scrub", RING2.slice(6, 12)),
+      ],
+      { population: 120, wealth: 500 },
+    );
     raise(t, "warehouse", DAY0);
     raise(t, "provisionGround", DAY0);
+    raise(t, "saltWorks", DAY0);
     raise(t, "sawpit", DAY0);
     produceSeason(t, DAY0);
     return t;
@@ -581,11 +610,13 @@ describe("the pyramid, and its gate", () => {
     const hungry = [hungryPort(), hungryTimberPort()];
     clearSeason(markets, places, hungry, noWars(3), openRoutes(markets));
     const c = derive(hungry[0]).commerce;
-    expect(derive(hungry[1]).commerce.offer[1]).toBeGreaterThan(0); // timber IS to be had
-    expect(c.want[0]).toBeGreaterThan(0);
-    expect(c.want[1]).toBeGreaterThan(0); // and it wants some...
-    expect(hungry[0].market.allotted[0]).toBe(0); // ...but there is no bread to be had
-    expect(hungry[0].market.allotted[1]).toBe(0); // ...so it registers no demand for it
+    expect(derive(hungry[1]).commerce.offer[GOOD_AT.timber]).toBeGreaterThan(0); // timber IS to be had
+    expect(c.want[GOOD_AT.grain]).toBeGreaterThan(0);
+    expect(c.want[GOOD_AT.timber]).toBeGreaterThan(0); // and it wants some...
+    expect(tierTotal(hungry[0].market.allotted, "victuals")).toBe(0); // ...but there is no bread
+    // ...so it registers no demand IN THE WHOLE TIER ABOVE, timber included.
+    expect(tierTotal(hungry[0].market.allotted, "materials")).toBe(0);
+    expect(tierTotal(hungry[0].market.allotted, "luxury")).toBe(0);
   });
 
   it("reaches for the next tier the moment the one below is covered", () => {
@@ -594,8 +625,8 @@ describe("the pyramid, and its gate", () => {
 
     const fed = [hungryPort(), farmingNeighbour()];
     clearSeason(markets, places, fed, noWars(3), openRoutes(markets));
-    expect(fed[0].market.allotted[0]).toBeGreaterThan(0);
-    expect(fed[0].market.allotted[1]).toBeGreaterThan(0);
+    expect(tierTotal(fed[0].market.allotted, "victuals")).toBeGreaterThan(0);
+    expect(tierTotal(fed[0].market.allotted, "materials")).toBeGreaterThan(0);
   });
 });
 
@@ -627,8 +658,8 @@ describe("war is a filter on the pool, never on a place", () => {
     declareWar(wars, 0, 1);
     clearSeason(markets, places, war, wars, openRoutes(markets));
 
-    expect(peace[0].market.allotted[0]).toBeGreaterThan(0);
-    expect(war[0].market.allotted[0]).toBe(0);
+    expect(tierTotal(peace[0].market.allotted, "victuals")).toBeGreaterThan(0);
+    expect(tierTotal(war[0].market.allotted, "victuals")).toBe(0);
     expect(atWar(wars, 0, 1)).toBe(true);
     expect(atWar(wars, 0, 0)).toBe(false); // nobody is ever at war with himself
   });
@@ -671,7 +702,7 @@ describe("the ceiling is fragile, by design", () => {
     let fed = 0;
     let gap = -Infinity;
     for (let i = 0; i < towns.length; i++) {
-      const g = towns[i].population - derive(towns[i]).commerce.produced[0] / FOOD.perHead;
+      const g = towns[i].population - tierTotal(derive(towns[i]).commerce.produced, "victuals") / FOOD.perHead;
       if (g > gap) {
         gap = g;
         fed = i;
@@ -686,10 +717,10 @@ describe("the ceiling is fragile, by design", () => {
 
     const port = towns[mostSeaFed(towns)];
     const d = derive(port);
-    expect(d.commerce.bought[0]).toBeGreaterThan(0);
+    expect(tierTotal(d.commerce.bought, "victuals")).toBeGreaterThan(0);
     // Its people outnumber what its own ground could ever have fed — which the
     // old ~450-soul cap forbade by construction.
-    expect(port.population).toBeGreaterThan(d.commerce.produced[0]);
+    expect(port.population).toBeGreaterThan(tierTotal(d.commerce.produced, "victuals"));
   });
 
   it("drops a sea-fed port back onto its own ground when a squadron sits across its lanes", () => {
@@ -708,7 +739,7 @@ describe("the ceiling is fragile, by design", () => {
     const before = port.population;
     // What its OWN fields feed, written out from the ledger rather than read
     // back off a cap the sim computes.
-    const ownGround = derive(port).commerce.produced[0] / FOOD.perHead;
+    const ownGround = tierTotal(derive(port).commerce.produced, "victuals") / FOOD.perHead;
     expect(before).toBeGreaterThan(ownGround);
 
     blockade(routes, id);
@@ -760,7 +791,9 @@ describe("the ceiling is fragile, by design", () => {
 
     const id = mostSeaFed(towns);
     const open = derive(towns[id]).commerce;
-    expect(open.want[0] + open.offer[0] + open.offer[1] + open.offer[2]).toBeGreaterThan(0);
+    let moving = 0;
+    for (let g = 0; g < GOOD_COUNT; g++) moving += open.want[g] + open.offer[g];
+    expect(moving).toBeGreaterThan(0);
 
     blockade(routes, id);
     runYears(world, towns, markets, wars, routes, 2);
@@ -807,15 +840,127 @@ describe("the ceiling is fragile, by design", () => {
   });
 });
 
+// ---- The market trades NAMED GOODS, not three classes ----------------------
+//
+// Ratified 2026-09-28. A town's produce used to be looked up, turned into one of
+// three buckets and its name thrown away at the quay, so timber and stone were
+// the same thing to the market and no port could be short of anything in
+// particular. These are the claims that the name survives the crossing.
+describe("the market trades named goods, not three classes", () => {
+  // FOUR WORLDS, WARMED AND RUN ON, BUILT ONCE ([P-18]) — the three claims below
+  // all read the same runs, and a claim about which coast ships what is a claim
+  // about a world whose governors have had time to decide what their ground is
+  // for.
+  const worlds = SEEDS.map((seed) => {
+    const w = warmStart(seed);
+    runYears(w.world, w.towns, w.markets, w.wars, w.routes, 25);
+    return w;
+  });
+
+  // WHAT THIS PORT IS KNOWN FOR, in one word: the good its quay ships most COIN
+  // of. It is the Cutthroats readout — one main export, in words — and it is
+  // computed here rather than stored, because twelve goods across fifty towns is
+  // six hundred numbers: fine to compute, fatal to display.
+  const mainExport = (t: Town): string => {
+    const c = derive(t).commerce;
+    let best = -1;
+    let worth = 0;
+    for (let g = 0; g < GOOD_COUNT; g++) {
+      const v = c.offer[g] * t.market.price[g];
+      if (v > worth) {
+        worth = v;
+        best = g;
+      }
+    }
+    return best < 0 ? "(nothing)" : GOOD_ORDER[best];
+  };
+
+  it("prices two goods of one tier differently in the same port, which one victuals price could not", () => {
+    // The first half of "every good carries its own price". Grain and fish are
+    // both victuals and are not the same thing to anybody: one comes off tilled
+    // ground and the other off a reef, and a port that has a reef and no fields
+    // faces two different numbers for them. Under the three classes this
+    // difference was not merely absent, it was UNSAYABLE.
+    let apart = 0;
+    let ports = 0;
+    for (const w of worlds) {
+      for (const t of w.towns) {
+        ports++;
+        if (Math.abs(t.market.price[GOOD_AT.grain] - t.market.price[GOOD_AT.fish]) > 1e-9) apart++;
+      }
+    }
+    expect(ports, "no live port in four worlds").toBeGreaterThan(150);
+    // Measured: 194 of 194 across the house seeds. Bounded well under it,
+    // because what must never happen is the two moving together by construction.
+    expect(apart).toBeGreaterThan(ports * 0.8);
+  });
+
+  it("prices the same good differently in two ports a week apart", () => {
+    // [HC-82] said of a GOOD rather than of a class. The pair is required to be
+    // BEYOND `MARKET.reachNm` — a week's sail — which is exactly the distance at
+    // which neither port can be in the other's market, so the two figures were
+    // struck by different neighbourhoods and there is no table either could have
+    // consulted.
+    let disagreeing = 0;
+    let widest = 1;
+    for (const w of worlds) {
+      for (let a = 0; a < w.towns.length; a++) {
+        for (let b = a + 1; b < w.towns.length; b++) {
+          const far = distanceNm(w.world.places[a].x, w.world.places[a].y, w.world.places[b].x, w.world.places[b].y);
+          if (far <= MARKET.reachNm) continue;
+          const pa = w.towns[a].market.price[GOOD_AT.grain];
+          const pb = w.towns[b].market.price[GOOD_AT.grain];
+          const ratio = pa > pb ? pa / pb : pb / pa;
+          if (ratio > widest) widest = ratio;
+          if (ratio > 1.2) disagreeing++;
+        }
+      }
+    }
+    // Measured across the house seeds: the widest grain disagreement runs 1.68x
+    // to 2.62x, over hundreds of pairs. Bounded under the narrowest of them.
+    expect(disagreeing, "no two ports beyond a week's sail disagree about grain").toBeGreaterThan(100);
+    expect(widest).toBeGreaterThan(1.4);
+  });
+
+  it("leaves a map with several main exports rather than one", () => {
+    // The point of the whole direction, as a sentence about the world: ports
+    // need each other FOR SPECIFIC THINGS. One main export per port, and the map
+    // holds several different ones — which is not true of a market that trades
+    // three buckets, where every coast ships "luxury".
+    for (const w of worlds) {
+      const kinds = new Set<string>();
+      for (const t of w.towns) {
+        const g = mainExport(t);
+        if (g !== "(nothing)") kinds.add(g);
+      }
+      // Measured 6 to 9 distinct main exports per world across the house seeds.
+      expect(kinds.size, `only ${[...kinds].join(", ")} is shipped anywhere`).toBeGreaterThanOrEqual(4);
+    }
+  });
+});
+
 describe("cost is linear in the number of places", () => {
   it("bounds the work per season by the place count, never by its square", () => {
     // [HC-15] / [HC-83]. Stated structurally rather than by a stopwatch: the
-    // clearing walks each neighbourhood's members once per class, so the total
-    // is the sum of the memberships — and the cap holds that under k x N.
+    // clearing walks each neighbourhood's members once per GOOD, so the total is
+    // the sum of the memberships times a fixed handful of goods — and the cap
+    // holds that under k x N however crowded a coast gets.
+    //
+    // THE GOODS WIDENED THE SCRATCH AND NOT THE ALGORITHM, which is the claim
+    // this has to go on making: eleven goods instead of three multiplies the
+    // pass by a CONSTANT, and a constant is not a square. Nothing here compares
+    // a place to a place.
     const { markets } = bench();
     let visits = 0;
     for (const h of markets.hoods) visits += h.members.length;
     expect(visits).toBeLessThanOrEqual(MARKET.maxMembers * markets.hoods.length);
+    // ...and the work PER PLACE does not grow when the map does, which is the
+    // whole difference between linear and square. Two coasts of the same shape,
+    // one four times as crowded: a place still trades with a handful. Without
+    // the cap the dense one would be four times the work per place.
+    const coast = (n: number) => Array.from({ length: n }, (_, i) => ({ x: 120 + i * (1200 / n), y: 340 }));
+    const perPlace = (m: Markets) => m.hoods.reduce((a, h) => a + h.members.length, 0) / m.hoods.length;
+    expect(perPlace(makeMarkets(coast(80)))).toBeLessThanOrEqual(perPlace(makeMarkets(coast(20))));
   });
 
   it("keeps no price of its own, so there is no table to consult", () => {
@@ -1112,7 +1257,7 @@ describe("what a place brings to market", () => {
     for (const w of shut.works) if (w.kind === "fishingShacks") w.condition = "ruin";
     clearSeason(markets, world.places, towns, wars, routes);
     expect(derive(shut).access).toBe(0);
-    expect(shut.market.allotted[0]).toBe(0);
+    expect(shut.market.allotted.every((a) => a === 0)).toBe(true);
   });
 
   it("brings nothing from a port whose lanes are all held, however sound its quay", () => {
@@ -1141,7 +1286,7 @@ describe("what a place brings to market", () => {
     clearSeason(markets, world.places, towns, wars, routes);
 
     expect(derive(towns[held]).access).toBe(0);
-    expect(towns[held].market.allotted[0]).toBe(0);
+    expect(towns[held].market.allotted.every((a) => a === 0)).toBe(true);
     // ...and its own works are exactly as they were. Nothing burned.
     expect(towns[held].works.some((w) => CATALOGUE[w.kind].zone === "waterfront" && w.condition === "working")).toBe(true);
   });
@@ -1157,10 +1302,13 @@ describe("what a place brings to market", () => {
       world.day += CALENDAR.daysPerSeason;
     }
     for (let i = 0; i < towns.length; i++) {
-      const want = derive(towns[i]).commerce.want[0];
-      // It can never be allotted more than it asked for, however many markets it
-      // stands in.
-      expect(towns[i].market.allotted[0]).toBeLessThanOrEqual(want + 1e-9);
+      const c = derive(towns[i]).commerce;
+      // It can never be allotted more than it asked for, OF ANY ONE GOOD, however
+      // many markets it stands in.
+      for (let g = 0; g < GOOD_COUNT; g++) {
+        expect(towns[i].market.allotted[g], `${GOOD_ORDER[g]} at place ${i}`)
+          .toBeLessThanOrEqual(c.want[g] + 1e-9);
+      }
     }
   });
 });
@@ -1422,26 +1570,33 @@ describe("nothing is conjured in the clearing", () => {
   it("never lands a place bread that nobody grew", () => {
     // SUMMATION CONSERVES ([HC-83]): a buyer takes `want x fill` where `fill` is
     // supply over demand, so the allotments in a neighbourhood can never exceed
-    // what its members put up. Asserted over the whole map, class by class, over
+    // what its members put up. Asserted over the whole map, GOOD BY GOOD, over
     // several seasons — because one season with nothing on either side of the
     // scale would pass it for the wrong reason.
-    const { world, towns, markets, wars, routes } = bench();
+    //
+    // A WARM WORLD, AND THAT IS THE LIVENESS GUARD DOING ITS JOB. A world on its
+    // first day has raised nothing that a governor decides to raise: no quarry,
+    // no sawpit, no salt works, no cane. Every place is fed by the subsistence
+    // floor and nothing on the map is short of a good anybody else has, so the
+    // clearing is honestly empty — and an emptiness satisfies every inequality
+    // below. The conservation claim needs a map with real cargo on it.
+    const { world, towns, markets, wars, routes } = warmStart(SEED);
     let sawTrade = false;
     for (let s = 0; s < 12; s++) {
       for (const t of towns) produceSeason(t, world.day);
-      const offered = [0, 0, 0];
+      const offered = new Array(GOOD_COUNT).fill(0);
       for (const t of towns) {
         const c = derive(t).commerce;
-        for (let k = 0; k < 3; k++) offered[k] += c.offer[k];
+        for (let k = 0; k < GOOD_COUNT; k++) offered[k] += c.offer[k];
       }
       clearSeason(markets, world.places, towns, wars, routes);
-      const allotted = [0, 0, 0];
-      for (const t of towns) for (let k = 0; k < 3; k++) allotted[k] += t.market.allotted[k];
-      for (let k = 0; k < 3; k++) {
-        expect(allotted[k], `class ${k}: ${allotted[k].toFixed(3)} landed against ${offered[k].toFixed(3)} grown`)
+      const allotted = new Array(GOOD_COUNT).fill(0);
+      for (const t of towns) for (let k = 0; k < GOOD_COUNT; k++) allotted[k] += t.market.allotted[k];
+      for (let k = 0; k < GOOD_COUNT; k++) {
+        expect(allotted[k], `${GOOD_ORDER[k]}: ${allotted[k].toFixed(3)} landed against ${offered[k].toFixed(3)} grown`)
           .toBeLessThanOrEqual(offered[k] + 1e-9);
       }
-      if (allotted[0] > 0) sawTrade = true;
+      if (allotted[GOOD_AT.grain] > 0) sawTrade = true;
       for (const t of towns) settleSeason(t);
       world.day += CALENDAR.daysPerSeason;
     }

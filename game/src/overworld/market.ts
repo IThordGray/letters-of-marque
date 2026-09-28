@@ -11,7 +11,9 @@
 //         resolved in sequence, whoever went first would get first call on
 //         everyone else's surplus and the world's history would depend on
 //         iteration order.
-// [HC-83] CLEARING IS SUMMATION, per neighbourhood, per class, in tier order.
+// [HC-83] CLEARING IS SUMMATION, per neighbourhood, PER GOOD, in tier order —
+//         it was per class until the market learned the goods' names, and the
+//         shape did not move: the scratch rows widened from three to eleven.
 //         Three properties fall out and none is bolted on: order independence
 //         is automatic because sums commute; cost is LINEAR in the number of
 //         places; and prices are genuinely local, because each neighbourhood
@@ -26,7 +28,7 @@
 //         neighbours; there is no abstract partner anywhere in this file.
 
 import type { Town } from "../town/types";
-import { CLASS_COUNT } from "../town/trade";
+import { CLASS_COUNT, GOOD_COUNT, TIER_AT, TIER_RANK } from "../town/trade";
 import { TRADE } from "../town/constants";
 import { closeHarvest, derive, produceSeason, settleSeason, takeWeather } from "../town/sim";
 import { governorTurn, type Season as TownSeason } from "../town/governor";
@@ -355,12 +357,16 @@ interface Stall {
   secure: boolean; // did the tier below come out covered? ([HC-77]'s gate)
 }
 
-// The price a ratio commands. `sqrt` is on [P-7]'s exactly-specified list, so
-// this is bit-identical everywhere; `Math.pow` and `**` are banned ([P-5], [P-6]).
-// The damping term is what stops a neighbourhood with a bushel on either side of
-// the scale swinging to the ceiling.
-export function priceFor(cls: number, sought: number, offered: number): number {
-  const base = TRADE.basePrice[cls];
+// The price a ratio commands, FOR ONE GOOD. `sqrt` is on [P-7]'s exactly-specified
+// list, so this is bit-identical everywhere; `Math.pow` and `**` are banned
+// ([P-5], [P-6]). The damping term is what stops a neighbourhood with a bushel on
+// either side of the scale swinging to the ceiling.
+//
+// THE BASE IS THE GOOD'S TIER and there is no per-good row to look up. [HC-82]:
+// what makes grain dear here and cheap a week away is this neighbourhood's own
+// ratio, and there is no global list to arbitrage against.
+export function priceFor(good: number, sought: number, offered: number): number {
+  const base = TRADE.basePrice[TIER_RANK[good]];
   const ratio = (sought + TRADE.thin) / (offered + TRADE.thin);
   const p = base * Math.sqrt(ratio);
   const lo = base * TRADE.priceFloor;
@@ -391,11 +397,11 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
     towns[i].market.reach = reachOf(routes, i);
     const d = derive(towns[i]);
     const share = m.hoodsOf[i] > 0 ? 1 / m.hoodsOf[i] : 0;
-    const offer = [0, 0, 0];
-    const want = [0, 0, 0];
-    for (let c = 0; c < CLASS_COUNT; c++) {
-      offer[c] = d.commerce.offer[c] * share;
-      want[c] = d.commerce.want[c] * share;
+    const offer = new Array<number>(GOOD_COUNT).fill(0);
+    const want = new Array<number>(GOOD_COUNT).fill(0);
+    for (let g = 0; g < GOOD_COUNT; g++) {
+      offer[g] = d.commerce.offer[g] * share;
+      want[g] = d.commerce.want[g] * share;
     }
     stalls.push({
       faction: places[i].faction,
@@ -405,9 +411,7 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
       secure: true,
     });
     const mk = towns[i].market;
-    mk.allotted[0] = 0;
-    mk.allotted[1] = 0;
-    mk.allotted[2] = 0;
+    for (let g = 0; g < GOOD_COUNT; g++) mk.allotted[g] = 0;
   }
 
   // Scratch, reused across every hood and class. [P-24]: nothing is allocated
@@ -417,89 +421,115 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
   const supplyFor = new Float64Array(nf);
   const demandFor = new Float64Array(nf);
   const priceFor_ = new Float64Array(nf);
-  const priceSum = new Float64Array(n * CLASS_COUNT);
-  const priceWeight = new Float64Array(n * CLASS_COUNT);
+  const priceSum = new Float64Array(n * GOOD_COUNT);
+  const priceWeight = new Float64Array(n * GOOD_COUNT);
 
-  for (let c = 0; c < CLASS_COUNT; c++) {
-    for (let h = 0; h < m.hoods.length; h++) {
-      const members = m.hoods[h].members;
+  // THE SHAPE DID NOT CHANGE WHEN THE GOODS ARRIVED, and that is the point of
+  // [HC-83] rather than a happy accident: it was `for each class, for each
+  // neighbourhood, sum by faction` and it is `for each GOOD` — the scratch rows
+  // widened from three to eleven and the algorithm did not move. [HC-15] survives
+  // because the work is still linear in places: goods and factions are fixed
+  // handfuls and a neighbourhood is capped at eight.
+  //
+  // THE GOODS ARE WALKED IN TIER ORDER because `GOOD_ORDER` is sorted that way,
+  // so the outer loop over tiers is what carries [HC-77] exactly as it always did.
+  for (let t = 0; t < CLASS_COUNT; t++) {
+    for (let c = TIER_AT[t]; c < TIER_AT[t + 1]; c++) {
+      for (let h = 0; h < m.hoods.length; h++) {
+        const members = m.hoods[h].members;
 
-      offeredBy.fill(0);
-      soughtBy.fill(0);
-      // SUMMATION, and the members are walked in a FIXED ascending order — so
-      // shuffling the array of places cannot change a single bit ([P-9]).
-      for (let k = 0; k < members.length; k++) {
-        const s = stalls[members[k]];
-        offeredBy[s.faction] += s.offer[c];
-        // [HC-77]: a place short of the tier below registers NO demand here,
-        // however rich it is. The gate decides whether the demand EXISTS.
-        if (s.secure) soughtBy[s.faction] += s.want[c];
-      }
-
-      // [HC-84]. For each faction, the pool it can reach and the demand competing
-      // for that pool are the same sum with the same mask — so one ratio per
-      // faction is the whole of war's effect, and with no war every faction sees
-      // the same number and this collapses to a single clearing.
-      for (let f = 0; f < nf; f++) {
-        let supply = 0;
-        let demand = 0;
-        for (let g = 0; g < nf; g++) {
-          if (f !== g && wars.at[f * nf + g] === 1) continue;
-          supply += offeredBy[g];
-          demand += soughtBy[g];
+        offeredBy.fill(0);
+        soughtBy.fill(0);
+        // SUMMATION, and the members are walked in a FIXED ascending order — so
+        // shuffling the array of places cannot change a single bit ([P-9]).
+        for (let k = 0; k < members.length; k++) {
+          const s = stalls[members[k]];
+          offeredBy[s.faction] += s.offer[c];
+          // [HC-77]: a place short of the tier below registers NO demand here,
+          // however rich it is. The gate decides whether the demand EXISTS.
+          if (s.secure) soughtBy[s.faction] += s.want[c];
         }
-        supplyFor[f] = supply;
-        demandFor[f] = demand;
-        priceFor_[f] = priceFor(c, demand, supply);
-      }
 
-      for (let k = 0; k < members.length; k++) {
-        const id = members[k];
-        const s = stalls[id];
-        const f = s.faction;
-        const slot = id * CLASS_COUNT + c;
-
-        // A SELLER is rationed by the price, not by a queue: a glut collapses what
-        // his cargo fetches. A BUYER is rationed by the goods, because you cannot
-        // eat bread that does not exist — the asymmetry §3.5.3 makes on purpose.
-        const price = priceFor_[f];
-        if (s.offer[c] > 0) {
-          priceSum[slot] += price * s.offer[c];
-          priceWeight[slot] += s.offer[c];
+        // [HC-84]. For each faction, the pool it can reach and the demand competing
+        // for that pool are the same sum with the same mask — so one ratio per
+        // faction is the whole of war's effect, and with no war every faction sees
+        // the same number and this collapses to a single clearing.
+        for (let f = 0; f < nf; f++) {
+          let supply = 0;
+          let demand = 0;
+          for (let g = 0; g < nf; g++) {
+            if (f !== g && wars.at[f * nf + g] === 1) continue;
+            supply += offeredBy[g];
+            demand += soughtBy[g];
+          }
+          supplyFor[f] = supply;
+          demandFor[f] = demand;
+          priceFor_[f] = priceFor(c, demand, supply);
         }
-        if (s.secure && s.want[c] > 0) {
-          const fill = demandFor[f] > 0 ? Math.min(1, supplyFor[f] / demandFor[f]) : 0;
-          // ...and he cannot bid what he has not got. Capping the bid at the
-          // purse is what stops a broke town soaking up a neighbour's grain.
-          const afford = price > 0 ? s.purse / price : 0;
-          let take = s.want[c] * fill;
-          if (take > afford) take = afford;
-          towns[id].market.allotted[c] += take;
-          s.purse -= take * price;
-          priceSum[slot] += price * take;
-          priceWeight[slot] += take;
+
+        for (let k = 0; k < members.length; k++) {
+          const id = members[k];
+          const s = stalls[id];
+          const f = s.faction;
+          const slot = id * GOOD_COUNT + c;
+
+          // A SELLER is rationed by the price, not by a queue: a glut collapses what
+          // his cargo fetches. A BUYER is rationed by the goods, because you cannot
+          // eat bread that does not exist — the asymmetry §3.5.3 makes on purpose.
+          const price = priceFor_[f];
+          if (s.offer[c] > 0) {
+            priceSum[slot] += price * s.offer[c];
+            priceWeight[slot] += s.offer[c];
+          }
+          if (s.secure && s.want[c] > 0) {
+            const fill = demandFor[f] > 0 ? Math.min(1, supplyFor[f] / demandFor[f]) : 0;
+            // ...and he cannot bid what he has not got. Capping the bid at the
+            // purse is what stops a broke town soaking up a neighbour's grain.
+            const afford = price > 0 ? s.purse / price : 0;
+            let take = s.want[c] * fill;
+            if (take > afford) take = afford;
+            towns[id].market.allotted[c] += take;
+            s.purse -= take * price;
+            priceSum[slot] += price * take;
+            priceWeight[slot] += take;
+          }
         }
       }
     }
 
     // The tier is done: who came out covered, and may therefore reach one rung
     // higher next pass ([HC-77]).
+    //
+    // THE GATE READS THE TIER WHILE THE CLEARING READS THE GOODS, and that is a
+    // ruling and not a shortcut. Asked per GOOD it would be the trap the whole
+    // direction exists to avoid: a port whose neighbourhood happens to have no
+    // salt would be "short of victuals" for ever and would register NO demand
+    // for materials or luxury, anywhere, however much bread it had. A place with
+    // corn in its barns is fed. So the shortfall is the tier's NET position —
+    // `want - offer` summed over its goods, which is exactly the tier's
+    // consumption less its production, because a good is in one column or the
+    // other and never both.
     for (let i = 0; i < n; i++) {
       const s = stalls[i];
       if (!s.secure) continue;
-      const short = s.want[c] * m.hoodsOf[i] - towns[i].market.allotted[c];
-      s.secure = short <= TRADE.secureSlack;
+      let net = 0;
+      let got = 0;
+      for (let c = TIER_AT[t]; c < TIER_AT[t + 1]; c++) {
+        net += s.want[c] - s.offer[c];
+        got += towns[i].market.allotted[c];
+      }
+      s.secure = net * m.hoodsOf[i] - got <= TRADE.secureSlack;
     }
   }
 
-  // The LOCAL price a place faces — the quantity-weighted mean of the prices its
-  // own neighbourhoods struck. [HC-82]: there is no global price to table, and
-  // two ports far enough apart genuinely disagree.
+  // The LOCAL price a place faces, PER GOOD — the quantity-weighted mean of the
+  // prices its own neighbourhoods struck. [HC-82]: there is no global price to
+  // table, and two ports a week apart genuinely disagree about the same good.
   for (let i = 0; i < n; i++) {
     const mk = towns[i].market;
-    for (let c = 0; c < CLASS_COUNT; c++) {
-      const slot = i * CLASS_COUNT + c;
-      mk.price[c] = priceWeight[slot] > 0 ? priceSum[slot] / priceWeight[slot] : TRADE.basePrice[c];
+    for (let c = 0; c < GOOD_COUNT; c++) {
+      const slot = i * GOOD_COUNT + c;
+      mk.price[c] = priceWeight[slot] > 0 ? priceSum[slot] / priceWeight[slot] : TRADE.basePrice[TIER_RANK[c]];
     }
   }
 }

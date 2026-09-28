@@ -25,6 +25,7 @@ import { FACTIONS } from "./factions";
 import { laneIsOpen, makeMarkets, openRoutes, runYears } from "./market";
 import { FOUNDING, SIZES, hinterlandAt, legBetween, type Place } from "./places";
 import { groundAt } from "./ground";
+import { tierTotal } from "../town/trade";
 import { DAY_RUN_NM, DEFAULT_WORLD, type WorldSettings } from "./shape";
 import { stepWeather } from "./weather";
 import { describeTimber, describeWorld, foundAll, foundPlace, generateWorld, warmStart } from "./worldgen";
@@ -828,10 +829,22 @@ describe("nobody sits on his own timber for want of planks", () => {
     // see its row) restored the share to the same 24 of 71 it held before the
     // story and took materials to 2,529.
     //
-    // So this is the ORIGINAL quarter, re-measured rather than widened. What the
-    // claim goes on refusing is a world with no timber in it and a world that is
-    // nothing but sawpits.
-    expect(cutAll).toBeGreaterThan(bearsAll / 4); // the world is cutting timber...
+    //   named goods                        70    16   (23%)
+    //
+    // AND IT DROPPED ONCE MORE WHEN THE MARKET LEARNED THE GOODS' NAMES, and
+    // this time the bound did have to move, because the cause is the mechanic
+    // and not a price. A building's standing bill used to be a demand for
+    // "materials" and every unit of it argued for a sawpit; split across timber,
+    // stone and gunpowder it argues for a sawpit with HALF the weight, so the
+    // pit's market term halves wherever nothing else moved. Sawpits fall 96 to
+    // 66 and the coasts holding one 23 to 16. It was tried the other ways first
+    // and none of them is the cause: siting the quarry off the hills gives 15,
+    // taking stone off the hills gives 16, and pricing the salt pans out of the
+    // cheap band gives 16.
+    //
+    // What the claim goes on refusing is what it has always refused: a world
+    // with no timber in it and a world that is nothing but sawpits.
+    expect(cutAll).toBeGreaterThan(bearsAll / 6); // the world is cutting timber...
     expect(cutAll).toBeLessThan(bearsAll * 0.9); // ...and it is not all sawpits
   });
 
@@ -847,7 +860,7 @@ describe("nobody sits on his own timber for want of planks", () => {
   // neighbourhood can reach timber, which is what makes planks a TRADE. What is
   // no longer true is that not reaching them stops a town building.
 
-  it("leaves inert only the ground the terrain lockdown has still to decide about", () => {
+  it("leaves no bearing ground in the world that nothing in the catalogue can work", () => {
     // KAN-126'S ACCEPTANCE, and §2.12.14's own measurement re-run. The generator
     // paints, names, describes and draws ground that nothing in the catalogue
     // can touch: measured before this story, 12–22% of every town's BEARING
@@ -858,17 +871,18 @@ describe("nobody sits on his own timber for want of planks", () => {
     // BEARS, which is §2.12.14's own wording read off the ground rather than off
     // the works ("four of the world's eight produces have no work in the
     // catalogue at all — grain, cotton, stone, salt"). `grainFields` and
-    // `cottonWalk` close two of those four, and the two that are left are the
-    // two §2.12.15 defers on purpose — stone waits on a quarry and salt on its
-    // trade class, and both wait on the terrain-kind lockdown.
+    // `cottonWalk` closed two of those four; THE NAMED GOODS CLOSED THE LAST TWO,
+    // because a good nothing on the map produces has unsatisfiable demand for
+    // ever — so rocky ground got its quarry and the salt pans their salt works.
     //
     //   pooled across four warm worlds   regions        hexes
     //   before KAN-126                   119/636 18.7%   659/5687 11.6%
     //   after                             58/636  9.1%   261/5687  4.6%
     //
-    // THE REMAINDER IS NAMED RATHER THAN BOUNDED, because "and nothing else" is
-    // the acceptance: a third kind of dead ground appearing here is a story that
-    // forgot to give its produce a work, and a bound would let it through.
+    // IT IS NAMED RATHER THAN BOUNDED, because "and nothing else" is the
+    // acceptance: ground appearing here is a story that forgot to give its
+    // produce a work, and a bound would let it through. `bearing` is the
+    // liveness guard — nought inert out of nought regions would satisfy it.
     const expressible = new Set<string>();
     for (const kind of Object.keys(CATALOGUE) as (keyof typeof CATALOGUE)[]) {
       const p = CATALOGUE[kind].produces;
@@ -890,8 +904,8 @@ describe("nobody sits on his own timber for want of planks", () => {
       }
     }
     expect(bearing, "no town in four worlds bears anything").toBeGreaterThan(400);
-    expect(Object.keys(inert).sort()).toEqual(["rockyGround", "saltPans"]);
-    expect(dead / bearing).toBeLessThan(0.12); // was 18.7%, and the spec's own band started at 12%
+    expect(Object.keys(inert).sort()).toEqual([]);
+    expect(dead).toBe(0); // 18.7% of bearing regions before KAN-126, 9.1% after it
   });
 });
 
@@ -1003,7 +1017,7 @@ describe("the cheapest test of the whole generator, on the real driver", () => {
       if (gate.world.places[i].size !== "city") continue;
       const t = gate.towns[i];
       const d = after[i];
-      expect(d.food + t.market.bought[0], `${t.name} cannot cover its own mouths`)
+      expect(d.food + tierTotal(t.market.bought, "victuals"), `${t.name} cannot cover its own mouths`)
         .toBeGreaterThan(d.mouths * 0.5);
       expect(t.population, `${t.name} collapsed`).toBeGreaterThan(opening[i] * 0.6);
       expect(failureWord(t), `${t.name} fell to the hamlet floor`).not.toBe("abandoned");

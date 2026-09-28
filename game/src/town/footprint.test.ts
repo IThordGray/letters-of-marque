@@ -120,7 +120,7 @@ describe("which way a town grows", () => {
     const town = townOf(
       [
         reg(0, "scrub", RING1.slice(0, 3)),
-        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { cane: "ideal" } }),
+        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { sugar: "ideal" } }),
       ],
       { population: 300, wealth: 9000 },
     );
@@ -206,7 +206,7 @@ describe("ground given over to growth", () => {
     townOf(
       [
         reg(0, "scrub", RING1.slice(0, 3)),
-        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { cane: "ideal" }, focus }),
+        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { sugar: "ideal" }, focus }),
       ],
       { population: 300, wealth: 3000 },
     );

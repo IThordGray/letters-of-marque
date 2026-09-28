@@ -14,7 +14,7 @@ import {
   CAPITAL, CHOOSABLE, FOCUS_EXPRESSIONS, isFocusExpression,
 } from "./works";
 import { capacityOf } from "./land";
-import { cargoOf, PRODUCE_CLASS } from "./trade";
+import { cargoOf, GOOD_ORDER, townMadeOf } from "./trade";
 import { stepTownSeason, type Decision, type Built } from "./governor";
 import { DECAY, POP, SUIT_YIELD, WORKS } from "./constants";
 import { CALENDAR } from "../overworld/calendar";
@@ -710,12 +710,13 @@ describe("the catalogue may grow and the menu may not", () => {
     // `cottonWalk` arrived as focus expressions (§2.12.14) so that the ground
     // the world paints could finally be worked without the menu lengthening.
     expect(FOCUS_EXPRESSIONS.slice().sort()).toEqual(
-      ["caneField", "cottonWalk", "grainFields", "provisionGround", "sawpit"],
+      ["cacaoGrove", "caneField", "cottonWalk", "grainFields", "provisionGround",
+       "quarry", "saltWorks", "sawpit", "tobaccoFields"],
     );
-    expect(CAPITAL.length).toBe(13); // eleven before KAN-126; the boiling house is still gone
+    expect(CAPITAL.length).toBe(17); // thirteen before the named goods brought four sources
   });
 
-  it("let the catalogue grow by two without lengthening the governor's list by one", () => {
+  it("let the catalogue grow by four without lengthening the governor's list by one", () => {
     // THE STRUCTURAL CLAIM, and it should not rest on anybody's reading of the
     // code. §2.12.14: "that is the structural argument for this direction over
     // any alternative that adds works — it is the only one where the catalogue
@@ -733,21 +734,35 @@ describe("the catalogue may grow and the menu may not", () => {
     }
   });
 
-  it("gives every produce a work can make a cargo class, so nothing is quaysided by accident", () => {
+  it("gives every produce a work can make a named good, so nothing is quaysided by accident", () => {
     // §2.12.13, and the failure it guards is silent rather than loud. A work
-    // whose produce has no row in `PRODUCE_CLASS` reads as having NO CARGO CLASS
-    // — which is the customs house's case, "a cut of the traffic on access
-    // alone" — so a missing row would not throw, it would quietly pay a farm a
-    // harbourmaster's wage. Salt has no row ON PURPOSE (§2.12.15) and this claim
-    // is what keeps that safe: nothing in the catalogue produces salt, so the
-    // missing row is unreachable rather than a hole, and the day a salt works
-    // arrives this goes red instead of the world going strange.
+    // whose produce had no row read as having NO CARGO — which is the customs
+    // house's case, "a cut of the traffic on access alone" — so a missing row
+    // would not throw, it would quietly pay a farm a harbourmaster's wage.
+    //
+    // THE HOLE IS CLOSED BY THE TYPE NOW, not by this claim: `PRODUCE_GOOD` is a
+    // total map, so a produce with no good will not compile. What is still worth
+    // asserting is the other end — every produce a work can actually make names
+    // a good, and no work quietly ships nothing.
     for (const kind of CAPITAL.concat(SUBSISTENCE)) {
       const p = CATALOGUE[kind].produces;
       if (p === null) continue;
-      expect(cargoOf(kind), `${kind} produces ${p} and has no cargo class`).not.toBeNull();
+      expect(cargoOf(kind), `${kind} produces ${p} and ships nothing`).not.toBeNull();
     }
-    expect(PRODUCE_CLASS.salt, "salt has a class, and §2.12.15 defers it").toBeUndefined();
+    // AND EVERY GOOD THE MARKET TRADES HAS A SOURCE, which is the rule the goods
+    // table states and the trap the whole direction exists to avoid: a good
+    // nothing on the map produces has unsatisfiable demand for ever. Gunpowder
+    // and rum are made by the TOWN and so are named here rather than looked for
+    // in the catalogue — the loudest members of the exclusion, because they are
+    // the two whose absence from the works ledger is not a bug.
+    const fromWorks = new Set(CAPITAL.concat(SUBSISTENCE).map(cargoOf).filter((g) => g !== null));
+    for (const good of GOOD_ORDER) {
+      if (good === "gunpowder" || good === "rum") {
+        expect(townMadeOf(1000), `${good} is made by the town and no town makes any`).toBeGreaterThan(0);
+        continue;
+      }
+      expect(fromWorks.has(good), `nothing on the map produces ${good}`).toBe(true);
+    }
   });
 
   it("makes every work that grows something put a figure in the column its class names", () => {
@@ -971,11 +986,11 @@ describe("the two gates on the ground", () => {
   it("plants barley where cotton would have been ideal, and pays for it", () => {
     // Terrain BIASES a crop; it does not determine it. Ground that grudges a work
     // still takes it — visibly worse, which is adaptability with a price.
-    const ideal = townOf([reg(0, "caneFlats", RING1, { bears: { cane: "ideal" } })], {
+    const ideal = townOf([reg(0, "caneFlats", RING1, { bears: { sugar: "ideal" } })], {
       population: 300,
       wealth: 9000,
     });
-    const grudging = townOf([reg(0, "caneFlats", RING1, { bears: { cane: "poor" } })], {
+    const grudging = townOf([reg(0, "caneFlats", RING1, { bears: { sugar: "poor" } })], {
       population: 300,
       wealth: 9000,
     });
@@ -1072,7 +1087,7 @@ describe("ground out of the town's way", () => {
     const town = townOf(
       [
         reg(0, "timberedHills", RING1.slice(0, 3), { bears: { timber: "ideal" }, reach: "atHand" }),
-        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { cane: "ideal" }, reach: "far" }),
+        reg(1, "caneFlats", RING1.slice(3, 6), { bears: { sugar: "ideal" }, reach: "far" }),
       ],
       { population: 400, wealth: 9000 },
     );

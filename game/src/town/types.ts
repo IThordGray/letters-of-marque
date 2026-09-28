@@ -53,7 +53,16 @@ export type TerrainKind =
 
 // What comes off the ground. Suitability is keyed on PRODUCE, not on work kind,
 // so adding a work needs no new column.
-export type Produce = "cane" | "grain" | "cotton" | "food" | "timber" | "stone" | "salt" | "fish";
+//
+// PRODUCE IS WHAT GROWS; A GOOD IS WHAT SHIPS (`trade.ts`'s `GOODS`). The two
+// vocabularies are nearly the same list and deliberately not one: `cane` was
+// renamed `sugar` because the quay names the cargo rather than the plant, and
+// `food` — a coast's fitness for provisions — ships as `grain`, because cassava
+// and wheat are both bread at the waterside. Nothing here converts anything
+// into anything: the mapping is a NAME, not a chain.
+export type Produce =
+  | "sugar" | "grain" | "cotton" | "food" | "timber" | "stone" | "salt" | "fish"
+  | "tobacco" | "cacao";
 
 // Terrain BIASES a crop; it does not determine it. Absent from `bears` = will not
 // bear at all: "you cannot plant cotton on bedrock."

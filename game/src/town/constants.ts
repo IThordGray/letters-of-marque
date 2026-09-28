@@ -149,10 +149,24 @@ export const TRADE = {
   // `materialsPerWork` above STAYS: a building's standing bill is still what a
   // town wants to buy, and materials are still a trade class.
   luxuryPerHead: 0.02, // a little comfort at the top of the pyramid, wanted by people
-  // Base prices, in coin per unit. Materials and luxury sit at par because the
-  // catalogue's `trade` numbers are already value-weighted; victuals are cheap
-  // and bulky, which is what makes a city fed from the sea expensive to keep.
+  // Base prices, in coin per unit, BY TIER — and they stay by tier now that the
+  // market trades named goods, because there is nothing to measure a per-good
+  // base against. Materials and luxury sit at par because the catalogue's
+  // `trade` numbers are already value-weighted; victuals are cheap and bulky,
+  // which is what makes a city fed from the sea expensive to keep. What tells
+  // grain from salt is the neighbourhood's own ratio, not a row here ([HC-82]).
   basePrice: [0.15, 1.0, 1.2],
+  // WHAT A TOWN MAKES OUT OF BEING A TOWN — gunpowder and rum, the two goods
+  // with no hex behind them. A mill and a distillery want hands and a works
+  // yard, so the source is population above the size where a place stops being
+  // huts. Below `townMadeFrom` a hamlet makes neither.
+  //
+  // The rate is set against what a town WANTS of them: a thousand souls hold
+  // some ten capital works, so their powder bill is ~3 a season and their rum
+  // ~3, and at 0.01 a head the same town makes 8 of each — enough to be a real
+  // export without drowning the crops, which ship 7 to 90 apiece.
+  townMadeFrom: 200,
+  townMadePerHead: 0.01,
   // How far a cleared ratio may move a price either way ([HC-82]: the ratio sets
   // the local price). A glut halves it, a famine trebles it, and nothing on the
   // map ever reads a price it did not sail to.
