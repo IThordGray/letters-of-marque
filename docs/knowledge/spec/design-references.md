@@ -63,6 +63,27 @@ ships and towns, run a crew and a base, weigh plunder against commerce.
     not.** Keeping those two straight is the whole of *"goods survive; chains do not."*
 - _(Add confirmed mechanics and feel here as we go.)_
 
+### What it traded — **[confirmed, from the manual]**
+
+The official manual (Hothouse Creations, 1999), Cargo section, names **fourteen** commodities:
+
+> *Cacao · Cotton · Food · Fruit · Hides · Jewellery · Livestock · Luxuries · Rum · Salt · Spice ·
+> Sugar · Timber · Tobacco*
+
+Source: OCR text at `archive.org/details/cutthroats-terror-on-the-high-seas-1999-manual-win-en`.
+
+**Coffee is NOT on it.** A MobyGames review names "tobacco, sugar and coffee"; the word does not
+occur in the manual. Most likely a mis-recollection of **cacao**. Do not treat coffee as inherited.
+
+**Neither slaves nor powder appear as trade goods** — absence of evidence in an OCR'd document
+rather than proof, and it happens to agree with two things already ratified, so treat it with the
+suspicion a convenient finding deserves.
+
+**How a town read, and it is the legibility bar this lineage sets:** the Town Information window
+showed **one main import and one main export**, in words — not a table. Population was a **banded
+word, including "Unknown"**: you did not know until you went or asked. The manual says nothing at
+all about how a town's population changed.
+
 ## Rise of Piracy (2026, Early Access) — the closest living competitor
 Solo-dev age-of-sail sandbox: *Mount & Blade* at sea, RTS fleet command, island
 conquest by bombardment + landing party. EA since Feb 2026, ~78% positive of ~500

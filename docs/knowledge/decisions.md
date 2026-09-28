@@ -119,11 +119,15 @@ disagree, the code is wrong.
   a foreign town's land. **You may choose what land is FOR, never where a building STANDS.**
 - Enslaved / bonded labour represented honestly and minimally; freeing them is a raid outcome;
   never a manageable resource or tradable commodity.
+- **A new good must name a port that could not otherwise exist.** Not a flavour we lack, not a
+  period good we noticed. This is what holds the list at a dozen rather than letting goods accrete.
 - Defence ladder is `picket · garrison · fortress`, independent of size class
   `settlement · town · city` (`[HC-60]`). A haven's purpose is `trade` — for now (`[HC-56]`).
 
 **Do not build:** player building placement · worker or job assignment · per-building inspection
-UI · walkers, service radii, desirability grids · a happiness meter · an in-town goods inventory ·
+UI · walkers, service radii, desirability grids · a happiness meter · ~~an in-town goods inventory~~ (**superseded 2026-09-28** — the ratified
+goods model is `demand = target − stock`, which requires a stock; what survives is the ban on a
+PRICE TABLE to arbitrage and on surfacing more than ~5 numbers) ·
 any scheduled prompt · an optimal layout to discover · a numbers-only town screen · more than ~5
 surfaced numbers per town · a price table to arbitrage · a third dependency edge.
 
