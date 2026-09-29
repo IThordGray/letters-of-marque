@@ -30,6 +30,7 @@ import { inFlight, type Dispatch } from "../overworld/dispatch";
 import { FACTIONS } from "../overworld/factions";
 import { runDays, type Markets, type Routes, type Wars, type WorldSeason } from "../overworld/market";
 import { SIZES, type Place } from "../overworld/places";
+import { DEFAULT_WORLD, type WorldSettings } from "../overworld/shape";
 import { bandAt, feltAt, type Sky } from "../overworld/weather";
 import { warmStart } from "../overworld/worldgen";
 import { derive, prosperityWord, summarise, wealthWord } from "../town/sim";
@@ -163,7 +164,7 @@ export interface Run {
 
 // ---- Building one ----------------------------------------------------------
 
-export function makeRun(seed: number): Run {
+export function makeRun(seed: number, settings: WorldSettings = DEFAULT_WORLD): Run {
   // THE WARM START, and the whole of the view's relationship with it: the view
   // is handed a world that already has a past (KAN-99), and the day it opens on
   // is spring 1660 with century-old cities already on it.
@@ -172,7 +173,7 @@ export function makeRun(seed: number): Run {
   // Nations do not declare war yet (KAN-101) and nothing blockades anything yet,
   // so both are their honest empty cases — but they are the SAME empty cases the
   // pre-run used, not a second pair that happen to agree ([P-47]).
-  const { world, towns, markets, wars, routes, sky } = warmStart(seed >>> 0);
+  const { world, towns, markets, wars, routes, sky } = warmStart(seed >>> 0, settings);
   const n = world.places.length;
   const run: Run = {
     seed: seed >>> 0,

@@ -400,6 +400,7 @@ export interface Sited {
 
 export function makePlaces(
   seed: number, s: WorldShape, zones: Zone[], nations: Nation[], towns: number = DEFAULT_WORLD.towns,
+  crowns: number = DEFAULT_WORLD.crowns,
 ): Sited {
   const sites = sitePlaces(seed, s, towns);
 
@@ -442,7 +443,10 @@ export function makePlaces(
     .map((_, i) => ({ id: i, score: standingOf(seed, sites, i, shelter[i], hinterland[i]) }))
     .sort(byStanding);
   const size: SizeId[] = sites.map(() => "settlement");
-  const cityCount = Math.min(CROWN_IDS.length, ranked.length);
+  // [HC-22b]: one decision, so a world with fewer crowns in it has fewer great
+  // ports — and a world with none has none, which is the only reading that does
+  // not leave a city no crown could ever sit in ([HC-22a]).
+  const cityCount = Math.min(crowns, ranked.length);
   const townCount = Math.round((ranked.length - cityCount) * CLASSING.townShare);
   for (let k = 0; k < ranked.length; k++) {
     if (k < cityCount) size[ranked[k].id] = "city";
@@ -481,10 +485,15 @@ export function makePlaces(
 
     // Far from every crown, a place is likely to be nobody's — a haven, an
     // abbey, a free camp. The neutral set is fixed here and can only shrink.
+    //
+    // NOBODY SEATED IS NOT A REMOTE PLACE, IT IS A DIFFERENT WORLD. With no
+    // crown in it there is no reach to be beyond and no pull to weigh, so the
+    // roll is not consulted at all and every coast is its own: the neutral set
+    // is the whole map ([HC-51]).
     const roll = (attr: number) => rollOf(seed, CHANNEL.worldgen, SLOT.faction + i, attr);
     const remoteness = (bestD - DAY_RUN_NM) / (DAY_RUN_NM * 4);
     const chance = remoteness < 0 ? 0.03 : remoteness > 1 ? 0.5 : 0.03 + remoteness * 0.47;
-    if (roll(0) < chance) {
+    if (seats.length === 0 || roll(0) < chance) {
       const kind = NEUTRAL_IDS[Math.floor(roll(1) * NEUTRAL_IDS.length)];
       faction[i] = FACTION_IDS.indexOf(kind);
       // [HC-65]: a neutral place has no patron, so it can never be chartered —

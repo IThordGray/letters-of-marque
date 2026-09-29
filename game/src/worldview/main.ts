@@ -33,6 +33,7 @@
 import { CALENDAR } from "../overworld/calendar";
 import { describeWorld } from "../overworld/worldgen";
 import { FACTIONS, FACTION_IDS } from "../overworld/factions";
+import { DEFAULT_WORLD, type WorldSettings } from "../overworld/shape";
 import { describeStorm } from "../overworld/weather";
 import { bakeCoast } from "./coastline";
 import {
@@ -85,13 +86,73 @@ const elTrendKey = $("trendkey");
 const elLegend = $("legend");
 const elSeed = $<HTMLInputElement>("seed");
 
+// ---- What sea to chart, and what the page remembers ------------------------
+//
+// THE WHOLE OF THE PERSISTENCE, and it is deliberately the smallest thing that
+// survives a reload: the numbers in the boxes, in `localStorage`, written once a
+// world has actually been built out of them. No presets, no schema, no version
+// and nothing to migrate — anything missing or unreadable is answered with the
+// default sea rather than argued with, because this is a testing site and a
+// person who wants his world back can type six numbers.
+//
+// [HC-1]: NOT A VERB ON A LIVE WORLD. Every one of these builds a new world from
+// day 0 down the same path the seed box already used; none of them reaches into
+// a simulation that is running.
+const STORE = "lom.world";
+
+const elBoxes = {
+  widthNm: $<HTMLInputElement>("widthNm"),
+  heightNm: $<HTMLInputElement>("heightNm"),
+  isles: $<HTMLInputElement>("isles"),
+  towns: $<HTMLInputElement>("towns"),
+  crowns: $<HTMLInputElement>("crowns"),
+} as const;
+
+// A box holds a whole number or it holds nothing worth reading.
+function readBox(el: HTMLInputElement, fallback: number): number {
+  const v = Number(el.value);
+  return Number.isFinite(v) ? Math.trunc(v) : fallback;
+}
+
+const readSettings = (): WorldSettings => ({
+  widthNm: readBox(elBoxes.widthNm, DEFAULT_WORLD.widthNm),
+  heightNm: readBox(elBoxes.heightNm, DEFAULT_WORLD.heightNm),
+  isles: readBox(elBoxes.isles, DEFAULT_WORLD.isles),
+  towns: readBox(elBoxes.towns, DEFAULT_WORLD.towns),
+  crowns: readBox(elBoxes.crowns, DEFAULT_WORLD.crowns),
+});
+
+// What was remembered, or nothing at all. A broken store is the same as no store.
+function remembered(): Record<string, unknown> {
+  try {
+    const held: unknown = JSON.parse(localStorage.getItem(STORE) ?? "");
+    return held !== null && typeof held === "object" ? (held as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+// Fill the boxes from it, falling back to the default sea field by field.
+function fillBoxes(held: Record<string, unknown>): void {
+  const put = (el: HTMLInputElement, key: string, fallback: number) => {
+    const v = held[key];
+    el.value = String(typeof v === "number" && Number.isFinite(v) ? Math.trunc(v) : fallback);
+  };
+  put(elSeed, "seed", 1660);
+  for (const key of Object.keys(elBoxes) as (keyof typeof elBoxes)[]) {
+    put(elBoxes[key], key, DEFAULT_WORLD[key]);
+  }
+}
+
+fillBoxes(remembered());
+
 // ---- View state — and every bit of it lives HERE ---------------------------
 //
 // [HC-26] Looking must not change what is true. The camera, the selection and
 // the speed are all in this file; not one of them is ever passed to a function
 // in `overworld/`, and `camera.ts` is not even given a world to pass one to.
 // The companion source scan in `coastline.test.ts` asserts the other direction.
-let run: Run = makeRun(readSeed());
+let run: Run = openWorld();
 let chart: Chart = makeChart(run.world, bakeCoast(run.world.shape));
 // Deliberately NOT fitted here: the canvas has no size until the page has laid
 // itself out, and a fit computed against a canvas of nothing is a scale of
@@ -107,9 +168,18 @@ let drawnFeed = -1;
 let drawnTrend = -1;
 let drawnSeason = -1;
 
-function readSeed(): number {
-  const v = Number(elSeed.value);
-  return Number.isFinite(v) ? Math.trunc(v) : 1660;
+const readSeed = (): number => readBox(elSeed, 1660);
+
+// The sea the boxes ask for — or the default one, if what they ask for is a
+// world the physics will not build (`refuseTheImpossible`). The boxes are put
+// back to the default too, so the page never shows numbers it is not drawing.
+function openWorld(): Run {
+  try {
+    return makeRun(readSeed(), readSettings());
+  } catch {
+    fillBoxes({});
+    return makeRun(readSeed(), readSettings());
+  }
 }
 
 // ---- Layout ----------------------------------------------------------------
@@ -424,7 +494,20 @@ $("century").addEventListener("click", () => {
 function chartNewSea(): void {
   setRate(0);
   carry = 0;
-  run = makeRun(readSeed());
+  const asked = readSettings();
+  let built: Run;
+  try {
+    built = makeRun(readSeed(), asked);
+  } catch (e) {
+    // A world no sea could satisfy. `generateWorld` says what is wrong in a
+    // sentence, so the page shows the sentence and keeps the world it has.
+    elWorldDesc.textContent = e instanceof Error ? e.message : String(e);
+    return;
+  }
+  run = built;
+  // Remembered only now: a set of numbers is worth keeping once a world has
+  // actually been built out of it.
+  localStorage.setItem(STORE, JSON.stringify({ seed: run.seed, ...asked }));
   chart = makeChart(run.world, bakeCoast(run.world.shape));
   drawnFeed = -1;
   drawnTrend = -1;

@@ -97,8 +97,19 @@
         </section>
 
         <section>
-          <h2>The sea <span class="dim">— one seed, no save, no load</span></h2>
-          <label class="dim">seed <input type="number" id="seed" value="1660" step="1" /></label>
+          <h2>The sea <span class="dim">— what you ask for is remembered; the world is never saved</span></h2>
+          <div>
+            <label class="dim">seed <input type="number" id="seed" value="1660" step="1" /></label>
+            <label class="dim">crowns <input type="number" id="crowns" step="1" min="0" max="5" /></label>
+          </div>
+          <div>
+            <label class="dim">width nm <input type="number" id="widthNm" step="10" /></label>
+            <label class="dim">height nm <input type="number" id="heightNm" step="10" /></label>
+          </div>
+          <div>
+            <label class="dim">islands <input type="number" id="isles" step="1" /></label>
+            <label class="dim">ports <input type="number" id="towns" step="1" /></label>
+          </div>
           <button id="chart">Chart a new sea</button>
           <p class="dim" id="worlddesc">—</p>
           <p class="dim" id="worldstat">—</p>

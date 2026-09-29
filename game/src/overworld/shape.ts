@@ -22,6 +22,7 @@
 // below ([HC-90]); the seed varies every number in it.
 
 import { CHANNEL, rollOf } from "./chance";
+import { CROWN_IDS } from "./factions";
 import { fbm, fieldSeed } from "./noise";
 
 // ---- The world's measure ([HC-90]: data) -----------------------------------
@@ -106,6 +107,11 @@ export interface WorldSettings {
   // How many ports to try to site. A number worth honouring rather than
   // exceeding: the coastline decides how many it can actually carry.
   readonly towns: number;
+  // How many of the crowns in the table are in this world at all. [HC-22b]
+  // makes cities and seats ONE decision, so this is also how many great ports
+  // the map designates — and ZERO is a sea nobody has claimed: no seat, no
+  // flag, no grant, and every port on it answers to itself ([HC-51], [HC-52]).
+  readonly crowns: number;
 }
 
 // How many islands the tables above draw at full scale — every chain, plus the
@@ -121,6 +127,7 @@ export const DEFAULT_WORLD: WorldSettings = {
   heightNm: WORLD_BOX.heightNm,
   isles: FULL_ISLES,
   towns: 50,
+  crowns: CROWN_IDS.length,
 };
 
 // How this sea compares with the one the composition was drawn for — by area,

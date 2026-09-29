@@ -151,7 +151,9 @@ describe("a sea you can ask for a different size of", () => {
   // 5 ninety-nine times. A per-seed floor of four would therefore be a tuned
   // constant that happens to hold for eight worlds; the pooled total is the
   // statistic that fails when the siting actually gets worse.
-  const SMALL: WorldSettings = { widthNm: 340, heightNm: 220, isles: 6, towns: 5 };
+  const SMALL: WorldSettings = {
+    widthNm: 340, heightNm: 220, isles: 6, towns: 5, crowns: DEFAULT_WORLD.crowns,
+  };
   const SEEDS = [1660, 20260910, 7, 99, 1, 2, 42, 777];
   const smalls = SEEDS.map((s) => generateWorld(s, SMALL));
 
@@ -284,6 +286,69 @@ describe("a sea you can ask for a different size of", () => {
     stepWeather(big);
     expect(small.storms.some((s) => s.id === 77)).toBe(false);
     expect(big.storms.some((s) => s.id === 77)).toBe(true);
+  });
+
+  // ---- A sea nobody has claimed ---------------------------------------------
+  //
+  // The same handful of ports with the crowns taken out of the world: layer 2 of
+  // the stack — towns, unaffiliated — standing on its own without layer 4 above
+  // it (decisions.md, "The layering"). Every claim below is made against
+  // `smalls[0]`, which is this same seed and this same sea WITH the full cast in
+  // it, so none of them can pass by describing a tiny world.
+  const NOBODYS: WorldSettings = { ...SMALL, crowns: 0 };
+
+  it("gives a sea asked for no crowns to nobody — no flag, no seat, no grant", () => {
+    const mine = generateWorld(SEED, NOBODYS);
+    const theirs = smalls[0];
+    expect(mine.places.length, "an empty sea would satisfy every absence below").toBeGreaterThan(0);
+
+    for (const p of mine.places) {
+      expect(mine.nations[p.faction].crown, `${p.name} answers to a crown`).toBe(false);
+    }
+    expect(mine.nations.filter((n) => n.seat >= 0)).toEqual([]);
+    // [HC-22b] makes a seat and a city ONE decision, so a sea with no seats has
+    // no great port either — and [HC-22a] is kept by construction rather than by
+    // the demotion, because nothing was ever designated.
+    expect(mine.places.filter((p) => p.size === "city")).toEqual([]);
+
+    // ...and no standing grant, which is [HC-52]: a place with no patron has no
+    // safety net and lives on exactly what comes over its beach. Read off the
+    // founded ledger, because the grant is written when the settlers land.
+    for (const t of foundAll(mine)) {
+      expect(t.grant, `${t.name} draws a grant`).toBe(0);
+      expect(t.patron.kind, `${t.name} has a patron`).toBe("none");
+    }
+
+    // The same four lines on the same sea with the crowns left in it.
+    expect(theirs.nations.some((n) => n.crown && n.seat >= 0)).toBe(true);
+    expect(theirs.places.some((p) => theirs.nations[p.faction].crown)).toBe(true);
+    expect(theirs.places.some((p) => p.size === "city")).toBe(true);
+    expect(foundAll(theirs).some((t) => t.grant > 0)).toBe(true);
+  });
+
+  it("runs a five-port sea with nobody's flag on it, like any other world", () => {
+    // [HC-22]'s cheapest test of the whole generator, pointed at the world the
+    // human actually wants to watch: warm-start it and run it on through the
+    // ordinary driver — real weather, the clearing, the governor. A world that
+    // cannot be run is not a world anyone can watch.
+    const warm = warmStart(SEED, NOBODYS);
+    expect(warm.towns.length, "nothing was founded, so nothing could fall over").toBeGreaterThan(0);
+    expect(warm.world.day, "the pre-run ends on the epoch").toBe(0);
+    runYears(warm.world, warm.towns, warm.markets, warm.wars, warm.routes, 10);
+    expect(warm.world.day).toBe(10 * DAYS_PER_YEAR);
+    // Alive at the end of it: the decade landed on the ledgers rather than the
+    // clock merely moving.
+    expect(warm.towns.some((t) => t.population > 0), "the whole sea emptied").toBe(true);
+    expect(warm.towns.some((t) => t.works.filter((w) => w.condition !== "ruin").length > 0)).toBe(true);
+  });
+
+  it("refuses more crowns than there are in the table, or than there are ports to seat them", () => {
+    // The third and fourth things in the project that throw, in the one place
+    // the others do: a request no sea could satisfy, answered before a lobe is
+    // drawn. Zero is not one of them — it is a sea nobody has claimed.
+    expect(() => generateWorld(SEED, { ...SMALL, crowns: 9 })).toThrow(/crowns in this world's table/);
+    expect(() => generateWorld(SEED, { ...DEFAULT_WORLD, towns: 3 })).toThrow(/crowns need 5 ports/);
+    expect(() => generateWorld(SEED, NOBODYS)).not.toThrow();
   });
 });
 

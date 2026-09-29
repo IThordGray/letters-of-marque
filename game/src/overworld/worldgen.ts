@@ -26,7 +26,7 @@ import { makeWorld, yearOf, type World } from "./clock";
 import { yearOfDay } from "./calendar";
 import { makeZones, CLIMATES } from "./climate";
 import { RING_DAYS, passageDays } from "./dispatch";
-import { FACTIONS, makeNations } from "./factions";
+import { CROWN_IDS, FACTIONS, makeNations } from "./factions";
 import { groundAt } from "./ground";
 import { makeMarkets, noWars, openRoutes, runDays, type Markets, type Routes, type Wars } from "./market";
 import { makePlaces, SITING, SIZES, type Place } from "./places";
@@ -47,8 +47,9 @@ export function generateWorld(seed: number, settings: WorldSettings = DEFAULT_WO
   world.zones = makeZones(world.seed, settings);
   world.nations = makeNations();
   // The places take the nations because seating a crown is part of deciding who
-  // holds what: the five great harbours ARE the five seats ([HC-39]).
-  const sited = makePlaces(world.seed, world.shape, world.zones, world.nations, settings.towns);
+  // holds what: the great harbours ARE the seats ([HC-39], [HC-22b]) — as many
+  // of each as the world was asked for, and on a sea nobody has claimed, none.
+  const sited = makePlaces(world.seed, world.shape, world.zones, world.nations, settings.towns, settings.crowns);
   world.places = sited.places;
   // ...and then the one decision no single coast can make for itself, read off
   // the same cut the classing was decided on.
@@ -77,6 +78,17 @@ const mostPorts = (w: WorldSettings): number =>
   Math.floor((w.widthNm * w.heightNm) / (SITING.minSpacingNm * SITING.minSpacingNm * Math.sqrt(3) * 0.5));
 
 function refuseTheImpossible(w: WorldSettings): void {
+  // A crown that is not in the table cannot be conjured, and a crown is seated
+  // at a great harbour ([HC-22b]), so a sea asked for fewer ports than crowns
+  // has nowhere to put one of them. Zero is not an error — it is a sea nobody
+  // has claimed.
+  if (w.crowns < 0 || w.crowns > CROWN_IDS.length) {
+    throw new Error(`there are ${CROWN_IDS.length} crowns in this world's table, and ${w.crowns} were asked for`);
+  }
+  if (w.crowns > w.towns) {
+    throw new Error(`every crown is seated at a port, so ${w.crowns} crowns need ${w.crowns} ports, ` +
+      `and ${w.towns} were asked for`);
+  }
   const most = mostPorts(w);
   if (w.towns > most) {
     throw new Error(
@@ -356,8 +368,8 @@ function wavesOf(places: Place[]): number[] {
   return days.sort((a, b) => a - b);
 }
 
-export function warmStart(seed: number): WarmWorld {
-  const world = generateWorld(seed);
+export function warmStart(seed: number, settings: WorldSettings = DEFAULT_WORLD): WarmWorld {
+  const world = generateWorld(seed, settings);
   const markets = makeMarkets(world.places);
   const wars = noWars(world.nations.length);
   const routes = openRoutes(markets);
