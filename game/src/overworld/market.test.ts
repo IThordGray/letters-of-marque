@@ -970,7 +970,12 @@ describe("the world is still trading after two hundred years", () => {
     const late = marks.get(200)!;
     expect(fifty.stores).toBeGreaterThan(0);
     expect(late.stores).toBeGreaterThan(0);
-    expect(late.stores).toBeLessThan(fifty.stores * 1.5);
+    // TIGHTENED 1.5 -> 1.2 ON REVIEW, because the comment above already said "a
+    // fifth" and the assertion said a half. Measured: the true ratio is 1.026
+    // and the no-drain mutant is 1.554, so at 1.5 this claim had 3.6% of head-
+    // room against the very thing it exists to catch. At 1.2 it still passes
+    // with room and fails the mutant by a mile.
+    expect(late.stores).toBeLessThan(fifty.stores * 1.2);
   });
 
   it("leaves goods on a port's shelves that it grows none of, which is who it traded with", () => {
@@ -1598,13 +1603,22 @@ describe("a town's own trade turns a very small profit", () => {
     // and the cause is POPULATION rather than the warehouse: the great ports
     // were buying a third to two thirds of their bread, they no longer grow on
     // it and so no longer buy it, and the coin they used to spend on the quay
-    // stays in the purse. **The ratified sentence "a town gets by" now holds for
-    // half the world rather than for its median, and re-ratifying or retuning it
-    // belongs to whoever holds that line** — it is reported here, not absorbed.
+    // stays in the purse.
+    //
+    // **THE RATIFIED SENTENCE "a town gets by" IS BREACHED, and this claim no
+    // longer asserts it.** It asserts the weaker thing it can honestly check
+    // today: that a THIRD of the world is still slow. Do not read a passing run
+    // as the sentence holding.
+    //
+    // The breach is not the warehouse's doing and must not be tuned away here.
+    // Its cause is that population stopped reading bought bread, which is the
+    // parked question of how a town grows; the number will move again when that
+    // lands, and re-ratifying before then would be ratifying a number nobody
+    // means. Reported, not absorbed.
     const pooled = arms.flatMap((a) => a.live.map((i) => a.gainedAlone[i]));
     const slow = pooled.filter((g) => g < cheapestWork).length;
     expect(pooled.length, "no live place in four worlds").toBeGreaterThan(150);
-    expect(slow, `only ${slow} of ${pooled.length} places are slow`)
+    expect(slow, `only ${slow} of ${pooled.length} places are slow — "a town gets by" is breached; see the note above`)
       .toBeGreaterThan(pooled.length / 3);
   });
 
