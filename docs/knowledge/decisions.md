@@ -197,9 +197,17 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
   50 ports is the calibration reference every measurement in the project stands on — changing it
   means re-measuring everything.
 - **Four physical facts bound any request** and a world that breaks one is refused at generation: a
-  day's run is 144 nm, a market reaches 288, ports keep 85 apart, a crossing must fit 9,216.
-- **Below about 290 nm across, trade geography stops existing** — one market holds the whole sea. A
-  world for watching sits just above that.
+  day's run is 144 nm, **a market reaches 1,008 (a week's run)**, ports keep 85 apart, a crossing
+  must fit 9,216. **Two more refusals are about the cast, not the physics:** more crowns than the
+  table holds, and more crowns than there are ports to seat them.
+- **Below about 1,000 nm across, trade geography stops existing** — one market holds the whole sea.
+  The default 1,500 × 800 sits just above that, which is why a week and not a fortnight.
+- **Crowns is a setting, 0–5, and zero is a real world** — unaffiliated towns, no seat, no grant,
+  nothing dispatched. It sets the number of cities too, so a crownless sea has no great port.
+  **The five crown identities stay in the cast list; what a crownless world has none of is seats,
+  holdings and grants.** Filtering them out would silently re-index every place's faction.
+- **The viewer remembers its settings in `localStorage["lom.world"]`**, written only once a world has
+  built. The only persistence in the project, and deliberately not a save system.
 
 ## Trade & the sea (`spec/world-loop.md`, `spec/world-simulation.md` §11)
 
