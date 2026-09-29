@@ -93,19 +93,48 @@ export const rankOf = (c: TradeClass): number => CLASSES[c].rank;
 //
 // GUNPOWDER IS MATERIALS, NOT LUXURY: a town stocks it for its works rather than
 // for comfort. That is a table entry and may move.
+//
+// `wantsFrom` IS THE SOULS AT WHICH A PLACE WANTS THIS GOOD AT ALL, and it is
+// what makes a town's SIZE legible without a number on the screen: a hamlet
+// wants bread and timber and nothing else, and a city wants five things a
+// hamlet has never heard of. Under it the want is not small, it is ABSENT —
+// which is the same shape as [HC-77]'s gate and for the same reason, that a
+// want nobody has is not a faint want.
+//
+// THE LUXURIES ARE STAGGERED AND THE STAPLES ARE NOT. Bread, timber and stone
+// stand at nothing: every place wants those from its first season, which is
+// [HC-76] — one universal drive with no threshold — and the rungs below are a
+// property of COMFORT rather than of need. The order is what a place reaches
+// for as it grows: sugar first, then the rum a crew drinks, then tobacco, then
+// cloth, and cacao last of all because chocolate is a city's habit.
+//
+// MEASURED AGAINST THE POPULATIONS THE WORLD ACTUALLY PRODUCES ([P-52]), NOT
+// CHOSEN. Over the four house seeds at two hundred years the world runs
+//
+//     min 0 · a quarter under 37 · median 94 · three quarters under 155 · top 185
+//
+// so the rungs below put roughly the bottom third at NO comfort at all, the
+// median town at sugar and rum, an ordinary port at four, and the largest at all
+// five. Tune the world's sizes and this column has to be re-measured with them:
+// it is a reading of that distribution, not a fact about goods. A rung above the
+// largest port in the world is a good nobody ever wants, which is the failure
+// this was calibrated to avoid.
 export const GOODS = {
-  grain: { tier: "victuals", appetite: 0.6, fromTown: false },
-  fish: { tier: "victuals", appetite: 0.3, fromTown: false },
-  salt: { tier: "victuals", appetite: 0.1, fromTown: false },
-  timber: { tier: "materials", appetite: 0.5, fromTown: false },
-  stone: { tier: "materials", appetite: 0.3, fromTown: false },
-  gunpowder: { tier: "materials", appetite: 0.2, fromTown: true },
-  sugar: { tier: "luxury", appetite: 0.3, fromTown: false },
-  tobacco: { tier: "luxury", appetite: 0.2, fromTown: false },
-  cotton: { tier: "luxury", appetite: 0.2, fromTown: false },
-  cacao: { tier: "luxury", appetite: 0.15, fromTown: false },
-  rum: { tier: "luxury", appetite: 0.15, fromTown: true },
-} as const satisfies Record<string, { tier: TradeClass; appetite: number; fromTown: boolean }>;
+  grain: { tier: "victuals", appetite: 0.6, fromTown: false, wantsFrom: 0 },
+  fish: { tier: "victuals", appetite: 0.3, fromTown: false, wantsFrom: 0 },
+  salt: { tier: "victuals", appetite: 0.1, fromTown: false, wantsFrom: 0 },
+  timber: { tier: "materials", appetite: 0.5, fromTown: false, wantsFrom: 0 },
+  stone: { tier: "materials", appetite: 0.3, fromTown: false, wantsFrom: 0 },
+  gunpowder: { tier: "materials", appetite: 0.2, fromTown: true, wantsFrom: 0 },
+  sugar: { tier: "luxury", appetite: 0.3, fromTown: false, wantsFrom: 50 },
+  tobacco: { tier: "luxury", appetite: 0.2, fromTown: false, wantsFrom: 110 },
+  cotton: { tier: "luxury", appetite: 0.2, fromTown: false, wantsFrom: 140 },
+  cacao: { tier: "luxury", appetite: 0.15, fromTown: false, wantsFrom: 170 },
+  rum: { tier: "luxury", appetite: 0.15, fromTown: true, wantsFrom: 80 },
+} as const satisfies Record<
+  string,
+  { tier: TradeClass; appetite: number; fromTown: boolean; wantsFrom: number }
+>;
 
 // [HC-91] again: the type comes FROM the table.
 export type Good = keyof typeof GOODS;
@@ -140,8 +169,16 @@ export const TIER_AT: number[] = (() => {
 // Hoisted once, because `consumedOf` and `commerceOf` read them per good per
 // town per season and neither wants a string lookup in the loop ([P-18], [P-38]).
 const APPETITE: number[] = GOOD_ORDER.map((g) => GOODS[g].appetite);
+const WANTS_FROM: number[] = GOOD_ORDER.map((g) => GOODS[g].wantsFrom);
 const FROM_TOWN: number[] = GOOD_ORDER.map((g, i) => (GOODS[g].fromTown ? i : -1)).filter((i) => i >= 0);
 export const TIER_RANK: number[] = GOOD_ORDER.map((g) => CLASSES[GOODS[g].tier].rank);
+
+// WHAT SURVIVES A SEASON IN THE STORES — the other face of `storesSeasons`, and
+// the line that keeps the world trading for two centuries. Production adds every
+// season and, without this, nothing removes: every warehouse fills to its target,
+// every demand goes to zero, prices collapse and trade stops entirely. Hoisted
+// because it is a constant of the model and not a per-town fact ([P-18]).
+const STORES_KEPT = 1 - 1 / TRADE.storesSeasons;
 
 // SUM A TIER'S GOODS. The gate reads tiers while the clearing reads goods, and
 // this is the one function that crosses between them ([P-47]) — population,
@@ -323,11 +360,15 @@ export function accessOf(working: Work[], security: number, reach: number): numb
   return readinessOf(working, security) * clamp(reach, 0, 1);
 }
 
-// ---- The flow balance ------------------------------------------------------
+// ---- The season's flows, over a warehouse that carries -----------------------
 //
-// A TOWN TRACKS A FLOW BALANCE, NEVER A STOCK (§3.5.3) — the ratified
-// do-not-build item "an in-town goods inventory" survives verbatim. Nothing
-// below is carried from one season to the next.
+// "A TOWN TRACKS A FLOW BALANCE, NEVER A STOCK" (§3.5.3) IS WITHDRAWN, ratified
+// 2026-09-28. Everything a town made was sold or forgotten within ninety days,
+// so a port's shelves said nothing about who it traded with and no place could
+// be SHORT of anything for longer than a season. A town now holds a stock of
+// each good that carries — `Town.stock`, written once a season by `stockSeason`
+// — and every number in this block is still a FLOW over it: what was made, what
+// crossed the quay, what was landed.
 
 export interface Commerce {
   produced: number[]; // by good — what the ledger made this season
@@ -388,9 +429,10 @@ export function producedOf(working: Work[], harvest: number, population: number)
 // ---- What crosses the quay, and the cut the harbour takes of it ------------
 //
 // WHAT ACTUALLY MOVED THROUGH THIS PLACE THIS SEASON, at the price it cleared
-// at: the cargo it shipped out and the cargo it landed. A flow, never a stock
-// (§3.5.3) — it is this season's offer and this season's landings, and nothing
-// is carried over.
+// at: the cargo it shipped out and the cargo it landed. A FLOW — this season's
+// offer and this season's landings, and nothing carried over. The warehouse
+// behind it is a level and is never counted here: a full quay is busy and a full
+// warehouse is not.
 //
 // BOTH DIRECTIONS, because [HC-85] gates both and a quay works both: a port that
 // lands a thousand bushels of grain is a busy port whether or not it grew a
@@ -489,6 +531,19 @@ export const busynessOf = (traffic: number): number => traffic / (traffic + TRAD
 // each is then spread over its tier's goods by the `appetite` column, so a town
 // wants GRAIN and FISH and SALT rather than "victuals". The shares sum to one
 // within a tier, so every tier total is the number it always was.
+//
+// ...EXCEPT WHERE THE PLACE IS TOO SMALL TO WANT THE GOOD AT ALL, which is the
+// one thing `wantsFrom` changes here and the whole of how size became legible: a
+// hamlet's luxury appetite is not a small number, it is nothing, and a great port
+// wants five things it never wanted at two hundred souls. So a tier's total is
+// the number it was only for a place big enough to want all of it — below that
+// the tier is genuinely smaller, which is the point.
+//
+// IT IS STILL A FLOW — what leaves the stores in a season — and everything that
+// reads it reads it as one: dependency asks what share of a season's bread came
+// off a ship, and `luxuryShort` asks whether the comforts turned up. The LEVEL a
+// town chases is this times `storesSeasons`, and it is built where the market
+// needs it rather than here ([P-47]: one arithmetic, not two).
 export const consumedOf = (population: number, capitalWorks: number): number[] => {
   const tier = [
     population * FOOD.perHead,
@@ -496,7 +551,9 @@ export const consumedOf = (population: number, capitalWorks: number): number[] =
     population * TRADE.luxuryPerHead,
   ];
   const out = new Array<number>(GOOD_COUNT).fill(0);
-  for (let g = 0; g < GOOD_COUNT; g++) out[g] = tier[TIER_RANK[g]] * APPETITE[g];
+  for (let g = 0; g < GOOD_COUNT; g++) {
+    out[g] = population >= WANTS_FROM[g] ? tier[TIER_RANK[g]] * APPETITE[g] : 0;
+  }
   return out;
 };
 
@@ -508,7 +565,15 @@ export function capitalWorksOf(working: Work[]): number {
 
 // WHAT ONE TIER SENDS TO THE QUAY AND WHAT IT ASKS FOR, by good — and it is a
 // function because all three tiers obey it and the victuals one is only
-// different in what it counts as an appetite ([P-47], [P-72]).
+// different in what it counts as a target ([P-47], [P-72]).
+//
+// IT NETS A LEVEL AGAINST A LEVEL SINCE THE WAREHOUSE LANDED. It used to net
+// what a town MADE this season against what its people would take this season,
+// so a town could never be short of anything for longer than ninety days and its
+// stores said nothing about who it traded with. Now `have` is the warehouse with
+// this season's harvest already in it and `target` is the level the place
+// chases, so DEMAND IS THE GAP — and the arithmetic below did not move at all,
+// because a gap subtracts exactly the way a shortfall did.
 //
 // A TOWN EATS WHAT IT GROWS BEFORE IT BUYS ANYTHING, and that sentence is the
 // whole of the arithmetic. The obvious reading — net each good against its own
@@ -519,8 +584,8 @@ export function capitalWorksOf(working: Work[]): number {
 // crossed [KAN-131]'s ratified "a town cannot fund a capital work off its own
 // trade in a decade" at the median. So:
 //
-//   A TIER IN SURPLUS offers what is left after its own people are covered,
-//   SPLIT PRO RATA TO WHAT IT ACTUALLY GREW. A cane coast ships cane. This is
+//   A TIER IN SURPLUS offers what is left after its own shelves are covered,
+//   SPLIT PRO RATA TO WHAT IT ACTUALLY HOLDS. A cane coast ships cane. This is
 //   where one port stops looking like another.
 //
 //   A TIER IN DEFICIT buys the gap, SPLIT BY APPETITE ACROSS THE GOODS IT IS
@@ -530,12 +595,11 @@ export function capitalWorksOf(working: Work[]): number {
 //   coast with a reef buys corn, and a coast with corn buys fish.
 //
 // EITHER WAY THE TIER'S OWN TOTAL IS UNTOUCHED: `SUM(want) - SUM(offer)` is
-// exactly this tier's consumption less its production, which is the number that
-// stood here before the goods had names — so population, dependency and
-// [HC-77]'s gate all read what they always did.
+// exactly this tier's target less what it holds, which is the number [HC-77]'s
+// gate and the dependency clause both read.
 function tierToMarket(
-  produced: readonly number[],
-  appetite: readonly number[],
+  have: readonly number[],
+  target: readonly number[],
   offer: number[],
   want: number[],
   tier: number,
@@ -548,7 +612,7 @@ function tierToMarket(
   let short = 0;
   let asking = 0; // the appetite of the goods it is short of, for the split below
   for (let g = from; g < to; g++) {
-    const d = produced[g] - appetite[g];
+    const d = have[g] - target[g];
     offer[g] = d > 0 ? d : 0;
     want[g] = 0;
     spare += offer[g];
@@ -568,7 +632,7 @@ function tierToMarket(
     // `asking` cannot be zero here: a tier in deficit is short of something.
     const gap = asking > 0 ? ((short - spare) * access) / asking : 0;
     for (let g = from; g < to; g++) {
-      if (produced[g] < appetite[g]) want[g] = gap * APPETITE[g];
+      if (have[g] < target[g]) want[g] = gap * APPETITE[g];
       offer[g] = 0;
     }
   }
@@ -591,12 +655,28 @@ export function commerceOf(town: Town, working: Work[], security: number): Comme
   const offer = new Array<number>(GOOD_COUNT).fill(0);
   const want = new Array<number>(GOOD_COUNT).fill(0);
 
+  // THE WAREHOUSE WITH THIS SEASON'S HARVEST ALREADY IN IT — what the quay has
+  // to sell from and to fill from, which is what every line below nets against.
+  // The stores are written back once, in `stockSeason`, at the end of settling;
+  // nothing here touches them, so `derive()` stays a pure reading of the ledger
+  // however many times a season asks for it.
+  const have = new Array<number>(GOOD_COUNT).fill(0);
+  // ...AND THE LEVEL IT CHASES. `consumed` is a season's take and this is the
+  // larder behind it — one multiplication, so the two can never disagree about
+  // what the town wants ([P-47]). The victuals row is overwritten below, once
+  // the coin ceiling has had its say.
+  const target = new Array<number>(GOOD_COUNT).fill(0);
+  for (let g = 0; g < GOOD_COUNT; g++) {
+    have[g] = town.stock[g] + produced[g];
+    target[g] = consumed[g] * TRADE.storesSeasons;
+  }
+
   // The cargo tiers first, because the victuals line is funded out of them.
   // SUM(sold x price x access): the offer is already through the quay, so
   // `access` appears once and only once — [P-47], one path to the number.
   let cargo = 0;
   for (let t = 1; t < CLASS_COUNT; t++) {
-    cargo += tierToMarket(produced, consumed, offer, want, t, access, m.price);
+    cargo += tierToMarket(have, target, offer, want, t, access, m.price);
   }
 
   // THE COIN CEILING, and the line that actually lifts the old ~450-soul cap
@@ -641,18 +721,18 @@ export function commerceOf(town: Town, working: Work[], security: number): Comme
   // places, 0 sellers). A max leaves the ordinary town selling the gap between
   // its fields and its people, and lets a great port outbid its own acreage.
   const mouths = (town.population > funded ? town.population : funded) * FOOD.perHead;
-  // The same rule as the two tiers above, against the appetite the coin ceiling
+  // The same rule as the two tiers above, against the stores the coin ceiling
   // just set rather than against the people alone — so a place never sells its
   // corn and buys corn back in the same breath, and a farming coast ships the
   // grain its ground actually bears.
-  // ONE TEMPORARY, AND IT IS THE PRICE OF THE COIN CEILING: the appetite the
-  // market sees is `mouths`, which the line above may have lifted above what the
-  // people alone eat, while `consumed` has to go on reporting the people — the
-  // dependency clause is about souls and not about coin. One array of eleven,
-  // once a season ([P-23]).
-  const eats = new Array<number>(GOOD_COUNT).fill(0);
-  for (let g = TIER_AT[0]; g < TIER_AT[1]; g++) eats[g] = mouths * APPETITE[g];
-  cargo += tierToMarket(produced, eats, offer, want, 0, access, m.price);
+  //
+  // THE VICTUALS TARGET IS OVERWRITTEN AND NOT ADDED TO, and that is the price of
+  // the coin ceiling: the larder the market sees is `mouths`, which the line
+  // above may have lifted above what the people alone eat, while `consumed` has
+  // to go on reporting the people — the dependency clause is about souls and not
+  // about coin.
+  for (let g = TIER_AT[0]; g < TIER_AT[1]; g++) target[g] = mouths * APPETITE[g] * TRADE.storesSeasons;
+  cargo += tierToMarket(have, target, offer, want, 0, access, m.price);
 
   // ...and only now is the season's traffic known, so the harbour's cut comes
   // LAST rather than first. The order is the whole of KAN-132 in one line: a cut
@@ -678,6 +758,38 @@ export function commerceOf(town: Town, working: Work[], security: number): Comme
       tierTotal(consumed, "luxury"),
     ),
   };
+}
+
+// ---- The warehouse ---------------------------------------------------------
+//
+// THE SEASON'S STORES, STRUCK. What the town made goes in, what crossed the quay
+// outward comes out, what it bought stays — and a share of the whole goes,
+// because nothing else in the model removes anything and a warehouse that only
+// fills is a warehouse that stops buying.
+//
+// THIS IS THE ONLY FUNCTION THAT WRITES `town.stock`, which is what lets
+// `derive()` stay a pure reading however often it is asked ([P-47]). It is
+// handed the commerce block the settlement actually booked, so the cargo the
+// ledger was PAID for is the cargo that leaves the shelves — one arithmetic, not
+// two that could drift.
+//
+// THE STORES CANNOT GO NEGATIVE AND THERE IS NO GUARD SAYING SO ([P-1]): a
+// tier in surplus offers at most `have - target` and a tier in deficit offers
+// nothing, so what is left after a sale is at least the target and never less
+// than nothing. An input the arithmetic cannot produce beats a clamp somebody
+// has to remember.
+//
+// AND IT CANNOT RUN AWAY EITHER, which is Done-when 3 as arithmetic rather than
+// as a hope. Whatever a place produces, the stores settle where the drain
+// balances the inflow — `stock -> (stock + in) x STORES_KEPT` has a fixed point
+// at `in x STORES_KEPT / (1 - STORES_KEPT)` for any inflow at all — so no
+// warehouse fills, no demand reaches zero, and the world is still trading in two
+// hundred years.
+export function stockSeason(town: Town, c: Commerce): void {
+  const s = town.stock;
+  for (let g = 0; g < GOOD_COUNT; g++) {
+    s[g] = (s[g] + c.produced[g] - c.offer[g] + c.bought[g]) * STORES_KEPT;
+  }
 }
 
 // THE MATERIALS BUILD-GATE IS GONE, AND THIS NOTE IS WHAT STANDS WHERE IT WAS

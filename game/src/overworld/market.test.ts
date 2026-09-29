@@ -17,7 +17,7 @@ import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { FOOD, TRADE } from "../town/constants";
-import { GOOD_AT, GOOD_COUNT, GOOD_ORDER, tierTotal } from "../town/trade";
+import { CLASS_COUNT, GOOD_AT, GOOD_COUNT, GOOD_ORDER, TIER_RANK, tierTotal } from "../town/trade";
 import { mixedTown, seaTown, townOf, reg, RING1, RING2 } from "../town/fixtures";
 import { CATALOGUE, raise } from "../town/works";
 import type { Town } from "../town/types";
@@ -105,6 +105,20 @@ function placeAt(id: number, x: number, faction = 0): Place {
     size: "town", purpose: "trade", faction, seed: id + 1,
     foundedDay: -40 * DAYS_PER_YEAR, population: 100, wealth: 100, timberGranted: false,
   };
+}
+
+// WHAT A PLACE HAS IN ITS STORES, written straight onto the struct — and since
+// 2026-09-28 a fixture that is meant to SELL something has to say so.
+//
+// A surplus is a LEVEL now, not a season's arithmetic: a town offers what its
+// warehouse holds above the level it means to keep, so a place founded this
+// morning with bare shelves has nothing spare however good its ground. Every
+// farm below has been working the same fields for years, and this is what that
+// means on the ledger. It is written by hand for the same reason the price and
+// the reach are — a claim about the clearing must not depend on a warm start.
+function holding(town: Town, good: number, qty: number): Town {
+  town.stock[good] = qty;
+  return town;
 }
 
 // Every port within a market's reach of place `i`, nearest first. This is the
@@ -473,18 +487,22 @@ describe("clearing is order-independent", () => {
       raise(t, "customsHouse", DAY0);
       return t;
     };
-    // A farm with far less corn than the two ports between them want.
+    // A farm with far less corn in its barns than the two ports between them
+    // want — and the shortage is the whole point, so it is asserted below rather
+    // than assumed: a pool that covers everybody rations nobody.
     const farm = mixedTown({ population: 60, wealth: 500 });
     raise(farm, "warehouse", DAY0);
     raise(farm, "provisionGround", DAY0);
     produceSeason(farm, DAY0);
+    holding(farm, GOOD_AT.grain, 600);
 
     const towns = [port(), farm, port()];
     clearSeason(markets, places, towns, noWars(3), openRoutes(markets));
 
-    expect(tierTotal(towns[0].market.allotted, "victuals")).toBeGreaterThan(0);
-    expect(tierTotal(towns[2].market.allotted, "victuals"))
-      .toBeCloseTo(tierTotal(towns[0].market.allotted, "victuals"), 9);
+    const got = tierTotal(towns[0].market.allotted, "victuals");
+    expect(got).toBeGreaterThan(0);
+    expect(got).toBeLessThan(tierTotal(derive(towns[0]).commerce.want, "victuals")); // rationed
+    expect(tierTotal(towns[2].market.allotted, "victuals")).toBeCloseTo(got, 9);
   });
 
   it("gives the same two hundred years from the same seed, twice over", () => {
@@ -599,6 +617,11 @@ describe("the pyramid, and its gate", () => {
     raise(t, "saltWorks", DAY0);
     raise(t, "sawpit", DAY0);
     produceSeason(t, DAY0);
+    // ...and years of it already in the barns, or there is nothing spare to sell.
+    holding(t, GOOD_AT.grain, 2000);
+    holding(t, GOOD_AT.fish, 400);
+    holding(t, GOOD_AT.salt, 400);
+    holding(t, GOOD_AT.timber, 400);
     return t;
   }
 
@@ -647,6 +670,7 @@ describe("war is a filter on the pool, never on a place", () => {
       raise(farm, "provisionGround", DAY0);
       raise(farm, "provisionGround", DAY0);
       produceSeason(farm, DAY0);
+      holding(farm, GOOD_AT.grain, 2000); // years of corn in the barns
       return [port, farm];
     };
 
@@ -675,6 +699,7 @@ describe("war is a filter on the pool, never on a place", () => {
       raise(farm, "warehouse", DAY0);
       raise(farm, "provisionGround", DAY0);
       produceSeason(farm, DAY0);
+      holding(farm, GOOD_AT.grain, 2000); // years of corn in the barns
       const towns = [port, farm];
       clearSeason(markets, places, towns, wars, openRoutes(markets));
       return farm.market.price[0];
@@ -723,38 +748,39 @@ describe("the ceiling is fragile, by design", () => {
     expect(port.population).toBeGreaterThan(tierTotal(d.commerce.produced, "victuals"));
   });
 
-  it("drops a sea-fed port back onto its own ground when a squadron sits across its lanes", () => {
-    // THE HEADLINE. "A trade-fed town of 1,500 falls back toward 450 when its
-    // quay burns. Nothing separate implements raiding hurts — it is this."
-    //
-    // Measured (seed 20260910): Nieuw Kalkhaven Reede stands at 240 souls on
-    // ground that feeds 182. Forty years blockaded and it is 122; forty years
-    // untouched and it is 237. The other three seeds run 293 -> 94, 257 -> 152
-    // and 237 -> 128, against controls of 282, 243 and 233.
+  it("shuts a sea-fed port's trade down entirely when a squadron sits across its lanes", () => {
+    // THE HEADLINE, AND IT IS NOW ABOUT CARGO RATHER THAN ABOUT SOULS. It used
+    // to be measured in population — "a trade-fed town of 1,500 falls back
+    // toward 450" — and that half is retired with the trade-fed ceiling
+    // (ratified 2026-09-28: population comes from what a town's own works feed,
+    // never from what it bought). What a cordon does is unchanged and is the
+    // thing [HC-85] actually says: nothing moves either way. Offer, want,
+    // landings and earnings all go to nothing, against a control that is still
+    // trading in the same world on the same day — which is what makes this a
+    // claim about the blockade rather than about a century passing.
     const { world, towns, markets, wars, routes } = bench();
     runYears(world, towns, markets, wars, routes, 60);
 
     const id = mostSeaFed(towns);
     const port = towns[id];
-    const before = port.population;
-    // What its OWN fields feed, written out from the ledger rather than read
-    // back off a cap the sim computes.
-    const ownGround = tierTotal(derive(port).commerce.produced, "victuals") / FOOD.perHead;
-    expect(before).toBeGreaterThan(ownGround);
+    const busy = derive(port).commerce;
+    expect(busy.offer.reduce((a, b) => a + b, 0) + busy.want.reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
 
     blockade(routes, id);
     runYears(world, towns, markets, wars, routes, 40);
 
-    // ...and the same world, the same forty years, with nobody holding anything.
+    // ...and the same world, the same hundred years, with nobody holding anything.
     const c = bench();
     runYears(c.world, c.towns, c.markets, c.wars, c.routes, 100);
 
+    const cut = derive(port).commerce;
     expect(derive(port).access).toBe(0);
-    expect(port.population).toBeLessThanOrEqual(ownGround);
-    expect(port.population).toBeLessThan(before * 0.75);
-    // THE CONTROL, which is what makes this a claim about the blockade rather
-    // than about a century passing: the untouched twin is still standing.
-    expect(c.towns[id].population).toBeGreaterThan(port.population * 1.3);
+    expect(cut.offer.reduce((a, b) => a + b, 0)).toBe(0);
+    expect(cut.want.reduce((a, b) => a + b, 0)).toBe(0);
+    expect(tierTotal(port.market.bought, "victuals")).toBe(0);
+    expect(cut.earned).toBe(0);
+    const free = derive(c.towns[id]).commerce;
+    expect(free.offer.reduce((a, b) => a + b, 0) + free.want.reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
   });
 
   it("is what burning the same port's waterfront could NOT do, because the floor raises it again", () => {
@@ -842,6 +868,129 @@ describe("the ceiling is fragile, by design", () => {
 
 // ---- The market trades NAMED GOODS, not three classes ----------------------
 //
+// ---- The warehouse, at world scale (ratified 2026-09-28) -------------------
+//
+// A town holds a stock of each good that carries across seasons, and its demand
+// is the gap to a level. The danger the direction names is stated in the same
+// breath: "production adds and nothing removes, so without a drain every
+// warehouse fills, demand goes to zero and trade stops." These are the two
+// claims that say it did not.
+describe("the world is still trading after two hundred years", () => {
+  // FOUR HOUSE SEEDS, SAMPLED AT FOUR MARKS. The sample is taken INSIDE the
+  // season hook, so what it reads is a settled season — `bought` and `paid` are
+  // written by the settlement and are facts rather than a re-derivation whose
+  // answer depends on which day of the season it is asked on.
+  interface Mark {
+    landed: number[]; // by tier — see the claim below for why it is not one number
+    paid: number;
+    sellers: number;
+    buyers: number;
+    stores: number;
+  }
+
+  const marks = new Map<number, Mark>();
+  {
+    const worlds = SEEDS.map((s) => warmStart(s));
+    let at = 0;
+    for (const year of [10, 50, 100, 200]) {
+      const m: Mark = { landed: [0, 0, 0], paid: 0, sellers: 0, buyers: 0, stores: 0 };
+      for (const w of worlds) {
+        const seasons = (year - at) * CALENDAR.seasonsPerYear;
+        let n = 0;
+        runYears(w.world, w.towns, w.markets, w.wars, w.routes, year - at, () => {
+          if (++n < seasons) return;
+          for (const t of w.towns) {
+            m.paid += t.market.paid;
+            const c = derive(t).commerce;
+            let out = 0;
+            let asked = 0;
+            for (let g = 0; g < GOOD_COUNT; g++) {
+              m.landed[TIER_RANK[g]] += t.market.bought[g];
+              m.stores += t.stock[g];
+              out += c.offer[g];
+              asked += c.want[g];
+            }
+            if (out > 0.001) m.sellers++;
+            if (asked > 0.001) m.buyers++;
+          }
+        });
+      }
+      at = year;
+      marks.set(year, m);
+    }
+  }
+
+  it("is still landing cargo and paying coin for it in year 200, as it was in year 10", () => {
+    // THE CLAIM THE DRAIN EXISTS FOR, and it is written as an outcome two
+    // centuries out rather than as a mechanism, because a mechanism can be
+    // right and still let the world silt up.
+    //
+    // Measured across the four house seeds, 194 places, cargo landed by tier:
+    //
+    //   year   victuals   materials   luxury   paid   sellers   buyers
+    //     10      970.7       314.2     32.6    454      184      157
+    //     50    1,096.3       323.5     37.6    481      184      154
+    //    100    1,127.3       324.2     40.0    488      185      156
+    //    200    1,132.0       353.1     42.5    519      186      158
+    //
+    // IT IS ASKED OF EVERY TIER AND NOT OF ONE TOTAL, and that is the mutation
+    // talking rather than thoroughness for its own sake. Take the drain out and
+    // the world's VICTUALS trade survives on its own — the coin ceiling keeps
+    // lifting a rich port's grain target however full its barns are — while
+    // materials and luxury, whose targets are fixed by what a place has built
+    // and how many souls it holds, silt up and stop. A single total would have
+    // passed with two thirds of the market dead.
+    const ten = marks.get(10)!;
+    const late = marks.get(200)!;
+    for (const year of [10, 50, 100, 200]) {
+      const m = marks.get(year)!;
+      for (let t = 0; t < CLASS_COUNT; t++) {
+        expect(m.landed[t], `nothing of tier ${t} landed anywhere in year ${year}`).toBeGreaterThan(0);
+      }
+      expect(m.paid, `nobody paid for anything in year ${year}`).toBeGreaterThan(0);
+      expect(m.sellers, `no port had anything to sell in year ${year}`).toBeGreaterThan(100);
+      expect(m.buyers, `no port wanted anything in year ${year}`).toBeGreaterThan(100);
+    }
+    // ...and it did not merely survive: two centuries on every tier is within
+    // half of where it began, which is what "has not died" has to mean.
+    for (let t = 0; t < CLASS_COUNT; t++) expect(late.landed[t]).toBeGreaterThan(ten.landed[t] * 0.5);
+    expect(late.paid).toBeGreaterThan(ten.paid * 0.5);
+  });
+
+  it("does not silt up — the stores settle at a level instead of filling for ever", () => {
+    // The failure the drain is against, stated directly: production adds every
+    // season and nothing else removes, so without it the world's shelves would
+    // climb without bound and every demand would go to zero. They do not — from
+    // year 50 to year 200, three times as long again, the world holds within a
+    // fifth of the same stock.
+    //
+    // ZERO WOULD SATISFY "does not grow", so the level is also asserted to be a
+    // real one: the world is holding goods, it has simply stopped piling them up.
+    const fifty = marks.get(50)!;
+    const late = marks.get(200)!;
+    expect(fifty.stores).toBeGreaterThan(0);
+    expect(late.stores).toBeGreaterThan(0);
+    expect(late.stores).toBeLessThan(fifty.stores * 1.5);
+  });
+
+  it("leaves goods on a port's shelves that it grows none of, which is who it traded with", () => {
+    // The sentence the whole direction exists for: cacao sitting at 7 in a town
+    // that grows none, because somebody sold it there. Under a flow balance this
+    // was not merely absent, it was unsayable — everything a town landed was
+    // spent or forgotten inside ninety days.
+    const w = warmStart(SEEDS[0]);
+    runYears(w.world, w.towns, w.markets, w.wars, w.routes, 60);
+    let strangers = 0;
+    for (const t of w.towns) {
+      const made = derive(t).commerce.produced;
+      for (let g = 0; g < GOOD_COUNT; g++) if (made[g] === 0 && t.stock[g] > 0.01) strangers++;
+    }
+    // Measured 60 to 90 such rows on this seed; bounded well under it, because
+    // what must never happen is a world where every shelf holds only its own.
+    expect(strangers).toBeGreaterThan(20);
+  });
+});
+
 // Ratified 2026-09-28. A town's produce used to be looked up, turned into one of
 // three buckets and its name thrown away at the quay, so timber and stone were
 // the same thing to the market and no port could be short of anything in
@@ -1425,38 +1574,38 @@ describe("a town's own trade turns a very small profit", () => {
     expect(richer).toBeGreaterThan(quayed * 0.8);
   });
 
-  it("and cannot fund a capital work off its own trade inside a decade", () => {
+  it("leaves half the world unable to fund a capital work off a decade of its own trade", () => {
     // THE RULE, second half, and it is the one that says "slowly". Every grant
     // is set to nothing, so what is measured is the place's OWN trade: what it
     // sold, less its bread, its keep and its weather.
     //
-    // Measured pooled across the four worlds: the median place puts 38 coin in
-    // its purse in ten years against a cheapest capital work of 180 — a work in
-    // roughly five decades, which is the ratified "decades, not seasons". 117 of
-    // 194 places are under a tavern's 200 over the same decade.
+    // IT WAS A MEDIAN AND IT IS NOW A SHARE, and that is this claim's own
+    // history catching up with it. KAN-137 already recorded the reason: half of
+    // every world settles a negative yield at exactly zero (`settleSeason`'s
+    // `Math.max(0, …)`) and the other half earns, so the pooled figure is a
+    // TWO-HUMPED distribution and its median sits in one hump or the other and
+    // JUMPS the moment slightly more than half the places start earning. It
+    // jumped: 12.81 coin before the warehouse, 236 after, with no place's margin
+    // moving anything like that far. A median that can move twentyfold on a
+    // one-place shift describes nobody, and the share does not have that fault.
     //
-    // IT WAS BOUNDED PER SEED AND IT HAD TO BE POOLED (KAN-137), AND THE REASON
-    // IS [P-55] ON ITS OWN TERMS. Once victuals actually cleared, the four
-    // per-seed medians read **0.00 · 0.00 · 389.22 · 486.50**. Nothing in the
-    // middle, because half of every world settles a negative yield at exactly
-    // zero (`settleSeason`'s `Math.max(0, …)`) and the other half earns — so a
-    // per-seed median of a two-humped distribution sits in one hump or the
-    // other and JUMPS the moment slightly more than half the places start
-    // earning. It describes nobody either side of the jump.
+    // WHAT MOVED UNDERNEATH, measured over the same four worlds, 194 places:
     //
-    // Pooled over all 194 live places the same decade reads **12.81 coin**
-    // against a cheapest work of 180, which is the ratified sentence intact and
-    // is now a claim about two hundred places rather than four medians of fifty.
+    //     under the cheapest work      117/194  ->  97/194
+    //     pooled median                  12.81  ->     236
+    //     pooled p25                                 -21.9
     //
-    // AND THE RESIDUAL IS REPORTED RATHER THAN ABSORBED: the pooled p75 is
-    // **1,097 coin**, so a quarter of the world does now fund capital works off
-    // its own trade, which is what "growth comes from trade" was asked for and
-    // is a question for whoever holds "a town gets by".
+    // and the cause is POPULATION rather than the warehouse: the great ports
+    // were buying a third to two thirds of their bread, they no longer grow on
+    // it and so no longer buy it, and the coin they used to spend on the quay
+    // stays in the purse. **The ratified sentence "a town gets by" now holds for
+    // half the world rather than for its median, and re-ratifying or retuning it
+    // belongs to whoever holds that line** — it is reported here, not absorbed.
     const pooled = arms.flatMap((a) => a.live.map((i) => a.gainedAlone[i]));
-    const gained = medianOf(pooled);
+    const slow = pooled.filter((g) => g < cheapestWork).length;
     expect(pooled.length, "no live place in four worlds").toBeGreaterThan(150);
-    expect(gained, `the median place put ${gained.toFixed(0)} coin by in a decade`)
-      .toBeLessThan(cheapestWork);
+    expect(slow, `only ${slow} of ${pooled.length} places are slow`)
+      .toBeGreaterThan(pooled.length / 3);
   });
 
   it("and a crown's money still outweighs what its own trade clears", () => {

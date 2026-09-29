@@ -244,8 +244,28 @@ export interface Town {
   // WHAT THE SHIPPING BROUGHT — [HC-72]'s "cleared trade" row, written by the
   // world in the seasonal clear and by settlement afterwards. Stored for the
   // same reason `grant` is: it does not come off the ledger, it ARRIVES. It is
-  // not a goods inventory and holds no stock — see trade.ts.
+  // a season's FLOWS and holds no level of its own; the warehouse behind them is
+  // the field below.
   market: MarketState;
+  // THE WAREHOUSE — how much of each good stands in the town's stores, by good,
+  // carried from season to season. What it makes goes in, what crosses its quay
+  // outward comes out, what it buys stays, and a share of the whole goes every
+  // season so that no warehouse ever fills.
+  //
+  // STORED, AND IT PASSES [HC-14]'S OWN TEST — "could this have been
+  // recomputed?" — as squarely as `harvestLoss` and `grant` do. It could not:
+  // seven sacks of cacao in a town that grows none are the RESIDUE OF EVERY
+  // SEASON'S TRADING since the place was founded, and no function of this
+  // ledger remembers who called with what in 1643. That is the whole of why it
+  // is here: it is the one thing on a town that is a record rather than a
+  // reading, which is also what makes a port's shelves worth looking at.
+  //
+  // IT IS NOT A COMMODITY INVENTORY FOR THE PLAYER TO MANAGE and nothing is
+  // consumed out of it for survival: falling short of a target costs a town
+  // nothing whatsoever, and the drain is there to keep the world trading rather
+  // than to feed anybody. Rob a port of every sack of grain and it simply wants
+  // grain again.
+  stock: number[];
   nextWorkId: number;
 
   // The DAY the town was last frightened — a raid, a bombardment. Feeds the

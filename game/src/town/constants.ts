@@ -149,6 +149,27 @@ export const TRADE = {
   // `materialsPerWork` above STAYS: a building's standing bill is still what a
   // town wants to buy, and materials are still a trade class.
   luxuryPerHead: 0.02, // a little comfort at the top of the pyramid, wanted by people
+  // HOW MANY SEASONS' WORTH OF EACH GOOD A TOWN KEEPS IN ITS STORES — the one
+  // number the warehouse needed, and it is one number rather than two on
+  // purpose ([P-47]). It sets BOTH ends of the warehouse:
+  //
+  //   THE TARGET  a town chases `appetite x storesSeasons` of every good it
+  //               wants, and its DEMAND is simply the gap to that level.
+  //   THE DRAIN   and `1 / storesSeasons` of the stores go every season, which
+  //               is what stops the whole world filling up and trading nothing.
+  //
+  // THEY ARE THE SAME NUMBER BECAUSE THEY HAVE TO AGREE. A town sitting exactly
+  // at its target loses `target / storesSeasons` a season — which is the
+  // appetite it always had, to the digit. So the flow through every tier is the
+  // number it was before a warehouse existed, and the economy is not rescaled by
+  // the change; what is new is the LEVEL behind the flow. Write the two as
+  // separate constants and the day somebody tunes one, every town on the map
+  // either starves or stops buying.
+  //
+  // FOUR IS A YEAR, which is the honest reason for the figure: a town keeps a
+  // year's stores. It is not read off the calendar, because how deep a larder is
+  // and how long a year is are different facts that happen to agree here.
+  storesSeasons: 4,
   // Base prices, in coin per unit, BY TIER — and they stay by tier now that the
   // market trades named goods, because there is nothing to measure a per-good
   // base against. Materials and luxury sit at par because the catalogue's

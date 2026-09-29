@@ -10,8 +10,8 @@
 import { describe, it, expect } from "vitest";
 import { derive, settleSeason, stepSeason, stepSeasons, stepYears, takeWeather, carryingCapacity, prosperityTarget } from "./sim";
 import { CATALOGUE, raise } from "./works";
-import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, quaysideOf, sellTo, tierTotal, GOOD_AT, TIER_AT, rankOf, DEPENDENCY_CLAUSE, type TradeClass } from "./trade";
-import { TRADE, WEALTH, WORKS } from "./constants";
+import { accessOf, buyFrom, cargoOf, dependencyOf, dependencyWord, fetchOf, priceOf, quaysideOf, sellTo, tierTotal, GOOD_AT, GOOD_COUNT, GOODS, TIER_AT, rankOf, DEPENDENCY_CLAUSE, type TradeClass } from "./trade";
+import { FOOD, TRADE, WEALTH, WORKS } from "./constants";
 import { focusWants, governorTurn, permitsFocus, scoreWork, wants } from "./governor";
 import { mixedTown, bareTown, seaTown, townOf, reg, RING1, RING2 } from "./fixtures";
 import type { Town } from "./types";
@@ -271,15 +271,6 @@ describe("wealth is earned, not emitted", () => {
 });
 
 describe("the coin ceiling", () => {
-  it("lets a town outgrow the ground it farms, which the old cap forbade", () => {
-    // §3.5.6: bought bread lifts the ~450-soul ceiling, and what replaces it is
-    // coin, access, ground for houses and hands.
-    const fed = open(mixedTown({ population: 200, wealth: 2000 }));
-    const own = carryingCapacity(fed);
-    fed.market.bought[GOOD_AT.grain] = own * 0.5;
-    expect(carryingCapacity(fed)).toBeGreaterThan(own);
-  });
-
   it("asks for grain enough to feed the people its cargo can pay for", () => {
     // "pop ~= export revenue / (import price + upkeep/head)" — the ceiling is set
     // by the land's QUALITY, not its acreage. A town with sawpits asks for more
@@ -315,12 +306,21 @@ describe("the coin ceiling", () => {
 });
 
 describe("the ceiling is fragile, and the raid consequence IS the ceiling", () => {
-  // [HC-87]: nothing separate implements "raiding hurts" — this is it. A
-  // trade-fed town falls back toward what its own ground grows the moment its
-  // quay stops working, because the bought half of the sum simply stops
-  // arriving. Stated on a place whose only waterfront works are CAPITAL ones, so
+  // [HC-87]: nothing separate implements "raiding hurts" — this is it. A town
+  // falls back toward what its own ground grows the moment its quay stops
+  // working. Stated on a place whose only waterfront works are CAPITAL ones, so
   // the quay stays shut: subsistence works raise themselves again for nothing,
   // which is the hamlet floor doing its job and not a hole in the rule.
+  //
+  // "CARRIES FAR MORE SOULS ON BOUGHT BREAD THAN ITS OWN GROUND COULD FEED"
+  // STOOD HERE AND IS RETIRED, not weakened — ratified 2026-09-28, with the
+  // warehouse: "population comes from an abstract growth input, never from food
+  // stock… this retires [HC-87]'s trade-fed ceiling: a great port is no longer
+  // great because it is fed from the sea." Nothing eats out of the stores, so a
+  // town that grew on grain nobody consumes was growing on a bookkeeping entry.
+  // The claim that survives is the one below, and the ratified direction names
+  // the longer road that replaces the short one: a raid takes the coin and
+  // breaks the works that feed the place.
   function seaFed(): Town {
     const t = seaTown({ population: 60, wealth: 500000 });
     raise(t, "warehouse", DAY0);
@@ -340,13 +340,6 @@ describe("the ceiling is fragile, and the raid consequence IS the ceiling", () =
     }
     return from + seasons * SEASON;
   };
-
-  it("carries far more souls on bought bread than its own ground could feed", () => {
-    const town = seaFed();
-    fedFor(town, 200);
-    expect(tierTotal(derive(town).commerce.produced, "victuals")).toBe(0); // not one acre of its own
-    expect(town.population).toBeGreaterThan(450); // and far past the old cap
-  });
 
   it("falls back toward the hamlet floor when the quay stops", () => {
     const town = seaFed();
@@ -955,8 +948,14 @@ describe("a town names what it ships and what it lacks", () => {
     // ITS FIELDS ARE TAKEN AND ITS REEF IS LEFT, which is the input that tells
     // the right answer from the plausible one: a town short of everything would
     // satisfy "wants grain" without saying anything about names.
+    //
+    // AND ITS STORES ARE FULL OF FISH, which is what the warehouse added to the
+    // fixture: shortage is a LEVEL now, so a town that has been working the same
+    // reef for years has to be holding the catch, or it is short of fish for the
+    // same reason it is short of corn and the claim says nothing.
     const town = open(mixedTown({ population: 200, wealth: 9000 }));
     stepSeason(town, AFTER_OPENING);
+    town.stock[GOOD_AT.fish] = 200 * GOODS.fish.appetite * TRADE.storesSeasons * 1.1;
     for (const w of town.works) if (w.kind === "gardenPlots") w.condition = "ruin";
     const c = derive(town).commerce;
 
@@ -967,6 +966,186 @@ describe("a town names what it ships and what it lacks", () => {
     // ...and the tier it is short of is still victuals, which is what the gate
     // and the population both go on reading ([HC-77], `carryingCapacity`).
     expect(tierTotal(c.want, "victuals")).toBeGreaterThan(0);
+  });
+});
+
+// ---- The warehouse (ratified 2026-09-28) -----------------------------------
+//
+// A town holds a stock of each good that carries across seasons, and demand
+// stops being "what I make less what I want this season" and becomes the gap to
+// a level the place chases. These are the claims that say so.
+
+describe("a town holds a warehouse", () => {
+  // A place whose lanes are all cut, so nothing crosses the quay in either
+  // direction ([HC-85]) and what is on the shelves is its own doing. That is the
+  // input that tells "it kept what it made" from "it happened to sell less".
+  function cutOff(): Town {
+    const t = reaching(mixedTown({ population: 120, wealth: 5000 }), 0);
+    raise(t, "sawpit", DAY0);
+    stepSeason(t, DAY0);
+    return t;
+  }
+
+  const sawn = (t: Town) => t.works.find((w) => w.kind === "sawpit" && w.condition === "working")!.trade;
+
+  it("puts what its works cut on the shelves, less the share that goes each season", () => {
+    // What it produces goes in. The oracle is spelled out rather than asked of
+    // the commerce block: one season's cutting off the LEDGER's own column, less
+    // the drain, and nothing else — no market called and nothing was bought.
+    const town = cutOff();
+    expect(sawn(town)).toBeGreaterThan(0); // there was something to cut
+    expect(town.stock[GOOD_AT.timber]).toBeCloseTo(sawn(town) * (1 - 1 / TRADE.storesSeasons), 9);
+  });
+
+  it("carries it across the seasons — it holds more than any one season's cutting", () => {
+    // THE CLAIM A FLOW BALANCE COULD NOT SURVIVE. Everything a town made used to
+    // be sold or forgotten inside ninety days, so its stores could never hold
+    // more than one season's work. Twenty years of the same sawpit and the same
+    // drain settle well above that.
+    const town = cutOff();
+    stepSeasons(town, 80, DAY0 + SEASON);
+    expect(town.stock[GOOD_AT.timber]).toBeGreaterThan(sawn(town));
+  });
+
+  it("takes off the shelves what crossed the quay", () => {
+    // ...and what it sells comes out. Two towns, identical but for whether the
+    // shipping calls at all: the one that ships its timber is holding less of it.
+    const shut = cutOff();
+    const trading = cutOff();
+    reaching(trading, FULL_REACH);
+    raise(trading, "warehouse", DAY0);
+    stepSeasons(shut, 40, DAY0 + SEASON);
+    stepSeasons(trading, 40, DAY0 + SEASON);
+    expect(derive(trading).commerce.offer[GOOD_AT.timber]).toBeGreaterThan(0); // it really does ship
+    expect(trading.stock[GOOD_AT.timber]).toBeLessThan(shut.stock[GOOD_AT.timber]);
+  });
+
+  it("keeps what somebody else landed, in a town that grows none of it", () => {
+    // ...and what it buys stays. The sentence the whole direction exists for:
+    // cacao on the shelves of a place with not one grove, because somebody sold
+    // it there. It is still there the season after, which is what "carries"
+    // means and what the flow balance could never say.
+    const town = reaching(open(seaTown({ population: 60, wealth: 20_000 })), 0);
+    town.market.allotted[GOOD_AT.cacao] = 40;
+    town.market.price[GOOD_AT.cacao] = TRADE.basePrice[2];
+    stepSeason(town, AFTER_OPENING);
+
+    expect(derive(town).commerce.produced[GOOD_AT.cacao]).toBe(0); // it grows none
+    expect(town.market.bought[GOOD_AT.cacao]).toBeGreaterThan(0); // somebody sold it some
+    const held = town.stock[GOOD_AT.cacao];
+    expect(held).toBeGreaterThan(0);
+
+    stepSeason(town, AFTER_OPENING + SEASON); // ...and nothing lands this season
+    expect(town.stock[GOOD_AT.cacao]).toBeGreaterThan(0);
+    expect(town.stock[GOOD_AT.cacao]).toBeLessThan(held); // the drain took its share
+  });
+});
+
+describe("demand is the gap to a target that scales with the town's size", () => {
+  // A place that grows nothing it can eat and holds nothing either, so the whole
+  // of its victuals want is the gap and there is no surplus anywhere in the tier
+  // to net against it. Both halves are needed: the hamlet floor raises garden
+  // plots on any ground at all, and a season of them in the stores would put a
+  // number in the oracle that came off the catalogue rather than off the rule.
+  const hungry = (population: number): Town => {
+    const t = reaching(open(seaTown({ population, wealth: 200 })), FULL_REACH);
+    for (const w of t.works) if (w.food > 0) w.condition = "ruin";
+    for (let g = 0; g < GOOD_COUNT; g++) t.stock[g] = 0;
+    return t;
+  };
+
+  it("asks for four seasons' bread, and a bigger town asks for more of it", () => {
+    // THE ORACLE IS WRITTEN OUT, from the tunables and nothing else: a town
+    // chases `storesSeasons` of what its people take, split across the victuals
+    // by the goods' own shares, and asks for the whole gap because its shelves
+    // are bare. `access` is the one thing read back, and it is pinned above.
+    const town = hungry(120);
+    // OFF THE LEDGER'S OWN SOULS, not off the number the fixture was handed: a
+    // season has been settled and the place has drifted toward what it can feed.
+    const target = town.population * FOOD.perHead * TRADE.storesSeasons * GOODS.grain.appetite;
+    expect(derive(town).commerce.want[GOOD_AT.grain]).toBeCloseTo(target * derive(town).access, 6);
+    expect(derive(hungry(240)).commerce.want[GOOD_AT.grain])
+      .toBeGreaterThan(derive(town).commerce.want[GOOD_AT.grain]);
+  });
+
+  it("stops asking once the shelves are full, and asks again the moment they are not", () => {
+    // The gap, both ways ([P-52]'s companion rule in testing.md: a reversible
+    // thing is claimed in each direction). A full warehouse asks for nothing; a
+    // raider who takes every sack leaves it asking for the whole of it again.
+    const town = hungry(120);
+    for (let g = TIER_AT[0]; g < TIER_AT[1]; g++) town.stock[g] = town.population * TRADE.storesSeasons * 2;
+    expect(tierTotal(derive(town).commerce.want, "victuals")).toBe(0);
+
+    for (let g = 0; g < GOOD_COUNT; g++) town.stock[g] = 0; // every sack of it
+    const target = town.population * FOOD.perHead * TRADE.storesSeasons * GOODS.grain.appetite;
+    expect(derive(town).commerce.want[GOOD_AT.grain]).toBeCloseTo(target * derive(town).access, 6);
+  });
+
+  it("gives a hamlet no taste for luxuries at all and a great port several", () => {
+    // What makes a town's SIZE legible without a number on the screen. A hamlet
+    // wants bread and nothing else; a port of two hundred wants sugar, rum,
+    // tobacco, cotton and cacao — five things it had never heard of.
+    const comforts = (population: number): number => {
+      const c = derive(mixedTown({ population, wealth: 500 })).commerce;
+      let n = 0;
+      for (let g = TIER_AT[2]; g < GOOD_COUNT; g++) if (c.consumed[g] > 0) n++;
+      return n;
+    };
+    // NOT ONE OF THE FIVE, named rather than asserted as an empty set: sugar,
+    // rum, tobacco, cotton and cacao, and sugar is the loudest of them — it is
+    // the first rung, so if any luxury reaches a hamlet it is that one.
+    const hamlet = derive(mixedTown({ population: 20, wealth: 500 })).commerce;
+    expect(hamlet.consumed[GOOD_AT.sugar]).toBe(0);
+    expect(comforts(20)).toBe(0);
+    expect(hamlet.consumed[GOOD_AT.grain]).toBeGreaterThan(0); // ...and it still wants bread
+    expect(comforts(90)).toBeGreaterThan(comforts(20));
+    expect(comforts(200)).toBeGreaterThan(comforts(90));
+    expect(comforts(200)).toBeGreaterThanOrEqual(3); // several, in the plain sense
+  });
+});
+
+describe("falling short of what it wants costs a town nothing whatsoever", () => {
+  // The ratified rule, verbatim: "nothing is consumed for survival, and falling
+  // short costs nothing — rob a town of all its grain and it just wants grain
+  // again." So no consequence may be keyed to the shortfall: not a soul, not a
+  // point of standing, not a need.
+  const build = (): Town => {
+    const t = open(mixedTown({ population: 150, wealth: 4000 }));
+    stepSeason(t, AFTER_OPENING);
+    return t;
+  };
+
+  it("leaves an emptied town the same size as one whose shelves are full", () => {
+    const full = build();
+    const robbed = build();
+    for (let g = 0; g < GOOD_COUNT; g++) full.stock[g] = 900;
+    for (let g = 0; g < GOOD_COUNT; g++) robbed.stock[g] = 0;
+    expect(carryingCapacity(full)).toBeGreaterThan(0); // there is a capacity to differ
+    expect(carryingCapacity(robbed)).toBe(carryingCapacity(full));
+  });
+
+  it("leaves its standing and its wants untouched by what is on the shelves", () => {
+    // The three inputs prosperity and the governor read. A shortfall that dented
+    // any of them would be the consequence the direction forbids.
+    const full = build();
+    const robbed = build();
+    for (let g = 0; g < GOOD_COUNT; g++) full.stock[g] = 900;
+    for (let g = 0; g < GOOD_COUNT; g++) robbed.stock[g] = 0;
+    expect(derive(full).commerce.dependency).toBe(derive(robbed).commerce.dependency);
+    expect(derive(full).commerce.luxuryShort).toBe(derive(robbed).commerce.luxuryShort);
+    expect(derive(full).needs).toEqual(derive(robbed).needs);
+  });
+
+  it("does not grow one soul on the grain in its stores, however full they are", () => {
+    // Population does not read the warehouse. It used to count the victuals a
+    // town had BOUGHT, which under a warehouse would have it growing on grain
+    // nobody eats — so it reads the `food` its own works feed, and only that.
+    const town = open(mixedTown({ population: 200, wealth: 2000 }));
+    const own = carryingCapacity(town);
+    expect(own).toBeGreaterThan(0);
+    town.stock[GOOD_AT.grain] = own * 10;
+    town.market.bought[GOOD_AT.grain] = own * 10;
+    expect(carryingCapacity(town)).toBe(own);
   });
 });
 

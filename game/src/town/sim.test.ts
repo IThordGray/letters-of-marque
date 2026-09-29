@@ -5,12 +5,12 @@
 // that nothing derived is kept. See spec/world-simulation.md §10.1.
 
 import { describe, it, expect } from "vitest";
-import { derive, stepSeason, stepSeasons, stepYears, makeTown, carryingCapacity, failureWord, takeWeather } from "./sim";
+import { derive, stepSeason, stepYears, makeTown, carryingCapacity, failureWord, takeWeather } from "./sim";
 import { stepTownYears } from "./governor";
 import { raise, CATALOGUE } from "./works";
 import { mixedTown, bareTown } from "./fixtures";
 import { WORKS } from "./constants";
-import { GOOD_AT, TIER_AT } from "./trade";
+import { GOOD_AT } from "./trade";
 import type { Town, WorkKind } from "./types";
 import { CALENDAR, DAYS_PER_YEAR, yearOfDay } from "../overworld/calendar";
 
@@ -159,36 +159,15 @@ describe("the hamlet floor requires survivors", () => {
 describe("only a deliberate hand empties a town", () => {
   // [HC-18]. The floor emerging from subsistence must still hold under every
   // ordinary decline, or deleting the constant traded one bug for a worse one.
-
-  it("falls back onto its own ground when the shipping stops, and stands there", () => {
-    // Decline with a cause and no hand on the town: it grew on bought bread and
-    // then the corn simply stopped coming. [HC-87]'s fragile ceiling is what
-    // makes it fall; the hamlet floor is what catches it. Stated against a twin
-    // that never traded, so how far it had been carried is a relationship rather
-    // than a number.
-    const fed = mixedTown({ population: 200, wealth: 20_000 });
-    const never = mixedTown({ population: 200, wealth: 20_000 });
-    for (const t of [fed, never]) raise(t, "warehouse", DAY0); // somewhere to land it
-
-    for (let i = 0; i < 200; i++) {
-      fed.market.allotted[GOOD_AT.grain] = 900;
-      for (let g = TIER_AT[0]; g < TIER_AT[1]; g++) fed.market.price[g] = 0.15;
-      stepSeason(fed, DAY0 + i * SEASON);
-      stepSeason(never, DAY0 + i * SEASON);
-    }
-    const peak = fed.population;
-    expect(peak).toBeGreaterThan(never.population); // the sea carried souls its ground could not
-
-    fed.market.allotted[GOOD_AT.grain] = 0; // ...and then it stopped
-    stepSeasons(fed, 200, DAY0 + 200 * SEASON);
-    const fallen = fed.population;
-    stepSeasons(fed, 200, DAY0 + 400 * SEASON);
-
-    expect(fallen).toBeLessThan(peak); // it really did fall
-    expect(fed.population).toBeCloseTo(fallen, 1); // ...and then stood, rather than sliding on
-    expect(fed.population).toBeGreaterThan(CATALOGUE.gardenPlots.hands / WORKS.labourShare);
-    expect(derive(fed).food).toBeGreaterThan(0); // on bread it grew itself
-  });
+  //
+  // "FALLS BACK ONTO ITS OWN GROUND WHEN THE SHIPPING STOPS" STOOD HERE AND IS
+  // RETIRED WITH ITS MECHANISM (ratified 2026-09-28, the warehouse). It fed a
+  // town nine hundred bushels a season, watched it outgrow its fields and then
+  // cut the supply off. Nothing is eaten out of the stores now — "population
+  // comes from an abstract growth input, never from food stock" — so the town
+  // never rose on the bought bread in the first place and the fall it claimed
+  // cannot happen. The surviving half, that an ordinary decline stops at the
+  // floor rather than sliding on, is the claim below.
 
   it("keeps enough souls to work its own ground, which is what the floor now is", () => {
     // The floor is no longer a number: it is the fewest souls who can man a food

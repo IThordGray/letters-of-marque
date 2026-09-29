@@ -18,7 +18,7 @@ import type { Land } from "./land";
 import { describeLand } from "./land";
 import { damageWorks, harvestShare, stepWorks, unmetNeeds, CATALOGUE } from "./works";
 import { makeFootprint } from "./footprint";
-import { commerceOf, makeMarket, payImports, dependencyWord, tierTotal } from "./trade";
+import { commerceOf, makeMarket, payImports, dependencyWord, stockSeason, GOOD_COUNT } from "./trade";
 import { FOOD, POP, WEALTH, WORKS, PROSPERITY, SECURITY, PROSPERITY_BANDS, WEALTH_BANDS } from "./constants";
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
@@ -101,10 +101,23 @@ function garrisonOf(town: Town, security: number): Derived["garrison"] {
 // in the model: COIN (a town that cannot pay does not eat), ACCESS (no quay, no
 // grain), GROUND FOR HOUSES (the footprint) and HANDS (`labourShare`).
 //
-// [HC-87] The new ceiling is FRAGILE BY DESIGN, and that is not a side effect:
-//         ceiling and raid consequence are the SAME MECHANISM. A trade-fed town
-//         of 1,500 falls back toward 450 the season its quay burns, because the
-//         bought half of this sum simply stops arriving.
+// POPULATION DOES NOT READ THE WAREHOUSE, and that is what the warehouse took
+// away from this line (ratified 2026-09-28). The capacity used to count the
+// victuals-tier goods a town had BOUGHT, on top of what its own works fed. Under
+// a warehouse that is incoherent: nothing is consumed out of the stores, so a
+// town would grow on grain nobody eats and keep growing on grain it merely
+// holds. So this reads ONE column — the `food` a town's own works feed, which
+// has always been separate from the cargo column — and the sentence is the
+// plain one: a town holds the people its own ground can feed.
+//
+// WHAT THAT COSTS, HONESTLY: the great ports were buying 32-66% of what they
+// ate, so the largest fall by about half. HOW A TOWN GROWS IS PARKED and will be
+// settled on its own; nothing here anticipates it. This removes a read that
+// became wrong, and nothing more.
+//
+// [HC-87] The ceiling is still FRAGILE and the raid consequence is still the
+//         same mechanism — by the longer road the ratified direction names: a
+//         raid takes the coin and breaks the works that feed the place.
 //
 // AND THERE IS NO FLOOR UNDER IT (KAN-106). This used to end
 // `Math.max(POP.floor, …)`, which meant a place razed to nothing was feeding
@@ -116,11 +129,7 @@ export function carryingCapacity(town: Town): number {
   // feeds fewer people, and it would be a quiet bug for the food a town sells to
   // fall while the mouths it can keep did not.
   const grown = sum(town.works.filter((w) => w.condition === "working"), (w) => w.food) * harvestShare(town);
-  // THE VICTUALS-TIER GOODS IT BOUGHT, and that is the whole of what named goods
-  // change here: bread is bread whether it came ashore as grain, as fish or as
-  // salt, so the tier is the question and `tierTotal` is the one place it is
-  // asked ([P-47]). Nothing else about population moves.
-  const foodCap = (grown + tierTotal(town.market.bought, "victuals")) / FOOD.perHead;
+  const foodCap = grown / FOOD.perHead;
   const { min, fullAt } = POP.prosperityPull;
   const pull = min + (1 - min) * clamp(town.prosperity / fullAt, 0, 1);
   return foodCap * pull;
@@ -290,6 +299,12 @@ export function settleSeason(town: Town): void {
   // there. Growth needs survivors because CAPACITY needs them — every food work
   // in the catalogue costs hands, and hands come only from souls.
   town.population = town.population + (carryingCapacity(town) - town.population) * POP.drift;
+
+  // ...and the stores are struck last, against the commerce the settlement
+  // actually booked. It is last because everything above had to read the
+  // warehouse the market cleared against: move this line up and the town would
+  // be paid for cargo it had already shipped out of its own shelves.
+  stockSeason(town, d.commerce);
 }
 
 // One season, on a named day. `day` is the FIRST DAY OF THE SEASON — the day the
@@ -338,6 +353,7 @@ export function makeTown(init: Partial<Town> & { name: string; seed: number }): 
     harvestLoss: 0,
     grant: 0,
     market: makeMarket(),
+    stock: new Array<number>(GOOD_COUNT).fill(0),
     nextWorkId: 1,
     lastThreatDay: null,
     ...init,
