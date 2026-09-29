@@ -199,7 +199,10 @@ possible at all.
 > drift away from the sentence that explains it. It does **not** ban a place holding state that
 > *arrives from outside*: `grant` was always stored, and so is the cleared-trade block (price,
 > allotted, bought, paid), because both are `[HC-72]` input rows rather than ledger derivations.
-> Neither holds *stock*, so the ban on an in-town goods inventory survives untouched. The test to
+> **SUPERSEDED 2026-09-29 — a town now holds a warehouse**, and stock is the worked example of
+> something that could not be recomputed: cacao in a town that grows none is the residue of past
+> clearings. What survives is the ban on a PRICE TABLE to arbitrage. The original note read:
+> "Neither holds *stock*, so the ban on an in-town goods inventory survives untouched." The test to
 > apply is **"could this have been recomputed?"** — not "how many fields are there?".
 >
 > **Applied to the two 2026-09-19 directions, which is the best worked example this rule has had.**

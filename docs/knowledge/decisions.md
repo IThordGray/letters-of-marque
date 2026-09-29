@@ -270,6 +270,38 @@ Eleven goods ship: **grain · fish · salt** (victuals) · **timber · stone · 
 the subsistence floor and nobody is short of what anybody has. Fish is capped at 66 a town by the
 three-shack limit, so large ports are permanently short of it.
 
+### Built 2026-09-29 — a town holds a warehouse
+
+Stock per good carries across seasons; **demand is the gap to a target that scales with size**, and
+falling short costs nothing at all. A hamlet wants three goods and no luxuries; a port of 185 wants
+eleven and five.
+
+- **The target and the drain are ONE number.** `target = appetite × storesSeasons`, `drain =
+  1 / storesSeasons` — so a town at its target loses exactly the appetite it always had, and adding
+  the warehouse rescaled no tier's flow. **Tuning either half alone starves the world or stops it
+  buying.**
+- **A fixture meant to SELL must be given stores.** A freshly built town has bare shelves and nothing
+  spare however good its ground. Standing rule for every future test.
+- **Stock is legitimately stored** — cacao in a town that grows none is the residue of past
+  clearings and no function of the ledger could recompute it. This supersedes §3.5.3's *"a town
+  tracks a flow balance, never a stock"* and `world-simulation.md` §202's note that nothing holds
+  stock.
+
+**GROWTH IS NOW BLOCKING, not a later topic.** Population reads only what a town's own works feed,
+and the catalogue caps that at **186 souls** — four garden plots and three fishing shacks, the only
+rows carrying a `food` column. Every large town in the world plateaus there. Three consequences,
+all one cause:
+
+- The largest port fell 495 → 185; dozens of ports sit within a soul of each other.
+- **Gunpowder and rum have no producer anywhere** — towns make them above 200 souls and nothing
+  reaches 200. Two of eleven goods are dead, which breaks *ship no good without a source*.
+- **"A town gets by" is breached** — a decade's saving went 13 → 236 coin against a 180-coin work,
+  because the great ports stopped buying a third to two thirds of their bread.
+
+**Part of the fix is already ratified and simply not built:** the human's own sentence is that a farm
+*"could boost the commodity, and count as food towards pop growth"*. Provision grounds and grain
+fields today carry a commodity column and **zero** food.
+
 ## The layering — how the world is meant to stack
 
 Each layer runs without the one above it, and adding a layer never rewrites the one below.
