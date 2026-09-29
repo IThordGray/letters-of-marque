@@ -35,10 +35,9 @@ import { governorTurn, type Season as TownSeason } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
 import { DAYS_PER_YEAR } from "./calendar";
 import { startsSeason, stepDay, type World } from "./clock";
-import { stepDispatches } from "./dispatch";
+import { PAYLOAD, sendCargo, stepDispatches } from "./dispatch";
 import { bandAt, contactAt, feltAt, pickAt, readSky, skyOf, stepWeather, type Sky } from "./weather";
 import { DAY_RUN_NM, distanceNm } from "./shape";
-import type { Place } from "./places";
 
 // ---- The neighbourhoods ----------------------------------------------------
 
@@ -374,13 +373,25 @@ export function priceFor(good: number, sought: number, offered: number): number 
   return p < lo ? lo : p > hi ? hi : p;
 }
 
-// Clear one season across the whole map, all places at once.
+// Clear one season across the whole map, all places at once — and then SEND THE
+// SHIPS, because the clearing is the only thing that knows who supplied whom.
 //
 // `towns` is indexed by place id and must already have PRODUCED (phase 1). On
-// return, every town's `market` block holds the local price it faces and what
-// the clearing found for it to buy; settlement (phase 3) decides what it can
-// actually pay for.
-export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wars, routes: Routes): void {
+// return, every town's `market` block holds the local price it faces, and one
+// cargo hull is at sea for every pair of ports that traded. Nothing is landed
+// here and nothing is paid for here: the buyer is credited on the day the ship
+// ties up ([HC-45]), and settlement pays for what is on its quay.
+//
+// WHY THE PAIRS COST NOTHING, AND WHY THAT IS NOT [HC-15] BEING BENT. `[HC-15]`
+// bans a pass that compares every place to every other place. This one compares
+// a place only to the other members of its own market, and `MARKET.maxMembers`
+// caps that at eight however crowded the coast is — so matching a buyer to the
+// sellers who supplied him is eight comparisons, not fifty, and the whole
+// clearing stays LINEAR in the number of places exactly as [HC-83] promises.
+// The cap is what makes naming a counterparty affordable at all; widen it and
+// this is the line that pays for it.
+export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars, routes: Routes): void {
+  const places = world.places;
   const n = towns.length;
   const nf = wars.count;
 
@@ -389,8 +400,8 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
   for (let i = 0; i < n; i++) {
     // THE WORLD HANDS THE LEDGER ITS REACH, here, before anything derives from
     // it ([HC-71]: the world drives the ledger and the ledger never reaches
-    // out). It is written on the same beat as the price and the allotment
-    // beside it, which is the beat the economy runs on ([P-50]), and it is
+    // out). It is written on the same beat as the price beside it, which is the
+    // beat the economy runs on ([P-50]), and it is
     // rewritten from the lane table every season rather than invalidated when a
     // blockade changes — fifty places times a handful of lanes is nothing, and
     // an active recompute cannot go stale the way a dirty flag can ([P-21]).
@@ -410,8 +421,6 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
       purse: Math.max(0, towns[i].wealth + d.commerce.earned + towns[i].grant),
       secure: true,
     });
-    const mk = towns[i].market;
-    for (let g = 0; g < GOOD_COUNT; g++) mk.allotted[g] = 0;
   }
 
   // Scratch, reused across every hood and class. [P-24]: nothing is allocated
@@ -423,6 +432,39 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
   const priceFor_ = new Float64Array(nf);
   const priceSum = new Float64Array(n * GOOD_COUNT);
   const priceWeight = new Float64Array(n * GOOD_COUNT);
+  // WHAT EACH PLACE WAS MATCHED WITH, and it is scratch rather than a field on
+  // the Town because nothing outside this function has any business reading it:
+  // a town is credited when a ship lands, never when a deal is struck ([HC-46] —
+  // "he does not count unhatched chickens", enforced by there being nothing to
+  // count). The one reader is [HC-77]'s tier gate at the foot of each tier.
+  const matched = new Float64Array(n * GOOD_COUNT);
+
+  // WHO SUPPLIED WHOM. One row per selling-and-buying pair, holding everything
+  // that pair moved this season, across every good and every neighbourhood the
+  // two share — because the ship is per PAIR and not per good, and not per
+  // market either.
+  const pairAt = new Map<number, number>();
+  const pairKey: number[] = [];
+  const pairHold: number[][] = [];
+  // `seller x n + buyer`, which is also the order the ships sail in — a total
+  // order with no tie to break ([P-10]), so two runs of one seed put the same
+  // hulls on the water in the same sequence.
+  //
+  // ONE CLOSURE PER SEASON, NOT PER ITERATION, and it does not escape ([P-25]).
+  // A row is allocated the first time a pair trades and then only added to; the
+  // whole season allocates a few hundred short rows, measured, against a
+  // dense 48 x 48 x 11 table that would be a pairwise structure in everything
+  // but name ([HC-15]).
+  const holdFor = (seller: number, buyer: number): number[] => {
+    const key = seller * n + buyer;
+    const at = pairAt.get(key);
+    if (at !== undefined) return pairHold[at];
+    pairAt.set(key, pairKey.length);
+    pairKey.push(key);
+    const row = new Array<number>(GOOD_COUNT).fill(0);
+    pairHold.push(row);
+    return row;
+  };
 
   // THE SHAPE DID NOT CHANGE WHEN THE GOODS ARRIVED, and that is the point of
   // [HC-83] rather than a happy accident: it was `for each class, for each
@@ -488,10 +530,38 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
             const afford = price > 0 ? s.purse / price : 0;
             let take = s.want[c] * fill;
             if (take > afford) take = afford;
-            towns[id].market.allotted[c] += take;
+            matched[slot] += take;
             s.purse -= take * price;
             priceSum[slot] += price * take;
             priceWeight[slot] += take;
+
+            // ...AND NOW NAME THE MEN HE BOUGHT IT FROM. The heap is split back
+            // across the sellers who filled it, each in proportion to what he
+            // put up — which is the only split that leaves the pro-rata rule
+            // intact in both directions: a short supply rations every buyer
+            // equally, and a thin seller supplies every buyer equally.
+            //
+            // IT CONSERVES BY CONSTRUCTION. `supplyFor[f]` is the sum of exactly
+            // these sellers' offers, so the shares sum to `take` and no sack is
+            // invented; and the same sellers' total across the buyers who see
+            // the same pool cannot exceed what they put up, because those
+            // buyers' takes cannot ([HC-83] is doing the work, not a guard).
+            //
+            // THE SELLERS ARE WALKED IN THE SAME FIXED ASCENDING ORDER the sums
+            // above used ([P-9]), so the holds are accumulated identically on
+            // every run of a seed.
+            const supply = supplyFor[f];
+            if (take > 0 && supply > 0) {
+              for (let j = 0; j < members.length; j++) {
+                const sid = members[j];
+                const seller = stalls[sid];
+                if (seller.offer[c] <= 0) continue;
+                // [HC-84], read off exactly as the pool was summed: a buyer
+                // draws only on factions he is not at war with.
+                if (f !== seller.faction && wars.at[f * nf + seller.faction] === 1) continue;
+                holdFor(sid, id)[c] += (take * seller.offer[c]) / supply;
+              }
+            }
           }
         }
       }
@@ -516,7 +586,7 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
       let got = 0;
       for (let c = TIER_AT[t]; c < TIER_AT[t + 1]; c++) {
         net += s.want[c] - s.offer[c];
-        got += towns[i].market.allotted[c];
+        got += matched[i * GOOD_COUNT + c];
       }
       s.secure = net * m.hoodsOf[i] - got <= TRADE.secureSlack;
     }
@@ -532,6 +602,20 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
       mk.price[c] = priceWeight[slot] > 0 ? priceSum[slot] / priceWeight[slot] : TRADE.basePrice[TIER_RANK[c]];
     }
   }
+
+  // ...AND EVERY CLEARED TRADE SAILS. One hull per pair, carrying everything
+  // that pair moved, taking the passage the water between the two ports
+  // implies ([P-16]: it stores a departure and an arrival and is never stepped).
+  //
+  // IN KEY ORDER, WHICH IS SELLER THEN BUYER. `Map` iterates in insertion order
+  // and insertion order is the clearing's own walk, which is already fixed — but
+  // the ids are what a reader can check, and sorting them makes the fleet a
+  // function of the season rather than of the loop that built it ([P-10]).
+  pairKey.sort((a, b) => a - b);
+  for (let i = 0; i < pairKey.length; i++) {
+    const key = pairKey[i];
+    sendCargo(world, Math.trunc(key / n), key % n, pairHold[pairAt.get(key)!]);
+  }
 }
 
 // ---- The seasonal tick -----------------------------------------------------
@@ -540,6 +624,16 @@ export function clearSeason(m: Markets, places: Place[], towns: Town[], wars: Wa
 // ORDER-INDEPENDENT. Phase 1 fixes what everyone has and wants, phase 2 moves
 // goods, phase 3 books the result. No place may re-produce in response to a
 // price it saw in phase 2 — it reacts next season, through its governor.
+//
+// PHASE 2 NO LONGER DELIVERS ANYTHING, AND PHASE 3 IS A SEASON BEHIND IT. A
+// passage between two ports of one market is at most a fortnight — each is
+// within a week's sail of the port their market is centred on, so the two of
+// them can be twice that apart — and a season is ninety days. So the ships a
+// clearing sends land inside the season that opened, and are paid for at the
+// settling ninety days later. THE SEASON THAT SETTLES IS
+// SPENDING WHAT THE PREVIOUS SEASON'S DEALS DELIVERED — which is [HC-46] in the
+// only form that means anything ("a governor plans on what has arrived, never on
+// what is promised"), and the whole reason taking a ship is not cosmetic.
 
 export interface WorldSeason {
   // The day the season began. One number, and a year is read off it by whoever
@@ -563,7 +657,7 @@ export function stepWorldSeason(
   // 1 · PRODUCE
   for (let i = 0; i < towns.length; i++) produceSeason(towns[i], day);
   // 2 · CLEAR
-  clearSeason(m, world.places, towns, wars, routes);
+  clearSeason(m, world, towns, wars, routes);
   // 3 · SETTLE
   for (let i = 0; i < towns.length; i++) settleSeason(towns[i]);
   // 4 · GOVERN
@@ -624,14 +718,26 @@ export function stepWorldDay(world: World, towns: Town[], sky: Sky): void {
     takeWeather(towns[i], world.day, contactAt(world, p, sky), pickAt(world, p));
   }
 
-  // 3 · OBJECTS MOVE · 4 · INTERCEPTION RESOLVES
+  // 3 · OBJECTS MOVE · 4 · INTERCEPTION RESOLVES · and then what survived lands.
   //
-  // Nothing sends a dispatch yet — nations acting is KAN-101 — so nothing is
-  // ever due and this reads one bucket's length and touches nothing ([P-15]).
-  // Crediting an arrival belongs with the crown that sent it and is deliberately
-  // not invented here; what this ticket owes is that the PHASE runs on the right
-  // day, in the right order, every day.
-  stepDispatches(world);
+  // MOST DAYS THIS READS ONE BUCKET'S LENGTH AND STOPS ([P-15], [P-14]). The
+  // clearing sends its whole fleet on the first day of a season and the passages
+  // are short, so the sea empties quickly and stays empty. Measured on the house
+  // seed: 226 hulls on the day the market cleared, 7 left on the eighth day,
+  // none at all on the remaining eighty-two.
+  //
+  // A CARGO IS CREDITED HERE AND NOWHERE EARLIER ([HC-45]) — this is the only
+  // line in the world that puts a good on a town's quay. What a crown sends is
+  // still uncredited, because nothing sends one yet (KAN-101); the shape of the
+  // loop is what both will share.
+  const landed = stepDispatches(world);
+  for (let i = 0; i < landed.length; i++) {
+    const d = landed[i];
+    if (d.payload !== PAYLOAD.cargo) continue;
+    const quay = towns[d.to].market.landed;
+    const hold = d.hold;
+    for (let g = 0; g < hold.length; g++) quay[g] += hold[g];
+  }
 }
 
 // Run the world forward, day by day, clearing on every seasonal boundary. The

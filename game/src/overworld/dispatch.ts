@@ -14,10 +14,10 @@
 // [HC-46] A governor plans on what has ARRIVED, never on what is promised. He
 //         does not count unhatched chickens — so this module deliberately offers
 //         no way to ask what is coming.
-// [HC-13] A dispatch is NOT a good. Ordinary cargo stays a flow between AI
-//         towns; the four war-currencies are the sole carve-out and are real
-//         objects in all three rings, because taking them is the whole of how a
-//         player tips a war. There are only ever a dozen or so at a time.
+// [HC-13] The flow is the truth; SHIPS ARE HOW THE TRUTH IS DRAWN. A cargo hull
+//         carries exactly what the clearing already decided moved, between
+//         exactly the two ports it decided — a view of a flow, never a second
+//         source of truth. Nothing here may invent a sack.
 // [HC-64] A charter is dispatched automatically on crossing the threshold and
 //         never enters the auction. It is bookkeeping, not a decision.
 // [HC-51] A neutral takes no strategic action and dispatches nothing, and
@@ -161,9 +161,17 @@ export interface Dispatch {
   // What the payload carries: coin, or garrison strength, or the strength of a
   // landing. A charter carries nothing — the promotion IS the payload.
   readonly amount: number;
-  // Which good, for a cargo — an index into `GOOD_ORDER` (town/trade.ts).
-  // -1 for the four war-currencies, which carry no goods at all.
-  readonly cargo: number;
+  // THE HOLD — how much of each good is aboard, indexed by `GOOD_ORDER`
+  // (town/trade.ts). Empty for the four war-currencies, which carry no goods at
+  // all.
+  //
+  // A MIXED HOLD AND NOT ONE SHIP PER GOOD, and the reason is arithmetic rather
+  // than flavour. The clearing settles one season's trade between a handful of
+  // ports; per good that is thousands of hulls a season and a million across a
+  // warm start, and per SELLER-AND-BUYER PAIR it is a few hundred. One hull
+  // carries everything that pair moved, which is also what a merchantman
+  // actually did.
+  readonly hold: readonly number[];
 
   // The whole of its movement, as two integers ([P-16]).
   readonly sentDay: number;
@@ -203,6 +211,11 @@ export const makeDispatches = (): Dispatches => ({
 // nothing at all when nothing arrives ([P-24]). Frozen so a caller cannot make
 // it a shared mutable.
 const NOTHING: readonly Dispatch[] = Object.freeze([] as Dispatch[]);
+
+// A war-currency's hold. One frozen empty row shared by every crown's dispatch,
+// so `hold` is present on every object of the kind ([P-26]) and costs nothing to
+// be there ([P-23]: allocate freely, retain little).
+const NO_HOLD: readonly number[] = Object.freeze([] as number[]);
 
 // ---- Sending ---------------------------------------------------------------
 
@@ -247,7 +260,7 @@ export function sendDispatch(
     fromPlace: -1,
     to,
     amount,
-    cargo: -1,
+    hold: NO_HOLD,
     sentDay: world.day,
     dueDay: world.day + days,
     fromX: seat.x,
@@ -261,14 +274,18 @@ export function sendDispatch(
 // and the same arrival — [HC-44]'s "one object, several payloads, never several
 // systems" is why this is a fifth payload and not a second kind of moving thing.
 //
-// WHY THIS IS NOT THE BREACH OF [HC-13] IT LOOKS LIKE, because a future reader
-// will come here holding "ordinary cargo stays a flow" and want an answer. The
-// clearing in market.ts is still the whole truth of who trades with whom: this
-// ship is not consulted by it, adds nothing to it, and on arrival credits
-// nobody. It is the same carve-out §8.4 already states for the four
-// war-currencies — a permanent object that can be taken — extended to the one
-// other thing worth taking. THE DAY THIS SHIP'S CARGO IS CREDITED INTO A MARKET
-// is the day [HC-13] has to be settled rather than quoted.
+// WHY THIS IS NOT THE BREACH OF [HC-13] IT LOOKS LIKE, and the answer is now the
+// second half of the rule rather than the first. "The flow is the truth; SHIPS
+// ARE HOW THE TRUTH IS DRAWN" — the clearing in market.ts decides every sack
+// that moves, and this hull carries exactly what it decided, to exactly the port
+// it decided. It is a view of a flow, not a second source of truth: nothing here
+// invents cargo, and no ship is ever sent that the clearing did not match.
+//
+// WHAT CHANGED, STATED PLAINLY, because §8.4's own note warned it would: an
+// arriving cargo is now CREDITED (market.ts's daily tick), where before it
+// landed and changed nothing. That is the day the note names — a buyer's
+// imports become real on the quay rather than at the moment the deal was
+// struck, which is [HC-45] and [HC-46] applied to trade instead of to a crown.
 //
 // THE SEA IS NOT A TRADE RELATIONSHIP, which is the whole of what this asks and
 // does not ask (2026-09-28). It used to require an open TRADE LANE between the
@@ -286,17 +303,29 @@ export function sendDispatch(
 // stopping a hull is interception's job and interception is a phase in the daily
 // tick, not a line in a constructor.
 //
+// THE CALLER HANDS OVER THE HOLD AND DOES NOT KEEP IT. The row is taken by
+// reference rather than copied, because the clearing builds one per pair and has
+// no further use for it; `Dispatch` types it `readonly` so nothing downstream
+// can write through the alias ([P-16]: the object has no present, so nothing
+// about it may change between the day it sails and the day it lands).
+//
 // It refuses rather than throwing, like its crown-side twin ([HC-1]).
 export function sendCargo(
   world: World,
   from: number,
   to: number,
-  cargo: number,
-  amount: number,
+  hold: readonly number[],
 ): Dispatch | null {
   const quay = world.places[from];
   const place = world.places[to];
   if (!quay || !place) return null;
+
+  // WHAT IS ABOARD, ALL TOLD — summed once, here, so `amount` and `hold` cannot
+  // disagree about the same ship ([P-47]). It is the number a reader wants
+  // before it wants the manifest, and the same field the four war-currencies
+  // carry their payload in.
+  let amount = 0;
+  for (let g = 0; g < hold.length; g++) amount += hold[g];
 
   const days = passageDays(distanceNm(quay.x, quay.y, place.x, place.y));
   // Longer than the schedule can hold, and now the ONLY refusal: a wrong arrival
@@ -312,7 +341,7 @@ export function sendCargo(
     fromPlace: from,
     to,
     amount,
-    cargo,
+    hold,
     sentDay: world.day,
     dueDay: world.day + days,
     fromX: quay.x,

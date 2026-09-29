@@ -8,11 +8,11 @@ import { describe, it, expect } from "vitest";
 import { generateWorld, foundAll, warmStart } from "./worldgen";
 import {
   MARKET, atWar, blockade, clearSeason, declareWar, describeMarkets, describeRoutes, laneIsOpen,
-  makeMarkets, noWars, openRoutes, priceFor, reachOf, runYears, shutLane, stepWorldDay,
+  makeMarkets, noWars, openRoutes, priceFor, reachOf, runDays, runYears, shutLane, stepWorldDay,
   stepWorldSeason, type Markets, type Routes, type Wars,
 } from "./market";
-import { PAYLOAD, inFlightCount, sendDispatch } from "./dispatch";
-import { skyOf, takesOf, type Storm } from "./weather";
+import { PAYLOAD, inFlight, inFlightCount, positionOf, sendDispatch, type Dispatch } from "./dispatch";
+import { skyOf, takesOf, type Sky, type Storm } from "./weather";
 import { derive, produceSeason, settleSeason } from "../town/sim";
 import { governorTurn } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
@@ -24,7 +24,7 @@ import type { Town } from "../town/types";
 import type { Place } from "./places";
 import { DAY_RUN_NM, distanceNm } from "./shape";
 import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
-import { startsSeason, stepDay, type World } from "./clock";
+import { makeWorld, startsSeason, stepDay, type World } from "./clock";
 
 const SEED = 20260910;
 
@@ -44,24 +44,55 @@ const DAY0 = 0;
 const worlds = new Map<number, World>();
 
 function bench(seed = SEED): { world: World; towns: Town[]; markets: Markets; wars: Wars; routes: Routes } {
-  let world = worlds.get(seed);
-  if (!world) {
-    world = generateWorld(seed);
-    worlds.set(seed, world);
+  let base = worlds.get(seed);
+  if (!base) {
+    base = generateWorld(seed);
+    worlds.set(seed, base);
   }
-  world.day = 0;
-  // REWINDING THE CLOCK IS NOT REWINDING THE WORLD, and it stopped being enough
-  // the moment the daily tick was composed: a run leaves live storms behind
-  // ([HC-31] — the one thing this simulation does store), so the next bench off
-  // the same cached world would start in somebody else's weather and the
-  // reproducibility claim below would fail for a reason that has nothing to do
-  // with reproducibility. The ring is emptied for the same reason.
-  world.storms.length = 0;
-  for (let i = 0; i < world.dispatches.ring.length; i++) world.dispatches.ring[i].length = 0;
-  world.dispatches.sent = 0;
+  // A FRESH COPY EVERY TIME — warm once, clone each arm (testing.md). Rewinding
+  // the clock was never enough: a run leaves live storms behind ([HC-31], the
+  // one thing this simulation does store) and, since the clearing started
+  // sending ships, a FLEET as well. Two arms that shared a World would share
+  // both, and the only thing keeping that honest was a list of fields to empty
+  // by hand — which is exactly the list that goes stale. The cached world is
+  // never run, so the copy is always the generator's own output.
+  const world = structuredClone(base);
   const towns = foundAll(world);
   const markets = makeMarkets(world.places);
   return { world, towns, markets, wars: noWars(world.nations.length), routes: openRoutes(markets) };
+}
+
+// A world wrapped round a hand-built map, because the clearing needs one now: it
+// reads the day a ship sails on and files the ship in the world's own schedule.
+// Fresh every call, so two arms of one comparison never share a fleet.
+function seaOf(places: Place[]): World {
+  const world = makeWorld(SEED);
+  world.places = places;
+  // ONE CLIMATE ZONE OVER THE WHOLE FIXTURE — `placeAt` puts every place in zone
+  // 0 — because a hand-built map now has to be able to run a DAY as well as a
+  // season: a cargo crosses water, and the daily tick reads a sky. The weather
+  // is beside the point in every claim that uses this; being able to step the
+  // day at all is not.
+  world.zones = [{ id: 0, climate: "windward", x: 0, y: 0 }];
+  return world;
+}
+
+// WHAT ONE CLEARING PUT ON THE WATER FOR A PLACE, by good — and it is read off
+// the fleet because the fleet is the only record there is. A town is credited
+// when a ship ties up ([HC-45]), so nothing on its ledger yet says who was
+// matched with whom; the hulls do, by name, and that is the point of the change.
+//
+// `since` is `world.dispatches.sent` taken before the clearing, so a test that
+// clears twice can read one season at a time.
+function boundFor(world: World, id: number, since = 0): number[] {
+  const out = new Array<number>(GOOD_COUNT).fill(0);
+  const ships = inFlight(world);
+  for (let i = 0; i < ships.length; i++) {
+    const d = ships[i];
+    if (d.to !== id || d.id < since) continue;
+    for (let g = 0; g < GOOD_COUNT; g++) out[g] += d.hold[g];
+  }
+  return out;
 }
 
 // A season run with the places VISITED in a given order. The clearing itself is
@@ -72,13 +103,23 @@ function bench(seed = SEED): { world: World; towns: Town[]; markets: Markets; wa
 // point of KAN-107 and also what makes this test sharper than it was. It used to
 // ask each town what year IT thought it was (`year(towns[i])`), so the argument
 // varied with the visitor rather than being a fact about the world.
-function seasonIn(order: number[], day: number, towns: Town[], markets: Markets, places: World["places"], wars: Wars, routes: Routes): void {
+//
+// AND IT RUNS THE NINETY DAYS AFTERWARDS, which it did not have to before a
+// cleared trade had to cross water. A season whose days never pass is a season
+// in which no cargo ever lands, no town is ever credited and nobody buys
+// anything for two hundred years — the claim would still pass, on a dead world.
+function seasonIn(order: number[], world: World, towns: Town[], markets: Markets, wars: Wars, routes: Routes, sky: Sky): void {
+  const day = world.day;
   for (const i of order) produceSeason(towns[i], day);
-  clearSeason(markets, places, towns, wars, routes);
+  clearSeason(markets, world, towns, wars, routes);
   for (const i of order) settleSeason(towns[i]);
   for (const i of order) {
     stepFootprint(towns[i]);
     governorTurn(towns[i], day);
+  }
+  for (let d = 0; d < CALENDAR.daysPerSeason; d++) {
+    stepWorldDay(world, towns, sky);
+    stepDay(world);
   }
 }
 
@@ -453,13 +494,21 @@ describe("clearing is order-independent", () => {
     // construction rather than by discipline — and this is what proves it.
     const a = bench();
     const b = bench();
+    const skyA = skyOf(a.world);
+    const skyB = skyOf(b.world);
     const n = a.towns.length;
     const straight = shuffled(n, 0).map((_, i) => i);
 
+    // ...and the century has to be one in which cargo actually crossed water,
+    // or two identical dead worlds would satisfy every line below. It is
+    // accumulated ACROSS the run rather than read at the end, because a cold
+    // world founded on day 0 fades over twenty years whatever the clearing does
+    // — measured on master as well, so it is not this change's doing.
+    let landed = 0;
     for (let s = 0; s < 80; s++) {
-      const day = s * CALENDAR.daysPerSeason;
-      seasonIn(straight, day, a.towns, a.markets, a.world.places, a.wars, a.routes);
-      seasonIn(shuffled(n, s + 1), day, b.towns, b.markets, b.world.places, b.wars, b.routes);
+      seasonIn(straight, a.world, a.towns, a.markets, a.wars, a.routes, skyA);
+      seasonIn(shuffled(n, s + 1), b.world, b.towns, b.markets, b.wars, b.routes, skyB);
+      for (let i = 0; i < n; i++) for (let g = 0; g < GOOD_COUNT; g++) landed += a.towns[i].market.bought[g];
     }
 
     for (let i = 0; i < n; i++) {
@@ -468,6 +517,7 @@ describe("clearing is order-independent", () => {
       expect(b.towns[i].prosperity).toBe(a.towns[i].prosperity);
       expect(b.towns[i].market).toEqual(a.towns[i].market);
     }
+    expect(landed, "no cargo landed anywhere in eighty seasons").toBeGreaterThan(0);
   });
 
   it("allots a short supply pro-rata, so nobody gets FIRST CALL on it", () => {
@@ -497,12 +547,13 @@ describe("clearing is order-independent", () => {
     holding(farm, GOOD_AT.grain, 600);
 
     const towns = [port(), farm, port()];
-    clearSeason(markets, places, towns, noWars(3), openRoutes(markets));
+    const world = seaOf(places);
+    clearSeason(markets, world, towns, noWars(3), openRoutes(markets));
 
-    const got = tierTotal(towns[0].market.allotted, "victuals");
+    const got = tierTotal(boundFor(world, 0), "victuals");
     expect(got).toBeGreaterThan(0);
     expect(got).toBeLessThan(tierTotal(derive(towns[0]).commerce.want, "victuals")); // rationed
-    expect(tierTotal(towns[2].market.allotted, "victuals")).toBeCloseTo(got, 9);
+    expect(tierTotal(boundFor(world, 2), "victuals")).toBeCloseTo(got, 9);
   });
 
   it("gives the same two hundred years from the same seed, twice over", () => {
@@ -631,15 +682,17 @@ describe("the pyramid, and its gate", () => {
 
     // Neither has an acre of corn; the second has timber on the quay.
     const hungry = [hungryPort(), hungryTimberPort()];
-    clearSeason(markets, places, hungry, noWars(3), openRoutes(markets));
+    const world = seaOf(places);
+    clearSeason(markets, world, hungry, noWars(3), openRoutes(markets));
     const c = derive(hungry[0]).commerce;
+    const got = boundFor(world, 0);
     expect(derive(hungry[1]).commerce.offer[GOOD_AT.timber]).toBeGreaterThan(0); // timber IS to be had
     expect(c.want[GOOD_AT.grain]).toBeGreaterThan(0);
     expect(c.want[GOOD_AT.timber]).toBeGreaterThan(0); // and it wants some...
-    expect(tierTotal(hungry[0].market.allotted, "victuals")).toBe(0); // ...but there is no bread
+    expect(tierTotal(got, "victuals")).toBe(0); // ...but there is no bread
     // ...so it registers no demand IN THE WHOLE TIER ABOVE, timber included.
-    expect(tierTotal(hungry[0].market.allotted, "materials")).toBe(0);
-    expect(tierTotal(hungry[0].market.allotted, "luxury")).toBe(0);
+    expect(tierTotal(got, "materials")).toBe(0);
+    expect(tierTotal(got, "luxury")).toBe(0);
   });
 
   it("reaches for the next tier the moment the one below is covered", () => {
@@ -647,9 +700,11 @@ describe("the pyramid, and its gate", () => {
     const markets = makeMarkets(places);
 
     const fed = [hungryPort(), farmingNeighbour()];
-    clearSeason(markets, places, fed, noWars(3), openRoutes(markets));
-    expect(tierTotal(fed[0].market.allotted, "victuals")).toBeGreaterThan(0);
-    expect(tierTotal(fed[0].market.allotted, "materials")).toBeGreaterThan(0);
+    const world = seaOf(places);
+    clearSeason(markets, world, fed, noWars(3), openRoutes(markets));
+    const got = boundFor(world, 0);
+    expect(tierTotal(got, "victuals")).toBeGreaterThan(0);
+    expect(tierTotal(got, "materials")).toBeGreaterThan(0);
   });
 });
 
@@ -675,15 +730,17 @@ describe("war is a filter on the pool, never on a place", () => {
     };
 
     const peace = build();
-    clearSeason(markets, places, peace, noWars(3), openRoutes(markets));
+    const atPeace = seaOf(places);
+    clearSeason(markets, atPeace, peace, noWars(3), openRoutes(markets));
 
     const war = build();
+    const atWarSea = seaOf(places);
     const wars = noWars(3);
     declareWar(wars, 0, 1);
-    clearSeason(markets, places, war, wars, openRoutes(markets));
+    clearSeason(markets, atWarSea, war, wars, openRoutes(markets));
 
-    expect(tierTotal(peace[0].market.allotted, "victuals")).toBeGreaterThan(0);
-    expect(tierTotal(war[0].market.allotted, "victuals")).toBe(0);
+    expect(tierTotal(boundFor(atPeace, 0), "victuals")).toBeGreaterThan(0);
+    expect(tierTotal(boundFor(atWarSea, 0), "victuals")).toBe(0);
     expect(atWar(wars, 0, 1)).toBe(true);
     expect(atWar(wars, 0, 0)).toBe(false); // nobody is ever at war with himself
   });
@@ -701,7 +758,7 @@ describe("war is a filter on the pool, never on a place", () => {
       produceSeason(farm, DAY0);
       holding(farm, GOOD_AT.grain, 2000); // years of corn in the barns
       const towns = [port, farm];
-      clearSeason(markets, places, towns, wars, openRoutes(markets));
+      clearSeason(markets, seaOf(places), towns, wars, openRoutes(markets));
       return farm.market.price[0];
     };
 
@@ -830,7 +887,10 @@ describe("the ceiling is fragile, by design", () => {
       expect(d.commerce.offer[c]).toBe(0);
       expect(d.commerce.want[c]).toBe(0);
     }
-    expect(towns[id].market.allotted.every((a) => a === 0)).toBe(true);
+    // Nothing is bound for it, nothing is on its quay, and nothing was paid for
+    // — the three points at which a cordon could have leaked.
+    expect(boundFor(world, id).every((a) => a === 0)).toBe(true);
+    expect(towns[id].market.landed.every((a) => a === 0)).toBe(true);
     expect(towns[id].market.bought.every((b) => b === 0)).toBe(true);
   });
 
@@ -1345,18 +1405,30 @@ describe("the world's daily tick", () => {
     // alone (dispatch.test.ts, by counting Proxy operations); the thing that could
     // break it is a driver that started asking where everything is. Fifty at sea,
     // a year of the composed tick, and not one field of one dispatch read or
-    // written.
+    // written ON ANY DAY BUT THE DAY IT LANDS.
+    //
+    // THE DAY IT LANDS IS SPLIT OUT RATHER THAN EXCUSED, and that is the whole of
+    // what changed when a cargo started being credited: [HC-45] says a payload
+    // becomes real on arrival, so SOMETHING has to read it then. What [P-16]
+    // forbids is the other days — a driver that asks fifty hulls where they are,
+    // every day, for a year. So the arrivals are counted too, and asserted to be
+    // non-zero: a tally of nothing at sea would otherwise be satisfied by a tick
+    // that never looked at a dispatch at all, including the one day it must.
     const { world, towns, markets, wars, routes } = bench();
     const crown = world.nations.findIndex((n) => n.crown && n.seat >= 0);
     const bound = world.places.filter((p) => p.faction === crown && p.id !== world.nations[crown].seat);
     for (let i = 0; i < 50; i++) sendDispatch(world, crown, bound[i % bound.length].id, PAYLOAD.treasury, 100);
     expect(inFlightCount(world)).toBeGreaterThan(0);
 
-    const tally = { reads: 0, writes: 0 };
+    const tally = { atSea: 0, onArrival: 0, writes: 0 };
     for (const bucket of world.dispatches.ring) {
       for (let j = 0; j < bucket.length; j++) {
         bucket[j] = new Proxy(bucket[j], {
-          get(t, k, r) { tally.reads++; return Reflect.get(t, k, r); },
+          get(t, k, r) {
+            if (world.day < t.dueDay) tally.atSea++;
+            else tally.onArrival++;
+            return Reflect.get(t, k, r);
+          },
           set(t, k, v, r) { tally.writes++; return Reflect.set(t, k, v, r); },
         });
       }
@@ -1364,7 +1436,9 @@ describe("the world's daily tick", () => {
 
     runYears(world, towns, markets, wars, routes, 1);
     expect(inFlightCount(world)).toBe(0); // they all landed, so the phase ran
-    expect(tally).toEqual({ reads: 0, writes: 0 });
+    expect(tally.atSea).toBe(0);
+    expect(tally.writes).toBe(0);
+    expect(tally.onArrival).toBeGreaterThan(0);
   });
 
   it("makes a coast's exposure legible in a ledger, not only in a severity", () => {
@@ -1409,9 +1483,9 @@ describe("what a place brings to market", () => {
     shut.patron = { kind: "none", name: "", owns: false };
     produceSeason(shut, world.day);
     for (const w of shut.works) if (w.kind === "fishingShacks") w.condition = "ruin";
-    clearSeason(markets, world.places, towns, wars, routes);
+    clearSeason(markets, world, towns, wars, routes);
     expect(derive(shut).access).toBe(0);
-    expect(shut.market.allotted.every((a) => a === 0)).toBe(true);
+    expect(boundFor(world, 0).every((a) => a === 0)).toBe(true);
   });
 
   it("brings nothing from a port whose lanes are all held, however sound its quay", () => {
@@ -1437,10 +1511,11 @@ describe("what a place brings to market", () => {
 
     blockade(routes, held);
     produceSeason(towns[held], world.day);
-    clearSeason(markets, world.places, towns, wars, routes);
+    const since = world.dispatches.sent; // so the read below is THIS clearing's
+    clearSeason(markets, world, towns, wars, routes);
 
     expect(derive(towns[held]).access).toBe(0);
-    expect(towns[held].market.allotted.every((a) => a === 0)).toBe(true);
+    expect(boundFor(world, held, since).every((a) => a === 0)).toBe(true);
     // ...and its own works are exactly as they were. Nothing burned.
     expect(towns[held].works.some((w) => CATALOGUE[w.kind].zone === "waterfront" && w.condition === "working")).toBe(true);
   });
@@ -1448,22 +1523,34 @@ describe("what a place brings to market", () => {
   it("splits what it brings across every market it stands in, so nothing is conjured", () => {
     // A place in three neighbourhoods offers a third to each. Overlap must not
     // multiply the world's goods.
+    // THE WANT IS READ AT THE MOMENT THE CLEARING READS IT, and that is the fix
+    // rather than a detail: settling zeroes the quay, so the old form of this
+    // claim — read a town's allotment AFTER the season had settled — was
+    // comparing nothing against a want measured a season later. It passed on
+    // every mutation there is.
     const { world, towns, markets, wars, routes } = bench();
+    let shipped = 0;
     for (let s = 0; s < 8; s++) {
       for (const t of towns) produceSeason(t, world.day);
-      clearSeason(markets, world.places, towns, wars, routes);
+      const want = towns.map((t) => derive(t).commerce.want.slice());
+      const since = world.dispatches.sent;
+      clearSeason(markets, world, towns, wars, routes);
+      for (let i = 0; i < towns.length; i++) {
+        // Nobody can have more at sea, bound for him, than he asked for — OF ANY
+        // ONE GOOD, however many markets he stands in.
+        const bound = boundFor(world, i, since);
+        for (let g = 0; g < GOOD_COUNT; g++) {
+          expect(bound[g], `${GOOD_ORDER[g]} at place ${i}, season ${s}`)
+            .toBeLessThanOrEqual(want[i][g] + 1e-9);
+          shipped += bound[g];
+        }
+      }
       for (const t of towns) settleSeason(t);
       world.day += CALENDAR.daysPerSeason;
     }
-    for (let i = 0; i < towns.length; i++) {
-      const c = derive(towns[i]).commerce;
-      // It can never be allotted more than it asked for, OF ANY ONE GOOD, however
-      // many markets it stands in.
-      for (let g = 0; g < GOOD_COUNT; g++) {
-        expect(towns[i].market.allotted[g], `${GOOD_ORDER[g]} at place ${i}`)
-          .toBeLessThanOrEqual(c.want[g] + 1e-9);
-      }
-    }
+    // ...over a map where cargo was actually moving. An empty sea satisfies
+    // every inequality above.
+    expect(shipped).toBeGreaterThan(0);
   });
 });
 
@@ -1752,19 +1839,326 @@ describe("nothing is conjured in the clearing", () => {
         const c = derive(t).commerce;
         for (let k = 0; k < GOOD_COUNT; k++) offered[k] += c.offer[k];
       }
-      clearSeason(markets, world.places, towns, wars, routes);
-      const allotted = new Array(GOOD_COUNT).fill(0);
-      for (const t of towns) for (let k = 0; k < GOOD_COUNT; k++) allotted[k] += t.market.allotted[k];
+      const since = world.dispatches.sent;
+      clearSeason(markets, world, towns, wars, routes);
+      // WHAT IS IN THE HOLDS, which is where the answer lives now — and it is
+      // the sharper question, because a ship carries what one NAMED seller sold
+      // to one NAMED buyer. If the pairing invented a sack anywhere, it shows up
+      // here as more grain at sea than the world grew.
+      const shipped = new Array(GOOD_COUNT).fill(0);
+      for (let i = 0; i < towns.length; i++) {
+        const bound = boundFor(world, i, since);
+        for (let k = 0; k < GOOD_COUNT; k++) shipped[k] += bound[k];
+      }
       for (let k = 0; k < GOOD_COUNT; k++) {
-        expect(allotted[k], `${GOOD_ORDER[k]}: ${allotted[k].toFixed(3)} landed against ${offered[k].toFixed(3)} grown`)
+        expect(shipped[k], `${GOOD_ORDER[k]}: ${shipped[k].toFixed(3)} shipped against ${offered[k].toFixed(3)} grown`)
           .toBeLessThanOrEqual(offered[k] + 1e-9);
       }
-      if (allotted[GOOD_AT.grain] > 0) sawTrade = true;
+      if (shipped[GOOD_AT.grain] > 0) sawTrade = true;
       for (const t of towns) settleSeason(t);
       world.day += CALENDAR.daysPerSeason;
     }
     // ...and the liveness guard, because a map where nothing moves satisfies
     // every inequality above.
     expect(sawTrade).toBe(true);
+  });
+});
+
+// ---- Every cleared trade sails ----------------------------------------------
+//
+// [HC-13] "The flow is the truth; SHIPS ARE HOW THE TRUTH IS DRAWN." The
+// clearing decided every sack that moves; these claims are that a hull carries
+// exactly that, from a named coast to a named port, and that the port is
+// credited when it ties up and not before ([HC-45], [HC-46]).
+//
+// WHY IT MATTERS, in one sentence: until a cargo was at sea there was nothing to
+// rob, and until a buyer was credited ON ARRIVAL, robbing one would have been
+// cosmetic — the goods would already have been eaten.
+
+describe("the market names who supplied whom", () => {
+  // A port that must buy its bread and its planks: its own reef covers its fish,
+  // its treasury is fat, and not an acre of it will bear corn, salt or timber.
+  function quayside(): Town {
+    const t = townOf(
+      [
+        reg(0, "roadstead", RING1.slice(0, 3)),
+        reg(1, "reef", RING1.slice(3, 6), { bears: { fish: "ideal" } }),
+        reg(2, "scrub", RING2.slice(0, 10)),
+      ],
+      { population: 60, wealth: 200_000 },
+    );
+    raise(t, "warehouse", DAY0);
+    raise(t, "customsHouse", DAY0);
+    return t;
+  }
+
+  // ...and a coast with corn, fish, salt and timber standing in its barns — the
+  // WHOLE of what the port lacks, because a tier is covered only when all of it
+  // is, and a port short of one victual registers no demand for planks at all
+  // ([HC-77]). `stores` scales what it has spare, so two farms can be told apart
+  // by what they put up rather than by which one the loop reached first.
+  function granary(stores: number): Town {
+    const t = townOf(
+      [
+        reg(0, "tilledGround", RING1.slice(0, 2), { bears: { food: "ideal" } }),
+        reg(1, "saltPans", RING1.slice(2, 4), { bears: { salt: "ideal" } }),
+        reg(2, "timberedHills", RING1.slice(4, 6), { bears: { timber: "ideal" } }),
+        reg(3, "roadstead", RING2.slice(0, 3)),
+        reg(4, "reef", RING2.slice(3, 6), { bears: { fish: "ideal" } }),
+        reg(5, "scrub", RING2.slice(6, 12)),
+      ],
+      { population: 120, wealth: 500 },
+    );
+    raise(t, "warehouse", DAY0);
+    raise(t, "provisionGround", DAY0);
+    raise(t, "saltWorks", DAY0);
+    raise(t, "sawpit", DAY0);
+    produceSeason(t, DAY0);
+    holding(t, GOOD_AT.grain, stores);
+    holding(t, GOOD_AT.fish, stores / 5);
+    holding(t, GOOD_AT.salt, stores / 5);
+    holding(t, GOOD_AT.timber, stores / 5);
+    return t;
+  }
+
+  // One port and two farms, at three different distances — so a passage is a
+  // fact about the water and not a constant, and the two sellers are told apart
+  // by what they put up. Off the shared latitude, so a course answers both axes.
+  function coast(): { world: World; towns: Town[]; markets: Markets; routes: Routes } {
+    const places = [placeAt(0, 120), placeAt(1, 420), placeAt(2, 720)];
+    places[1].y = 80;
+    places[2].y = -40;
+    const markets = makeMarkets(places);
+    // The near farm has four times the far one's stores, so the split below
+    // cannot come out even by accident.
+    const towns = [quayside(), granary(2000), granary(500)];
+    return { world: seaOf(places), towns, markets, routes: openRoutes(markets) };
+  }
+
+  const cargoes = (world: World): Dispatch[] =>
+    inFlight(world).filter((d) => d.payload === PAYLOAD.cargo);
+
+  it("says which coast sold this port its bread, and how much of it each of them sent", () => {
+    // THE CLAIM THE WHOLE BRIEF TURNS ON. The clearing used to be pure
+    // summation: a buyer took `want x fill` out of a heap and no pair existed
+    // anywhere in the simulation, so there was no departure port, no destination
+    // and nothing to take. Now every sack has two names on it.
+    const { world, towns, markets, routes } = coast();
+    // THE ORACLE IS TAKEN BEFORE THE CLEARING, because the clearing rewrites the
+    // local price and a farm's offer is netted against what its own people can
+    // then afford to eat. Asking afterwards would be asking a different season.
+    const offered = towns.map((t) => derive(t).commerce.offer.slice());
+    clearSeason(markets, world, towns, noWars(3), openRoutes(markets));
+
+    const ships = cargoes(world);
+    // One from each farm to the port, and not one the other way: the port has
+    // nothing to sell and neither farm is short of anything.
+    expect(ships.map((d) => `${d.fromPlace}->${d.to}`).sort()).toEqual(["1->0", "2->0"]);
+
+    const near = ships.find((d) => d.fromPlace === 1)!;
+    const far = ships.find((d) => d.fromPlace === 2)!;
+    expect(near.hold[GOOD_AT.grain]).toBeGreaterThan(0);
+    expect(far.hold[GOOD_AT.grain]).toBeGreaterThan(0);
+
+    // ...AND THE SPLIT IS PRO-RATA ON WHAT EACH PUT UP, which is what makes it a
+    // matching rather than a label stuck on afterwards. The two farms hold four
+    // times apart, so an even split would fail this and so would first-come.
+    const grainOf = (i: number) => offered[i][GOOD_AT.grain];
+    expect(grainOf(1)).toBeGreaterThan(grainOf(2) * 2);
+    expect(near.hold[GOOD_AT.grain] / far.hold[GOOD_AT.grain])
+      .toBeCloseTo(grainOf(1) / grainOf(2), 6);
+
+    // Nobody sold anybody more than he had: the pair rows conserve, good by good.
+    for (let g = 0; g < GOOD_COUNT; g++) {
+      expect(near.hold[g], GOOD_ORDER[g]).toBeLessThanOrEqual(offered[1][g] + 1e-9);
+      expect(far.hold[g], GOOD_ORDER[g]).toBeLessThanOrEqual(offered[2][g] + 1e-9);
+    }
+    expect(routes.shut.every((s) => s === 0)).toBe(true); // ...on open lanes
+  });
+
+  it("puts one ship on the water per pair of ports, with everything that pair moved aboard", () => {
+    // ONE HULL PER PAIR, NOT PER GOOD, and the difference is the difference
+    // between a few hundred objects a season and a million across a warm start.
+    // The near farm sells this port corn, salt AND planks; that is one ship.
+    const { world, towns, markets } = coast();
+    clearSeason(markets, world, towns, noWars(3), openRoutes(markets));
+
+    const fromNear = cargoes(world).filter((d) => d.fromPlace === 1 && d.to === 0);
+    expect(fromNear).toHaveLength(1);
+    const d = fromNear[0];
+    let aboard = 0;
+    let kinds = 0;
+    for (let g = 0; g < GOOD_COUNT; g++) {
+      aboard += d.hold[g];
+      if (d.hold[g] > 0) kinds++;
+    }
+    // A mixed hold, not a single column — three goods and one keel.
+    expect(kinds).toBeGreaterThan(1);
+    expect(d.hold[GOOD_AT.grain]).toBeGreaterThan(0);
+    expect(d.hold[GOOD_AT.timber]).toBeGreaterThan(0);
+    // ...and what is aboard all told is what the manifest adds up to.
+    expect(d.amount).toBeCloseTo(aboard, 9);
+  });
+
+  it("takes the passage the water between the two ports implies, and is on the chart every day of it", () => {
+    const { world, towns, markets } = coast();
+    clearSeason(markets, world, towns, noWars(3), openRoutes(markets));
+
+    const near = cargoes(world).find((d) => d.fromPlace === 1)!;
+    const far = cargoes(world).find((d) => d.fromPlace === 2)!;
+    // The formula is written out rather than asked of `passageDays`, so a term
+    // added to it fails here. The two farms sit at different distances, so a
+    // constant passage would fail as well.
+    const water = (d: Dispatch) =>
+      Math.max(1, Math.ceil(distanceNm(d.fromX, d.fromY, d.toX, d.toY) / DAY_RUN_NM));
+    expect(water(near)).toBe(3);
+    expect(water(far)).toBe(5);
+    expect(near.dueDay - near.sentDay).toBe(water(near));
+    expect(far.dueDay - far.sentDay).toBe(water(far));
+
+    // ON THE MAP THE WHOLE WAY. The chart draws `inFlight` through `positionOf`,
+    // so this is what a watcher sees: it leaves the farm, is between the two on
+    // every day in the middle, and reaches the port on the day it is due.
+    const track = [positionOf(far, world.day)];
+    for (let i = 0; i < water(far); i++) {
+      expect(inFlight(world).map((f) => f.id)).toContain(far.id);
+      stepDay(world);
+      track.push(positionOf(far, world.day));
+      stepWorldDay(world, towns, skyOf(world));
+    }
+    expect(inFlight(world).map((f) => f.id)).not.toContain(far.id); // landed, and gone
+    expect(track[0]).toEqual({ x: world.places[2].x, y: world.places[2].y });
+    expect(track[track.length - 1]).toEqual({ x: world.places[0].x, y: world.places[0].y });
+    for (let i = 1; i < track.length; i++) {
+      expect(track[i].x).toBeLessThan(track[i - 1].x);
+      expect(track[i].y).toBeGreaterThan(track[i - 1].y);
+    }
+  });
+
+  it("credits the buyer when the cargo lands, and never credits one that is taken on the way", () => {
+    // [HC-45] and [HC-46] applied to trade: what a town has to spend and to eat
+    // is what ARRIVED. Two arms of the same season, identical up to the moment
+    // the ships sail — in one they land, in the other they are taken at sea.
+    //
+    // THIS IS THE CLAIM THAT MAKES INTERCEPTION WORTH BUILDING. Credit the buyer
+    // at the clearing, as the world did until now, and both arms come out
+    // identical: robbing a hull would change nothing a person could see.
+    const arms = [true, false].map((delivered) => {
+      const { world, towns, markets } = coast();
+      clearSeason(markets, world, towns, noWars(3), openRoutes(markets));
+      settleSeason(towns[0]);
+
+      // NOTHING YET, on the day the deal was struck. The port has been matched
+      // with a cargo and has not so much as a grain of it.
+      expect(towns[0].market.landed.every((q) => q === 0)).toBe(true);
+      expect(towns[0].market.bought.every((b) => b === 0)).toBe(true);
+      expect(towns[0].market.paid).toBe(0);
+
+      // The sea takes them, or it does not.
+      if (!delivered) for (const bucket of world.dispatches.ring) bucket.length = 0;
+
+      const sky = skyOf(world);
+      for (let d = 0; d < CALENDAR.daysPerSeason; d++) {
+        stepWorldDay(world, towns, sky);
+        stepDay(world);
+      }
+      const onQuay = towns[0].market.landed[GOOD_AT.grain];
+      // ...and the NEXT season's settling is what spends it.
+      settleSeason(towns[0]);
+      return { onQuay, bought: towns[0].market.bought[GOOD_AT.grain], paid: towns[0].market.paid };
+    });
+
+    const [landed, taken] = arms;
+    expect(landed.onQuay).toBeGreaterThan(0);
+    expect(landed.bought).toBeGreaterThan(0);
+    expect(landed.paid).toBeGreaterThan(0);
+    // The hull that never arrived is bread the port never ate and a bill it
+    // never paid.
+    expect(taken.onQuay).toBe(0);
+    expect(taken.bought).toBe(0);
+    expect(taken.paid).toBe(0);
+  });
+});
+
+describe("the world still clears in one bounded pass", () => {
+  // [HC-15] "Nothing pairwise." Naming a counterparty is affordable only because
+  // a market is capped at `MARKET.maxMembers`: a buyer is matched against the
+  // handful of ports in his own neighbourhood, never against the fifty. These
+  // are the claims that the cap is what is holding, so that widening it is a
+  // decision somebody takes rather than one that happens quietly.
+  // TWO YEARS OF A WARM WORLD, then one more season a day at a time — built
+  // once, because all three claims read the same run ([P-18]).
+  const warm = warmStart(SEED);
+  const sailings: number[] = [];
+  const atSea: number[] = [];
+  let fleet: Dispatch[] = [];
+  {
+    runYears(warm.world, warm.towns, warm.markets, warm.wars, warm.routes, 2, () => {
+      sailings.push(warm.world.dispatches.sent);
+    });
+    for (let d = 0; d < CALENDAR.daysPerSeason; d++) {
+      runDays(warm.world, warm.towns, warm.markets, warm.wars, warm.routes, 1, warm.sky);
+      // The day the market cleared — the only day the whole fleet is at sea.
+      if (d === 0) fleet = inFlight(warm.world).filter((s) => s.payload === PAYLOAD.cargo);
+      atSea.push(inFlightCount(warm.world));
+    }
+  }
+
+  it("sends a fleet that grows with the number of ports, never with their square", () => {
+    // A SEASON'S SAILINGS AGAINST THE TWO BOUNDS. `places x (places - 1)` is
+    // what a pairwise clearing would cost and is the number [HC-15] exists to
+    // refuse. The honest ceiling is the LANE TABLE: a pair can only exist where
+    // two ports share a market neighbourhood, which is exactly what a lane is,
+    // so the fleet is bounded by the lanes however hard the world trades.
+    const places = warm.world.places.length;
+    const lanes = warm.routes.to.length; // directed — one entry per end
+    let most = 0;
+    for (let i = 1; i < sailings.length; i++) {
+      const season = sailings[i] - sailings[i - 1];
+      if (season > most) most = season;
+    }
+    expect(most, "no ship sailed in two years").toBeGreaterThan(0);
+    expect(most).toBeLessThanOrEqual(lanes);
+    // ...and the lane table is itself far below the square law, which is the
+    // structural half: it is the cap on a neighbourhood that holds it there.
+    expect(lanes).toBeLessThan(places * (places - 1));
+    expect(lanes).toBeLessThanOrEqual(places * MARKET.maxMembers * MARKET.maxMembers);
+  });
+
+  it("sails only between ports that actually trade with each other", () => {
+    // The structural half of the same claim: a pair exists only inside a market
+    // neighbourhood, so every hull's two ends share one — which is why matching
+    // costs a handful of comparisons and not fifty.
+    expect(fleet.length, "nothing was at sea on the day the market cleared").toBeGreaterThan(0);
+    for (const d of fleet) {
+      expect(d.fromPlace, "a port shipped to itself").not.toBe(d.to);
+      expect(laneIsOpen(warm.routes, d.fromPlace, d.to), `${d.fromPlace} -> ${d.to}`).toBe(true);
+    }
+  });
+
+  it("fills the sea on the day the market clears and empties it within the week a market reaches", () => {
+    // WHAT A WATCHER ACTUALLY SEES, and it is the shape of the mechanism rather
+    // than a number to tune: the whole season's trade sails on the day the
+    // market clears, and every hull is ashore within a week — because a market
+    // reaches a week's sail and no further, so no passage inside one can be
+    // longer. The chart fills and empties every ninety days.
+    //
+    // THE BOUND IS DERIVED FROM THE REACH, never written as a number of days.
+    // Widen the reach and this claim moves with it, which is what it should do.
+    //
+    // AND IT IS TWICE THE WEEK, NOT THE WEEK — a neighbourhood's members are
+    // each within a week's sail of the port it is centred on, so two of them can
+    // be a fortnight apart from each other. Worth knowing before anyone reasons
+    // about how long a cargo is takeable for.
+    const week = Math.ceil(MARKET.reachNm / DAY_RUN_NM);
+    expect(atSea[0], "nothing sailed on the day the market cleared").toBeGreaterThan(0);
+    // ...and it is a passage rather than a teleport: busy on more days than one.
+    expect(atSea.filter((n) => n > 0).length).toBeGreaterThan(1);
+    for (let d = 2 * week; d < atSea.length; d++) {
+      expect(atSea[d], `day ${d} of the season still had hulls at sea`).toBe(0);
+    }
+    // ...and the sea is quiet for most of the season, which is the shape of it:
+    // one sailing day in ninety, not a steady stream.
+    expect(atSea.filter((n) => n > 0).length).toBeLessThan(atSea.length / 2);
   });
 });

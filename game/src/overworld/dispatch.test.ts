@@ -14,6 +14,7 @@ import { laneIsOpen, makeMarkets, openRoutes, type Routes } from "./market";
 import type { Place } from "./places";
 import { DAY_RUN_NM, WORLD_BOX, distanceNm } from "./shape";
 import { generateWorld } from "./worldgen";
+import { GOOD_AT, GOOD_COUNT } from "../town/trade";
 
 // ---- Fixtures --------------------------------------------------------------
 //
@@ -39,7 +40,18 @@ const ALL_PAYLOADS: WarPayloadId[] = [
 // not one of them.
 const EVERY_PAYLOAD = [...ALL_PAYLOADS, PAYLOAD.cargo];
 
-const VICTUALS = 0; // a trade class code (`CLASSES`), and the cargo below
+// Two goods far apart in `GOOD_ORDER` — one victual and one luxury — so a claim
+// about a mixed hold cannot pass on two columns that sit beside each other.
+const GRAIN = GOOD_AT.grain;
+const SUGAR = GOOD_AT.sugar;
+
+// A hold with one good in it. Most claims in this file are about the hull and
+// not about the manifest, so one column says all they need.
+function holdOf(good: number, qty: number): number[] {
+  const row = new Array<number>(GOOD_COUNT).fill(0);
+  row[good] = qty;
+  return row;
+}
 
 const placeAt = (id: number, x: number, y: number, faction: number): Place => ({
   id, name: `Place ${id}`, governor: "Someone",
@@ -368,14 +380,14 @@ describe("a town sends a ship to another town", () => {
     const { world } = coastOf(1.5);
     const quay = world.places[QUAY];
     const bound = world.places[BOUND];
-    const d = sendCargo(world, QUAY, BOUND, VICTUALS, 40)!;
+    const d = sendCargo(world, QUAY, BOUND, holdOf(GRAIN, 40))!;
 
     // A TOWN sent it, and a reader can see that without knowing a payload code:
     // `from` is a crown and `fromPlace` is a town, and only ever one of them.
     expect(d.fromPlace).toBe(QUAY);
     expect(d.from).toBe(-1);
     expect(d.to).toBe(BOUND);
-    expect(d.cargo).toBe(VICTUALS);
+    expect(d.hold[GRAIN]).toBe(40);
     expect(d.amount).toBe(40);
 
     // The passage the water between them implies. The formula is written out
@@ -401,6 +413,29 @@ describe("a town sends a ship to another town", () => {
     expect(delivered).toBe(40);
   });
 
+  it("stows a whole season's trade with one port in one mixed hold, not a hull per good", () => {
+    // ONE HULL PER SELLING-AND-BUYING PAIR is what makes the shipping
+    // affordable: per good the clearing would put thousands of objects on the
+    // water every season and a million across a warm start. So a hold carries
+    // several goods at once, and `amount` is what is aboard all told — summed
+    // from the hold itself, so the manifest and the total cannot disagree.
+    const { world } = coastOf(1.5);
+    const hold = holdOf(GRAIN, 40);
+    hold[SUGAR] = 12;
+    const d = sendCargo(world, QUAY, BOUND, hold)!;
+
+    expect(d.hold[GRAIN]).toBe(40);
+    expect(d.hold[SUGAR]).toBe(12);
+    expect(d.amount).toBe(52);
+    // ...and it is ONE ship, arriving once, with both goods still aboard.
+    expect(inFlightCount(world)).toBe(1);
+    const log = sail(world, 6);
+    expect(log).toHaveLength(1);
+    expect(log[0].landed).toHaveLength(1);
+    expect(log[0].landed[0].hold[GRAIN]).toBe(40);
+    expect(log[0].landed[0].hold[SUGAR]).toBe(12);
+  });
+
   it("is on the map the whole voyage, moving between the two towns", () => {
     // What the chart draws is `inFlight` plus `positionOf` and the four course
     // ends (worldview/draw.ts), so a town's ship is drawn the same way a crown's
@@ -408,7 +443,7 @@ describe("a town sends a ship to another town", () => {
     const { world } = coastOf(1.5);
     const quay = world.places[QUAY];
     const bound = world.places[BOUND];
-    const d = sendCargo(world, QUAY, BOUND, VICTUALS, 40)!;
+    const d = sendCargo(world, QUAY, BOUND, holdOf(GRAIN, 40))!;
     const crowns = sendDispatch(world, CROWN, BOUND, PAYLOAD.treasury, 100)!;
     expect(Object.keys(d).sort()).toEqual(Object.keys(crowns).sort());
 
@@ -443,14 +478,14 @@ describe("a town sends a ship to another town", () => {
     // A pair the market DID partner: they sail, as they always could.
     const near = coastOf(1.5);
     expect(laneIsOpen(near.routes, QUAY, BOUND)).toBe(true);
-    expect(sendCargo(near.world, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
+    expect(sendCargo(near.world, QUAY, BOUND, holdOf(GRAIN, 40))).not.toBeNull();
 
     // A pair the market did NOT — eight days apart, beyond the week a market
     // reaches. The lane assertion is what makes this fail the day somebody puts
     // the check back: without it the claim would pass on a pair that trades.
     const strangers = coastOf(8);
     expect(laneIsOpen(strangers.routes, QUAY, BOUND)).toBe(false);
-    const d = sendCargo(strangers.world, QUAY, BOUND, VICTUALS, 40)!;
+    const d = sendCargo(strangers.world, QUAY, BOUND, holdOf(GRAIN, 40))!;
     expect(d).not.toBeNull();
     expect(inFlightCount(strangers.world)).toBe(1);
 
@@ -474,13 +509,13 @@ describe("a town sends a ship to another town", () => {
     const bound = world.places[BOUND];
     expect(passageDays(distanceNm(quay.x, quay.y, bound.x, bound.y)))
       .toBeGreaterThanOrEqual(RING_DAYS);
-    expect(sendCargo(world, QUAY, BOUND, VICTUALS, 40)).toBeNull();
+    expect(sendCargo(world, QUAY, BOUND, holdOf(GRAIN, 40))).toBeNull();
     expect(inFlightCount(world)).toBe(0);
 
     // ...and it was the length that refused it: bring the same town inside the
     // horizon and the same ship sails.
     bound.x = quay.x + 3 * DAY_RUN_NM;
-    expect(sendCargo(world, QUAY, BOUND, VICTUALS, 40)).not.toBeNull();
+    expect(sendCargo(world, QUAY, BOUND, holdOf(GRAIN, 40))).not.toBeNull();
     expect(inFlightCount(world)).toBe(1);
   });
 });

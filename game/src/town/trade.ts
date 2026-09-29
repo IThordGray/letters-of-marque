@@ -253,9 +253,20 @@ export const cargoOf = (kind: WorkKind): Good | null => {
 //
 // The ONE new stored thing on a Town, and it is stored for the same reason
 // `grant` is: it is not derived from the ledger, it ARRIVES. The world writes
-// `price` and `allotted` in the seasonal clear; settlement writes back what the
-// coffers could actually pay for. Everything else about a town's commerce —
-// what it made, what it wants, what reaches its quay — stays derived ([HC-14]).
+// `price` in the seasonal clear and `landed` on the day a ship ties up;
+// settlement writes back what the coffers could actually pay for. Everything
+// else about a town's commerce — what it made, what it wants, what reaches its
+// quay — stays derived ([HC-14]).
+//
+// `landed` WAS `allotted`, AND THE RENAME IS THE WHOLE OF A DESIGN CHANGE
+// ([P-49]: rename when the base moves). It used to hold what the clearing found
+// for the town to buy — a promise, written and paid for on the same day. It now
+// holds what has actually come over the quay since the last settling, put there
+// by a ship that took days to cross: [HC-45] credited on ARRIVAL, [HC-46] a
+// governor plans on what has arrived and never on what is promised. A season
+// therefore SPENDS WHAT THE PREVIOUS SEASON'S DEALS DELIVERED, and that is not
+// an accident of timing — it is the point, because a cargo that can be taken at
+// sea has to be a cargo the buyer has not had yet.
 //
 // An UNCLEARED town is priced at par and buys nothing, which is exactly the town
 // the module shipped with. That is a neutral element, not a trading partner:
@@ -263,11 +274,11 @@ export const cargoOf = (kind: WorkKind): Good | null => {
 
 export interface MarketState {
   price: number[]; // by good — the LOCAL price, from its neighbourhood ([HC-82])
-  allotted: number[]; // what the clearing found for it to buy
+  landed: number[]; // what has come over the quay and is not yet paid for
   bought: number[]; // ...and what it could actually pay for
   paid: number; // the coin that cost, this season
   // 0..1 — THE SHARE OF THIS PLACE'S SEA LANES THAT STILL CALL. It is written by
-  // the world in the seasonal clear, exactly as `price` and `allotted` are, and
+  // the world in the seasonal clear, exactly as `price` is, and
   // for exactly the same reason: no function of this ledger could recompute it
   // ([HC-14]). Which places are near enough to trade with is the world's fact
   // ([HC-82]), and whether a squadron is sitting across those lanes is the
@@ -284,7 +295,7 @@ export interface MarketState {
 // three rows are filled, never holed.
 export const makeMarket = (): MarketState => ({
   price: new Array(GOOD_COUNT).fill(1),
-  allotted: new Array(GOOD_COUNT).fill(0),
+  landed: new Array(GOOD_COUNT).fill(0),
   bought: new Array(GOOD_COUNT).fill(0),
   paid: 0,
   reach: 1,
@@ -971,6 +982,17 @@ export const DEPENDENCY_CLAUSE = "too much of their bread comes off a ship";
 // corn buys the timber, and whatever is left after that buys the silk. `GOOD_ORDER`
 // IS tier order, so walking the goods upwards is the whole of [HC-78] — there is
 // no second list of tiers to keep in step with this one.
+//
+// WHAT IT PAYS FOR IS WHAT IS ON THE QUAY, and that is the change [HC-46] asks
+// for: goods that a ship landed during the last ninety days, not goods a
+// clearing promised this morning. A ship taken at sea is a bill this town never
+// receives and bread it never eats.
+//
+// IT PAYS AT TODAY'S LOCAL PRICE, not at the price the deal was struck at. The
+// hull carries goods and not a contract — a season's lag in a neighbourhood's
+// own ratio is a smaller lie than a second price table riding around on every
+// ship ([HC-82]: there is no global price to arbitrage, and this does not build
+// one).
 
 export function payImports(town: Town, purse: number): number {
   const m = town.market;
@@ -978,22 +1000,23 @@ export function payImports(town: Town, purse: number): number {
   let paid = 0;
   for (let g = 0; g < GOOD_COUNT; g++) {
     const price = m.price[g];
-    const cost = m.allotted[g] * price;
+    const cost = m.landed[g] * price;
     if (cost <= left) {
-      m.bought[g] = m.allotted[g];
+      m.bought[g] = m.landed[g];
       left -= cost;
       paid += cost;
     } else {
       // Short of coin: it takes what it can pay for and goes without the rest.
       const afford = price > 0 ? left / price : 0;
-      m.bought[g] = afford < m.allotted[g] ? afford : m.allotted[g];
+      m.bought[g] = afford < m.landed[g] ? afford : m.landed[g];
       paid += m.bought[g] * price;
       left = 0;
     }
-    // An allotment is for ONE season. Consumed here so a place that is never
-    // cleared again cannot go on landing the same shipment for ever — the flow
-    // balance holds no stock, and neither does this.
-    m.allotted[g] = 0;
+    // THE QUAY IS CLEARED WHETHER OR NOT THE TOWN COULD PAY. What it could not
+    // afford it goes without, exactly as it always did — the goods do not sit on
+    // the stones waiting for a better season, or a port that fell short once
+    // would go on landing the same shipment for ever.
+    m.landed[g] = 0;
   }
   m.paid = paid;
   return paid;

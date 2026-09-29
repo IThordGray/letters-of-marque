@@ -38,15 +38,17 @@ function open(town: Town): Town {
   return town;
 }
 
-// The world's half of the season, done by hand: the clearing found this much for
-// the place to buy, at this price.
+// The world's half of the season, done by hand: a ship landed this much on the
+// place's quay, at this price. It used to read "the clearing found this much for
+// the place to buy" — the same field, before it meant goods on the stones rather
+// than a promise made this morning.
 //
 // IT TAKES A TIER AND LANDS THE TIER'S FIRST GOOD. Every claim below that uses
 // it is a claim about bread or about planks, never about wheat in particular,
 // and the market prices GOODS now — so the price is written on the whole tier,
 // which is what "the victuals price is 0.15" meant when it traded classes.
-function clearedWith(town: Town, cls: TradeClass, allotted: number, price = 1): Town {
-  town.market.allotted[TIER_AT[rankOf(cls)]] = allotted;
+function clearedWith(town: Town, cls: TradeClass, landed: number, price = 1): Town {
+  town.market.landed[TIER_AT[rankOf(cls)]] = landed;
   return priced(town, cls, price);
 }
 
@@ -386,8 +388,8 @@ describe("bread before batteries", () => {
     // funded by the standing quayside allowance, which is exactly the coin from
     // nowhere the story removed.
     const town = open(mixedTown({ population: 300, wealth: 120 }));
-    town.market.allotted[GOOD_AT.grain] = 100;
-    town.market.allotted[GOOD_AT.timber] = 100;
+    town.market.landed[GOOD_AT.grain] = 100;
+    town.market.landed[GOOD_AT.timber] = 100;
     priced(town, "victuals", 1);
     priced(town, "materials", 1);
     stepSeason(town, AFTER_OPENING);
@@ -1026,7 +1028,7 @@ describe("a town holds a warehouse", () => {
     // it there. It is still there the season after, which is what "carries"
     // means and what the flow balance could never say.
     const town = reaching(open(seaTown({ population: 60, wealth: 20_000 })), 0);
-    town.market.allotted[GOOD_AT.cacao] = 40;
+    town.market.landed[GOOD_AT.cacao] = 40;
     town.market.price[GOOD_AT.cacao] = TRADE.basePrice[2];
     stepSeason(town, AFTER_OPENING);
 
@@ -1257,8 +1259,8 @@ describe("what a purpose puts out of reach", () => {
   // A century of seasons, fed the same way throughout.
   const live = (t: Town, seasons: number) => {
     for (let i = 0; i < seasons; i++) {
-      t.market.allotted[GOOD_AT.grain] = 400;
-      t.market.allotted[GOOD_AT.timber] = 400;
+      t.market.landed[GOOD_AT.grain] = 400;
+      t.market.landed[GOOD_AT.timber] = 400;
       priced(t, "victuals", TRADE.basePrice[0]);
       priced(t, "materials", TRADE.basePrice[1]);
       const day = AFTER_OPENING + i * SEASON;
