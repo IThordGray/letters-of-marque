@@ -114,6 +114,15 @@ function readBox(el: HTMLInputElement, fallback: number): number {
   return Number.isFinite(v) ? Math.trunc(v) : fallback;
 }
 
+// KEPT BESIDE ITS SIBLING, AND THAT IS THE FIX RATHER THAN A TIDY. This sat
+// below the `let run = openWorld()` that starts the page, and a `const` is in
+// the temporal dead zone until its own line runs — so opening the page threw
+// "Cannot access 'readSeed' before initialization" before a pixel was drawn.
+// It typechecks and the suite is green either way: `tsc` does not order
+// module-level initialisers, and `testing.md` forbids DOM tests, so nothing
+// executes this file. The two box-readers belong together.
+const readSeed = (): number => readBox(elSeed, 1660);
+
 const readSettings = (): WorldSettings => ({
   widthNm: readBox(elBoxes.widthNm, DEFAULT_WORLD.widthNm),
   heightNm: readBox(elBoxes.heightNm, DEFAULT_WORLD.heightNm),
@@ -167,8 +176,6 @@ let dpr = 1;
 let drawnFeed = -1;
 let drawnTrend = -1;
 let drawnSeason = -1;
-
-const readSeed = (): number => readBox(elSeed, 1660);
 
 // The sea the boxes ask for — or the default one, if what they ask for is a
 // world the physics will not build (`refuseTheImpossible`). The boxes are put
