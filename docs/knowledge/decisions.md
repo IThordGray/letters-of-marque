@@ -336,5 +336,6 @@ yet.**
 - Tile levels / upgrades · grouping in-town works · plan extent keyed on town size.
 - The three-ring ship model and interception (need a player).
 - Nothing would catch a leak in the clearing: the conservation claim caps allotment by *want*, not by pooled supply, so a future change to the `1/hoodsOf` share would fail no test.
+- **Nothing executes `worldview/main.ts` or `town/main.ts`.** No test may (DOM tests are banned) and `tsc` does not order module-level initialisers, so a change there can be type-clean and green across every claim and still throw before the page draws. It has done exactly that once.
 - The raid layer (`ai`, `combat`, `morale`, `movement`, `nav`, `patrol`, `raid`, `spawn`) has no test
   suite, and `guardrails.test.ts` does not scan it or `worldview/`.
