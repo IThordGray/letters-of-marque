@@ -310,6 +310,30 @@ all one cause:
 *"could boost the commodity, and count as food towards pop growth"*. Provision grounds and grain
 fields today carry a commodity column and **zero** food.
 
+### Built 2026-09-29 (second) — a cleared trade is a ship
+
+The market names **who supplied whom**; one hull per trading pair carries everything that pair moved;
+**the buyer is credited when it lands.** Interception is still empty — but there is now something to
+rob, which there was not before.
+
+- **A season spends what the PREVIOUS season delivered.** Clearing books nothing, hulls fill the quay
+  over the following days, and settling ninety days later spends it. **Anyone reading the season's
+  five phases will assume phase 2 feeds phase 3 on the same day. It no longer does.**
+- **A cargo is at sea for up to a FORTNIGHT, not a week.** Reach bounds a port's distance from its
+  market's *centre*, so two members can be twice that apart. **This is the number the interception
+  work is written against.**
+- **The 8-member cap is what makes naming a counterparty affordable** — the pairing costs
+  `members²` per good per market, 8×8 rather than 48×48. **Widening `MARKET.maxMembers` now costs
+  the square of the widening**, which it never used to.
+- **The seller is paid when he ships, the buyer when it lands.** So a taken hull costs the buyer
+  everything and the seller nothing. Deliberate for now; a decision when interception lands.
+- **Measured:** ~300 sailings a season, peak ~226 hulls on clearing day, the sea empty on 81 of 90
+  days. Warm start **+4–6%**. World cargo bought at a settling roughly doubled.
+
+**Standing test rule, earned twice:** **read a season's trade while the season is still holding it.**
+Settling zeroes the quay, so a claim that reads a town's trade block *after* `settleSeason` reads a
+zero and passes against anything. Two existing claims were doing exactly that and were decoration.
+
 ## The layering — how the world is meant to stack
 
 Each layer runs without the one above it, and adding a layer never rewrites the one below.
@@ -337,5 +361,7 @@ yet.**
 - The three-ring ship model and interception (need a player).
 - Nothing would catch a leak in the clearing: the conservation claim caps allotment by *want*, not by pooled supply, so a future change to the `1/hoodsOf` share would fail no test.
 - **Nothing executes `worldview/main.ts` or `town/main.ts`.** No test may (DOM tests are banned) and `tsc` does not order module-level initialisers, so a change there can be type-clean and green across every claim and still throw before the page draws. It has done exactly that once.
+- A `describe` body in `market.test.ts` runs a two-year warm start at *collection* time, so it is paid even by a filtered `-t` run.
+- `sendCargo` returning `null` (a passage past the 64-day ring) would silently evaporate a matched cargo, crediting nobody. Unreachable inside a market — ~2,016 nm against a 9,216 nm horizon — but unguarded.
 - The raid layer (`ai`, `combat`, `morale`, `movement`, `nav`, `patrol`, `raid`, `spawn`) has no test
   suite, and `guardrails.test.ts` does not scan it or `worldview/`.

@@ -190,6 +190,24 @@ of a flow, never a second source of truth. The **four war-currencies are the sol
 treasury, reinforcements, charter, invasion force are real objects in all three rings, because taking
 them is the whole of how a player tips a war. There are only ever a dozen or so at a time.
 
+> **AMENDED 2026-09-29, as §8.4 said it would have to be.** That section warned: *"the day this
+> ship's cargo is credited into a market is the day `[HC-13]` has to be AMENDED rather than quoted."*
+> **That day has come.** Ordinary trade now sails: the market names who supplied whom, a hull carries
+> everything one pair moved in a season, and **the buyer is credited when it lands.**
+>
+> **The first clause still holds and is what makes it affordable: the flow decides every sack.** The
+> clearing is unchanged — summation per market, no town negotiating with another — and a hull carries
+> exactly what it decided, to exactly the port it decided, inventing nothing.
+>
+> **But "never a second source of truth" is now too strong, and honesty is worth more than a tidy
+> rule.** Between sailing and landing the quantity exists **nowhere else**: the pairing scratch is
+> discarded with the pass and the quay is still empty. **For up to a fortnight the hull IS the
+> record**, and the town spends off it when it arrives. That is the price of a cargo being takeable
+> at all — a thing you can rob has to be somewhere.
+>
+> **So the rule reads: the flow decides; the hull carries; taking the hull changes what lands.**
+> The exception is no longer the four war-currencies alone — it is every hull at sea.
+
 **`[HC-14]` Store almost nothing.** Three numbers and a list of works per place; everything else is
 derived on demand, every tick. This is what makes fifty places and a two-hundred-year fast-forward
 possible at all.

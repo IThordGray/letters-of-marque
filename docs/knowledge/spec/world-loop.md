@@ -92,10 +92,11 @@ is **refused at generation** rather than quietly producing a broken world.
 
 - **The crowns do nothing.** Step 5 is empty, so nothing in the world has intent except a town's
   governor. **This is the gap between "a simulation" and "a world".**
-- **Nothing decides to sail.** A town *can* now send a ship to another town carrying cargo — it
-  makes the passage the distance implies, is drawn moving, and is credited only on arrival. But
-  nothing sends one, and an arriving cargo changes nothing yet. **A ship sails anywhere the schedule
-  can hold, trading partner or not: the sea is not a trade relationship.**
+- **Nobody takes the coin — but there is now cargo to take.** Every cleared trade sails: the market
+  names who supplied whom, one hull per trading pair carries everything that pair moved, and **the
+  buyer is credited only when it lands.** Roughly 300 sailings a season; the sea fills on the day the
+  market clears and is empty again within the fortnight. **Interception is still deliberately empty**,
+  so nothing can be robbed yet — but the thing to rob exists.
 - **Damage has no degrees.** A building is whole or gone; nothing mends.
 - **Nobody takes the coin.** No raids, no invasion fleets.
 
