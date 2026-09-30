@@ -33,8 +33,8 @@ import { TRADE } from "../town/constants";
 import { closeHarvest, derive, produceSeason, settleSeason, takeWeather } from "../town/sim";
 import { governorTurn, type Season as TownSeason } from "../town/governor";
 import { stepFootprint } from "../town/footprint";
-import { DAYS_PER_YEAR } from "./calendar";
-import { startsSeason, stepDay, type World } from "./clock";
+import { CALENDAR, DAYS_PER_YEAR } from "./calendar";
+import { dayOfSeason, startsSeason, stepDay, type World } from "./clock";
 import { PAYLOAD, sendCargo, stepDispatches } from "./dispatch";
 import { bandAt, contactAt, feltAt, pickAt, readSky, skyOf, stepWeather, type Sky } from "./weather";
 import { DAY_RUN_NM, distanceNm } from "./shape";
@@ -62,6 +62,21 @@ export const MARKET = {
   // doing far more work than it was: a week's reach offers a town thirty-odd
   // candidates where two days offered it seven.
   maxMembers: 8,
+  // WHICH DAY OF THE SEASON A MARKET HOLDS ITS FAIR. Market `h` meets on day
+  // `h x fairStride mod 90`, every season, for ever — so a market still beats
+  // ONCE A SEASON ([HC-2]: the season is the beat) and what the stride sets is
+  // its PHASE, which is exactly what [P-20] sanctions: "stagger only by a pure
+  // function of (id, tick); never stagger something whose cadence is a rule."
+  //
+  // SEVEN, BECAUSE IT SHARES NO FACTOR WITH NINETY. 90 is 2 x 3 x 3 x 5, so any
+  // stride coprime with it walks every day of the season before repeating — the
+  // first ninety markets in the world therefore fall on ninety DIFFERENT days
+  // by construction, and this sea's fifty use fifty of them. A stride of
+  // `90 / hoods` would spread them just as evenly and would move every market in
+  // the world the day a fifty-first port was founded, which is precisely what
+  // [HC-10] exists to forbid. This one is a function of the market's own id and
+  // of nothing else.
+  fairStride: 7,
 } as const;
 
 export interface Neighbourhood {
@@ -78,6 +93,15 @@ export interface Markets {
   // its want evenly across them, so goods are conserved exactly however much the
   // markets overlap.
   hoodsOf: number[];
+  // WHICH MARKETS MEET ON WHICH DAY OF THE SEASON — ninety rows, hood ids
+  // ascending within a row, built once and never rebuilt.
+  //
+  // IT IS A BUCKET AND NOT A TEST ([P-15], [P-14]). A market due on a known
+  // future day goes in that day's row; the driver reads one row and is done,
+  // and on the fifty-odd days a fair falls the row names exactly who is meeting.
+  // The alternative — asking all fifty markets every day whether today is theirs
+  // — is 18,000 questions a year to which the answer is almost always no.
+  dueOn: number[][];
 }
 
 // One neighbourhood centred on each place: a CAPPED SPREAD OF THE PORTS WITHIN
@@ -160,7 +184,15 @@ export function makeMarkets(places: readonly { x: number; y: number }[]): Market
     for (let k = 0; k < members.length; k++) hoodsOf[members[k]]++;
     hoods.push({ id: i, members });
   }
-  return { hoods, hoodsOf };
+
+  // ...and the calendar of fairs, laid out once. Filled in ascending hood order,
+  // so a row's ids are ascending too and the day's clearing walks its markets in
+  // a fixed order ([P-9], [P-10]).
+  const dueOn: number[][] = [];
+  for (let d = 0; d < CALENDAR.daysPerSeason; d++) dueOn.push([]);
+  for (let h = 0; h < hoods.length; h++) dueOn[(h * MARKET.fairStride) % CALENDAR.daysPerSeason].push(h);
+
+  return { hoods, hoodsOf, dueOn };
 }
 
 // A line a person can check the generator against ([HC-16] applied to itself).
@@ -373,11 +405,22 @@ export function priceFor(good: number, sought: number, offered: number): number 
   return p < lo ? lo : p > hi ? hi : p;
 }
 
-// Clear one season across the whole map, all places at once — and then SEND THE
-// SHIPS, because the clearing is the only thing that knows who supplied whom.
+// Hold the markets that meet TODAY — and then SEND THE SHIPS, because the
+// clearing is the only thing that knows who supplied whom.
+//
+// `hoods` is the list of neighbourhoods whose fair falls today, ascending. The
+// whole map at once is simply the case where that list is every market, and the
+// arithmetic below reduces to it exactly: a town's `1/hoodsOf` share is the same
+// share whichever day it is spent on, and `mine` — how many of TODAY'S fairs the
+// town stands in — is `hoodsOf` when they all meet at once.
+//
+// STAGGERED, BUT STILL SEASONAL ([HC-2]). A market meets once a season and no
+// oftener; what differs is WHICH day of the ninety. There is no new beat here,
+// no timer, and no state that counts down — the day a market meets is a fact of
+// the market, laid into `dueOn` at generation.
 //
 // `towns` is indexed by place id and must already have PRODUCED (phase 1). On
-// return, every town's `market` block holds the local price it faces, and one
+// return, every town that came to market holds the local price it faced, and one
 // cargo hull is at sea for every pair of ports that traded. Nothing is landed
 // here and nothing is paid for here: the buyer is credited on the day the ship
 // ties up ([HC-45]), and settlement pays for what is on its quay.
@@ -390,14 +433,48 @@ export function priceFor(good: number, sought: number, offered: number): number 
 // clearing stays LINEAR in the number of places exactly as [HC-83] promises.
 // The cap is what makes naming a counterparty affordable at all; widen it and
 // this is the line that pays for it.
-export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars, routes: Routes): void {
+export function clearMarkets(
+  m: Markets,
+  world: World,
+  towns: Town[],
+  wars: Wars,
+  routes: Routes,
+  hoods: readonly number[],
+): void {
+  if (hoods.length === 0) return;
   const places = world.places;
   const n = towns.length;
   const nf = wars.count;
 
-  // Phase 1's output, read once per place. Nothing below reads a Town again.
+  // WHO IS AT MARKET TODAY. A place takes a seat the first time one of today's
+  // fairs names it; `mine` counts how many of them it stands in. That count is
+  // the only thing the clearing needs to know about the markets NOT meeting
+  // today, and it is what keeps a place's books the same books whether its
+  // fairs fall together or ninety days apart.
+  //
+  // [P-1]: the work is the places actually trading today, not the fifty. On an
+  // ordinary day that is one market and eight ports.
+  const seatOf = new Int32Array(n).fill(-1);
+  const seats: number[] = [];
+  const mine: number[] = [];
+  for (let k = 0; k < hoods.length; k++) {
+    const members = m.hoods[hoods[k]].members;
+    for (let j = 0; j < members.length; j++) {
+      const id = members[j];
+      if (seatOf[id] < 0) {
+        seatOf[id] = seats.length;
+        seats.push(id);
+        mine.push(0);
+      }
+      mine[seatOf[id]]++;
+    }
+  }
+  const ns = seats.length;
+
+  // Phase 1's output, read once per market-goer. Nothing below reads a Town again.
   const stalls: Stall[] = [];
-  for (let i = 0; i < n; i++) {
+  for (let s = 0; s < ns; s++) {
+    const i = seats[s];
     // THE WORLD HANDS THE LEDGER ITS REACH, here, before anything derives from
     // it ([HC-71]: the world drives the ledger and the ledger never reaches
     // out). It is written on the same beat as the price beside it, which is the
@@ -405,6 +482,8 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
     // rewritten from the lane table every season rather than invalidated when a
     // blockade changes — fifty places times a handful of lanes is nothing, and
     // an active recompute cannot go stale the way a dirty flag can ([P-21]).
+    // Every place stands in its own market, so every place is still handed one
+    // once a season, on its own fair day.
     towns[i].market.reach = reachOf(routes, i);
     const d = derive(towns[i]);
     const share = m.hoodsOf[i] > 0 ? 1 / m.hoodsOf[i] : 0;
@@ -418,26 +497,33 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
       faction: places[i].faction,
       offer,
       want,
-      purse: Math.max(0, towns[i].wealth + d.commerce.earned + towns[i].grant),
+      // THE PURSE IS SHARED LIKE THE SACKS ARE, and it has to be for the same
+      // reason. A town's coin was one heap spent down across markets that all
+      // met in one instant; met on ninety different days, a heap rebuilt at each
+      // fair would let the same coin be committed `hoodsOf` times over. So it
+      // brings the share of its purse that matches the share of its offer, and
+      // what it commits across a whole season is what it has.
+      purse: Math.max(0, towns[i].wealth + d.commerce.earned + towns[i].grant) * share * mine[s],
       secure: true,
     });
   }
 
   // Scratch, reused across every hood and class. [P-24]: nothing is allocated
-  // inside the loops that matter.
+  // inside the loops that matter, and the rows are the size of the day's market
+  // rather than of the world.
   const offeredBy = new Float64Array(nf);
   const soughtBy = new Float64Array(nf);
   const supplyFor = new Float64Array(nf);
   const demandFor = new Float64Array(nf);
   const priceFor_ = new Float64Array(nf);
-  const priceSum = new Float64Array(n * GOOD_COUNT);
-  const priceWeight = new Float64Array(n * GOOD_COUNT);
+  const priceSum = new Float64Array(ns * GOOD_COUNT);
+  const priceWeight = new Float64Array(ns * GOOD_COUNT);
   // WHAT EACH PLACE WAS MATCHED WITH, and it is scratch rather than a field on
   // the Town because nothing outside this function has any business reading it:
   // a town is credited when a ship lands, never when a deal is struck ([HC-46] —
   // "he does not count unhatched chickens", enforced by there being nothing to
   // count). The one reader is [HC-77]'s tier gate at the foot of each tier.
-  const matched = new Float64Array(n * GOOD_COUNT);
+  const matched = new Float64Array(ns * GOOD_COUNT);
 
   // WHO SUPPLIED WHOM. One row per selling-and-buying pair, holding everything
   // that pair moved this season, across every good and every neighbourhood the
@@ -477,15 +563,15 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
   // so the outer loop over tiers is what carries [HC-77] exactly as it always did.
   for (let t = 0; t < CLASS_COUNT; t++) {
     for (let c = TIER_AT[t]; c < TIER_AT[t + 1]; c++) {
-      for (let h = 0; h < m.hoods.length; h++) {
-        const members = m.hoods[h].members;
+      for (let h = 0; h < hoods.length; h++) {
+        const members = m.hoods[hoods[h]].members;
 
         offeredBy.fill(0);
         soughtBy.fill(0);
         // SUMMATION, and the members are walked in a FIXED ascending order — so
         // shuffling the array of places cannot change a single bit ([P-9]).
         for (let k = 0; k < members.length; k++) {
-          const s = stalls[members[k]];
+          const s = stalls[seatOf[members[k]]];
           offeredBy[s.faction] += s.offer[c];
           // [HC-77]: a place short of the tier below registers NO demand here,
           // however rich it is. The gate decides whether the demand EXISTS.
@@ -511,9 +597,9 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
 
         for (let k = 0; k < members.length; k++) {
           const id = members[k];
-          const s = stalls[id];
+          const s = stalls[seatOf[id]];
           const f = s.faction;
-          const slot = id * GOOD_COUNT + c;
+          const slot = seatOf[id] * GOOD_COUNT + c;
 
           // A SELLER is rationed by the price, not by a queue: a glut collapses what
           // his cargo fetches. A BUYER is rationed by the goods, because you cannot
@@ -554,7 +640,7 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
             if (take > 0 && supply > 0) {
               for (let j = 0; j < members.length; j++) {
                 const sid = members[j];
-                const seller = stalls[sid];
+                const seller = stalls[seatOf[sid]];
                 if (seller.offer[c] <= 0) continue;
                 // [HC-84], read off exactly as the pool was summed: a buyer
                 // draws only on factions he is not at war with.
@@ -579,26 +665,38 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
     // `want - offer` summed over its goods, which is exactly the tier's
     // consumption less its production, because a good is in one column or the
     // other and never both.
-    for (let i = 0; i < n; i++) {
-      const s = stalls[i];
-      if (!s.secure) continue;
+    //
+    // AND IT IS ASKED OF THE WHOLE TOWN, not of the stall. `net` and `got` are
+    // both a single fair's worth — one `1/hoodsOf` share of the town's need,
+    // and what one fair (or `mine` of them) filled of it — so both are lifted to
+    // the town's full season before the slack, an absolute tolerance on a full
+    // tier, is compared against them. When every market meets at once `mine` is
+    // `hoodsOf` and this is `net x hoodsOf - got` exactly, which is what it was.
+    for (let s = 0; s < ns; s++) {
+      const st = stalls[s];
+      if (!st.secure) continue;
       let net = 0;
       let got = 0;
       for (let c = TIER_AT[t]; c < TIER_AT[t + 1]; c++) {
-        net += s.want[c] - s.offer[c];
-        got += matched[i * GOOD_COUNT + c];
+        net += st.want[c] - st.offer[c];
+        got += matched[s * GOOD_COUNT + c];
       }
-      s.secure = net * m.hoodsOf[i] - got <= TRADE.secureSlack;
+      st.secure = (net - got / mine[s]) * m.hoodsOf[seats[s]] <= TRADE.secureSlack;
     }
   }
 
   // The LOCAL price a place faces, PER GOOD — the quantity-weighted mean of the
-  // prices its own neighbourhoods struck. [HC-82]: there is no global price to
-  // table, and two ports a week apart genuinely disagree about the same good.
-  for (let i = 0; i < n; i++) {
-    const mk = towns[i].market;
+  // prices today's fairs struck. [HC-82]: there is no global price to table, and
+  // two ports a week apart genuinely disagree about the same good.
+  //
+  // ONLY THE PLACES THAT CAME TO MARKET. A port whose fair is forty days off is
+  // still living with the price its last one struck, which is the truthful
+  // reading of a world where markets meet on their own days: a price is what the
+  // last fair said, and it is stale until the next one.
+  for (let s = 0; s < ns; s++) {
+    const mk = towns[seats[s]].market;
     for (let c = 0; c < GOOD_COUNT; c++) {
-      const slot = i * GOOD_COUNT + c;
+      const slot = s * GOOD_COUNT + c;
       mk.price[c] = priceWeight[slot] > 0 ? priceSum[slot] / priceWeight[slot] : TRADE.basePrice[TIER_RANK[c]];
     }
   }
@@ -625,6 +723,24 @@ export function clearSeason(m: Markets, world: World, towns: Town[], wars: Wars,
 // goods, phase 3 books the result. No place may re-produce in response to a
 // price it saw in phase 2 — it reacts next season, through its governor.
 //
+// PHASE 2 IS NOT IN THIS FUNCTION, AND THAT IS THE ONE STRUCTURAL CHANGE. A
+// market still clears once a season — its cadence is a rule and is untouched
+// ([HC-2]) — but it clears on ITS OWN day of the ninety, so the clearing is
+// driven from the day loop off a bucket rather than from the season's opening
+// instant. There is no reason a hundred coasts would agree a date, and a world
+// where they did put two hundred and forty hulls to sea on one morning and left
+// the water empty for the other eighty-two days.
+//
+// WHAT THE PHASE ORDER STILL MEANS, because that is the part worth getting
+// right. A place PRODUCES on the season's first day, its markets meet through
+// the ninety days that follow against exactly that harvest, and the SETTLING at
+// the head of the next season pays for what those deals actually landed. The
+// order is therefore unchanged as a PIPELINE — produce, clear, settle — and only
+// the instants have spread out. What a town must never do is meet a market with
+// a harvest its own settling has already banked into its stores, which is what
+// puts the clearing AFTER settling within a day: every fair, including one that
+// falls on the season's first day, reads the same freshly-struck shelf.
+//
 // PHASE 2 NO LONGER DELIVERS ANYTHING, AND PHASE 3 IS A SEASON BEHIND IT. A
 // passage between two ports of one market is at most a fortnight — each is
 // within a week's sail of the port their market is centred on, so the two of
@@ -646,18 +762,12 @@ export interface WorldSeason {
 // first row). It used to ask each town what year IT thought it was — `year(t)`,
 // off that town's private season counter — which is why fifty places founded on
 // day 0 agreed only by coincidence (KAN-107). This got shorter, not longer.
-export function stepWorldSeason(
-  world: World,
-  towns: Town[],
-  m: Markets,
-  wars: Wars,
-  routes: Routes,
-): WorldSeason {
+export function stepWorldSeason(world: World, towns: Town[]): WorldSeason {
   const day = world.day;
   // 1 · PRODUCE
   for (let i = 0; i < towns.length; i++) produceSeason(towns[i], day);
-  // 2 · CLEAR
-  clearSeason(m, world, towns, wars, routes);
+  // 2 · CLEAR — on each market's own day, in the driver below ([P-17b]: this
+  //     function is not handed the markets, so it cannot reach for one).
   // 3 · SETTLE
   for (let i = 0; i < towns.length; i++) settleSeason(towns[i]);
   // 4 · GOVERN
@@ -777,9 +887,15 @@ export function runDays(
 ): void {
   for (let d = 0; d < days; d++) {
     if (startsSeason(world)) {
-      const s = stepWorldSeason(world, towns, m, wars, routes);
+      const s = stepWorldSeason(world, towns);
       if (onSeason) onSeason(s);
     }
+    // 2 · CLEAR — the markets whose fair falls on this day of the season, and on
+    // most days that is an empty row and nothing at all ([P-15]: the bucket
+    // names them, nothing is asked whether it is due). It sits after the season
+    // so that a fair on the season's own first day reads the same freshly-struck
+    // shelf every other fair reads.
+    clearMarkets(m, world, towns, wars, routes, m.dueOn[dayOfSeason(world)]);
     stepWorldDay(world, towns, sky);
     if (onDay) onDay();
     stepDay(world);
