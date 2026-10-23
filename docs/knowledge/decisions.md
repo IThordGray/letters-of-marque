@@ -159,6 +159,8 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
 - Sun elevation ≥ ~25° over built-up scenes · no skybox · toy scale is a hard constraint · foam in
   terrain vertex colours · land-only shadows.
 - **No renderer is chosen.** A ratified look is not permission to make assets.
+- **Art reference:** [`../art-reference/`](../art-reference/README.md) — exploration, **not ratified**.
+  The human likes its world and colour scheme; nothing in it (detail level, sails, HUD) is decided.
 
 ## Build & tooling (`implementation/`)
 
@@ -190,6 +192,10 @@ surfaced numbers per town · a price table to arbitrage · a third dependency ed
   made to give up short of beating it.
 - The camera floor (§5.3): the look spike says close range reads as boxes.
 - Whether a saturated sea leaves enough value range for tactical annotation (§5.2) — untested.
+- Faction colour: §5.2 puts it on the sails; the art reference keeps sails cream and puts it on
+  flags. Undecided — parked for the audit.
+- Detail level: §5.1 says low-poly with visible facets; the art reference is stylised
+  semi-realism with textures. Undecided — parked for the audit.
 
 ## The world's settings (`spec/world-loop.md`)
 

@@ -27,6 +27,7 @@ Knowledge about **what the game should do** is kept separate from **how it's bui
 |------|-------|-------|
 | [`../design-doc.md`](../design-doc.md) **(v0.17, CANONICAL)** | WHAT | THE game design — master spec. |
 | [`../PROTOTYPE.md`](../PROTOTYPE.md) · [`../PROTOTYPE-LAND.md`](../PROTOTYPE-LAND.md) | WHAT | Prototype scope / briefs (naval · land). |
+| [`../art-reference/`](../art-reference/README.md) | WHAT | Concept art exploration, **not ratified**: world look, model sheets, and the one-page design-sheet format. |
 | [spec/](spec/README.md) | WHAT | Behaviour, rules, requirements, data-to-persist, algorithm specs. |
 | [spec/design-references.md](spec/design-references.md) | WHAT | Cutthroats heritage, comparable-game mechanic patterns, pirate-flavour fit. |
 | [spec/world-simulation.md](spec/world-simulation.md) | WHAT | **The core simulation** — tick order, how the seven world systems drive each other, and the cross-cutting hard constraints. Start here for anything world-scale. |
