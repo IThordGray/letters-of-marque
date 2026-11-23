@@ -28,6 +28,11 @@ Sim-modelling rules (numbers, scales, statistics): [modelling.md](modelling.md).
 - `[P-72]` Write functions that take arrays, not a per-entity `update()`.
 - `[P-54]` Split an expensive stage off where most callers stop needing it. Computing a pure function
   twice is fine.
+- `[P-74]` Abstractions are additions too. Start plain; add an extension point at the third variant
+  or a stated recurring need, justified in one sentence: "adding the next X touches N files and can't
+  break the others." Use the extension points the code already has; inline any that never got a
+  second variant.
+- `[P-75]` Listeners, timers and frame loops are removed when what they serve goes away.
 
 ## Determinism (not negotiable — `guardrails.test.ts` enforces the starred ones)
 
@@ -90,6 +95,11 @@ Sim-modelling rules (numbers, scales, statistics): [modelling.md](modelling.md).
 - `[P-60]` Side tables only for rare fields in large populations, keyed by handle.
 - `[P-61]` An enum of the real states, not a set of booleans.
 - No `|0` or `>>>0` (use `Math.trunc`). No bit-twiddling as arithmetic. No linked lists.
+
+## Gates
+
+- `[P-76]` Never loosen a gate to get green: no lint disables, type escapes (`as any`, `@ts-ignore`),
+  skipped tests or raised timeouts. If one is genuinely needed, a one-line comment says why.
 
 ## Measurement
 

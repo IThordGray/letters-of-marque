@@ -110,8 +110,8 @@ only where he needs to look something up — in prose, say what the rule means.
   questions to me rather than try something and then clear it up afterwards."*
   **Bring him questions, not guesses** — and never a question you could have defaulted
   yourself.
-- **Code goes builder → reviewer → manager merges.** Briefs touching different modules
-  can go to parallel builders, each in its own worktree; merge one at a time.
+- **Code goes builder → reviewer → manager merges.** Briefs whose **Owns** don't
+  overlap can go to parallel builders, each in its own worktree; merge one at a time.
 - In the message that starts an agent, always give it: **(a)** the goal and its intent chain
   (pillar → milestone → brief, one line each), **(b)** which
   knowledge/spec files to read first, **(c)** the scope guardrail, **(d)** an

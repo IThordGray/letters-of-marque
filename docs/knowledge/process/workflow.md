@@ -8,15 +8,25 @@ It isn't saved anywhere else. The work ends as **one commit**, and the commit me
 lasting record of what changed and why. Anything that matters beyond that commit goes in
 `decisions.md`.
 
+## Scale the process to the task
+
+| Request | Path |
+|---|---|
+| Fits in one sentence ("rename X", "fix the typo in Y") | The manager just does it. No brief, no reviewer. |
+| Clear, and bigger than one sentence | The manager writes the brief(s) → builder → reviewer. |
+| Sizeable or half-formed — the manager can't write *Done when* yet | `scope-analyst` first; questions to the human, then briefs. |
+| Changing existing code widely: a refactor, a rebuild, "is it worth redoing X now" | `refactor-impact-analysis` first (knowledge-base skill). Stops for confirmation. |
+
 ## The brief
 
-Every piece of code work starts from one. The manager writes it; the builder builds exactly it;
-the reviewer checks against it and nothing else.
+Every piece of code work bigger than one sentence starts from one. The manager writes it; the
+builder builds exactly it; the reviewer checks against it and nothing else.
 
 ```markdown
 **What:**   <what this delivers, one or two lines>
 **Why:**    <the behaviour / fix / goal it serves>
 **Serves:** <pillar → milestone, one line — the intent this answers to>
+**Owns:**   <the files or folders this brief may change — nothing else>
 
 ## Done when
 - <2–4 checkable statements about the game, not the code>
@@ -30,6 +40,9 @@ the reviewer checks against it and nothing else.
 
 - **No Done when, no builder.** A bug's *Done when* is the repro no longer reproducing.
 - **More than four items means it is too big:** split it into briefs that each land as a commit.
+- **Owns** is what lets builders run in parallel: two briefs never own the same file.
+- **A brief that changes a ratified rule says so.** The manager edits the spec or `decisions.md`
+  when it merges; nothing else keeps them true.
 - **Before writing a brief, the three questions in `CLAUDE.md` ("Do less") apply.** Most things
   that surface mid-work never become a brief.
 
@@ -44,9 +57,14 @@ the reviewer checks against it and nothing else.
   When a run is interrupted, check the worktree (`git -C <worktree> status --short`, then tests)
   before assuming the work is lost.
 - Commit only when asked; branch off `main`/`master` first if on the default branch.
+- A change that only touches comments or docs needs no test run.
 
 ## Code flow
 
-**manager writes the brief → `builder` (own worktree) → `reviewer` → manager merges.** On a
-reviewer FAIL, the builder gets the reasons and goes again. Briefs touching different modules may
-run in parallel builders; merge one at a time.
+**manager writes the brief → `builder` (own worktree) → `reviewer` (fresh context) → manager merges.**
+
+- On a reviewer FAIL, the builder gets the reasons and goes again. **Two failed rounds on the same
+  brief: stop and rewrite the brief** — don't keep retrying.
+- Parallel builders only for briefs whose **Owns** don't overlap. Start with 2–3; the limit is how
+  fast a human can review and merge.
+- Merge one at a time; run `npm test` in `game/` after each merge.

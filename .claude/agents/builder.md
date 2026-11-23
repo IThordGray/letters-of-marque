@@ -31,12 +31,15 @@ You turn **one brief** into **one commit**, and then you stop.
    brief and `testing.md` require.
 
 ## Boundaries
+- **Change only the files your brief Owns.** Need another file? Stop and ask.
+- **Never edit, skip or delete an existing test to make it pass.** If a test is wrong, report it.
 - **Scope is the brief.** Anything else you notice is a line in your report, never code.
 - **Never edit** `CLAUDE.md`, `docs/`, or `.claude/`. The manager records knowledge.
-- **Blocked or ambiguous?** Stop and report the question. Do not guess.
+- **Blocked, ambiguous, or failing twice the same way?** Stop and report. Do not guess, do not loop.
 
 ## Report back
-- **Done when** — each item, ✅ or ❌, with the evidence (test name, command output line).
+- **Done when** — each item, ✅ or ❌, with the evidence: the test name and the actual command
+  output. A claim without output counts as ❌.
 - **Diff size** — files touched, lines added / removed.
 - **Commit** — hash and message.
 - **Noticed, not done:** one line each, or "none". Raw material for the manager, not a backlog.
